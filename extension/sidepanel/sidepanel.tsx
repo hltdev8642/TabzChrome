@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react'
 import ReactDOM from 'react-dom/client'
-import { Terminal as TerminalIcon, Pin, PinOff, Settings, Plus, Code, Zap, RefreshCw } from 'lucide-react'
+import { Terminal as TerminalIcon, Settings, Plus } from 'lucide-react'
 import { Badge } from '../components/ui/badge'
 import { Terminal } from '../components/Terminal'
-import { QuickCommandsPanel } from '../components/QuickCommandsPanel'
 import { SettingsModal, useTerminalSettings } from '../components/SettingsModal'
 import { connectToBackground, sendMessage } from '../shared/messaging'
 import { getLocal, setLocal } from '../shared/storage'
@@ -17,16 +16,11 @@ interface TerminalSession {
   sessionName?: string  // Tmux session name (only for tmux-based terminals)
 }
 
-type PanelTab = 'terminals' | 'commands'
-
 function SidePanelTerminal() {
   const [sessions, setSessions] = useState<TerminalSession[]>([])
   const [currentSession, setCurrentSession] = useState<string | null>(null)
-  const [activePanel, setActivePanel] = useState<PanelTab>('terminals')
-  const [pinned, setPinned] = useState(false)
   const [wsConnected, setWsConnected] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [globalUseTmux, setGlobalUseTmux] = useState(false)
   const portRef = useRef<chrome.runtime.Port | null>(null)
   const terminalSettings = useTerminalSettings()
 
@@ -39,16 +33,6 @@ function SidePanelTerminal() {
   }>({ show: false, x: 0, y: 0, terminalId: null })
 
   useEffect(() => {
-    // Load pinned state and global tmux setting from storage
-    getLocal(['settings']).then(({ settings }) => {
-      if (settings?.sidePanelPinned !== undefined) {
-        setPinned(settings.sidePanelPinned)
-      }
-      if (settings?.globalUseTmux !== undefined) {
-        setGlobalUseTmux(settings.globalUseTmux)
-      }
-    })
-
     // Connect to background worker via port for broadcasts
     const port = connectToBackground('sidepanel', (message) => {
       // ✅ Handle initial state sent immediately on connection
@@ -151,42 +135,11 @@ function SidePanelTerminal() {
     }
   }
 
-  const handleTogglePin = () => {
-    const newPinned = !pinned
-    setPinned(newPinned)
-    setLocal({
-      settings: {
-        sidePanelPinned: newPinned,
-      },
-    })
-  }
-
-  const handleToggleTmux = () => {
-    const newUseTmux = !globalUseTmux
-    setGlobalUseTmux(newUseTmux)
-    setLocal({
-      settings: {
-        globalUseTmux: newUseTmux,
-      },
-    })
-  }
-
   const handleSpawnTerminal = () => {
     sendMessage({
       type: 'SPAWN_TERMINAL',
       spawnOption: 'bash',
       name: 'Bash',
-    })
-  }
-
-  const handleOpenSettings = () => {
-    setIsSettingsOpen(true)
-  }
-
-  const handleRefreshTerminals = () => {
-    // Broadcast refresh message to all terminals
-    sendMessage({
-      type: 'REFRESH_TERMINALS',
     })
   }
 
@@ -286,51 +239,22 @@ function SidePanelTerminal() {
 
   return (
     <div className="h-screen flex flex-col bg-[#0a0a0a] text-foreground">
-      {/* Main Panel Tabs - gg-hub style */}
-      <div className="flex border-b bg-gradient-to-r from-[#0f0f0f] to-[#1a1a1a]">
-        <button
-          onClick={() => setActivePanel('terminals')}
-          className={`
-            flex items-center gap-2 px-4 py-3 font-medium transition-all relative
-            ${activePanel === 'terminals'
-              ? 'text-[#00ff88] bg-[#00ff88]/5'
-              : 'text-gray-400 hover:text-gray-300 hover:bg-white/5'
-            }
-          `}
-        >
-          <Code className="h-4 w-4" />
-          <span>Terminals</span>
+      {/* Header - Windows Terminal style */}
+      <div className="flex items-center justify-between px-4 py-2 border-b bg-gradient-to-r from-[#0f0f0f] to-[#1a1a1a]">
+        {/* Left: Title */}
+        <div className="flex items-center gap-2">
+          <TerminalIcon className="h-5 w-5 text-[#00ff88]" />
+          <h1 className="text-sm font-semibold text-white">Terminal Tabs</h1>
           {sessions.length > 0 && (
-            <Badge variant="secondary" className="text-xs ml-1 bg-[#00ff88]/20 text-[#00ff88] border-[#00ff88]/30">
+            <Badge variant="secondary" className="text-xs bg-[#00ff88]/20 text-[#00ff88] border-[#00ff88]/30">
               {sessions.length}
             </Badge>
           )}
-          {activePanel === 'terminals' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#00ff88] to-[#00c8ff]" />
-          )}
-        </button>
+        </div>
 
-        <button
-          onClick={() => setActivePanel('commands')}
-          className={`
-            flex items-center gap-2 px-4 py-3 font-medium transition-all relative
-            ${activePanel === 'commands'
-              ? 'text-[#00ff88] bg-[#00ff88]/5'
-              : 'text-gray-400 hover:text-gray-300 hover:bg-white/5'
-            }
-          `}
-        >
-          <Zap className="h-4 w-4" />
-          <span>Commands</span>
-          {activePanel === 'commands' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#00ff88] to-[#00c8ff]" />
-          )}
-        </button>
-
-        <div className="flex-1" />
-
-        {/* Status & Actions */}
-        <div className="flex items-center gap-2 px-3">
+        {/* Right: Actions */}
+        <div className="flex items-center gap-2">
+          {/* Connection Status */}
           {wsConnected ? (
             <Badge variant="secondary" className="text-xs bg-[#00ff88]/20 text-[#00ff88] border-[#00ff88]/30">
               Connected
@@ -339,35 +263,7 @@ function SidePanelTerminal() {
             <Badge variant="destructive" className="text-xs">Disconnected</Badge>
           )}
 
-          {/* Use Tmux Toggle */}
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/20 border border-gray-700">
-            <TerminalIcon className="h-3.5 w-3.5 text-gray-400" />
-            <span className="text-xs text-gray-400">Tmux</span>
-            <button
-              onClick={handleToggleTmux}
-              className={`
-                relative inline-flex h-4 w-7 items-center rounded-full transition-colors
-                ${globalUseTmux ? 'bg-[#00ff88]' : 'bg-gray-600'}
-              `}
-              title={globalUseTmux ? 'Tmux enabled for all terminals' : 'Tmux disabled (default behavior)'}
-            >
-              <span
-                className={`
-                  inline-block h-3 w-3 transform rounded-full bg-white transition-transform
-                  ${globalUseTmux ? 'translate-x-3.5' : 'translate-x-0.5'}
-                `}
-              />
-            </button>
-          </div>
-
-          <button
-            onClick={handleRefreshTerminals}
-            className="p-1.5 hover:bg-[#00ff88]/10 rounded-md transition-colors text-gray-400 hover:text-[#00ff88]"
-            title="Refresh Terminals (force redraw)"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </button>
-
+          {/* Settings Button */}
           <button
             onClick={() => setIsSettingsOpen(true)}
             className="p-1.5 hover:bg-[#00ff88]/10 rounded-md transition-colors text-gray-400 hover:text-[#00ff88]"
@@ -376,23 +272,22 @@ function SidePanelTerminal() {
             <Settings className="h-4 w-4" />
           </button>
 
+          {/* New Tab Button */}
           <button
             onClick={handleSpawnTerminal}
-            className="p-1.5 hover:bg-[#00ff88]/10 rounded-md transition-colors text-[#00ff88]"
-            title="New Terminal"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00ff88] hover:bg-[#00c8ff] text-black rounded-md transition-colors font-medium text-sm"
+            title="New Tab (Bash)"
           >
             <Plus className="h-4 w-4" />
+            <span>New Tab</span>
           </button>
         </div>
       </div>
 
       {/* Content Area */}
       <div className="flex-1 relative overflow-hidden">
-        {/* Terminals Panel - Keep mounted but hide when inactive */}
-        <div
-          className="h-full flex flex-col"
-          style={{ display: activePanel === 'terminals' ? 'flex' : 'none' }}
-        >
+        {/* Terminals Panel */}
+        <div className="h-full flex flex-col">
           {/* Session Tabs */}
           {sessions.length > 0 && (
             <div className="flex gap-1 p-2 border-b bg-gradient-to-r from-[#0f0f0f]/50 to-[#1a1a1a]/50 overflow-x-auto">
@@ -457,14 +352,6 @@ function SidePanelTerminal() {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Commands Panel - Keep mounted but hide when inactive */}
-        <div
-          className="h-full"
-          style={{ display: activePanel === 'commands' ? 'block' : 'none' }}
-        >
-          <QuickCommandsPanel />
         </div>
       </div>
 

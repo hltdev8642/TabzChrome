@@ -1,6 +1,6 @@
 {
   "../../../../../@crx/manifest": {
-    "file": "assets/crx-manifest.js-BQNq9_c3.js",
+    "file": "assets/crx-manifest.js-B_uOrM9M.js",
     "name": "crx-manifest.js",
     "src": "../../../../../@crx/manifest",
     "isEntry": true
@@ -9,18 +9,11 @@
     "file": "assets/modulepreload-polyfill-B5Qt9EMX.js",
     "name": "modulepreload-polyfill"
   },
-  "_storage-CPSgRUQe.js": {
-    "file": "assets/storage-CPSgRUQe.js",
-    "name": "storage"
-  },
   "background/background.ts": {
-    "file": "assets/background.ts-CEDpEhuR.js",
+    "file": "assets/background.ts-BzOQDyW0.js",
     "name": "background.ts",
     "src": "background/background.ts",
-    "isEntry": true,
-    "imports": [
-      "_storage-CPSgRUQe.js"
-    ]
+    "isEntry": true
   },
   "content/content.ts": {
     "file": "assets/content.ts-EyUj4nNR.js",
@@ -38,13 +31,12 @@
     ]
   },
   "sidepanel/sidepanel.html": {
-    "file": "assets/sidepanel.html-DFm0vgre.js",
+    "file": "assets/sidepanel.html-Dv38gyl9.js",
     "name": "sidepanel.html",
     "src": "sidepanel/sidepanel.html",
     "isEntry": true,
     "imports": [
-      "_modulepreload-polyfill-B5Qt9EMX.js",
-      "_storage-CPSgRUQe.js"
+      "_modulepreload-polyfill-B5Qt9EMX.js"
     ],
     "css": [
       "assets/sidepanel-BijGsAPP.css"
