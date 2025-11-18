@@ -1,13 +1,13 @@
-# CLAUDE.md - Tmux Chrome Sidebar
+# CLAUDE.md - TabzChrome
 
 ## 🎯 Project Overview
 
-A **Chrome extension for managing tmux sessions in a persistent browser sidebar**. Built with React, TypeScript, and xterm.js, it provides terminal access directly in Chrome's side panel.
+A **simple, Windows Terminal-style Chrome extension** for managing bash terminals in your browser sidebar. Built with React, TypeScript, and xterm.js.
 
-**Version**: 1.0.1
-**Status**: Standalone Chrome Extension - Full Feature Set Complete ✅
-**Architecture**: Chrome Extension (Side Panel) + WebSocket terminal backend
-**Original Project**: Extracted from [Tabz](https://github.com/GGPrompts/Tabz)
+**Version**: 2.0.0 (Simplified)
+**Status**: In Development - Windows Terminal Simplification ✨
+**Architecture**: Chrome Extension (Side Panel) + WebSocket backend
+**Philosophy**: Windows Terminal simplicity - just bash with profiles
 **Last Updated**: November 18, 2025
 
 ---
@@ -18,30 +18,29 @@ A **Chrome extension for managing tmux sessions in a persistent browser sidebar*
 ```
 extension/
 ├── sidepanel/
-│   └── sidepanel.tsx           # Main sidebar UI with tabs/terminals
+│   └── sidepanel.tsx           # Main sidebar UI - Windows Terminal style
 ├── components/
 │   ├── Terminal.tsx            # xterm.js terminal component
-│   ├── QuickCommandsPanel.tsx  # Commands panel with categories
-│   ├── CommandEditorModal.tsx  # Custom command editor
-│   └── SettingsModal.tsx       # Font size + theme settings
+│   └── SettingsModal.tsx       # Settings (General + Profiles tabs)
 ├── background/
 │   └── background.ts           # Service worker (WebSocket + shortcuts)
 ├── shared/
 │   ├── messaging.ts            # Extension messaging helpers
 │   └── storage.ts              # Chrome storage helpers
+├── profiles.json               # Default profiles (shipped with extension)
 └── manifest.json               # Extension configuration
 ```
 
 ### Backend (Node.js + Express + PTY)
 ```
 backend/
-├── server.js                   # Express + WebSocket server
+├── server.js                   # Express + WebSocket server (port 8129)
 ├── modules/
-│   ├── terminal-registry.js    # Terminal state management (generates ctt- IDs)
+│   ├── terminal-registry.js    # Terminal state management
 │   ├── pty-handler.js          # PTY process spawning
-│   └── unified-spawn.js        # Terminal spawning logic
+│   └── unified-spawn.js        # Simplified: spawns bash only
 └── routes/
-    └── api.js                  # REST API endpoints (tmux session management)
+    └── api.js                  # REST API endpoints
 ```
 
 ### Terminal ID Prefixing (`ctt-`)
@@ -59,52 +58,47 @@ backend/
 
 ### Communication
 - **WebSocket**: Real-time terminal I/O (background worker → terminals)
-- **Chrome Messages**: Extension page communication
-- **Chrome Storage**: Settings persistence (font size, theme, spawn options)
+- **Chrome Messages**: Extension page communication (via ports)
+- **Chrome Storage**: Profiles and settings persistence (survives extension updates)
+- **Custom Events**: Settings changes broadcast via `window.dispatchEvent`
 
-### Session Persistence & Restoration
-**Tmux sessions survive extension reloads** - No more orphaned background sessions!
-- **On WebSocket Connect**: Backend sends terminal list (`type: 'terminals'`)
-- **Sidepanel Restores**: Creates tabs for all existing terminals
-- **Terminal Components**: Reconnect to tmux sessions automatically
-- **Benefits**:
-  - Extension reload doesn't lose terminals
-  - Terminal output history preserved
-  - No accumulation of orphaned tmux sessions
-  - Seamless user experience across reloads
-- **Files**:
-  - `extension/background/background.ts` (WebSocket message handling)
-  - `extension/sidepanel/sidepanel.tsx` (session restoration logic)
+### Fresh Start Philosophy
+**Simple, like Windows Terminal:**
+- Each terminal spawn creates a new bash process
+- No automatic session restoration (start fresh each time)
+- User can manually use `tmux` if they want persistent sessions
+- Clean state on extension reload
 
 ---
 
 ## 🎨 Core Principles
 
-1. **Simplicity Over Features** - Minimal, focused functionality
-2. **Sidebar-First** - Always accessible, never in the way
-3. **Chrome Native** - Uses Chrome's side panel API (Manifest V3)
-4. **Settings Persistence** - Font size, theme, custom commands saved in Chrome storage
-5. **Easy to Deploy** - Extension (load unpacked) + Backend (any server with tmux)
+1. **Windows Terminal Simplicity** - Just bash terminals with profiles
+2. **Profiles Over Complexity** - Working directory + appearance settings, nothing more
+3. **Chrome Native** - Side panel API (Manifest V3), no external dependencies
+4. **Settings Persistence** - Profiles saved in Chrome storage, survive extension updates
+5. **Fresh Start** - No session restoration, clean state on each launch
+6. **Easy to Deploy** - Extension (load unpacked) + Backend (Node.js server)
 
 ---
 
 ## 📐 Development Rules
 
 ### ALWAYS:
-1. **Keep It Simple** - If it adds complexity, think twice
-2. **Test Terminal Types** - Verify Claude Code, Bash, TFE work
-3. **Run Tests Before Committing** - `npm test` should pass with no failures
-4. **Mobile-First CSS** - Use responsive design patterns
-5. **Document Changes** - Follow documentation workflow below
-6. **No Canvas Code** - This is the tab-based version, no dragging/zoom
+1. **Keep It Simple** - If it adds complexity, remove it
+2. **Test Bash Terminals** - Only bash, nothing else
+3. **Windows Terminal Mental Model** - How would Windows Terminal do it?
+4. **Responsive CSS** - Should work at different sidebar widths
+5. **Document Changes** - Update CLAUDE.md for architectural changes
+6. **Profiles in Chrome Storage** - User data must survive extension updates
 
 ### NEVER:
-1. **Don't Add Canvas Features** - Dragging, resizing, zoom, pan = NO
-2. **Don't Import from Opustrator Canvas Code** - Keep it independent
-3. **Don't Over-Engineer** - Simple solutions win
-4. **Don't Break WebSocket Protocol** - Backend compatibility is critical
-5. **Don't Skip Tests** - Failing tests = failing features
-6. **Don't Use `tmux send-keys` for Commands** - Use `/api/tmux/sessions/:name/command` API instead to prevent terminal corruption
+1. **Don't Add Complex Terminal Types** - Bash only, no exceptions
+2. **Don't Add Commands Panel** - It was removed for simplicity
+3. **Don't Over-Engineer** - Simple solutions always win
+4. **Don't Break WebSocket Protocol** - Backend compatibility critical
+5. **Don't Add Session Restoration** - Fresh start philosophy
+6. **Don't Bundle Static JSON** - Default profiles load once, user edits in settings
 
 ### 📝 Documentation Workflow
 
@@ -155,51 +149,55 @@ npm run build:extension && rsync -av --delete dist-extension/ /mnt/c/Users/marci
 
 ---
 
-## 🚀 Key Features (Current)
+## 🚀 Key Features
 
-✅ **Chrome Side Panel** - Always accessible, never blocks content
-✅ **Settings Modal (Tabbed)** - General + Spawn Options tabs
-  - Font size (12-24px), Font family (6 options), Light/Dark theme
-  - Spawn options editor (add/edit/delete terminals in UI)
-✅ **Session Persistence** - Tmux sessions survive extension reloads
-✅ **Global "Use Tmux" Toggle** - Force all terminals to use tmux
-✅ **Custom Commands** - Add your own clipboard commands
-✅ **Quick Commands Panel** - Built-in git, npm, shell commands + terminal spawning
-✅ **Terminal Spawning** - 18+ terminal types (loaded from spawn-options.json)
-✅ **Full Terminal Emulation** - xterm.js with copy/paste support, auto-fit
+✅ **Windows Terminal-Style UI** - Clean header with "New Tab" dropdown
+✅ **Profiles System** - Define terminal profiles with:
+  - Working directory (where terminal starts)
+  - Font size (12-24px)
+  - Font family (6 options: monospace, JetBrains Mono, Fira Code, etc.)
+  - Theme (dark/light)
+✅ **Quick Spawn** - "+" button in tab bar spawns default profile
+✅ **Profile Dropdown** - "New Tab" dropdown to select any profile
+✅ **Settings Modal** - Two tabs:
+  - General: Global font size, font family, theme
+  - Profiles: Add/edit/delete profiles, set default
+✅ **Live Settings Updates** - Changes apply immediately, no extension reload
+✅ **Tab Close Buttons** - Hover-to-show X buttons (Windows Terminal style)
+✅ **Full Terminal Emulation** - xterm.js with copy/paste support
 ✅ **WebSocket Communication** - Real-time I/O via background worker
-✅ **Keyboard Shortcut** - Ctrl+Shift+9 to open sidebar (customizable)
+✅ **Keyboard Shortcut** - Ctrl+Shift+9 to open sidebar
 ✅ **Context Menu** - Right-click → "Open Terminal Sidebar"
-✅ **Connection Status** - WebSocket connection indicator
-✅ **Clipboard Support** - Copy (Ctrl+Shift+C) / Paste (Ctrl+Shift+V) in terminals
+✅ **Connection Status** - WebSocket connection indicator in header
 
 ---
 
 ## 📋 Current State
 
-### What Works
-- ✅ Chrome side panel integration (sidebar persists across tabs)
-- ✅ Extension icon click → Opens sidebar directly
-- ✅ Keyboard shortcut (Ctrl+Shift+9) → Opens sidebar
-- ✅ Context menu → "Open Terminal Sidebar"
-- ✅ Settings modal with font size + theme toggle
-- ✅ Custom commands with category organization
-- ✅ Commands panel (spawn terminals, copy commands to clipboard)
-- ✅ Terminal spawning (bash, Claude Code, TFE, LazyGit, etc.)
-- ✅ Terminal I/O (keyboard input, output display)
-- ✅ WebSocket auto-reconnect
-- ✅ Copy/paste in terminals (Ctrl+Shift+C/V)
-- ✅ Session tabs (switch between multiple terminals)
-- ✅ Terminal close button
+### ✅ Complete
+- Chrome side panel integration
+- Extension icon click → Opens sidebar
+- Keyboard shortcut (Ctrl+Shift+9)
+- Context menu → "Open Terminal Sidebar"
+- Windows Terminal-style header (clean, minimal)
+- Tab close buttons (hover-to-show X)
+- Settings modal - General tab (font size, font family, theme)
+- Live settings updates (no extension reload needed)
+- Terminal spawning (bash only)
+- Terminal I/O (keyboard input, output display)
+- WebSocket auto-reconnect
+- Copy/paste in terminals (Ctrl+Shift+C/V)
+- Session tabs (switch between multiple terminals)
+- Profiles infrastructure (types, default profiles.json, storage)
 
-### Known Issues
-- ⚠️ **Font size changes require extension reload** to take effect (not live update)
-- ⚠️ Theme toggle works but may need terminal reconnect for full effect
+### 🚧 In Progress (See Continuation Prompt Below)
+- **Profiles tab UI in Settings modal** - Need to render profile list + edit form
+- **"+" button in tab bar** - Spawn default profile with single click
+- **"New Tab" dropdown** - Select profile from list
+- **Profile spawn logic** - Pass profile settings to backend
 
-### What Needs Work (See PLAN.md)
-- Search/filter in Commands panel
-- Working directory field for spawn options
-- Tmux session management integration (future)
+### 🎯 Vision
+Windows Terminal simplicity - just bash terminals with configurable profiles (working dir + appearance)
 
 ---
 
