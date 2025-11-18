@@ -71,11 +71,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       spawnOptions: spawnOptions,
     }, () => {
       console.log('[Settings] Saved:', { settings, spawnOptions: spawnOptions.length })
-      // Broadcast settings change to trigger terminal updates
-      chrome.runtime.sendMessage({
-        type: 'SETTINGS_UPDATED',
-        settings,
-      })
+      // Trigger storage change event (which useTerminalSettings listens to)
+      // Force immediate update by dispatching custom event
+      window.dispatchEvent(new CustomEvent('terminal-settings-changed', {
+        detail: settings
+      }))
       onClose()
     })
   }
@@ -527,15 +527,15 @@ export function useTerminalSettings() {
       }
     })
 
-    // Listen for settings updates
-    const handleMessage = (message: any) => {
-      if (message.type === 'SETTINGS_UPDATED') {
-        setSettings(message.settings as TerminalSettings)
-      }
+    // Listen for settings updates via custom event
+    const handleSettingsChange = (event: Event) => {
+      const customEvent = event as CustomEvent
+      setSettings(customEvent.detail as TerminalSettings)
+      console.log('[useTerminalSettings] Settings updated:', customEvent.detail)
     }
 
-    chrome.runtime.onMessage.addListener(handleMessage)
-    return () => chrome.runtime.onMessage.removeListener(handleMessage)
+    window.addEventListener('terminal-settings-changed', handleSettingsChange)
+    return () => window.removeEventListener('terminal-settings-changed', handleSettingsChange)
   }, [])
 
   return settings
