@@ -13,8 +13,25 @@ import type { ConsoleLogsResponse, ScriptResult, PageInfo, ConsoleLogLevel } fro
 let cdpBrowser: Awaited<ReturnType<typeof puppeteer.connect>> | null = null;
 
 /**
+ * Resolve hostname to IP address (needed because Chrome DevTools rejects non-IP Host headers)
+ */
+async function resolveHostToIp(hostname: string): Promise<string | null> {
+  try {
+    const dns = await import('dns');
+    return new Promise((resolve) => {
+      dns.lookup(hostname, (err, address) => {
+        if (err) resolve(null);
+        else resolve(address);
+      });
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Try to connect to Chrome via CDP (requires Chrome started with --remote-debugging-port=9222)
- * Uses PowerShell on WSL2 to access Windows Chrome debugging endpoint
+ * Tries multiple connection methods for WSL2 compatibility
  */
 async function getCdpBrowser(): Promise<typeof cdpBrowser> {
   if (cdpBrowser && cdpBrowser.connected) {
@@ -24,12 +41,31 @@ async function getCdpBrowser(): Promise<typeof cdpBrowser> {
   try {
     let wsEndpoint: string | null = null;
 
-    // First try direct connection (works on native Linux/macOS or if port is forwarded)
-    try {
-      const response = await axios.get('http://127.0.0.1:9222/json/version', { timeout: 2000 });
-      wsEndpoint = response.data.webSocketDebuggerUrl;
-    } catch {
-      // Try via PowerShell for WSL2 -> Windows Chrome
+    // Build list of hosts to try (localhost first for Windows, then 127.0.0.1, then WSL2 host)
+    const hostsToTry: string[] = ['localhost', '127.0.0.1'];
+
+    // Resolve host.docker.internal for WSL2 -> Windows
+    const dockerHostIp = await resolveHostToIp('host.docker.internal');
+    if (dockerHostIp && dockerHostIp !== '127.0.0.1') {
+      hostsToTry.push(dockerHostIp);
+    }
+
+    // Try each host
+    for (const host of hostsToTry) {
+      try {
+        console.error(`[CDP] Trying ${host}:9222...`);
+        const response = await axios.get(`http://${host}:9222/json/version`, { timeout: 3000 });
+        wsEndpoint = response.data.webSocketDebuggerUrl;
+        console.error(`[CDP] Found Chrome at ${host}:9222, wsEndpoint: ${wsEndpoint}`);
+        break;
+      } catch (err) {
+        console.error(`[CDP] Failed to connect to ${host}:9222:`, err instanceof Error ? err.message : err);
+        // Try next host
+      }
+    }
+
+    // If direct connection failed, try via PowerShell (WSL2 -> Windows localhost)
+    if (!wsEndpoint) {
       try {
         const { execSync } = await import('child_process');
         const result = execSync(
@@ -37,17 +73,26 @@ async function getCdpBrowser(): Promise<typeof cdpBrowser> {
           { timeout: 5000, encoding: 'utf8' }
         );
         wsEndpoint = result.trim().replace(/\r\n/g, '');
+        // PowerShell returns localhost URL, but we need to connect via Windows IP from WSL2
+        if (wsEndpoint && dockerHostIp && wsEndpoint.includes('localhost')) {
+          wsEndpoint = wsEndpoint.replace('localhost', dockerHostIp);
+        }
+        console.error('[CDP] Got endpoint via PowerShell:', wsEndpoint);
       } catch {
         // PowerShell not available or Chrome debugging not enabled
       }
     }
 
     if (wsEndpoint) {
-      cdpBrowser = await puppeteer.connect({ browserWSEndpoint: wsEndpoint });
+      cdpBrowser = await puppeteer.connect({
+        browserWSEndpoint: wsEndpoint,
+        defaultViewport: null  // Don't resize browser windows
+      });
       console.error('[CDP] Connected to Chrome via DevTools Protocol');
       return cdpBrowser;
     }
-  } catch {
+  } catch (err) {
+    console.error('[CDP] Connection failed:', err instanceof Error ? err.message : err);
     // CDP not available, will fall back to extension method
   }
   return null;
@@ -229,4 +274,488 @@ function handleApiError(error: unknown, context: string): Error {
     }
   }
   return new Error(`${context}: ${error instanceof Error ? error.message : String(error)}`);
+}
+
+// Re-export getCdpBrowser for use by other modules
+export { getCdpBrowser };
+
+/**
+ * Screenshot result type
+ */
+export interface ScreenshotResult {
+  success: boolean;
+  filePath?: string;
+  error?: string;
+}
+
+/**
+ * Take a screenshot via CDP
+ */
+export async function takeScreenshot(options: {
+  selector?: string;
+  fullPage?: boolean;
+  outputPath?: string;
+}): Promise<ScreenshotResult> {
+  try {
+    const browser = await getCdpBrowser();
+    if (!browser) {
+      return { success: false, error: 'CDP not available. Make sure Chrome is running with --remote-debugging-port=9222' };
+    }
+
+    const pages = await browser.pages();
+    const page = pages.find(p => !p.url().startsWith('chrome://')) || pages[0];
+
+    if (!page) {
+      return { success: false, error: 'No active page found' };
+    }
+
+    // Ensure output directory exists
+    const fs = await import('fs');
+    const path = await import('path');
+    const os = await import('os');
+
+    const defaultDir = path.join(os.homedir(), 'ai-images');
+    if (!fs.existsSync(defaultDir)) {
+      fs.mkdirSync(defaultDir, { recursive: true });
+    }
+
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `screenshot-${timestamp}.png`;
+    const outputPath = options.outputPath || path.join(defaultDir, filename);
+
+    // Ensure output directory exists for custom path
+    const outputDir = path.dirname(outputPath);
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    if (options.selector) {
+      // Screenshot specific element
+      const element = await page.$(options.selector);
+      if (!element) {
+        return { success: false, error: `Element not found: ${options.selector}` };
+      }
+      await element.screenshot({ path: outputPath });
+    } else {
+      // Full page or viewport screenshot
+      await page.screenshot({
+        path: outputPath,
+        fullPage: options.fullPage ?? false
+      });
+    }
+
+    return { success: true, filePath: outputPath };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
+ * Download image result type
+ */
+export interface DownloadImageResult {
+  success: boolean;
+  filePath?: string;
+  error?: string;
+}
+
+/**
+ * Download an image from the page via CDP
+ */
+export async function downloadImage(options: {
+  selector?: string;
+  url?: string;
+  outputPath?: string;
+}): Promise<DownloadImageResult> {
+  try {
+    const browser = await getCdpBrowser();
+    if (!browser) {
+      return { success: false, error: 'CDP not available. Make sure Chrome is running with --remote-debugging-port=9222' };
+    }
+
+    const pages = await browser.pages();
+    const page = pages.find(p => !p.url().startsWith('chrome://')) || pages[0];
+
+    if (!page) {
+      return { success: false, error: 'No active page found' };
+    }
+
+    let imageUrl = options.url;
+
+    // If selector provided, extract the image URL from the element
+    if (options.selector && !imageUrl) {
+      const extractedUrl = await page.evaluate((sel) => {
+        const el = document.querySelector(sel);
+        if (!el) return null;
+        if (el.tagName === 'IMG') {
+          return (el as HTMLImageElement).src;
+        }
+        // Check for background-image
+        const style = window.getComputedStyle(el);
+        const bgImage = style.backgroundImage;
+        if (bgImage && bgImage !== 'none') {
+          const match = bgImage.match(/url\(['"]?([^'"]+)['"]?\)/);
+          return match ? match[1] : null;
+        }
+        return null;
+      }, options.selector);
+
+      if (!extractedUrl) {
+        return { success: false, error: `Could not find image URL from selector: ${options.selector}` };
+      }
+      imageUrl = extractedUrl;
+    }
+
+    if (!imageUrl) {
+      return { success: false, error: 'Either selector or url parameter is required' };
+    }
+
+    // Fetch the image
+    const response = await page.evaluate(async (url) => {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        const reader = new FileReader();
+        return new Promise<string>((resolve, reject) => {
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        throw e;
+      }
+    }, imageUrl);
+
+    // Save to file
+    const fs = await import('fs');
+    const path = await import('path');
+    const os = await import('os');
+
+    const defaultDir = path.join(os.homedir(), 'ai-images');
+    if (!fs.existsSync(defaultDir)) {
+      fs.mkdirSync(defaultDir, { recursive: true });
+    }
+
+    // Extract extension from URL or default to png
+    const urlPath = new URL(imageUrl).pathname;
+    const ext = path.extname(urlPath) || '.png';
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `image-${timestamp}${ext}`;
+    const outputPath = options.outputPath || path.join(defaultDir, filename);
+
+    // Ensure output directory exists
+    const outputDir = path.dirname(outputPath);
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    // Convert data URL to buffer and save
+    const base64Data = response.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+    fs.writeFileSync(outputPath, buffer);
+
+    return { success: true, filePath: outputPath };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
+ * Tab info type
+ */
+export interface TabInfo {
+  tabId: number;
+  url: string;
+  title: string;
+  active: boolean;
+}
+
+/**
+ * List all open browser tabs via CDP
+ */
+export async function listTabs(): Promise<{ tabs: TabInfo[]; error?: string }> {
+  try {
+    const browser = await getCdpBrowser();
+    if (!browser) {
+      return { tabs: [], error: 'CDP not available. Make sure Chrome is running with --remote-debugging-port=9222' };
+    }
+
+    const pages = await browser.pages();
+    const tabs: TabInfo[] = [];
+
+    for (let i = 0; i < pages.length; i++) {
+      const page = pages[i];
+      const url = page.url();
+
+      // Skip chrome:// pages
+      if (url.startsWith('chrome://') || url.startsWith('chrome-extension://')) {
+        continue;
+      }
+
+      tabs.push({
+        tabId: i,
+        url: url,
+        title: await page.title(),
+        active: i === 0 // First non-chrome page is considered active
+      });
+    }
+
+    return { tabs };
+  } catch (error) {
+    return { tabs: [], error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
+ * Switch to a specific tab via CDP
+ */
+export async function switchTab(tabId: number): Promise<{ success: boolean; error?: string }> {
+  try {
+    const browser = await getCdpBrowser();
+    if (!browser) {
+      return { success: false, error: 'CDP not available. Make sure Chrome is running with --remote-debugging-port=9222' };
+    }
+
+    const pages = await browser.pages();
+
+    // Filter out chrome:// pages
+    const nonChromePaths = pages.filter(p =>
+      !p.url().startsWith('chrome://') && !p.url().startsWith('chrome-extension://')
+    );
+
+    if (tabId < 0 || tabId >= nonChromePaths.length) {
+      return { success: false, error: `Invalid tab ID: ${tabId}. Available tabs: 0-${nonChromePaths.length - 1}` };
+    }
+
+    await nonChromePaths[tabId].bringToFront();
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
+ * Click an element via CDP
+ */
+export async function clickElement(selector: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const browser = await getCdpBrowser();
+    if (!browser) {
+      return { success: false, error: 'CDP not available. Make sure Chrome is running with --remote-debugging-port=9222' };
+    }
+
+    const pages = await browser.pages();
+    const page = pages.find(p => !p.url().startsWith('chrome://')) || pages[0];
+
+    if (!page) {
+      return { success: false, error: 'No active page found' };
+    }
+
+    // Wait for element and click
+    await page.waitForSelector(selector, { timeout: 5000 });
+    await page.click(selector);
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
+ * Fill an input field via CDP
+ */
+export async function fillInput(selector: string, value: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const browser = await getCdpBrowser();
+    if (!browser) {
+      return { success: false, error: 'CDP not available. Make sure Chrome is running with --remote-debugging-port=9222' };
+    }
+
+    const pages = await browser.pages();
+    const page = pages.find(p => !p.url().startsWith('chrome://')) || pages[0];
+
+    if (!page) {
+      return { success: false, error: 'No active page found' };
+    }
+
+    // Wait for element, clear it, and type
+    await page.waitForSelector(selector, { timeout: 5000 });
+
+    // Clear existing value
+    await page.evaluate((sel) => {
+      const el = document.querySelector(sel) as HTMLInputElement;
+      if (el) el.value = '';
+    }, selector);
+
+    // Type new value
+    await page.type(selector, value);
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
+ * Element info result type
+ */
+export interface ElementInfo {
+  success: boolean;
+  error?: string;
+  html?: string;
+  outerHTML?: string;
+  innerText?: string;
+  tagName?: string;
+  attributes?: Record<string, string>;
+  bounds?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+  };
+  styles?: Record<string, string>;
+  parentSelector?: string;
+  childCount?: number;
+}
+
+/**
+ * Get detailed information about an element via CDP
+ */
+export async function getElementInfo(
+  selector: string,
+  options: {
+    includeStyles?: boolean;
+    styleProperties?: string[];
+  } = {}
+): Promise<ElementInfo> {
+  try {
+    const browser = await getCdpBrowser();
+    if (!browser) {
+      return { success: false, error: 'CDP not available. Make sure Chrome is running with --remote-debugging-port=9222' };
+    }
+
+    const pages = await browser.pages();
+    const page = pages.find(p => !p.url().startsWith('chrome://')) || pages[0];
+
+    if (!page) {
+      return { success: false, error: 'No active page found' };
+    }
+
+    // Default style properties to extract (most useful for recreation)
+    const defaultStyleProps = [
+      // Layout
+      'display', 'position', 'top', 'right', 'bottom', 'left',
+      'width', 'height', 'minWidth', 'maxWidth', 'minHeight', 'maxHeight',
+      'margin', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft',
+      'padding', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+      'boxSizing', 'overflow', 'overflowX', 'overflowY',
+      // Flexbox
+      'flexDirection', 'flexWrap', 'justifyContent', 'alignItems', 'alignContent',
+      'flex', 'flexGrow', 'flexShrink', 'flexBasis', 'alignSelf', 'gap',
+      // Grid
+      'gridTemplateColumns', 'gridTemplateRows', 'gridColumn', 'gridRow', 'gridGap',
+      // Typography
+      'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'lineHeight',
+      'textAlign', 'textDecoration', 'textTransform', 'letterSpacing', 'color',
+      // Background
+      'background', 'backgroundColor', 'backgroundImage', 'backgroundSize', 'backgroundPosition',
+      // Border
+      'border', 'borderWidth', 'borderStyle', 'borderColor', 'borderRadius',
+      'borderTop', 'borderRight', 'borderBottom', 'borderLeft',
+      // Effects
+      'boxShadow', 'opacity', 'transform', 'transition', 'zIndex',
+      'cursor', 'pointerEvents'
+    ];
+
+    const styleProps = options.styleProperties || defaultStyleProps;
+    const includeStyles = options.includeStyles !== false; // Default true
+
+    const result = await page.evaluate((sel: string, props: string[], getStyles: boolean) => {
+      const el = document.querySelector(sel);
+      if (!el) return { found: false };
+
+      const rect = el.getBoundingClientRect();
+
+      // Get all attributes
+      const attributes: Record<string, string> = {};
+      for (let i = 0; i < el.attributes.length; i++) {
+        const attr = el.attributes[i];
+        attributes[attr.name] = attr.value;
+      }
+
+      // Get computed styles
+      let styles: Record<string, string> = {};
+      if (getStyles) {
+        const computed = window.getComputedStyle(el);
+        for (const prop of props) {
+          const value = computed.getPropertyValue(
+            prop.replace(/([A-Z])/g, '-$1').toLowerCase()
+          );
+          if (value && value !== 'none' && value !== 'normal' && value !== 'auto' && value !== '0px' && value !== 'rgba(0, 0, 0, 0)') {
+            styles[prop] = value;
+          }
+        }
+      }
+
+      // Try to build a parent selector for context
+      let parentSelector = '';
+      const parent = el.parentElement;
+      if (parent) {
+        if (parent.id) {
+          parentSelector = `#${parent.id}`;
+        } else if (parent.className) {
+          parentSelector = `.${parent.className.split(' ')[0]}`;
+        } else {
+          parentSelector = parent.tagName.toLowerCase();
+        }
+      }
+
+      return {
+        found: true,
+        html: el.innerHTML,
+        outerHTML: el.outerHTML,
+        innerText: (el as HTMLElement).innerText?.slice(0, 500), // Limit text
+        tagName: el.tagName.toLowerCase(),
+        attributes,
+        bounds: {
+          x: Math.round(rect.x),
+          y: Math.round(rect.y),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+          top: Math.round(rect.top),
+          right: Math.round(rect.right),
+          bottom: Math.round(rect.bottom),
+          left: Math.round(rect.left)
+        },
+        styles,
+        parentSelector,
+        childCount: el.children.length
+      };
+    }, selector, styleProps, includeStyles);
+
+    if (!result.found) {
+      return { success: false, error: `Element not found: ${selector}` };
+    }
+
+    return {
+      success: true,
+      html: result.html,
+      outerHTML: result.outerHTML,
+      innerText: result.innerText,
+      tagName: result.tagName,
+      attributes: result.attributes,
+      bounds: result.bounds,
+      styles: result.styles,
+      parentSelector: result.parentSelector,
+      childCount: result.childCount
+    };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
 }
