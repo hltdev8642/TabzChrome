@@ -16,6 +16,7 @@
  * - browser_click: Click an element on the page
  * - browser_fill: Fill an input field with text
  * - browser_get_element: Get element HTML, styles, bounds for CSS debugging
+ * - browser_open_url: Open allowed URLs (GitHub, GitLab, localhost) in browser tabs
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -27,6 +28,7 @@ import { registerScreenshotTools } from "./tools/screenshot.js";
 import { registerTabTools } from "./tools/tabs.js";
 import { registerInteractionTools } from "./tools/interaction.js";
 import { registerInspectionTools } from "./tools/inspection.js";
+import { registerOmniboxTools } from "./tools/omnibox.js";
 
 // Backend URL (TabzChrome backend running in WSL)
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8129";
@@ -45,6 +47,7 @@ registerScreenshotTools(server);
 registerTabTools(server);
 registerInteractionTools(server);
 registerInspectionTools(server);
+registerOmniboxTools(server);
 
 // Main function
 async function main() {

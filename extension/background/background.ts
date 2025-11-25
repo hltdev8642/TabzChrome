@@ -463,13 +463,60 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 // Set default suggestion when user types "term "
 chrome.omnibox.setDefaultSuggestion({
-  description: 'Run command in terminal: <match>%s</match> (or type "profile:name", "new", "help")'
+  description: 'Run command in terminal: <match>%s</match> (or type "profile:name", "new", "help", or a URL)'
 })
+
+// Allowed URL patterns for omnibox navigation (path is optional)
+const ALLOWED_URL_PATTERNS = [
+  /^https?:\/\/(www\.)?github\.com(\/.*)?$/i,
+  /^https?:\/\/(www\.)?gitlab\.com(\/.*)?$/i,
+  /^https?:\/\/localhost(:\d+)?(\/.*)?$/i,
+  /^https?:\/\/127\.0\.0\.1(:\d+)?(\/.*)?$/i,
+  /^https?:\/\/[\w-]+\.vercel\.app(\/.*)?$/i,  // Vercel preview/production (e.g., my-app-abc123.vercel.app)
+  /^https?:\/\/[\w.-]+\.vercel\.com(\/.*)?$/i, // Vercel alternative domain
+]
+
+// Check if text looks like a URL and is allowed
+function isAllowedUrl(text: string): { allowed: boolean; url?: string } {
+  let url = text.trim()
+
+  // Add https:// if no protocol specified
+  if (!url.match(/^https?:\/\//i)) {
+    // Check if it looks like a domain (with or without www.)
+    if (url.match(/^(www\.)?(github\.com|gitlab\.com|localhost|127\.0\.0\.1)/i)) {
+      url = `https://${url}`
+    }
+    // Check for Vercel domains (e.g., my-app.vercel.app)
+    else if (url.match(/^[\w-]+\.vercel\.(app|com)/i)) {
+      url = `https://${url}`
+    } else {
+      return { allowed: false }
+    }
+  }
+
+  // Check against allowed patterns
+  for (const pattern of ALLOWED_URL_PATTERNS) {
+    if (pattern.test(url)) {
+      return { allowed: true, url }
+    }
+  }
+
+  return { allowed: false }
+}
 
 // Provide suggestions as user types
 chrome.omnibox.onInputChanged.addListener(async (text, suggest) => {
   const suggestions: chrome.omnibox.SuggestResult[] = []
   const lowerText = text.toLowerCase().trim()
+
+  // Check if input looks like a URL
+  const urlCheck = isAllowedUrl(text)
+  if (urlCheck.allowed && urlCheck.url) {
+    suggestions.push({
+      content: `url:${urlCheck.url}`,
+      description: `<match>Open URL:</match> ${urlCheck.url} <dim>(in new tab)</dim>`
+    })
+  }
 
   // Profile suggestions
   if (lowerText.startsWith('profile:') || lowerText === 'p' || lowerText === 'pr') {
@@ -529,11 +576,44 @@ chrome.omnibox.onInputEntered.addListener(async (text, disposition) => {
 
   const lowerText = text.toLowerCase().trim()
 
-  // Get current window for opening sidebar
+  // Handle URL opening (url:https://... format from suggestions)
+  if (text.startsWith('url:')) {
+    const url = text.substring(4)
+    console.log('🌐 Opening URL from omnibox:', url)
+
+    // Respect the disposition (currentTab, newForegroundTab, newBackgroundTab)
+    if (disposition === 'currentTab') {
+      chrome.tabs.update({ url })
+    } else {
+      chrome.tabs.create({
+        url,
+        active: disposition === 'newForegroundTab'
+      })
+    }
+    return
+  }
+
+  // Check if direct URL input (without url: prefix)
+  const urlCheck = isAllowedUrl(text)
+  if (urlCheck.allowed && urlCheck.url) {
+    console.log('🌐 Opening URL from omnibox (direct):', urlCheck.url)
+
+    if (disposition === 'currentTab') {
+      chrome.tabs.update({ url: urlCheck.url })
+    } else {
+      chrome.tabs.create({
+        url: urlCheck.url,
+        active: disposition === 'newForegroundTab'
+      })
+    }
+    return
+  }
+
+  // Get current window for opening sidebar (for terminal commands)
   const windows = await chrome.windows.getAll({ windowTypes: ['normal'] })
   const currentWindow = windows.find(w => w.focused) || windows[0]
 
-  // Open sidebar first
+  // Open sidebar first (for terminal-related commands)
   if (currentWindow?.id) {
     try {
       await chrome.sidePanel.open({ windowId: currentWindow.id })
@@ -555,7 +635,7 @@ chrome.omnibox.onInputEntered.addListener(async (text, disposition) => {
       type: 'basic',
       iconUrl: 'icons/icon128.png',
       title: 'Terminal Tabs - Omnibox Commands',
-      message: 'Commands: "new" (new tab), "profile:name" (spawn profile), or type any bash command to run it.',
+      message: 'Commands: "new" (new tab), "profile:name" (spawn profile), GitHub/GitLab URLs (open in new tab), or type any bash command to run it.',
       priority: 1
     })
     return
