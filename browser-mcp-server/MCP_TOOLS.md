@@ -357,45 +357,52 @@ Array of tabs with:
 │              browser_download_image, browser_get_element)            │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
-│  Chrome Browser (Windows with --remote-debugging-port=9222)          │
-│         ↓                                                            │
-│     CDP / WebSocket (localhost:9222)                                 │
-│         ↓                                                            │
-│  Browser MCP Server (Windows node.exe + puppeteer-core)              │
-│         ↓                                                            │
-│     Claude Code (WSL2)                                               │
+│  WINDOWS:                                                            │
+│  Chrome (127.0.0.1:9222) ◀── Port Proxy (0.0.0.0:9222)              │
+│         ↓                           ↑                                │
+│     CDP / WebSocket            WSL2 connects via                     │
+│         ↓                      gateway IP:9222                       │
+│  Browser MCP Server ─────────────────┘                               │
+│  (Windows node.exe + puppeteer-core)                                 │
+│         ↓ stdio                                                      │
+│  Claude Code (WSL2)                                                  │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Key insight:** The MCP server runs via Windows `node.exe` so it can access Chrome's `localhost:9222` directly. WSL2's localhost is isolated from Windows localhost.
+**Key insights:**
+- Chrome on Windows only binds to `127.0.0.1:9222` (ignores `0.0.0.0` flag for security)
+- Port proxy (`netsh`) forwards `0.0.0.0:9222` → `127.0.0.1:9222`
+- MCP server runs via `run-windows.sh` which uses Windows `node.exe`
+- WSL2's localhost is isolated from Windows localhost
 
 ## Requirements
 
-1. **Backend running:** `cd backend && npm start` (in WSL2)
-2. **Chrome extension loaded:** Reload at `chrome://extensions`
-3. **Chrome with remote debugging:** Start with `--remote-debugging-port=9222`
-4. **MCP server deployed to Windows:** See [WSL2_SETUP.md](WSL2_SETUP.md)
+1. **Chrome with remote debugging:** Use the "Chrome (Claude Debug)" desktop shortcut
+2. **Port proxy configured:** One-time setup (see [WSL2_SETUP.md](WSL2_SETUP.md))
+3. **Backend running:** `cd backend && npm start` (in WSL2)
+4. **Chrome extension loaded:** Reload at `chrome://extensions` (for console logs)
 
 ## WSL2 Setup (Quick Reference)
 
-The MCP server must run on Windows to access Chrome's CDP. Config in `~/.mcp.json`:
+The project uses `run-windows.sh` which executes via Windows `node.exe`:
 
+**Project `.mcp.json`:**
 ```json
 {
   "mcpServers": {
     "browser": {
-      "command": "node.exe",
-      "args": ["C:\\Users\\<username>\\browser-mcp-dist\\index.js"],
+      "command": "/home/matt/projects/TabzChrome-simplified/browser-mcp-server/run-windows.sh",
+      "args": [],
       "env": { "BACKEND_URL": "http://localhost:8129" }
     }
   }
 }
 ```
 
-**Deploy updates:**
-```bash
-npm run build && cp -r dist/* /mnt/c/Users/<username>/browser-mcp-dist/
+**Port proxy (one-time admin setup):**
+```powershell
+netsh interface portproxy add v4tov4 listenport=9222 listenaddress=0.0.0.0 connectport=9222 connectaddress=127.0.0.1
 ```
 
 See [WSL2_SETUP.md](WSL2_SETUP.md) for full setup instructions.
@@ -404,13 +411,30 @@ See [WSL2_SETUP.md](WSL2_SETUP.md) for full setup instructions.
 
 | Issue | Solution |
 |-------|----------|
+| "CDP not available" | Use Chrome Debug shortcut, verify with `curl.exe http://localhost:9222/json/version` |
+| "CDP not available" (port proxy issue) | Check `netsh interface portproxy show all` - should show 9222 forwarding |
+| "CDP not available" (svchost on 9222) | Port proxy running but Chrome isn't - restart Chrome via debug shortcut |
 | "Cannot connect to backend" | Start backend: `cd backend && npm start` |
 | "No logs captured" | Open Chrome tabs and interact with pages |
 | "Request timed out" | Check Chrome is open with extension installed |
-| Tools not showing | Restart Claude Code after configuring `~/.mcp.json` |
-| "CDP not available" | Start Chrome with `--remote-debugging-port=9222` |
-| "CDP not available" (WSL2) | Ensure MCP server runs via `node.exe`, not WSL `node` |
+| Tools not showing | Restart Claude Code after updating `.mcp.json` |
 | "No active page found" | Open a webpage (not chrome:// pages) |
 | "Element not found" | Check selector matches an element on the page |
-| Screenshots not working | Ensure `~/ai-images/` or `C:\Users\<user>\ai-images\` exists |
-| MCP loads but tools fail | Sync both `~/.mcp.json` AND `~/.claude/mcp.json` |
+| Screenshots wrong location | Use WSL path: `/mnt/c/Users/marci/ai-images/screenshot-xxx.png` |
+| Browser window shrinking | Fixed - was caused by broken CDP connection |
+
+### Quick Diagnostics
+
+```bash
+# Check Chrome CDP from Windows
+powershell.exe -Command "curl.exe http://localhost:9222/json/version"
+
+# Check port proxy
+powershell.exe -Command "netsh interface portproxy show all"
+
+# Check what process owns port 9222
+powershell.exe -Command "Get-NetTCPConnection -LocalPort 9222 -State Listen | ForEach-Object { Get-Process -Id \$_.OwningProcess }"
+
+# Check CDP from WSL2
+curl -s "http://$(ip route | grep default | awk '{print $3}'):9222/json/version"
+```

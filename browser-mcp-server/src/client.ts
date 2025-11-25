@@ -7,7 +7,63 @@
 
 import axios, { AxiosError } from "axios";
 import puppeteer from "puppeteer-core";
+import fs from "fs";
+import path from "path";
+import os from "os";
 import type { ConsoleLogsResponse, ScriptResult, PageInfo, ConsoleLogLevel } from "./types.js";
+
+// Screenshot cleanup configuration
+const SCREENSHOT_MAX_AGE_HOURS = 24;
+const SCREENSHOT_MAX_FILES = 50;
+
+/**
+ * Clean up old screenshots from ai-images directory
+ * - Deletes files older than SCREENSHOT_MAX_AGE_HOURS
+ * - Keeps only SCREENSHOT_MAX_FILES most recent files
+ */
+async function cleanupScreenshots(): Promise<void> {
+  try {
+    const screenshotDir = path.join(os.homedir(), 'ai-images');
+
+    if (!fs.existsSync(screenshotDir)) {
+      return;
+    }
+
+    const files = fs.readdirSync(screenshotDir)
+      .filter(f => f.startsWith('screenshot-') || f.startsWith('image-'))
+      .map(f => ({
+        name: f,
+        path: path.join(screenshotDir, f),
+        mtime: fs.statSync(path.join(screenshotDir, f)).mtime.getTime()
+      }))
+      .sort((a, b) => b.mtime - a.mtime); // Newest first
+
+    const now = Date.now();
+    const maxAge = SCREENSHOT_MAX_AGE_HOURS * 60 * 60 * 1000;
+    let deletedCount = 0;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const age = now - file.mtime;
+
+      // Delete if older than max age OR beyond max file count
+      if (age > maxAge || i >= SCREENSHOT_MAX_FILES) {
+        try {
+          fs.unlinkSync(file.path);
+          deletedCount++;
+        } catch {
+          // Ignore deletion errors (file in use, etc.)
+        }
+      }
+    }
+
+    if (deletedCount > 0) {
+      console.error(`[browser-mcp] Cleaned up ${deletedCount} old screenshot(s)`);
+    }
+  } catch {
+    // Ignore cleanup errors - non-critical
+  }
+}
 
 // CDP connection cache
 let cdpBrowser: Awaited<ReturnType<typeof puppeteer.connect>> | null = null;
@@ -309,11 +365,10 @@ export async function takeScreenshot(options: {
       return { success: false, error: 'No active page found' };
     }
 
-    // Ensure output directory exists
-    const fs = await import('fs');
-    const path = await import('path');
-    const os = await import('os');
+    // Clean up old screenshots before taking new one
+    await cleanupScreenshots();
 
+    // Ensure output directory exists
     const defaultDir = path.join(os.homedir(), 'ai-images');
     if (!fs.existsSync(defaultDir)) {
       fs.mkdirSync(defaultDir, { recursive: true });
@@ -428,11 +483,10 @@ export async function downloadImage(options: {
       }
     }, imageUrl);
 
-    // Save to file
-    const fs = await import('fs');
-    const path = await import('path');
-    const os = await import('os');
+    // Clean up old images before saving new one
+    await cleanupScreenshots();
 
+    // Save to file
     const defaultDir = path.join(os.homedir(), 'ai-images');
     if (!fs.existsSync(defaultDir)) {
       fs.mkdirSync(defaultDir, { recursive: true });
