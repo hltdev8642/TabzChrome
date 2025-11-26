@@ -14,6 +14,7 @@ interface TerminalSession {
   type: string
   active: boolean
   sessionName?: string  // Tmux session name (only for tmux-based terminals)
+  workingDir?: string   // Working directory for Claude status polling
   profile?: Profile     // Profile settings for this terminal
 }
 
@@ -289,6 +290,7 @@ function SidePanelTerminal() {
             type: terminal.terminalType || 'bash',
             active: false,
             sessionName: terminal.sessionName,  // Store tmux session name
+            workingDir: terminal.workingDir,    // Store working directory for Claude status
             profile: terminal.profile,          // Store profile settings
           }]
         })
@@ -507,7 +509,7 @@ function SidePanelTerminal() {
     console.log(`[handleDetachSession] Detaching session: ${terminal.sessionName}`)
 
     try {
-      const response = await fetch(`http://localhost:8127/api/tmux/detach/${terminal.sessionName}`, {
+      const response = await fetch(`http://localhost:8129/api/tmux/detach/${terminal.sessionName}`, {
         method: 'POST'
       })
 
@@ -539,7 +541,7 @@ function SidePanelTerminal() {
     console.log(`[handleKillSession] Killing session: ${terminal.sessionName}`)
 
     try {
-      const response = await fetch(`http://localhost:8127/api/tmux/sessions/${terminal.sessionName}`, {
+      const response = await fetch(`http://localhost:8129/api/tmux/sessions/${terminal.sessionName}`, {
         method: 'DELETE'
       })
 
@@ -584,7 +586,21 @@ function SidePanelTerminal() {
               Connected
             </Badge>
           ) : (
-            <Badge variant="secondary" className="text-xs bg-red-500/20 text-red-500 border-red-500/30">
+            <Badge
+              variant="secondary"
+              className="text-xs bg-red-500/20 text-red-500 border-red-500/30 cursor-pointer hover:bg-red-500/30 transition-colors"
+              onClick={async () => {
+                await navigator.clipboard.writeText('cd ~/projects/TabzChrome-simplified/backend && npm start')
+                // Brief visual feedback - badge text changes temporarily
+                const badge = document.querySelector('[data-disconnected-badge]') as HTMLElement
+                if (badge) {
+                  badge.textContent = 'Copied!'
+                  setTimeout(() => { badge.textContent = 'Disconnected' }, 1500)
+                }
+              }}
+              title="Click to copy backend start command"
+              data-disconnected-badge
+            >
               Disconnected
             </Badge>
           )}
@@ -683,15 +699,41 @@ function SidePanelTerminal() {
             {sessions.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-400">
                 <TerminalIcon className="h-16 w-16 mb-4 opacity-20" />
-                <p className="text-lg font-medium mb-2">No active terminals</p>
-                <p className="text-sm mb-4">Spawn a terminal to get started</p>
-                <button
-                  onClick={handleSpawnTerminal}
-                  className="px-4 py-2 bg-gradient-to-r from-[#00ff88] to-[#00c8ff] text-black rounded-md hover:opacity-90 transition-opacity font-medium"
-                >
-                  <Plus className="inline-block h-4 w-4 mr-2" />
-                  New Terminal
-                </button>
+                {wsConnected ? (
+                  <>
+                    <p className="text-lg font-medium mb-2">No active terminals</p>
+                    <p className="text-sm mb-4">Spawn a terminal to get started</p>
+                    <button
+                      onClick={handleSpawnTerminal}
+                      className="px-4 py-2 bg-gradient-to-r from-[#00ff88] to-[#00c8ff] text-black rounded-md hover:opacity-90 transition-opacity font-medium"
+                    >
+                      <Plus className="inline-block h-4 w-4 mr-2" />
+                      New Terminal
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-lg font-medium mb-2">Backend not running</p>
+                    <p className="text-sm mb-4 text-center px-4">Start the backend server to use terminals</p>
+                    <button
+                      onClick={async () => {
+                        await navigator.clipboard.writeText('cd ~/projects/TabzChrome-simplified/backend && npm start')
+                        // Visual feedback
+                        const btn = document.querySelector('[data-copy-start-btn]') as HTMLElement
+                        if (btn) {
+                          btn.textContent = '✓ Copied!'
+                          setTimeout(() => { btn.innerHTML = '<span class="inline-block mr-2">📋</span>Copy Start Command' }, 1500)
+                        }
+                      }}
+                      data-copy-start-btn
+                      className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-md hover:opacity-90 transition-opacity font-medium"
+                    >
+                      <span className="inline-block mr-2">📋</span>
+                      Copy Start Command
+                    </button>
+                    <p className="text-xs mt-3 text-gray-500 font-mono">cd backend && npm start</p>
+                  </>
+                )}
               </div>
             ) : (
               <div className="h-full">
@@ -705,6 +747,8 @@ function SidePanelTerminal() {
                       terminalId={session.id}
                       sessionName={session.name}
                       terminalType={session.type}
+                      workingDir={session.workingDir || session.profile?.workingDir}
+                      tmuxSession={session.sessionName}
                       fontSize={session.profile?.fontSize || terminalSettings.fontSize}
                       fontFamily={session.profile?.fontFamily || terminalSettings.fontFamily}
                       theme={session.profile?.theme || terminalSettings.theme}

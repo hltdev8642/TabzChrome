@@ -965,7 +965,27 @@ router.get('/claude-status', asyncHandler(async (req, res) => {
               current_tool: stateData.current_tool || '',
               last_updated: stateData.last_updated || '',
               sessionId: stateData.session_id || file.replace('.json', ''),
-              details: stateData.details || null
+              details: stateData.details || null,
+              matchType: 'exact'
+            };
+            bestMatchTime = updateTime;
+          }
+        }
+        // Third tier: Check if Claude's working_dir is a child of terminal's workingDir
+        // This allows terminals started in ~ to show status for Claude running in ~/projects/foo
+        else if (!tmuxPaneId && stateData.working_dir && stateData.working_dir.startsWith(workingDir + '/')) {
+          const updateTime = stateData.last_updated ? new Date(stateData.last_updated).getTime() : 0;
+
+          // Only use parent match if we don't have an exact match yet
+          if (!bestMatch || (bestMatch.matchType !== 'exact' && updateTime > bestMatchTime)) {
+            bestMatch = {
+              success: true,
+              status: stateData.status || 'unknown',
+              current_tool: stateData.current_tool || '',
+              last_updated: stateData.last_updated || '',
+              sessionId: stateData.session_id || file.replace('.json', ''),
+              details: stateData.details || null,
+              matchType: 'parent'
             };
             bestMatchTime = updateTime;
           }

@@ -10,6 +10,8 @@ interface TerminalProps {
   terminalId: string
   sessionName?: string
   terminalType?: string
+  workingDir?: string      // For Claude status polling
+  tmuxSession?: string     // Tmux session name for precise status matching
   fontSize?: number
   fontFamily?: string
   theme?: 'dark' | 'light'
@@ -17,18 +19,23 @@ interface TerminalProps {
   onClose?: () => void
 }
 
-export function Terminal({ terminalId, sessionName, terminalType = 'bash', fontSize = 14, fontFamily = 'monospace', theme = 'dark', pasteCommand = null, onClose }: TerminalProps) {
+interface ClaudeStatus {
+  status: 'idle' | 'awaiting_input' | 'processing' | 'tool_use' | 'working' | 'unknown'
+  current_tool?: string
+}
+
+export function Terminal({ terminalId, sessionName, terminalType = 'bash', workingDir, tmuxSession, fontSize = 14, fontFamily = 'monospace', theme = 'dark', pasteCommand = null, onClose }: TerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null)
   const xtermRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const [isConnected, setIsConnected] = useState(false)
+  const [claudeStatus, setClaudeStatus] = useState<ClaudeStatus | null>(null)
 
   // Resize trick to force complete redraw (used for theme/font changes and manual refresh)
   const triggerResizeTrick = () => {
     if (xtermRef.current && fitAddonRef.current) {
       const currentCols = xtermRef.current.cols
       const currentRows = xtermRef.current.rows
-
       console.log('[Terminal] Triggering resize trick for:', terminalId)
 
       // Step 1: Resize down by 1 column
@@ -387,33 +394,79 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', fontS
     }
   }, [pasteCommand, terminalId])
 
+  // Poll Claude status if we have a working directory
+  useEffect(() => {
+    if (!workingDir) {
+      setClaudeStatus(null)
+      return
+    }
+
+    // Expand ~ to /home/<user> (backend runs in Linux)
+    const expandedDir = workingDir.startsWith('~')
+      ? workingDir.replace('~', '/home/matt')  // TODO: Could make this configurable
+      : workingDir
+
+    const checkStatus = async () => {
+      try {
+        const encodedDir = encodeURIComponent(expandedDir)
+        // Include tmux session name for precise pane matching when available
+        const sessionParam = tmuxSession ? `&sessionName=${encodeURIComponent(tmuxSession)}` : ''
+        const response = await fetch(`http://localhost:8129/api/claude-status?dir=${encodedDir}${sessionParam}`)
+        const result = await response.json()
+
+        if (result.success && result.status !== 'unknown') {
+          setClaudeStatus({
+            status: result.status,
+            current_tool: result.current_tool
+          })
+        } else {
+          setClaudeStatus(null)
+        }
+      } catch {
+        // Backend not available or no status - silently ignore
+        setClaudeStatus(null)
+      }
+    }
+
+    // Initial check
+    checkStatus()
+
+    // Poll every 2 seconds
+    const interval = setInterval(checkStatus, 2000)
+
+    return () => clearInterval(interval)
+  }, [workingDir])
+
+  // Helper to format Claude status for display
+  const formatClaudeStatus = () => {
+    if (!claudeStatus) return null
+
+    switch (claudeStatus.status) {
+      case 'idle':
+        return { emoji: '🟢', text: 'Ready' }
+      case 'awaiting_input':
+        return { emoji: '⏸️', text: 'Awaiting' }
+      case 'processing':
+        return { emoji: '🟡', text: 'Thinking' }
+      case 'tool_use':
+        return { emoji: '🔧', text: claudeStatus.current_tool?.slice(0, 10) || 'Tool' }
+      case 'working':
+        return { emoji: '⚙️', text: claudeStatus.current_tool?.slice(0, 10) || 'Working' }
+      default:
+        return null
+    }
+  }
+
   return (
     <div className="h-full flex flex-col">
-      {/* Terminal header */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-800 bg-gradient-to-r from-[#0f0f0f] to-[#1a1a1a] text-xs">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-white">{sessionName || terminalId}</span>
-          <span className="text-gray-400">({terminalType})</span>
-        </div>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="px-2 py-0.5 text-gray-400 hover:bg-red-500/20 hover:text-red-400 rounded transition-colors"
-            title="Close terminal"
-          >
-            ✕
-          </button>
-        )}
-      </div>
-
-      {/* Terminal body */}
+      {/* Terminal body - full height, status shown in tmux status bar */}
       <div className="flex-1 relative overflow-hidden">
         <div
           ref={terminalRef}
           className={`absolute inset-0 ${sessionName ? 'hide-xterm-scrollbar' : ''}`}
           style={{
-            padding: '8px',
-            paddingBottom: '8px', // Consistent padding - tmux status bar now fully visible
+            padding: '4px',
+            paddingBottom: '0px', // No bottom padding - ensure tmux status bar is fully visible
           }}
         />
       </div>
