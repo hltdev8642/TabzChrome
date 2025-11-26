@@ -1,96 +1,74 @@
-# TerminalTabz Browser MCP - Interactive Tool Runner
+# Browser MCP - Quick Tool Runner
 
-Present an interactive menu of Browser MCP tools and execute them based on user selection.
-
-## Workflow
-
-1. **Show tool categories** and use AskUserQuestion to let user select a tool:
-   - **Navigation**: Open URLs, switch tabs, list tabs
-   - **Interaction**: Click elements, fill forms
-   - **Inspection**: Get page info, inspect elements, console logs
-   - **Capture**: Screenshots, download images
-   - **Scripting**: Execute JavaScript
-
-2. **After user selects a tool**, prompt for required parameters using AskUserQuestion
-
-3. **Execute the selected MCP tool** with provided parameters
-
-4. **Show results** in a clear, formatted way
-
-5. **Offer to run another command** or exit
-
-## Available Tools by Category
-
-### Navigation
-- **browser_open_url**: Open allowed URLs (GitHub, GitLab, Vercel, localhost)
-  - Params: url (required), newTab (optional), background (optional)
-- **browser_list_tabs**: List all open browser tabs
-  - Params: response_format (optional: markdown/json)
-- **browser_switch_tab**: Switch to a specific tab
-  - Params: tabId (required)
-
-### Interaction
-- **browser_click**: Click an element on the page
-  - Params: selector (required CSS selector)
-- **browser_fill**: Fill an input field with text
-  - Params: selector (required), value (required)
-
-### Inspection
-- **browser_get_page_info**: Get current page URL and title
-  - Params: tabId (optional)
-- **browser_get_element**: Get element HTML, styles, bounds for CSS debugging
-  - Params: selector (required), includeStyles (optional), styleProperties (optional)
-- **browser_get_console_logs**: Get console logs from browser
-  - Params: level (optional: all/log/info/warn/error), limit (optional), since (optional), tabId (optional)
-
-### Capture
-- **browser_screenshot**: Capture screenshot to local disk
-  - Params: selector (optional), fullPage (optional), outputPath (optional)
-- **browser_download_image**: Download image from page
-  - Params: selector (optional), url (optional), outputPath (optional)
-
-### Scripting
-- **browser_execute_script**: Execute JavaScript in browser tab
-  - Params: code (required), tabId (optional), allFrames (optional)
-
-## Implementation Notes
-
-- Use AskUserQuestion with clear option labels and descriptions
-- For text inputs (URLs, selectors, code), use "Other" to get custom input
-- Show examples in option descriptions
-- Format results nicely (use markdown formatting)
-- Handle errors gracefully with clear messages
-- After executing, ask if user wants to run another MCP command
-
-## Example Flow
+Display this numbered menu and prompt for selection:
 
 ```
-User runs: /ttmcp
-
-Claude asks: "What would you like to do?"
-Options:
-- Open URL (Navigate to GitHub, Vercel, localhost)
-- Take Screenshot (Capture page or element)
-- Click Element (Click button or link)
-- Fill Form (Enter text in input field)
-- Get Page Info (See current URL and title)
-- ... more options
-
-User selects: "Open URL"
-
-Claude asks: "Which URL?"
-- github.com/user/repo
-- localhost:3000
-- my-app.vercel.app
-- Other (custom URL)
-
-User types: "github.com/GGPrompts/TabzChrome"
-
-Claude executes: mcp__browser__browser_open_url({ url: "github.com/GGPrompts/TabzChrome" })
-
-Claude shows result: "✅ Opened https://github.com/GGPrompts/TabzChrome in new tab"
-
-Claude asks: "Run another MCP command?"
+Browser MCP Tools:
+───────────────────────────────────────
+ 1. Page Info      - Get URL & title of current tab
+ 2. Screenshot     - Capture page/element to disk
+ 3. Click          - Click element by CSS selector
+ 4. Fill           - Type text into input field
+ 5. Execute JS     - Run JavaScript in browser
+ 6. Console Logs   - View browser console output
+ 7. List Tabs      - Show all open tabs
+ 8. Switch Tab     - Focus a different tab
+ 9. Open URL       - Navigate (GitHub/Vercel/localhost)
+10. Inspect Element - Get HTML/CSS for debugging
+11. Download Image - Save image from page
+───────────────────────────────────────
 ```
 
-IMPORTANT: Be helpful and educational - explain what each tool does and show examples!
+Use AskUserQuestion with a single question asking which tool (1-11). Use these options:
+- "Quick actions (1-4)"
+- "Advanced (5-11)"
+
+The user will type the number via "Other".
+
+## After Selection - Prompt for Parameters
+
+Based on the number entered, prompt for required parameters:
+
+| Tool | Required Params | Optional |
+|------|-----------------|----------|
+| 1. Page Info | (none) | - |
+| 2. Screenshot | (none) | selector, fullPage |
+| 3. Click | selector | - |
+| 4. Fill | selector, value | - |
+| 5. Execute JS | code | - |
+| 6. Console Logs | (none) | level (error/warn/all) |
+| 7. List Tabs | (none) | - |
+| 8. Switch Tab | tabId | - |
+| 9. Open URL | url | newTab, background |
+| 10. Inspect Element | selector | includeStyles |
+| 11. Download Image | selector OR url | - |
+
+For tools with required params, use AskUserQuestion with example options + "Other" for custom input.
+
+**Selector examples:** `#id`, `.class`, `button`, `input[type="text"]`, `textarea`
+**URL examples:** `github.com/user/repo`, `localhost:3000`, `my-app.vercel.app`
+
+## Tool Execution
+
+Execute the corresponding MCP tool:
+- 1 → `mcp__browser__browser_get_page_info`
+- 2 → `mcp__browser__browser_screenshot`
+- 3 → `mcp__browser__browser_click`
+- 4 → `mcp__browser__browser_fill`
+- 5 → `mcp__browser__browser_execute_script`
+- 6 → `mcp__browser__browser_get_console_logs`
+- 7 → `mcp__browser__browser_list_tabs`
+- 8 → `mcp__browser__browser_switch_tab`
+- 9 → `mcp__browser__browser_open_url`
+- 10 → `mcp__browser__browser_get_element`
+- 11 → `mcp__browser__browser_download_image`
+
+## After Execution
+
+1. Show results clearly (format nicely)
+2. For screenshots: offer to view the file with Read tool
+3. Ask: "Run another? (y/number/n)" - if they type a number, go directly to that tool
+
+## Quick Reference
+
+If user asks for help or types "help", show `browser-mcp-server/MCP_TOOLS.md`

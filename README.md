@@ -296,10 +296,64 @@ tmux attach -t tmux-chrome-sidebar:backend
 
 ---
 
+## 🌐 Browser MCP Integration
+
+TabzChrome includes a **Browser MCP Server** that lets Claude Code control your browser programmatically.
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `browser_get_page_info` | Get current page URL & title |
+| `browser_screenshot` | Capture page/element to disk |
+| `browser_click` | Click element by CSS selector |
+| `browser_fill` | Type text into input field |
+| `browser_execute_script` | Run JavaScript in browser |
+| `browser_get_console_logs` | View browser console output |
+| `browser_list_tabs` | Show all open tabs |
+| `browser_switch_tab` | Focus a different tab |
+| `browser_open_url` | Navigate to allowed URLs |
+| `browser_get_element` | Inspect element HTML/CSS |
+| `browser_download_image` | Save image from page |
+
+### Quick Start: `/ttmcp` Command
+
+In Claude Code, type `/ttmcp` for an interactive menu:
+
+```
+Browser MCP Tools:
+───────────────────────────────────────
+ 1. Page Info      - Get URL & title of current tab
+ 2. Screenshot     - Capture page/element to disk
+ 3. Click          - Click element by CSS selector
+ 4. Fill           - Type text into input field
+ 5. Execute JS     - Run JavaScript in browser
+ ...
+───────────────────────────────────────
+Enter number (1-11):
+```
+
+### Use Cases
+
+- **AI Tool Automation** - Control Sora, DALL-E, ChatGPT interfaces
+- **Development Testing** - Test Vercel deployments, localhost apps
+- **GitHub Workflows** - Open PRs/issues during git operations
+- **Visual Debugging** - Take screenshots, inspect elements, view console logs
+
+### Requirements
+
+1. **Chrome with remote debugging**: Launch with `--remote-debugging-port=9222`
+2. **Backend running**: `cd backend && npm start`
+3. **Extension loaded**: For console log forwarding
+
+See [browser-mcp-server/MCP_TOOLS.md](browser-mcp-server/MCP_TOOLS.md) for full documentation.
+
+---
+
 ## 📚 Documentation
 
 - **[CLAUDE.md](CLAUDE.md)** - Technical architecture and development guidelines
-- **[WINDOWS_SETUP.md](WINDOWS_SETUP.md)** - Windows installation guide
+- **[browser-mcp-server/MCP_TOOLS.md](browser-mcp-server/MCP_TOOLS.md)** - Browser MCP tools reference
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history
 
 ---
