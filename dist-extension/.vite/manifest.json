@@ -1,6 +1,6 @@
 {
   "../../../../../@crx/manifest": {
-    "file": "assets/crx-manifest.js-4Qo2W87a.js",
+    "file": "assets/crx-manifest.js-DG9fLt8S.js",
     "name": "crx-manifest.js",
     "src": "../../../../../@crx/manifest",
     "isEntry": true
@@ -10,7 +10,7 @@
     "name": "modulepreload-polyfill"
   },
   "background/background.ts": {
-    "file": "assets/background.ts-BPdLgNRd.js",
+    "file": "assets/background.ts-C_lryuE4.js",
     "name": "background.ts",
     "src": "background/background.ts",
     "isEntry": true
