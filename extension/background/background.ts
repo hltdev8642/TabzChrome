@@ -913,6 +913,52 @@ chrome.runtime.onMessage.addListener(async (message: ExtensionMessage, sender, s
   return true // Keep message channel open for async response
 })
 
+// External message handler for web pages (personal homepage integration)
+chrome.runtime.onMessageExternal.addListener(async (message, sender, sendResponse) => {
+  console.log('🌐 External message received:', message.type, 'from:', sender.url)
+
+  switch (message.type) {
+    case 'PING':
+      // Health check - respond that extension is available
+      sendResponse({ ok: true, version: chrome.runtime.getManifest().version })
+      break
+
+    case 'SPAWN_TERMINAL':
+      // Open sidebar first
+      try {
+        const windows = await chrome.windows.getAll({ windowTypes: ['normal'] })
+        const targetWindow = windows.find(w => w.focused) || windows[0]
+        if (targetWindow?.id) {
+          await chrome.sidePanel.open({ windowId: targetWindow.id })
+        }
+      } catch (err) {
+        console.error('[Background] Failed to open side panel:', err)
+      }
+
+      // Spawn terminal with command
+      const requestId = `spawn-external-${Date.now()}`
+      sendToWebSocket({
+        type: 'spawn',
+        config: {
+          terminalType: 'bash',
+          command: message.command || '',
+          workingDir: message.workingDir,
+          useTmux: true,
+          name: message.name || message.command?.split(' ')[0] || 'Terminal',
+          isChrome: true,
+        },
+        requestId,
+      })
+      sendResponse({ ok: true, requestId })
+      break
+
+    default:
+      sendResponse({ ok: false, error: 'Unknown message type' })
+  }
+
+  return true // Keep channel open for async
+})
+
 // Port connections from extension pages (persistent communication)
 chrome.runtime.onConnect.addListener((port) => {
   console.log('🔌 Client connected:', port.name)
