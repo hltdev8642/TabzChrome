@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.0] - 2025-12-03
+
+### 🚀 Major Features
+
+#### HTTP API for Programmatic Terminal Spawning
+- **POST /api/spawn** - New REST endpoint to spawn terminals via HTTP
+- **Automation Ready** - Enables Claude/scripts to spawn terminals programmatically
+- **Parameters** - `name`, `workingDir`, `command` (all optional)
+- **Tmux Persistence** - API-spawned terminals use tmux for persistence
+- **Auto-Display** - Tabs appear automatically in the sidebar
+
+#### Session Isolation for Multi-Project Backend
+- **ctt- Prefix Filtering** - Frontend only shows terminals with `ctt-` prefix
+- **Backend Sharing** - Multiple projects can share port 8129 without cross-contamination
+- **Startup Recovery** - Backend recovers orphaned `ctt-` tmux sessions on restart
+- **Display Names** - Recovered terminals show `Bash (shortId)` instead of full UUID
+
+### 🔧 Technical Details
+
+- `useTmux: true` now properly flows through `registerTerminal()` to PTY creation
+- Removed duplicate `createPTY` calls that were causing redundant PTY processes
+- `resize` WebSocket handler now registers connections as terminal owners
+- Terminals without profiles inherit settings from the default profile
+- Files changed: `backend/server.js`, `extension/sidepanel/sidepanel.tsx`
+
+### 🐛 Bug Fixes
+
+- **API-spawned terminals showing blank** - Fixed: resize handler now registers WebSocket as owner
+- **Recovered terminals not using tmux** - Fixed: `useTmux: true` passed through registerTerminal
+- **Font size stuck at 14** - Fixed: terminals without profiles now inherit from default profile
+- **Duplicate PTY processes** - Fixed: removed redundant createPTY calls after registerTerminal
+
+---
+
 ## [2.1.0] - 2025-12-03
 
 ### 🚀 Major Features

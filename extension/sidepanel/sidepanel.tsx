@@ -323,13 +323,16 @@ function SidePanelTerminal() {
     switch (data.type) {
       case 'terminals':
         // Terminal list received from backend - reconcile with stored sessions
-        const backendTerminals = data.data || []
-        console.log('[Sidepanel] 🔄 Backend terminals:', backendTerminals.length)
+        // Filter to only ctt- prefixed terminals (Chrome extension terminals)
+        const backendTerminals = (data.data || []).filter((t: any) => t.id && t.id.startsWith('ctt-'))
+        console.log('[Sidepanel] 🔄 Backend terminals (ctt- only):', backendTerminals.length)
 
         // Get current sessions from state (which may have been restored from Chrome storage)
         setSessions(currentSessions => {
+          // Filter current sessions to only ctt- prefixed (clean up any old non-prefixed sessions)
+          const filteredSessions = currentSessions.filter(s => s.id && s.id.startsWith('ctt-'))
           // Create a map of existing sessions by ID
-          const sessionMap = new Map(currentSessions.map(s => [s.id, s]))
+          const sessionMap = new Map(filteredSessions.map(s => [s.id, s]))
 
           // Update or add backend terminals
           backendTerminals.forEach((t: any) => {
@@ -393,6 +396,13 @@ function SidePanelTerminal() {
         // Backend sends: { type: 'terminal-spawned', data: terminalObject, requestId }
         // terminalObject has: { id, name, terminalType, profile, ... }
         const terminal = data.data || data
+
+        // Ignore non-ctt terminals (from other projects sharing this backend)
+        if (!terminal.id || !terminal.id.startsWith('ctt-')) {
+          console.log('[Sidepanel] ⏭️ Ignoring non-ctt terminal:', terminal.id)
+          break
+        }
+
         console.log('[Sidepanel] 📥 Terminal spawned:', {
           id: terminal.id,
           name: terminal.name,
@@ -1153,13 +1163,19 @@ function SidePanelTerminal() {
             ) : (
               <div className="h-full">
                 {sessions.map(session => {
+                  // Use default profile settings as fallback for terminals without profile
+                  const defaultProfileId = profiles.find(p => p.id === 'default') ? 'default' : profiles[0]?.id
+                  const defaultProfile = profiles.find(p => p.id === defaultProfileId)
+                  const effectiveProfile = session.profile || defaultProfile
+
                   // Debug: log what profile settings are being passed
                   console.log('[Sidepanel] Rendering terminal:', session.id, {
                     profileExists: !!session.profile,
-                    profile: session.profile,
-                    resolvedFontSize: session.profile?.fontSize || 14,
-                    resolvedFontFamily: session.profile?.fontFamily || 'monospace',
-                    resolvedTheme: session.profile?.theme || 'dark',
+                    usingDefault: !session.profile,
+                    effectiveProfile,
+                    resolvedFontSize: effectiveProfile?.fontSize || 14,
+                    resolvedFontFamily: effectiveProfile?.fontFamily || 'monospace',
+                    resolvedTheme: effectiveProfile?.theme || 'dark',
                   })
                   return (
                   <div
@@ -1171,11 +1187,11 @@ function SidePanelTerminal() {
                       terminalId={session.id}
                       sessionName={session.name}
                       terminalType={session.type}
-                      workingDir={session.workingDir || session.profile?.workingDir}
+                      workingDir={session.workingDir || effectiveProfile?.workingDir}
                       tmuxSession={session.sessionName}
-                      fontSize={session.profile?.fontSize || 14}
-                      fontFamily={session.profile?.fontFamily || 'monospace'}
-                      theme={session.profile?.theme || 'dark'}
+                      fontSize={effectiveProfile?.fontSize || 14}
+                      fontFamily={effectiveProfile?.fontFamily || 'monospace'}
+                      theme={effectiveProfile?.theme || 'dark'}
                       pasteCommand={session.id === currentSession ? pasteCommand : null}
                       onClose={() => {
                         sendMessage({

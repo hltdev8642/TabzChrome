@@ -179,6 +179,62 @@ npm run build:extension && rsync -av --delete dist-extension/ /mnt/c/Users/marci
 ✅ **Keyboard Shortcut** - Ctrl+Shift+9 to open sidebar
 ✅ **Context Menu** - Right-click → "Toggle Terminal Sidebar" or "Paste to Terminal"
 ✅ **Connection Status** - WebSocket connection indicator in header
+✅ **HTTP Spawn API** - Spawn terminals programmatically via REST endpoint
+
+---
+
+## 🔌 HTTP API for Automation
+
+### POST /api/spawn
+
+Spawn a terminal programmatically (useful for Claude/automation workflows).
+
+**Request:**
+```bash
+curl -X POST http://localhost:8129/api/spawn \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Terminal",
+    "workingDir": "/home/user/projects",
+    "command": "claude --dangerously-skip-permissions"
+  }'
+```
+
+**Parameters:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | No | Display name for the tab (default: "Claude Terminal") |
+| `workingDir` | string | No | Starting directory (default: `$HOME`) |
+| `command` | string | No | Command to execute after spawn (e.g., `claude`, `lazygit`) |
+
+**Response:**
+```json
+{
+  "success": true,
+  "terminal": {
+    "id": "ctt-uuid...",
+    "name": "My Terminal",
+    "terminalType": "bash",
+    "ptyInfo": {
+      "useTmux": true,
+      "tmuxSession": "ctt-uuid..."
+    }
+  }
+}
+```
+
+**Features:**
+- Terminals use tmux for persistence (survive backend restarts)
+- Uses `ctt-` prefix for Chrome extension isolation
+- Tab appears automatically in the sidebar
+- Command executes ~1.2s after spawn (waits for shell ready)
+
+**Example: Spawn Claude Code session**
+```bash
+curl -X POST http://localhost:8129/api/spawn \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Claude Worker", "workingDir": "~/projects/myapp", "command": "claude --dangerously-skip-permissions"}'
+```
 
 ---
 

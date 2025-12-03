@@ -60,6 +60,31 @@ app.post('/api/tui-tools/spawn', async (req, res) => {
   }
 });
 
+// Simple terminal spawn endpoint for Claude/automation
+// POST /api/spawn { name, workingDir, command }
+app.post('/api/spawn', async (req, res) => {
+  const { name, workingDir, command } = req.body;
+  try {
+    // registerTerminal creates the PTY internally with useTmux: true
+    const terminal = await terminalRegistry.registerTerminal({
+      name: name || 'Claude Terminal',
+      workingDir: workingDir || process.env.HOME,
+      command: command || null,
+      terminalType: 'bash',
+      isChrome: true,  // Use ctt- prefix
+      useTmux: true,   // Enable tmux for persistence
+    });
+
+    // Broadcast to all WebSocket clients
+    broadcast({ type: 'terminal-spawned', data: terminal });
+
+    res.json({ success: true, terminal });
+  } catch (error) {
+    console.error('[API] Spawn error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Handle different startup modes based on environment variables
 // FORCE_CLEANUP=true: Kill all PTY processes immediately (clean start)
 // CLEANUP_ON_START defaults to false to preserve terminals across restarts
@@ -232,6 +257,14 @@ wss.on('connection', (ws) => {
           break;
           
         case 'resize':
+          // Register this connection as owner of the terminal (for API-spawned terminals)
+          // This ensures data flows to the frontend even if terminal was spawned via HTTP
+          if (!terminalOwners.has(data.terminalId)) {
+            terminalOwners.set(data.terminalId, new Set());
+          }
+          terminalOwners.get(data.terminalId).add(ws);
+          connectionTerminals.add(data.terminalId);
+
           await terminalRegistry.resizeTerminal(data.terminalId, data.cols, data.rows);
           break;
           
@@ -272,14 +305,13 @@ wss.on('connection', (ws) => {
           break;
 
         case 'list-terminals':
-          // List all active terminals in the registry
-          const activeTerminals = terminalRegistry.getAllTerminals();
-          // For now, return all terminals to Chrome extension (both old and new format)
-          // TODO: Eventually filter for ctt- prefix only
-          log.info(`[WS] Listing ${activeTerminals.length} active terminals`);
+          // List all active terminals in the registry, filtered to ctt- prefix only
+          const allTerminals = terminalRegistry.getAllTerminals();
+          const chromeTerminals = allTerminals.filter(t => t.id && t.id.startsWith('ctt-'));
+          log.info(`[WS] Listing ${chromeTerminals.length} Chrome terminals (${allTerminals.length} total)`);
           ws.send(JSON.stringify({
             type: 'terminals',
-            data: activeTerminals
+            data: chromeTerminals
           }));
           break;
 
@@ -291,11 +323,12 @@ wss.on('connection', (ws) => {
             const tmuxListOutput = execSync('tmux ls -F "#{session_name}" 2>/dev/null || echo ""').toString().trim();
             const allSessions = tmuxListOutput.split('\n').filter(s => s);
 
-            // Filter for terminal-tabs sessions (both old and new format)
+            // Filter for terminal-tabs sessions (all formats)
             // Old: terminal-tabs-terminal-1762...
-            // New: tt-bash-xyz, tt-cc-abc, etc.
+            // Web app: tt-bash-xyz, tt-cc-abc, etc.
+            // Chrome extension: ctt-uuid or ctt-custom-name
             const terminalTabsSessions = allSessions.filter(s =>
-              s.startsWith('terminal-tabs-') || s.startsWith('tt-')
+              s.startsWith('terminal-tabs-') || s.startsWith('tt-') || s.startsWith('ctt-')
             );
 
             log.info(`Found ${terminalTabsSessions.length} terminal-tabs tmux sessions`, terminalTabsSessions);
@@ -665,20 +698,43 @@ server.listen(PORT, async () => {
 
   // Initialize note persistence service
 
-  // Attempt to recover any existing terminals
-  // TODO: Terminal recovery module needs to be implemented
-  // if (process.env.RECOVER_TERMINALS !== 'false') {
-  //   setTimeout(async () => {
-  //     console.log('[Server] Checking for recoverable terminals...');
-  //     const recovered = await terminalRecovery.recoverTerminals();
-  //     if (recovered.length > 0) {
-  //       console.log(`[Server] Recovered ${recovered.length} terminals`);
-  //       // Notify any connected clients about recovered terminals
-  //       broadcast({
-  //         type: 'terminals-recovered',
-  //         data: recovered
-  //       });
-  //     }
-  //   }, 2000); // Wait 2 seconds for system to stabilize
-  // }
+  // Recover existing ctt- tmux sessions on startup
+  if (process.env.CLEANUP_ON_START !== 'true') {
+    setTimeout(async () => {
+      try {
+        const { execSync } = require('child_process');
+        const tmuxOutput = execSync('tmux ls -F "#{session_name}" 2>/dev/null || echo ""').toString().trim();
+        const sessions = tmuxOutput.split('\n').filter(s => s && s.startsWith('ctt-'));
+
+        if (sessions.length > 0) {
+          log.info(`🔄 Recovering ${sessions.length} ctt- sessions...`);
+          for (const sessionName of sessions) {
+            // Check if already registered
+            const existing = terminalRegistry.getAllTerminals().find(t => t.sessionName === sessionName || t.id === sessionName);
+            if (existing) {
+              log.debug(`Session ${sessionName} already registered`);
+              continue;
+            }
+
+            // Use short ID for display name (first 8 chars after ctt-)
+            const shortId = sessionName.replace('ctt-', '').substring(0, 8);
+            const displayName = `Bash (${shortId})`;
+
+            // Register the terminal with useTmux - registerTerminal creates PTY internally
+            await terminalRegistry.registerTerminal({
+              name: displayName,
+              sessionName: sessionName,  // Existing tmux session to reconnect to
+              terminalType: 'bash',
+              isChrome: true,
+              useTmux: true,  // Enable tmux reconnection
+            });
+
+            log.success(`✅ Recovered: ${sessionName}`);
+          }
+        }
+      } catch (error) {
+        log.warn('Recovery check failed (tmux not running?):', error.message);
+      }
+    }, 1000);
+  }
 });
