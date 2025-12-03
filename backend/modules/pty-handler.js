@@ -129,6 +129,7 @@ class PTYHandler extends EventEmitter {
     // Light theme: "0;15" (black on white), Dark theme: "15;0" (white on black)
     const isLightTheme = profile?.theme === 'light';
     const colorFgBg = isLightTheme ? '0;15' : '15;0';
+    log.info(`Theme detection: profile=${JSON.stringify(profile)}, isLightTheme=${isLightTheme}, COLORFGBG=${colorFgBg}`);
 
     const enhancedEnv = {
       ...filteredEnv,
@@ -223,8 +224,10 @@ class PTYHandler extends EventEmitter {
 
           try {
             // Use custom tmux config for optimal terminal experience
-            const tmuxCmd = `tmux -f "${this.tmuxConfigPath}" new-session -d -s "${sessionName}" -c "${validWorkingDir}" -x ${cols} -y ${rows}`;
+            // Pass critical environment variables with -e flag so they're available in the session
+            const tmuxCmd = `tmux -f "${this.tmuxConfigPath}" new-session -d -s "${sessionName}" -c "${validWorkingDir}" -x ${cols} -y ${rows} -e "COLORFGBG=${colorFgBg}" -e "COLORTERM=truecolor"`;
             log.debug(`Using tmux config: ${this.tmuxConfigPath}`);
+            log.debug(`Creating tmux session with COLORFGBG=${colorFgBg}`);
             execSync(tmuxCmd, {
               env: enhancedEnv
             });

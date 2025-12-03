@@ -73,8 +73,24 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           console.error('[Settings] Failed to load default profiles:', error)
         }
       } else {
-        setProfiles(result.profiles as Profile[])
+        // Migrate old profiles: ensure all required fields have defaults
+        const migratedProfiles = (result.profiles as Profile[]).map(p => ({
+          ...p,
+          fontSize: p.fontSize ?? 14,
+          fontFamily: p.fontFamily ?? 'monospace',
+          theme: p.theme ?? 'dark',
+        }))
+        setProfiles(migratedProfiles)
         setDefaultProfile((result.defaultProfile as string) || 'default')
+
+        // Save migrated profiles back to storage if any were updated
+        const needsMigration = (result.profiles as Profile[]).some(
+          p => p.fontSize === undefined || p.fontFamily === undefined || p.theme === undefined
+        )
+        if (needsMigration) {
+          console.log('[Settings] Migrating old profiles with missing fields')
+          chrome.storage.local.set({ profiles: migratedProfiles })
+        }
       }
     })
   }, [isOpen])

@@ -747,6 +747,7 @@ chrome.runtime.onMessage.addListener(async (message: ExtensionMessage, sender, s
         useTmux: useTmux,
         isChrome: true,
         requestId,
+        profile: message.profile, // Log profile to debug theme/font issues
       })
       // Badge will be updated when backend sends terminal-spawned message
       break

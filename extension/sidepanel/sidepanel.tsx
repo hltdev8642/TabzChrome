@@ -34,6 +34,12 @@ function SidePanelTerminal() {
   const [recentDirs, setRecentDirs] = useState<string[]>(['~', '~/projects'])  // Recent directories
   const [showDirDropdown, setShowDirDropdown] = useState(false)
   const [customDirInput, setCustomDirInput] = useState('')
+
+  // Chat input state (paste workaround)
+  const [chatInputText, setChatInputText] = useState('')
+  const [chatInputMode, setChatInputMode] = useState<'execute' | 'send'>('execute')
+  const chatInputRef = useRef<HTMLInputElement>(null)
+
   const portRef = useRef<chrome.runtime.Port | null>(null)
 
   // Refs for keyboard shortcut handlers (to access current state from callbacks)
@@ -137,7 +143,23 @@ function SidePanelTerminal() {
   useEffect(() => {
     chrome.storage.local.get(['profiles', 'defaultProfile'], async (result) => {
       if (result.profiles && Array.isArray(result.profiles) && result.profiles.length > 0) {
-        setProfiles(result.profiles)
+        // Migrate old profiles: ensure all required fields have defaults
+        const migratedProfiles = (result.profiles as Profile[]).map(p => ({
+          ...p,
+          fontSize: p.fontSize ?? 14,
+          fontFamily: p.fontFamily ?? 'monospace',
+          theme: p.theme ?? 'dark',
+        }))
+        setProfiles(migratedProfiles)
+
+        // Save migrated profiles back to storage if any were updated
+        const needsMigration = (result.profiles as Profile[]).some(
+          p => p.fontSize === undefined || p.fontFamily === undefined || p.theme === undefined
+        )
+        if (needsMigration) {
+          console.log('[Sidepanel] Migrating old profiles with missing fields')
+          chrome.storage.local.set({ profiles: migratedProfiles })
+        }
       } else {
         // Initialize profiles from profiles.json on first load
         try {
@@ -500,6 +522,50 @@ function SidePanelTerminal() {
   const handleTabDragEnd = () => {
     setDraggedTabId(null)
     setDragOverTabId(null)
+  }
+
+  // Chat input handlers - alternative to direct terminal paste
+  const handleChatInputSend = () => {
+    if (!chatInputText.trim() || !currentSession) return
+
+    const session = sessions.find(s => s.id === currentSession)
+    if (!session) return
+
+    // Send text to terminal via background worker
+    sendMessage({
+      type: 'TERMINAL_INPUT',
+      terminalId: currentSession,
+      data: chatInputText,
+    })
+
+    // If execute mode, send Enter after 300ms delay
+    // CRITICAL: Delay prevents submit before text loads (especially for Claude Code)
+    if (chatInputMode === 'execute') {
+      setTimeout(() => {
+        sendMessage({
+          type: 'TERMINAL_INPUT',
+          terminalId: currentSession,
+          data: '\r',
+        })
+      }, 300)
+    }
+
+    // Clear input after sending
+    setChatInputText('')
+
+    // Keep focus on input for next message
+    chatInputRef.current?.focus()
+  }
+
+  const handleChatInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleChatInputSend()
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      setChatInputText('')
+      chatInputRef.current?.blur()
+    }
   }
 
   // Keyboard shortcut handlers (use refs to access current state from callbacks)
@@ -1055,6 +1121,37 @@ function SidePanelTerminal() {
               </div>
             )}
           </div>
+
+          {/* Chat Input Bar - Paste workaround */}
+          {sessions.length > 0 && (
+            <div className="border-t border-gray-700 bg-[#1a1a1a] flex items-center gap-2 px-2 py-1.5">
+              <input
+                ref={chatInputRef}
+                type="text"
+                className="flex-1 h-7 px-3 bg-black border border-gray-600 rounded text-sm text-white font-mono focus:border-[#00ff88]/50 focus:outline-none placeholder-gray-500"
+                value={chatInputText}
+                onChange={(e) => setChatInputText(e.target.value)}
+                onKeyDown={handleChatInputKeyDown}
+                placeholder={chatInputMode === 'execute' ? "Type & Enter to execute..." : "Type & Enter to send (no execute)..."}
+              />
+              <select
+                value={chatInputMode}
+                onChange={(e) => setChatInputMode(e.target.value as 'execute' | 'send')}
+                className="h-7 px-2 bg-black border border-gray-600 rounded text-xs text-gray-300 focus:border-[#00ff88]/50 focus:outline-none cursor-pointer"
+                title="Send mode"
+              >
+                <option value="execute">Execute</option>
+                <option value="send">Send</option>
+              </select>
+              <button
+                onClick={handleChatInputSend}
+                disabled={!chatInputText.trim()}
+                className="h-7 px-3 bg-[#00ff88]/20 border border-[#00ff88]/30 rounded text-xs text-[#00ff88] font-medium hover:bg-[#00ff88]/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Send
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
