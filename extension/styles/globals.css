@@ -1,5 +1,55 @@
 @import "tailwindcss";
 
+/* ============================================
+   XTERM.JS TRANSPARENT BACKGROUND
+   Force all xterm elements to be transparent
+   so container gradient backgrounds show through
+   ============================================ */
+
+/* Main xterm container */
+.xterm {
+  background: transparent !important;
+}
+
+/* Screen container */
+.xterm-screen {
+  background: transparent !important;
+}
+
+/* Viewport (scroll area) */
+.xterm-viewport {
+  background-color: transparent !important;
+}
+
+/* All canvas elements */
+.xterm canvas {
+  background: transparent !important;
+}
+
+.xterm-screen canvas {
+  background-color: transparent !important;
+}
+
+/* Helper textarea */
+.xterm-helper-textarea {
+  background-color: transparent !important;
+}
+
+/* Rows container */
+.xterm-rows {
+  background: transparent !important;
+}
+
+/* Remove text shadows for crisp rendering */
+.xterm,
+.xterm * {
+  text-shadow: none !important;
+}
+
+/* ============================================
+   SCROLLBAR STYLES
+   ============================================ */
+
 /* Hide xterm scrollbar for tmux terminals (tmux handles scrolling) */
 .hide-xterm-scrollbar .xterm-viewport {
   scrollbar-width: none; /* Firefox */

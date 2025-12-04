@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { X, Type, Moon, Sun, Terminal as TerminalIcon, Plus, Edit, Trash2, GripVertical } from 'lucide-react'
+import { X, Terminal as TerminalIcon, Plus, Edit, Trash2, GripVertical, Palette } from 'lucide-react'
+import { themes, themeNames } from '../styles/themes'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -13,7 +14,7 @@ export interface Profile {
   command?: string  // Optional starting command
   fontSize: number
   fontFamily: string
-  theme: 'dark' | 'light'
+  themeName: string  // Theme family name (high-contrast, dracula, ocean, etc.)
 }
 
 const DEFAULT_PROFILE: Profile = {
@@ -23,16 +24,21 @@ const DEFAULT_PROFILE: Profile = {
   command: '',
   fontSize: 14,
   fontFamily: 'monospace',
-  theme: 'dark',
+  themeName: 'high-contrast',
 }
 
 const FONT_FAMILIES = [
-  { label: 'Monospace (default)', value: 'monospace' },
-  { label: 'JetBrains Mono', value: "'JetBrains Mono', monospace" },
-  { label: 'Fira Code', value: "'Fira Code', monospace" },
-  { label: 'Consolas', value: "'Consolas', monospace" },
-  { label: 'Courier New', value: "'Courier New', monospace" },
-  { label: 'Source Code Pro', value: "'Source Code Pro', monospace" },
+  { label: 'Monospace (Default)', value: 'monospace' },
+  { label: 'Consolas', value: 'Consolas, monospace' },
+  { label: 'Courier New', value: 'Courier New, monospace' },
+  { label: 'Cascadia Code', value: "'Cascadia Code', monospace" },
+  { label: 'Cascadia Mono', value: "'Cascadia Mono', monospace" },
+  { label: 'JetBrains Mono NF', value: "'JetBrainsMono Nerd Font', 'JetBrainsMono NF', monospace" },
+  { label: 'Fira Code NF', value: "'FiraCode Nerd Font', 'FiraCode NF', monospace" },
+  { label: 'Source Code Pro NF', value: "'SauceCodePro Nerd Font', 'SauceCodePro NF', monospace" },
+  { label: 'Caskaydia Cove NF', value: "'CaskaydiaCove Nerd Font Mono', 'CaskaydiaCove NFM', monospace" },
+  { label: 'Hack NF', value: "'Hack Nerd Font', monospace" },
+  { label: 'MesloLGS NF', value: "'MesloLGS Nerd Font', monospace" },
 ]
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
@@ -77,21 +83,33 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         }
       } else {
         // Migrate old profiles: ensure all required fields have defaults
-        const migratedProfiles = (result.profiles as Profile[]).map(p => ({
-          ...p,
-          fontSize: p.fontSize ?? 14,
-          fontFamily: p.fontFamily ?? 'monospace',
-          theme: p.theme ?? 'dark',
-        }))
+        // Also migrate old 'theme' field to new 'themeName' field
+        const migratedProfiles = (result.profiles as any[]).map(p => {
+          // Convert old theme field to themeName
+          let themeName = p.themeName
+          if (!themeName && p.theme) {
+            // Map old 'dark'/'light' to new theme names
+            themeName = p.theme === 'light' ? 'high-contrast' : 'high-contrast'
+          }
+
+          return {
+            ...p,
+            fontSize: p.fontSize ?? 14,
+            fontFamily: p.fontFamily ?? 'monospace',
+            themeName: themeName ?? 'high-contrast',
+            // Remove old theme field
+            theme: undefined,
+          }
+        })
         setProfiles(migratedProfiles)
         setDefaultProfile((result.defaultProfile as string) || 'default')
 
         // Save migrated profiles back to storage if any were updated
-        const needsMigration = (result.profiles as Profile[]).some(
-          p => p.fontSize === undefined || p.fontFamily === undefined || p.theme === undefined
+        const needsMigration = (result.profiles as any[]).some(
+          p => p.fontSize === undefined || p.fontFamily === undefined || p.themeName === undefined || p.theme !== undefined
         )
         if (needsMigration) {
-          console.log('[Settings] Migrating old profiles with missing fields')
+          console.log('[Settings] Migrating old profiles with missing fields or old theme format')
           chrome.storage.local.set({ profiles: migratedProfiles })
         }
       }
@@ -330,7 +348,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           )}
                           <div className="flex gap-3 mt-2 text-xs text-gray-400">
                             <span>Font: {profile.fontSize}px {profile.fontFamily.split(',')[0].replace(/'/g, '')}</span>
-                            <span>Theme: {profile.theme}</span>
+                            <span>Theme: {themes[profile.themeName]?.name || profile.themeName}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
@@ -450,31 +468,65 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
                 {/* Theme */}
                 <div>
-                  <label className="block text-xs text-gray-400 mb-2">Theme</label>
-                  <button
-                    onClick={() => setFormData({ ...formData, theme: formData.theme === 'dark' ? 'light' : 'dark' })}
-                    className={`
-                      w-full px-4 py-3 rounded-lg border transition-all flex items-center justify-between
-                      ${
-                        formData.theme === 'dark'
-                          ? 'bg-gray-900 border-gray-700 hover:border-gray-600'
-                          : 'bg-gray-100 border-gray-300 hover:border-gray-400'
-                      }
-                    `}
-                  >
-                    <span
-                      className={
-                        formData.theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }
-                    >
-                      {formData.theme === 'dark' ? 'Dark Theme' : 'Light Theme'}
-                    </span>
-                    {formData.theme === 'dark' ? (
-                      <Moon className="h-5 w-5 text-[#00ff88]" />
-                    ) : (
-                      <Sun className="h-5 w-5 text-orange-500" />
-                    )}
-                  </button>
+                  <label className="block text-xs text-gray-400 mb-2">
+                    <div className="flex items-center gap-1">
+                      <Palette className="h-3 w-3" />
+                      Color Theme
+                    </div>
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {themeNames.map((themeName) => {
+                      const theme = themes[themeName]
+                      const isSelected = formData.themeName === themeName
+                      // Get preview colors from dark variant
+                      const previewColors = theme.dark.colors
+
+                      return (
+                        <button
+                          key={themeName}
+                          onClick={() => setFormData({ ...formData, themeName })}
+                          className={`
+                            px-3 py-2 rounded-lg border transition-all text-left
+                            ${isSelected
+                              ? 'border-[#00ff88] bg-[#00ff88]/10'
+                              : 'border-gray-700 hover:border-gray-600 bg-black/30'
+                            }
+                          `}
+                        >
+                          <div className="flex items-center gap-2">
+                            {/* Color preview dots */}
+                            <div className="flex gap-0.5">
+                              <div
+                                className="w-2 h-2 rounded-full"
+                                style={{ backgroundColor: previewColors.red }}
+                              />
+                              <div
+                                className="w-2 h-2 rounded-full"
+                                style={{ backgroundColor: previewColors.green }}
+                              />
+                              <div
+                                className="w-2 h-2 rounded-full"
+                                style={{ backgroundColor: previewColors.blue }}
+                              />
+                              <div
+                                className="w-2 h-2 rounded-full"
+                                style={{ backgroundColor: previewColors.magenta }}
+                              />
+                            </div>
+                            <span className={`text-sm ${isSelected ? 'text-white' : 'text-gray-300'}`}>
+                              {theme.name}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1 truncate">
+                            {theme.description}
+                          </p>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Use the header toggle to switch between dark/light mode
+                  </p>
                 </div>
 
                 {/* Buttons */}

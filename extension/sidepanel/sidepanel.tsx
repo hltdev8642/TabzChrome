@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import ReactDOM from 'react-dom/client'
-import { Terminal as TerminalIcon, Settings, Plus, X, ChevronDown, FolderOpen } from 'lucide-react'
+import { Terminal as TerminalIcon, Settings, Plus, X, ChevronDown, FolderOpen, Moon, Sun } from 'lucide-react'
 import { Badge } from '../components/ui/badge'
 import { Terminal } from '../components/Terminal'
 import { SettingsModal, type Profile } from '../components/SettingsModal'
@@ -35,6 +35,7 @@ function SidePanelTerminal() {
   const [recentDirs, setRecentDirs] = useState<string[]>(['~', '~/projects'])  // Recent directories
   const [showDirDropdown, setShowDirDropdown] = useState(false)
   const [customDirInput, setCustomDirInput] = useState('')
+  const [isDark, setIsDark] = useState(true)  // Global dark/light mode toggle
 
   // Chat input state (paste workaround)
   const [chatInputText, setChatInputText] = useState('')
@@ -145,20 +146,29 @@ function SidePanelTerminal() {
     chrome.storage.local.get(['profiles', 'defaultProfile'], async (result) => {
       if (result.profiles && Array.isArray(result.profiles) && result.profiles.length > 0) {
         // Migrate old profiles: ensure all required fields have defaults
-        const migratedProfiles = (result.profiles as Profile[]).map(p => ({
-          ...p,
-          fontSize: p.fontSize ?? 14,
-          fontFamily: p.fontFamily ?? 'monospace',
-          theme: p.theme ?? 'dark',
-        }))
+        // Also migrate old 'theme' field to new 'themeName' field
+        const migratedProfiles = (result.profiles as any[]).map(p => {
+          // Convert old theme field to themeName
+          let themeName = p.themeName
+          if (!themeName && p.theme) {
+            themeName = 'high-contrast' // Map old dark/light to high-contrast
+          }
+          return {
+            ...p,
+            fontSize: p.fontSize ?? 14,
+            fontFamily: p.fontFamily ?? 'monospace',
+            themeName: themeName ?? 'high-contrast',
+            theme: undefined, // Remove old field
+          }
+        })
         setProfiles(migratedProfiles)
 
         // Save migrated profiles back to storage if any were updated
-        const needsMigration = (result.profiles as Profile[]).some(
-          p => p.fontSize === undefined || p.fontFamily === undefined || p.theme === undefined
+        const needsMigration = (result.profiles as any[]).some(
+          p => p.fontSize === undefined || p.fontFamily === undefined || p.themeName === undefined || p.theme !== undefined
         )
         if (needsMigration) {
-          console.log('[Sidepanel] Migrating old profiles with missing fields')
+          console.log('[Sidepanel] Migrating old profiles with missing fields or old theme format')
           chrome.storage.local.set({ profiles: migratedProfiles })
         }
       } else {
@@ -195,14 +205,17 @@ function SidePanelTerminal() {
     }
   }, [])
 
-  // Load global working directory and recent dirs from Chrome storage
+  // Load global working directory, recent dirs, and dark mode from Chrome storage
   useEffect(() => {
-    chrome.storage.local.get(['globalWorkingDir', 'recentDirs'], (result) => {
+    chrome.storage.local.get(['globalWorkingDir', 'recentDirs', 'isDark'], (result) => {
       if (result.globalWorkingDir && typeof result.globalWorkingDir === 'string') {
         setGlobalWorkingDir(result.globalWorkingDir)
       }
       if (result.recentDirs && Array.isArray(result.recentDirs)) {
         setRecentDirs(result.recentDirs as string[])
+      }
+      if (typeof result.isDark === 'boolean') {
+        setIsDark(result.isDark)
       }
     })
   }, [])
@@ -216,6 +229,11 @@ function SidePanelTerminal() {
   useEffect(() => {
     chrome.storage.local.set({ recentDirs })
   }, [recentDirs])
+
+  // Save dark mode preference when it changes
+  useEffect(() => {
+    chrome.storage.local.set({ isDark })
+  }, [isDark])
 
   // Helper to add a directory to recent list
   const addToRecentDirs = (dir: string) => {
@@ -853,6 +871,19 @@ function SidePanelTerminal() {
             </Badge>
           )}
 
+          {/* Dark/Light Mode Toggle */}
+          <button
+            onClick={() => setIsDark(!isDark)}
+            className={`p-1.5 rounded-md transition-colors ${
+              isDark
+                ? 'hover:bg-[#00ff88]/10 text-gray-400 hover:text-[#00ff88]'
+                : 'hover:bg-orange-500/10 text-gray-400 hover:text-orange-400'
+            }`}
+            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {isDark ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+          </button>
+
           {/* Working Directory Dropdown */}
           <div className="relative">
             <button
@@ -1163,20 +1194,18 @@ function SidePanelTerminal() {
             ) : (
               <div className="h-full">
                 {sessions.map(session => {
-                  // Use default profile settings as fallback for terminals without profile
+                  // Get the CURRENT profile settings (not the snapshot from spawn time)
+                  // This allows theme/font changes to affect existing terminals
+                  const sessionProfileId = session.profile?.id
+                  const currentProfile = sessionProfileId
+                    ? profiles.find(p => p.id === sessionProfileId)
+                    : null
+
+                  // Fallback chain: current profile (if exists) -> default profile -> hardcoded defaults
                   const defaultProfileId = profiles.find(p => p.id === 'default') ? 'default' : profiles[0]?.id
                   const defaultProfile = profiles.find(p => p.id === defaultProfileId)
-                  const effectiveProfile = session.profile || defaultProfile
+                  const effectiveProfile = currentProfile || defaultProfile
 
-                  // Debug: log what profile settings are being passed
-                  console.log('[Sidepanel] Rendering terminal:', session.id, {
-                    profileExists: !!session.profile,
-                    usingDefault: !session.profile,
-                    effectiveProfile,
-                    resolvedFontSize: effectiveProfile?.fontSize || 14,
-                    resolvedFontFamily: effectiveProfile?.fontFamily || 'monospace',
-                    resolvedTheme: effectiveProfile?.theme || 'dark',
-                  })
                   return (
                   <div
                     key={session.id}
@@ -1191,7 +1220,9 @@ function SidePanelTerminal() {
                       tmuxSession={session.sessionName}
                       fontSize={effectiveProfile?.fontSize || 14}
                       fontFamily={effectiveProfile?.fontFamily || 'monospace'}
-                      theme={effectiveProfile?.theme || 'dark'}
+                      themeName={effectiveProfile?.themeName || 'high-contrast'}
+                      isDark={isDark}
+                      isActive={session.id === currentSession}
                       pasteCommand={session.id === currentSession ? pasteCommand : null}
                       onClose={() => {
                         sendMessage({

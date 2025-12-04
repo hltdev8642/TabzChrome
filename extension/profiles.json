@@ -6,7 +6,7 @@
       "workingDir": "~",
       "fontSize": 14,
       "fontFamily": "monospace",
-      "theme": "dark"
+      "themeName": "high-contrast"
     },
     {
       "id": "projects",
@@ -14,7 +14,7 @@
       "workingDir": "~/projects",
       "fontSize": 14,
       "fontFamily": "monospace",
-      "theme": "dark"
+      "themeName": "high-contrast"
     },
     {
       "id": "large-text",
@@ -22,15 +22,15 @@
       "workingDir": "~",
       "fontSize": 20,
       "fontFamily": "monospace",
-      "theme": "dark"
+      "themeName": "ocean"
     },
     {
-      "id": "light-mode",
-      "name": "Light Mode",
+      "id": "dracula",
+      "name": "Dracula",
       "workingDir": "~",
       "fontSize": 14,
       "fontFamily": "monospace",
-      "theme": "light"
+      "themeName": "dracula"
     }
   ],
   "defaultProfile": "default"

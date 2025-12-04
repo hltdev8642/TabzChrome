@@ -5,6 +5,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import '@xterm/xterm/css/xterm.css'
 import { sendMessage, connectToBackground } from '../shared/messaging'
+import { getThemeColors, getBackgroundGradient } from '../styles/themes'
 
 interface TerminalProps {
   terminalId: string
@@ -14,7 +15,9 @@ interface TerminalProps {
   tmuxSession?: string     // Tmux session name for precise status matching
   fontSize?: number
   fontFamily?: string
-  theme?: 'dark' | 'light'
+  themeName?: string       // Theme family name (high-contrast, dracula, ocean, etc.)
+  isDark?: boolean         // Dark or light mode
+  isActive?: boolean       // Whether this terminal is currently visible/active
   pasteCommand?: string | null  // Command to paste into terminal input
   onClose?: () => void
 }
@@ -24,12 +27,14 @@ interface ClaudeStatus {
   current_tool?: string
 }
 
-export function Terminal({ terminalId, sessionName, terminalType = 'bash', workingDir, tmuxSession, fontSize = 14, fontFamily = 'monospace', theme = 'dark', pasteCommand = null, onClose }: TerminalProps) {
+export function Terminal({ terminalId, sessionName, terminalType = 'bash', workingDir, tmuxSession, fontSize = 14, fontFamily = 'monospace', themeName = 'high-contrast', isDark = true, isActive = true, pasteCommand = null, onClose }: TerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const xtermRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [claudeStatus, setClaudeStatus] = useState<ClaudeStatus | null>(null)
+  const [isInitialized, setIsInitialized] = useState(false)  // Track if xterm has been opened
 
   // Resize trick to force complete redraw (used for theme/font changes and manual refresh)
   const triggerResizeTrick = () => {
@@ -63,64 +68,22 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     }
   }
 
-  // Initialize xterm.js
+  // Initialize xterm.js - only when terminal becomes active (visible)
+  // This prevents issues with hidden terminals having 0 dimensions
   useEffect(() => {
-    if (!terminalRef.current || xtermRef.current) return
+    // Skip if not active, already initialized, no ref, or xterm already exists
+    if (!isActive || isInitialized || !terminalRef.current || xtermRef.current) return
 
-    console.log('[Terminal] Initializing xterm for terminal:', terminalId)
+    console.log('[Terminal] Initializing xterm for terminal:', terminalId, '(now active)')
 
-    // Theme definitions
-    const darkTheme = {
-      background: '#0a0a0a',
-      foreground: '#00ff88',
-      cursor: '#00ff88',
-      black: '#000000',
-      red: '#ff5555',
-      green: '#00ff88',
-      yellow: '#ffff55',
-      blue: '#5555ff',
-      magenta: '#ff55ff',
-      cyan: '#00c8ff',
-      white: '#bbbbbb',
-      brightBlack: '#555555',
-      brightRed: '#ff5555',
-      brightGreen: '#00ff88',
-      brightYellow: '#ffff55',
-      brightBlue: '#5555ff',
-      brightMagenta: '#ff55ff',
-      brightCyan: '#00c8ff',
-      brightWhite: '#ffffff',
-    }
-
-    // Light theme with inverted ANSI colors for TUI app compatibility
-    // black/white are swapped so TUI apps using "black" backgrounds get light colors
-    const lightTheme = {
-      background: '#f5f5f5',
-      foreground: '#24292e',
-      cursor: '#24292e',
-      black: '#f5f5f5',       // Light (was dark) - TUI "black" backgrounds become light
-      red: '#c41a16',
-      green: '#007400',
-      yellow: '#826b28',
-      blue: '#0451a5',
-      magenta: '#bc05bc',
-      cyan: '#0598bc',
-      white: '#24292e',       // Dark (was light) - TUI "white" text becomes dark
-      brightBlack: '#d4d4d4', // Light gray
-      brightRed: '#cd3131',
-      brightGreen: '#14ce14',
-      brightYellow: '#b5ba00',
-      brightBlue: '#0451a5',
-      brightMagenta: '#bc05bc',
-      brightCyan: '#0598bc',
-      brightWhite: '#1f1f1f', // Dark
-    }
+    // Get theme colors from the new theme system
+    const themeColors = getThemeColors(themeName, isDark)
 
     const xterm = new XTerm({
       cursorBlink: true,
       fontSize,
       fontFamily,
-      theme: theme === 'dark' ? darkTheme : lightTheme,
+      theme: themeColors,
       scrollback: sessionName ? 0 : 10000, // No scrollback for tmux (tmux handles scrolling)
       convertEol: false,
       allowProposedApi: true,
@@ -135,15 +98,87 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     xterm.loadAddon(unicode11Addon)
     xterm.unicode.activeVersion = '11'
 
-    // Open terminal
-    xterm.open(terminalRef.current)
-    console.log('[Terminal] xterm opened successfully', {
-      terminalId,
-      requestedFontSize: fontSize,
-      requestedFontFamily: fontFamily,
-      actualFontSize: xterm.options.fontSize,
-      actualFontFamily: xterm.options.fontFamily,
-    })
+    // Store refs early so fit functions can use them
+    xtermRef.current = xterm
+    fitAddonRef.current = fitAddon
+
+    // Fit terminal to container with dimension verification
+    const fitTerminal = () => {
+      if (!fitAddonRef.current || !terminalRef.current || !xtermRef.current) return
+
+      const containerWidth = terminalRef.current.offsetWidth
+      const containerHeight = terminalRef.current.offsetHeight
+
+      if (containerWidth > 0 && containerHeight > 0) {
+        fitAddonRef.current.fit()
+        console.log('[Terminal] Fit:', xtermRef.current.cols, 'x', xtermRef.current.rows, 'container:', containerWidth, 'x', containerHeight)
+
+        // Send resize to backend
+        sendMessage({
+          type: 'TERMINAL_RESIZE',
+          terminalId,
+          cols: xtermRef.current.cols,
+          rows: xtermRef.current.rows,
+        })
+      } else {
+        console.log('[Terminal] Skipping fit - container has 0 dimensions')
+      }
+    }
+
+    // Initial fit sequence after xterm.open()
+    const initialFit = () => {
+      // Immediate fit
+      fitTerminal()
+
+      // Second fit after short delay (catch layout shifts)
+      setTimeout(fitTerminal, 100)
+
+      // Third fit after longer delay (ensure everything settled)
+      setTimeout(fitTerminal, 300)
+
+      // Force a refresh to ensure content is rendered
+      setTimeout(() => {
+        if (xtermRef.current) {
+          xtermRef.current.refresh(0, xtermRef.current.rows - 1)
+        }
+      }, 350)
+    }
+
+    // Open terminal with retry mechanism
+    // Wait until container has valid dimensions before opening
+    const MAX_RETRIES = 20
+    const RETRY_DELAY = 50
+    let retryCount = 0
+
+    const attemptOpen = () => {
+      if (terminalRef.current && terminalRef.current.offsetWidth > 0 && terminalRef.current.offsetHeight > 0) {
+        xterm.open(terminalRef.current)
+        setIsInitialized(true)
+        console.log('[Terminal] xterm opened successfully', {
+          terminalId,
+          attempt: retryCount + 1,
+          containerSize: `${terminalRef.current.offsetWidth}x${terminalRef.current.offsetHeight}`,
+          requestedFontSize: fontSize,
+          requestedFontFamily: fontFamily,
+        })
+        // Now that it's open, do the initial fit
+        initialFit()
+      } else if (retryCount < MAX_RETRIES) {
+        retryCount++
+        console.log(`[Terminal] Container not ready (0x0), retrying... (${retryCount}/${MAX_RETRIES})`)
+        setTimeout(attemptOpen, RETRY_DELAY)
+      } else {
+        console.error('[Terminal] Failed to open - container never got valid dimensions after', MAX_RETRIES, 'attempts')
+        // Try opening anyway as last resort
+        if (terminalRef.current) {
+          xterm.open(terminalRef.current)
+          setIsInitialized(true)
+          initialFit()
+        }
+      }
+    }
+
+    attemptOpen()
 
     // Handle terminal input - send to background worker
     xterm.onData((data) => {
@@ -157,18 +192,6 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     // Enable Shift+Ctrl+C/V for copy/paste
     // Important: Return true to allow all other keys (including tmux Ctrl+B) to pass through
     xterm.attachCustomKeyEventHandler((event) => {
-      // Debug logging for Ctrl keys (can be removed after testing)
-      if (event.ctrlKey) {
-        console.log('[Terminal] Ctrl key event:', {
-          key: event.key,
-          ctrlKey: event.ctrlKey,
-          shiftKey: event.shiftKey,
-          altKey: event.altKey,
-          code: event.code,
-          type: event.type
-        })
-      }
-
       // Handle Ctrl+Shift+C (copy) - case insensitive
       if (event.ctrlKey && event.shiftKey && (event.key === 'C' || event.key === 'c') && xterm.hasSelection()) {
         event.preventDefault()
@@ -186,31 +209,6 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
       // Allow all other keys to pass through to terminal (including Ctrl+B for tmux)
       return true
     })
-
-    xtermRef.current = xterm
-    fitAddonRef.current = fitAddon
-
-    // Fit terminal to container (with longer timeout for initial render)
-    const fitTerminal = () => {
-      if (fitAddonRef.current && terminalRef.current?.offsetWidth) {
-        fitAddonRef.current.fit()
-        console.log('[Terminal] Fit:', xterm.cols, 'x', xterm.rows)
-
-        // Send resize to backend
-        sendMessage({
-          type: 'TERMINAL_RESIZE',
-          terminalId,
-          cols: xterm.cols,
-          rows: xterm.rows,
-        })
-      }
-    }
-
-    // Initial fit with timeout
-    setTimeout(fitTerminal, 100)
-
-    // Second fit to catch cases where container wasn't ready
-    setTimeout(fitTerminal, 300)
 
     // Request output buffering for restored terminals (in case we're reconnecting)
     // This triggers the backend to start sending output again
@@ -239,11 +237,23 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     }
 
     // Cleanup
+    // Store resize observer ref for cleanup
+    const currentResizeObserver = resizeObserver
+
+    // Cleanup resize observer when effect re-runs (but NOT xterm - that's handled separately)
     return () => {
-      console.log('[Terminal] Cleaning up xterm for terminal:', terminalId)
-      resizeObserver.disconnect()
-      xterm.dispose()
-      xtermRef.current = null
+      currentResizeObserver.disconnect()
+    }
+  }, [terminalId, isActive, isInitialized]) // Re-run when isActive changes to allow deferred init
+
+  // Separate cleanup effect - only dispose xterm on true unmount
+  useEffect(() => {
+    return () => {
+      console.log('[Terminal] Disposing xterm for terminal:', terminalId)
+      if (xtermRef.current) {
+        xtermRef.current.dispose()
+        xtermRef.current = null
+      }
       fitAddonRef.current = null
     }
   }, [terminalId])
@@ -295,81 +305,63 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
   // Update terminal settings when props change
   useEffect(() => {
     const xterm = xtermRef.current
-    if (!xterm) return
+    const fitAddon = fitAddonRef.current
+    if (!xterm || !fitAddon) return
 
-    console.log('[Terminal] Updating settings:', { fontSize, fontFamily, theme })
+    console.log('[Terminal] Updating settings:', { fontSize, fontFamily, themeName, isDark })
 
-    // Theme definitions (same as initialization)
-    const darkTheme = {
-      background: '#0a0a0a',
-      foreground: '#00ff88',
-      cursor: '#00ff88',
-      black: '#000000',
-      red: '#ff5555',
-      green: '#00ff88',
-      yellow: '#ffff55',
-      blue: '#5555ff',
-      magenta: '#ff55ff',
-      cyan: '#00c8ff',
-      white: '#bbbbbb',
-      brightBlack: '#555555',
-      brightRed: '#ff5555',
-      brightGreen: '#00ff88',
-      brightYellow: '#ffff55',
-      brightBlue: '#5555ff',
-      brightMagenta: '#ff55ff',
-      brightCyan: '#00c8ff',
-      brightWhite: '#ffffff',
-    }
+    // Track if we need a full redraw (font changes require clearing renderer cache)
+    const fontChanged = xterm.options.fontFamily !== fontFamily
+    const fontSizeChanged = xterm.options.fontSize !== fontSize
 
-    // Light theme with inverted ANSI colors for TUI app compatibility
-    const lightTheme = {
-      background: '#f5f5f5',
-      foreground: '#24292e',
-      cursor: '#24292e',
-      black: '#f5f5f5',
-      red: '#c41a16',
-      green: '#007400',
-      yellow: '#826b28',
-      blue: '#0451a5',
-      magenta: '#bc05bc',
-      cyan: '#0598bc',
-      white: '#24292e',
-      brightBlack: '#d4d4d4',
-      brightRed: '#cd3131',
-      brightGreen: '#14ce14',
-      brightYellow: '#b5ba00',
-      brightBlue: '#0451a5',
-      brightMagenta: '#bc05bc',
-      brightCyan: '#0598bc',
-      brightWhite: '#1f1f1f',
-    }
+    // Store current scroll position before changes
+    const currentScrollPos = xterm.buffer.active.viewportY
 
     // Update font size
-    if (xterm.options.fontSize !== fontSize) {
+    if (fontSizeChanged) {
       console.log('[Terminal] Changing font size from', xterm.options.fontSize, 'to', fontSize)
       xterm.options.fontSize = fontSize
     }
 
     // Update font family
-    if (xterm.options.fontFamily !== fontFamily) {
+    if (fontChanged) {
       console.log('[Terminal] Changing font family from', xterm.options.fontFamily, 'to', fontFamily)
       xterm.options.fontFamily = fontFamily
     }
 
-    // Update theme
-    const currentTheme = theme === 'dark' ? darkTheme : lightTheme
-    xterm.options.theme = currentTheme
+    // Update theme colors from the new theme system
+    const themeColors = getThemeColors(themeName, isDark)
+    xterm.options.theme = themeColors
 
-    // Force refresh the terminal content
-    xterm.refresh(0, xterm.rows - 1)
-    console.log('[Terminal] Settings updated - fontSize:', fontSize, 'fontFamily:', fontFamily, 'theme:', theme)
-
-    // Use resize trick to force complete redraw (prevents visual artifacts)
+    // Force complete redraw after font/theme changes
+    // Font changes require clearing renderer cache (canvas caches glyphs)
     setTimeout(() => {
-      triggerResizeTrick()
-    }, 50)
-  }, [fontSize, fontFamily, theme, terminalId])
+      if (!xtermRef.current || !fitAddonRef.current) return
+
+      if (fontChanged) {
+        // Clear screen to force renderer to redraw with new font
+        xtermRef.current.clear()
+        // Restore scroll position
+        xtermRef.current.scrollToLine(currentScrollPos)
+      }
+
+      // Full refresh
+      xtermRef.current.refresh(0, xtermRef.current.rows - 1)
+
+      // Refit terminal
+      fitAddonRef.current.fit()
+
+      // Send new dimensions to backend PTY
+      sendMessage({
+        type: 'TERMINAL_RESIZE',
+        terminalId,
+        cols: xtermRef.current.cols,
+        rows: xtermRef.current.rows,
+      })
+
+      console.log('[Terminal] Settings updated - fontSize:', fontSize, 'fontFamily:', fontFamily, 'theme:', themeName, 'isDark:', isDark)
+    }, 100)
+  }, [fontSize, fontFamily, themeName, isDark, terminalId])
 
   // Handle window resize
   useEffect(() => {
@@ -466,8 +458,17 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     }
   }
 
+  // Get the background gradient for this theme
+  const backgroundGradient = getBackgroundGradient(themeName, isDark)
+
   return (
-    <div className="h-full flex flex-col">
+    <div
+      ref={containerRef}
+      className="h-full flex flex-col"
+      style={{
+        background: backgroundGradient,
+      }}
+    >
       {/* Terminal body - full height, status shown in tmux status bar */}
       <div className="flex-1 relative overflow-hidden">
         <div
