@@ -36,6 +36,12 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
   const [claudeStatus, setClaudeStatus] = useState<ClaudeStatus | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)  // Track if xterm has been opened
 
+  // Track previous dimensions to avoid unnecessary resize events (from terminal-tabs pattern)
+  const prevDimensionsRef = useRef({ cols: 0, rows: 0 })
+
+  // Initialization guard - filter device queries during first 1000ms (from terminal-tabs pattern)
+  const isInitializingRef = useRef(true)
+
   // Resize trick to force complete redraw (used for theme/font changes and manual refresh)
   const triggerResizeTrick = () => {
     if (xtermRef.current && fitAddonRef.current) {
@@ -102,6 +108,34 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     xtermRef.current = xterm
     fitAddonRef.current = fitAddon
 
+    // Debounced resize - only send to backend after dimensions stabilize AND actually changed
+    // Pattern from terminal-tabs: track previous dimensions to avoid unnecessary resize events
+    let resizeTimeout: ReturnType<typeof setTimeout> | null = null
+    const debouncedSendResize = () => {
+      if (resizeTimeout) clearTimeout(resizeTimeout)
+      resizeTimeout = setTimeout(() => {
+        if (xtermRef.current) {
+          const cols = xtermRef.current.cols
+          const rows = xtermRef.current.rows
+
+          // CRITICAL: Only send if dimensions actually changed (from terminal-tabs pattern)
+          if (cols === prevDimensionsRef.current.cols && rows === prevDimensionsRef.current.rows) {
+            console.log('[Terminal] Skipping resize - dimensions unchanged:', cols, 'x', rows)
+            return
+          }
+
+          prevDimensionsRef.current = { cols, rows }
+          console.log('[Terminal] Sending debounced resize:', cols, 'x', rows)
+          sendMessage({
+            type: 'TERMINAL_RESIZE',
+            terminalId,
+            cols,
+            rows,
+          })
+        }
+      }, 200)  // 200ms debounce (from terminal-tabs pattern)
+    }
+
     // Fit terminal to container with dimension verification
     const fitTerminal = () => {
       if (!fitAddonRef.current || !terminalRef.current || !xtermRef.current) return
@@ -111,15 +145,8 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
 
       if (containerWidth > 0 && containerHeight > 0) {
         fitAddonRef.current.fit()
-        console.log('[Terminal] Fit:', xtermRef.current.cols, 'x', xtermRef.current.rows, 'container:', containerWidth, 'x', containerHeight)
-
-        // Send resize to backend
-        sendMessage({
-          type: 'TERMINAL_RESIZE',
-          terminalId,
-          cols: xtermRef.current.cols,
-          rows: xtermRef.current.rows,
-        })
+        // Debounced send to backend - wait for dimensions to stabilize
+        debouncedSendResize()
       } else {
         console.log('[Terminal] Skipping fit - container has 0 dimensions')
       }
@@ -127,7 +154,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
 
     // Initial fit sequence after xterm.open()
     const initialFit = () => {
-      // Immediate fit
+      // Immediate fit (local only, resize will be debounced)
       fitTerminal()
 
       // Second fit after short delay (catch layout shifts)
@@ -181,13 +208,25 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     attemptOpen()
 
     // Handle terminal input - send to background worker
+    // Use initialization guard to filter device queries (from terminal-tabs pattern)
     xterm.onData((data) => {
+      // Filter device queries during initialization (xterm.js sends ?1;2c, >0;276;0c)
+      if (isInitializingRef.current) {
+        console.debug('[Terminal] Ignoring input during initialization:', data.split('').map(c => c.charCodeAt(0).toString(16)).join(' '))
+        return
+      }
       sendMessage({
         type: 'TERMINAL_INPUT',
         terminalId,
         data,
       })
     })
+
+    // Allow input after initialization completes (1000ms guard from terminal-tabs pattern)
+    setTimeout(() => {
+      isInitializingRef.current = false
+      console.log('[Terminal] Initialization guard lifted for:', terminalId)
+    }, 1000)
 
     // Enable Shift+Ctrl+C/V for copy/paste
     // Important: Return true to allow all other keys (including tmux Ctrl+B) to pass through
@@ -209,18 +248,6 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
       // Allow all other keys to pass through to terminal (including Ctrl+B for tmux)
       return true
     })
-
-    // Request output buffering for restored terminals (in case we're reconnecting)
-    // This triggers the backend to start sending output again
-    setTimeout(() => {
-      console.log('[Terminal] Requesting terminal reattachment for:', terminalId)
-      sendMessage({
-        type: 'TERMINAL_RESIZE', // Resize acts as a "wake up" signal
-        terminalId,
-        cols: xterm.cols,
-        rows: xterm.rows,
-      })
-    }, 400)
 
     // Focus terminal
     setTimeout(() => {
@@ -259,7 +286,13 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
   }, [terminalId])
 
   // Listen for terminal output from background worker via port
+  // Only connect after xterm is initialized to avoid race condition
   useEffect(() => {
+    if (!isInitialized) {
+      // Don't connect until xterm is ready to receive output
+      return
+    }
+
     console.log('[Terminal] Connecting to background for terminal:', terminalId)
 
     const port = connectToBackground(`terminal-${terminalId}`, (message) => {
@@ -268,15 +301,8 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
         console.log('[Terminal] 📥 Received initial state - WebSocket:', message.wsConnected ? 'connected' : 'disconnected')
         setIsConnected(message.wsConnected)
       } else if (message.type === 'TERMINAL_OUTPUT' && message.terminalId === terminalId) {
-        console.log('[Terminal] 📟 TERMINAL_OUTPUT received:', {
-          terminalId: message.terminalId,
-          dataLength: message.data?.length,
-          hasXterm: !!xtermRef.current,
-          data: message.data?.slice(0, 50)
-        })
         if (xtermRef.current && message.data) {
           xtermRef.current.write(message.data)
-          console.log('[Terminal] ✍️ Wrote to xterm:', message.data.length, 'bytes')
         } else {
           console.warn('[Terminal] ⚠️ Cannot write - xterm:', !!xtermRef.current, 'data:', !!message.data)
         }
@@ -295,12 +321,67 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
       }
     })
 
+    // Post-reconnection refresh sequence (from terminal-tabs pattern)
+    // Wait for initialization guard (1000ms) + buffer before forcing redraw
+    // Use the "resize trick" to force tmux to redraw: resize to cols-1, then back to cols
+    setTimeout(() => {
+      if (xtermRef.current && fitAddonRef.current) {
+        console.log('[Terminal] Post-reconnection refresh for:', terminalId)
+
+        // Step 1: Fit terminal to container
+        try {
+          fitAddonRef.current.fit()
+        } catch (e) {
+          console.warn('[Terminal] Fit failed:', e)
+        }
+
+        const cols = xtermRef.current.cols
+        const rows = xtermRef.current.rows
+
+        // Step 2: RESIZE TRICK - Force tmux to redraw by resizing
+        // First resize to cols-1 to trigger redraw
+        console.log('[Terminal] Resize trick step 1: shrink to', cols - 1, 'x', rows)
+        xtermRef.current.resize(cols - 1, rows)
+        sendMessage({
+          type: 'TERMINAL_RESIZE',
+          terminalId,
+          cols: cols - 1,
+          rows,
+        })
+
+        // Step 3: After a short delay, resize back to original
+        setTimeout(() => {
+          if (xtermRef.current) {
+            console.log('[Terminal] Resize trick step 2: restore to', cols, 'x', rows)
+            xtermRef.current.resize(cols, rows)
+            prevDimensionsRef.current = { cols, rows }
+            sendMessage({
+              type: 'TERMINAL_RESIZE',
+              terminalId,
+              cols,
+              rows,
+            })
+
+            // Step 4: Force full screen redraw
+            try {
+              xtermRef.current.refresh(0, xtermRef.current.rows - 1)
+            } catch (e) {
+              console.warn('[Terminal] Refresh failed:', e)
+            }
+
+            // Step 5: Focus terminal
+            xtermRef.current.focus()
+          }
+        }, 100)  // Short delay between resize steps
+      }
+    }, 1200)  // Wait 1000ms (initialization guard) + 200ms buffer
+
     // Cleanup
     return () => {
       console.log('[Terminal] Disconnecting from background')
       port.disconnect()
     }
-  }, [terminalId])
+  }, [terminalId, isInitialized])
 
   // Update terminal settings when props change
   useEffect(() => {
@@ -351,28 +432,43 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
       // Refit terminal
       fitAddonRef.current.fit()
 
-      // Send new dimensions to backend PTY
-      sendMessage({
-        type: 'TERMINAL_RESIZE',
-        terminalId,
-        cols: xtermRef.current.cols,
-        rows: xtermRef.current.rows,
-      })
+      // Send new dimensions to backend PTY (only if changed)
+      const cols = xtermRef.current.cols
+      const rows = xtermRef.current.rows
+      if (cols !== prevDimensionsRef.current.cols || rows !== prevDimensionsRef.current.rows) {
+        prevDimensionsRef.current = { cols, rows }
+        sendMessage({
+          type: 'TERMINAL_RESIZE',
+          terminalId,
+          cols,
+          rows,
+        })
+      }
 
       console.log('[Terminal] Settings updated - fontSize:', fontSize, 'fontFamily:', fontFamily, 'theme:', themeName, 'isDark:', isDark)
     }, 100)
   }, [fontSize, fontFamily, themeName, isDark, terminalId])
 
-  // Handle window resize
+  // Handle window resize - only send if dimensions actually changed (from terminal-tabs pattern)
   useEffect(() => {
     const handleResize = () => {
       if (fitAddonRef.current && xtermRef.current) {
         fitAddonRef.current.fit()
+
+        const cols = xtermRef.current.cols
+        const rows = xtermRef.current.rows
+
+        // Only send if dimensions actually changed
+        if (cols === prevDimensionsRef.current.cols && rows === prevDimensionsRef.current.rows) {
+          return
+        }
+
+        prevDimensionsRef.current = { cols, rows }
         sendMessage({
           type: 'TERMINAL_RESIZE',
           terminalId,
-          cols: xtermRef.current.cols,
-          rows: xtermRef.current.rows,
+          cols,
+          rows,
         })
       }
     }
@@ -464,7 +560,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
   return (
     <div
       ref={containerRef}
-      className="h-full flex flex-col"
+      className="h-full flex flex-col terminal-container"
       style={{
         background: backgroundGradient,
       }}
@@ -473,9 +569,10 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
       <div className="flex-1 relative overflow-hidden">
         <div
           ref={terminalRef}
-          className={`absolute inset-0 ${sessionName ? 'hide-xterm-scrollbar' : ''}`}
+          className={`absolute inset-0 terminal-wrapper ${sessionName ? 'hide-xterm-scrollbar' : ''}`}
           style={{
             padding: '4px',
+            paddingLeft: '8px', // Extra left padding for Chrome sidebar resize handle
             paddingBottom: '0px', // No bottom padding - ensure tmux status bar is fully visible
           }}
         />

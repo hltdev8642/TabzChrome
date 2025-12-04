@@ -12,8 +12,15 @@
  */
 
 const EventEmitter = require('events');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const os = require('os');
+
+/**
+ * Generate a short random ID (8 hex chars = 4 billion combinations)
+ */
+function shortId() {
+  return crypto.randomBytes(4).toString('hex');
+}
 const ptyHandler = require('./pty-handler');
 
 /**
@@ -235,8 +242,11 @@ class TerminalRegistry extends EventEmitter {
     }
 
     // NEW TERMINAL: Generate unique ID
-    // Add ctt- prefix for Chrome extension terminals
-    const id = config.isChrome ? `ctt-${uuidv4()}` : uuidv4();
+    // For session recovery, use the sessionName as ID (maintains Chrome storage compatibility)
+    // For new terminals, generate short 8-char hex ID with ctt- prefix
+    const id = config.sessionName
+      ? config.sessionName  // Recovery: use tmux session name as ID
+      : (config.isChrome ? `ctt-${shortId()}` : shortId());
 
     // Update name counters before generating a new name
     this.updateNameCounters();

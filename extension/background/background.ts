@@ -252,11 +252,9 @@ function connectWebSocket() {
   ws.onmessage = (event) => {
     try {
       const message = JSON.parse(event.data)
-      console.log('📨 WS message received:', message.type, message.type === 'terminal-spawned' ? JSON.stringify(message).slice(0, 200) : '')
 
       // Handle terminal output specially - broadcast directly as TERMINAL_OUTPUT
       if (message.type === 'output' || message.type === 'terminal-output') {
-        console.log('📟 Terminal output received, broadcasting to clients:', message.terminalId?.slice(-8), message.data?.length, 'bytes')
         broadcastToClients({
           type: 'TERMINAL_OUTPUT',
           terminalId: message.terminalId,

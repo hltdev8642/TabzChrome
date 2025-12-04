@@ -151,6 +151,9 @@ wss.on('connection', (ws) => {
   // Track terminals created by this connection
   const connectionTerminals = new Set();
 
+  // Track terminals that have had pane content captured (only capture once per connection)
+  const paneCaptured = new Set();
+
   // Rate limiting for malformed messages
   const malformedMessageCount = { count: 0, lastReset: Date.now() };
   const MAX_MALFORMED_PER_MINUTE = 10;
@@ -266,6 +269,26 @@ wss.on('connection', (ws) => {
           connectionTerminals.add(data.terminalId);
 
           await terminalRegistry.resizeTerminal(data.terminalId, data.cols, data.rows);
+
+          // For tmux sessions, send a refresh signal on first resize to trigger redraw
+          // This works better than pane capture for splits and TUI apps
+          if (!paneCaptured.has(data.terminalId)) {
+            paneCaptured.add(data.terminalId);
+            try {
+              const terminal = terminalRegistry.getTerminal(data.terminalId);
+              if (terminal?.ptyInfo?.tmuxSession) {
+                const { execSync } = require('child_process');
+                // Send tmux refresh-client to redraw all panes correctly
+                execSync(
+                  `tmux refresh-client -t "${terminal.ptyInfo.tmuxSession}" 2>/dev/null || true`,
+                  { encoding: 'utf8', timeout: 1000 }
+                );
+                log.info(`[Tmux Refresh] Sent refresh-client for ${data.terminalId.slice(-8)}`);
+              }
+            } catch (err) {
+              log.debug(`Could not refresh tmux for ${data.terminalId.slice(-8)}:`, err.message);
+            }
+          }
           break;
           
         case 'detach':

@@ -1,6 +1,35 @@
 @import "tailwindcss";
 
 /* ============================================
+   CHROME SIDEBAR RESIZE SAFE ZONE
+   Add a small transparent zone on the left edge
+   where pointer-events are disabled so the Chrome
+   sidebar resize handle can be grabbed easily
+   ============================================ */
+
+.terminal-container {
+  position: relative;
+}
+
+/* Invisible resize zone on the left edge */
+.terminal-container::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  z-index: 100;
+  pointer-events: none;
+  /* Let mouse events pass through to Chrome's sidebar resize handle */
+}
+
+/* Make the terminal slightly inset from the left edge */
+.terminal-wrapper {
+  margin-left: 4px;
+}
+
+/* ============================================
    XTERM.JS TRANSPARENT BACKGROUND
    Force all xterm elements to be transparent
    so container gradient backgrounds show through
