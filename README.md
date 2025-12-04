@@ -97,10 +97,25 @@ A **standalone Chrome extension** that puts a tmux session manager in your brows
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Node.js 16+
-- Chrome browser
-- tmux (for session persistence)
+### System Requirements
+
+**Required:**
+| Component | Minimum | Recommended | Notes |
+|-----------|---------|-------------|-------|
+| **Node.js** | 18.x | 20.x+ | Required for backend server |
+| **Chrome** | 116+ | Latest | Manifest V3, Side Panel API |
+| **tmux** | 3.0+ | 3.4+ | Session persistence |
+| **OS** | WSL2 / Linux | Ubuntu 22.04+ | Backend requires Unix shell |
+
+**Platform Notes:**
+- **Windows users**: Must use WSL2 for the backend - native Windows is not supported
+- **macOS**: Works natively with Homebrew-installed tmux
+- **Linux**: Works on any distro with Node.js and tmux
+
+**Optional (for enhanced experience):**
+- **Nerd Fonts** - Enables icons in terminal (e.g., [JetBrains Mono Nerd Font](https://www.nerdfonts.com/))
+- **lazygit** - If you want to use the lazygit profile
+- **htop** - If you want to use the htop profile
 
 ### Installation
 
@@ -293,6 +308,48 @@ tmux attach -t tmux-chrome-sidebar:backend
 # Or view in DevTools
 # chrome://extensions → Terminal Tabs → Service Worker → Console
 ```
+
+---
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**Backend won't start**
+```bash
+# Check if port 8129 is already in use
+lsof -i :8129
+
+# Kill orphaned Node processes
+pkill -f "node.*server.js"
+
+# Verify tmux is installed
+tmux -V
+```
+
+**Terminal won't connect**
+- Verify backend is running: `curl http://localhost:8129/api/health`
+- Check Chrome DevTools console for WebSocket errors
+- Ensure you're using `localhost`, not `127.0.0.1` (WSL requirement)
+
+**Sidebar doesn't open**
+- Refresh the extension: `chrome://extensions` → click reload icon
+- Check service worker console for errors
+- Try the keyboard shortcut: `Ctrl+Shift+9`
+
+**tmux sessions not persisting**
+```bash
+# Check if tmux server is running
+tmux ls
+
+# Kill orphaned Chrome extension sessions
+tmux list-sessions | grep "^ctt-" | cut -d: -f1 | xargs -I {} tmux kill-session -t {}
+```
+
+**WSL-specific issues**
+- Extension must be loaded from Windows path or WSL network path (`\\wsl.localhost\...`)
+- Backend must run inside WSL, not Windows
+- Use `localhost` in extension, not WSL IP address
 
 ---
 

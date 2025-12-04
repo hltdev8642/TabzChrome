@@ -8,26 +8,26 @@
 
 ## Phase 1: Getting Ready to Share
 
-### 1.1 System Requirements Documentation
+### 1.1 System Requirements Documentation ✅
 
 **Goal**: Clear documentation so users know if TabzChrome will work for them.
 
 **Required:**
-- [ ] Document minimum requirements in README.md:
+- [x] Document minimum requirements in README.md:
   - Chrome browser (Manifest V3 compatible)
   - WSL2 or native Linux for backend
   - Node.js (document minimum version)
   - tmux (for terminal persistence)
 
 **Optional dependencies:**
-- [ ] Nerd Fonts (for icons in terminal)
-- [ ] TUI apps referenced in default profiles (lazygit, htop, etc.)
+- [x] Nerd Fonts (for icons in terminal)
+- [x] TUI apps referenced in default profiles (lazygit, htop, etc.)
 
 **Tasks:**
-- [ ] Test minimum Node.js version
-- [ ] Verify Chrome version requirements
-- [ ] Add "Requirements" section to README.md
-- [ ] Add troubleshooting for common setup issues
+- [x] Test minimum Node.js version (18.x minimum, 20.x+ recommended)
+- [x] Verify Chrome version requirements (116+ for Side Panel API)
+- [x] Add "Requirements" section to README.md
+- [x] Add troubleshooting for common setup issues
 
 ### 1.2 Codebase Cleanup Audit
 
@@ -54,17 +54,22 @@
 - [ ] Check for unused npm dependencies
 - [ ] Remove code for deleted features (Commands Panel references, etc.)
 
-### 1.3 Test Suite
+### 1.3 Test Suite (Partial ✅)
 
 **Goal**: Ensure tests run and catch regressions, especially xterm.js issues.
 
 **Current state:**
-- Tests exist in `tests/` (inherited from web app)
-- May have web-app-specific tests that don't apply to Chrome extension
+- ✅ Tests in `tests/` - 172 tests passing (7 test files)
+- ✅ Removed web-app-specific tests (splits, multi-window, cross-window sync)
 
-**Tasks:**
-- [ ] Run existing test suite - see what passes/fails
-- [ ] Remove/update tests for features that don't exist in Chrome extension
+**Completed:**
+- [x] Run existing test suite - 172 tests pass
+- [x] Remove/update tests for features that don't exist in Chrome extension
+  - Removed: cross-window-state-sync.test.ts, split-operations.test.ts,
+    multi-window-popout.test.ts, detach-reattach.test.ts, detached-terminals-dropdown.test.ts
+- [x] Document how to run tests in README
+
+**Future work (post-release):**
 - [ ] Add Chrome extension-specific tests:
   - [ ] Extension loads successfully
   - [ ] Sidebar opens
@@ -75,18 +80,17 @@
   - [ ] Terminal resize handling
   - [ ] Copy/paste functionality
   - [ ] Reconnection behavior
-- [ ] Document how to run tests in README
 
-### 1.4 README.md Polish
+### 1.4 README.md Polish (Partial ✅)
 
 **Goal**: User-friendly documentation for new users.
 
-- [ ] Clear "Getting Started" section
+- [x] Clear "Getting Started" section (exists)
 - [ ] Screenshots of the extension in action
-- [ ] Feature overview
-- [ ] Installation instructions (load unpacked)
-- [ ] Backend setup instructions
-- [ ] Troubleshooting section
+- [x] Feature overview (exists)
+- [x] Installation instructions (load unpacked) (exists)
+- [x] Backend setup instructions (exists)
+- [x] Troubleshooting section
 - [ ] Contributing guidelines (if accepting PRs)
 
 ---
