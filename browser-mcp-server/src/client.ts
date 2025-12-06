@@ -199,9 +199,12 @@ async function getNonChromePages(): Promise<import('puppeteer-core').Page[] | nu
   if (!browser) return null;
 
   const pages = await browser.pages();
-  return pages.filter(p =>
-    !p.url().startsWith('chrome://') && !p.url().startsWith('chrome-extension://')
-  );
+  return pages.filter(p => {
+    const url = p.url();
+    return !url.startsWith('chrome://') &&
+           !url.startsWith('chrome-extension://') &&
+           !url.startsWith('chrome-error://');
+  });
 }
 
 /**

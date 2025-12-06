@@ -238,7 +238,13 @@ Cannot open URL without Chrome DevTools Protocol.
         }
 
         const pages = await browser.pages();
-        const currentPage = pages.find(p => !p.url().startsWith('chrome://')) || pages[0];
+        // Filter out chrome://, chrome-extension://, and chrome-error:// pages
+        const currentPage = pages.find(p => {
+          const url = p.url();
+          return !url.startsWith('chrome://') &&
+                 !url.startsWith('chrome-extension://') &&
+                 !url.startsWith('chrome-error://');
+        }) || pages[0];
 
         if (params.newTab) {
           // Open in new tab
