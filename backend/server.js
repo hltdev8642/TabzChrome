@@ -138,6 +138,9 @@ const wss = new WebSocket.Server({ server });
 // Track active WebSocket connections
 const activeConnections = new Set();
 
+// Track if session recovery is complete (prevents frontend from clearing Chrome storage too early)
+let recoveryComplete = false;
+
 // Track which connections own which terminals (for targeted output routing)
 // terminalId -> Set<WebSocket>
 const terminalOwners = new Map();
@@ -358,11 +361,12 @@ wss.on('connection', (ws) => {
           // List all active terminals in the registry, filtered to ctt- prefix only
           const allTerminals = terminalRegistry.getAllTerminals();
           const chromeTerminals = allTerminals.filter(t => t.id && t.id.startsWith('ctt-'));
-          log.info(`[WS] Listing ${chromeTerminals.length} Chrome terminals (${allTerminals.length} total), ${activeConnections.size} connections`);
+          log.info(`[WS] Listing ${chromeTerminals.length} Chrome terminals (${allTerminals.length} total), ${activeConnections.size} connections, recoveryComplete=${recoveryComplete}`);
           ws.send(JSON.stringify({
             type: 'terminals',
             data: chromeTerminals,
-            connectionCount: activeConnections.size
+            connectionCount: activeConnections.size,
+            recoveryComplete: recoveryComplete
           }));
           break;
 
@@ -808,10 +812,32 @@ server.listen(PORT, async () => {
               recoveringSessionsSet.delete(sessionName);
             }
           }
+
+          // Broadcast updated terminal list to all connected clients
+          const allTerminals = terminalRegistry.getAllTerminals();
+          const chromeTerminals = allTerminals.filter(t => t.id && t.id.startsWith('ctt-'));
+          recoveryComplete = true;
+          log.info(`[WS] Broadcasting ${chromeTerminals.length} recovered terminals to ${activeConnections.size} clients (recoveryComplete=true)`);
+          broadcast({
+            type: 'terminals',
+            data: chromeTerminals,
+            connectionCount: activeConnections.size,
+            recoveryComplete: true
+          });
+        } else {
+          // No ctt- sessions to recover - mark recovery as complete
+          recoveryComplete = true;
+          log.info('No ctt- sessions to recover, recoveryComplete=true');
         }
       } catch (error) {
         log.warn('Recovery check failed (tmux not running?):', error.message);
+        // Even on error, mark recovery as complete so frontend doesn't wait forever
+        recoveryComplete = true;
       }
     }, 2500);
+  } else {
+    // CLEANUP_ON_START=true means no recovery to do
+    recoveryComplete = true;
+    log.info('CLEANUP_ON_START=true, recoveryComplete=true (no recovery needed)');
   }
 });

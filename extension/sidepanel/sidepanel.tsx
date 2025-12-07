@@ -408,7 +408,8 @@ function SidePanelTerminal() {
         // Terminal list received from backend - reconcile with stored sessions
         // Filter to only ctt- prefixed terminals (Chrome extension terminals)
         const backendTerminals = (data.data || []).filter((t: any) => t.id && t.id.startsWith('ctt-'))
-        console.log('[Sidepanel] 🔄 Backend terminals (ctt- only):', backendTerminals.length)
+        const recoveryComplete = data.recoveryComplete === true
+        console.log('[Sidepanel] 🔄 Backend terminals (ctt- only):', backendTerminals.length, 'recoveryComplete:', recoveryComplete)
 
         // Track connection count for multi-window warning
         if (data.connectionCount !== undefined) {
@@ -426,7 +427,7 @@ function SidePanelTerminal() {
           backendTerminals.forEach((t: any) => {
             const existingSession = sessionMap.get(t.id)
             if (existingSession) {
-              // Update existing session with backend data
+              // Update existing session with backend data, preserving the name from Chrome storage
               sessionMap.set(t.id, {
                 ...existingSession,
                 sessionName: t.sessionName,
@@ -445,13 +446,18 @@ function SidePanelTerminal() {
             }
           })
 
-          // Remove sessions that no longer exist in backend
-          const backendIds = new Set(backendTerminals.map((t: any) => t.id))
-          for (const [id, _] of sessionMap) {
-            if (!backendIds.has(id)) {
-              console.log(`[Sidepanel] Removing stale session: ${id}`)
-              sessionMap.delete(id)
+          // Only remove sessions that no longer exist in backend AFTER recovery is complete
+          // This prevents clearing Chrome storage before the backend has recovered tmux sessions
+          if (recoveryComplete) {
+            const backendIds = new Set(backendTerminals.map((t: any) => t.id))
+            for (const [id, _] of sessionMap) {
+              if (!backendIds.has(id)) {
+                console.log(`[Sidepanel] Removing stale session: ${id}`)
+                sessionMap.delete(id)
+              }
             }
+          } else {
+            console.log('[Sidepanel] ⏳ Recovery pending, preserving Chrome storage sessions')
           }
 
           const updatedSessions = Array.from(sessionMap.values())
