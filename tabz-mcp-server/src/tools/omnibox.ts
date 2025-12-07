@@ -8,6 +8,58 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getCdpBrowser, getCurrentTabId, setCurrentTabId } from "../client.js";
 
+// URL settings cache (loaded from backend)
+interface UrlSettings {
+  allowAllUrls: boolean;
+  customDomains: string;
+}
+
+let urlSettingsCache: UrlSettings | null = null;
+let urlSettingsCacheTime = 0;
+const URL_SETTINGS_CACHE_TTL = 5000; // 5 seconds
+
+/**
+ * Load URL settings from backend API
+ */
+async function loadUrlSettings(): Promise<UrlSettings> {
+  const now = Date.now();
+  if (urlSettingsCache && (now - urlSettingsCacheTime) < URL_SETTINGS_CACHE_TTL) {
+    return urlSettingsCache;
+  }
+
+  try {
+    const response = await fetch('http://localhost:8129/api/mcp-config');
+    const data = await response.json();
+    urlSettingsCache = {
+      allowAllUrls: data.allowAllUrls || false,
+      customDomains: data.customDomains || ''
+    };
+    urlSettingsCacheTime = now;
+    return urlSettingsCache;
+  } catch {
+    // Return defaults if backend unavailable
+    return { allowAllUrls: false, customDomains: '' };
+  }
+}
+
+/**
+ * Convert custom domain string to regex pattern
+ */
+function domainToPattern(domain: string): RegExp | null {
+  const trimmed = domain.trim().toLowerCase();
+  if (!trimmed) return null;
+
+  // Handle wildcard subdomain: *.example.com
+  if (trimmed.startsWith('*.')) {
+    const base = trimmed.slice(2).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`^https?:\\/\\/[\\w.-]+\\.${base}(\\/.*)?$`, 'i');
+  }
+
+  // Handle domain with optional port: example.com or example.com:8080
+  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`^https?:\\/\\/(www\\.)?${escaped}(\\/.*)?$`, 'i');
+}
+
 // Allowed URL patterns (same as in extension background.ts) - path is optional
 const ALLOWED_URL_PATTERNS = [
   // Code Hosting
@@ -67,50 +119,91 @@ const ALLOWED_URL_PATTERNS = [
 ];
 
 /**
- * Check if URL is allowed
+ * Check if URL is allowed (with settings support)
  */
-function isAllowedUrl(url: string): { allowed: boolean; normalizedUrl?: string } {
+function isAllowedUrl(url: string, settings?: UrlSettings): { allowed: boolean; normalizedUrl?: string } {
   let normalized = url.trim();
 
   // Add https:// if no protocol specified
   if (!normalized.match(/^https?:\/\//i)) {
-    // Known domains that can have https:// auto-added
-    const knownDomains = [
-      // Code hosting
-      /^(www\.)?(github\.com|gitlab\.com|bitbucket\.org)/i,
-      // Local
-      /^(localhost|127\.0\.0\.1)/i,
-      // Deployment platforms (*.vercel.app, *.netlify.app, etc.)
-      /^[\w-]+\.(vercel\.app|vercel\.com|netlify\.app|railway\.app|onrender\.com|pages\.dev|fly\.dev)/i,
-      // Developer docs
-      /^(developer\.mozilla\.org|devdocs\.io|docs\.github\.com|stackoverflow\.com)/i,
-      /^[\w-]+\.stackexchange\.com/i,
-      // Package registries
-      /^(www\.)?(npmjs\.com|pypi\.org|crates\.io|pkg\.go\.dev)/i,
-      // Playgrounds
-      /^(www\.)?(codepen\.io|jsfiddle\.net)/i,
-      // AI Image
-      /^(www\.)?(bing\.com|chatgpt\.com|sora\.chatgpt\.com|ideogram\.ai|leonardo\.ai|tensor\.art|playground\.com|lexica\.art)/i,
-      // AI Chat
-      /^(www\.)?(claude\.ai|perplexity\.ai|deepseek\.com|chat\.deepseek\.com|phind\.com|you\.com|gemini\.google\.com|copilot\.microsoft\.com)/i,
-      // AI/ML platforms
-      /^(www\.)?(huggingface\.co|replicate\.com|openrouter\.ai)/i,
-      // Design
-      /^(www\.)?(figma\.com|dribbble\.com|unsplash\.com|iconify\.design)/i,
-    ];
-
-    const matchesKnown = knownDomains.some(pattern => pattern.test(normalized));
-    if (matchesKnown) {
+    // For YOLO mode, always add https://
+    if (settings?.allowAllUrls) {
       normalized = `https://${normalized}`;
     } else {
-      return { allowed: false };
+      // Known domains that can have https:// auto-added
+      const knownDomains = [
+        // Code hosting
+        /^(www\.)?(github\.com|gitlab\.com|bitbucket\.org)/i,
+        // Local
+        /^(localhost|127\.0\.0\.1)/i,
+        // Deployment platforms (*.vercel.app, *.netlify.app, etc.)
+        /^[\w-]+\.(vercel\.app|vercel\.com|netlify\.app|railway\.app|onrender\.com|pages\.dev|fly\.dev)/i,
+        // Developer docs
+        /^(developer\.mozilla\.org|devdocs\.io|docs\.github\.com|stackoverflow\.com)/i,
+        /^[\w-]+\.stackexchange\.com/i,
+        // Package registries
+        /^(www\.)?(npmjs\.com|pypi\.org|crates\.io|pkg\.go\.dev)/i,
+        // Playgrounds
+        /^(www\.)?(codepen\.io|jsfiddle\.net)/i,
+        // AI Image
+        /^(www\.)?(bing\.com|chatgpt\.com|sora\.chatgpt\.com|ideogram\.ai|leonardo\.ai|tensor\.art|playground\.com|lexica\.art)/i,
+        // AI Chat
+        /^(www\.)?(claude\.ai|perplexity\.ai|deepseek\.com|chat\.deepseek\.com|phind\.com|you\.com|gemini\.google\.com|copilot\.microsoft\.com)/i,
+        // AI/ML platforms
+        /^(www\.)?(huggingface\.co|replicate\.com|openrouter\.ai)/i,
+        // Design
+        /^(www\.)?(figma\.com|dribbble\.com|unsplash\.com|iconify\.design)/i,
+      ];
+
+      const matchesKnown = knownDomains.some(pattern => pattern.test(normalized));
+      if (matchesKnown) {
+        normalized = `https://${normalized}`;
+      } else {
+        // Check custom domains for https:// addition
+        if (settings?.customDomains) {
+          const customPatterns = settings.customDomains
+            .split('\n')
+            .map(d => domainToPattern(d))
+            .filter((p): p is RegExp => p !== null);
+
+          // Try matching without protocol for custom domains
+          const testUrl = `https://${normalized}`;
+          const matchesCustom = customPatterns.some(p => p.test(testUrl));
+          if (matchesCustom) {
+            normalized = testUrl;
+          } else {
+            return { allowed: false };
+          }
+        } else {
+          return { allowed: false };
+        }
+      }
     }
   }
 
-  // Check against allowed patterns
+  // YOLO mode: allow all URLs
+  if (settings?.allowAllUrls) {
+    return { allowed: true, normalizedUrl: normalized };
+  }
+
+  // Check against built-in allowed patterns
   for (const pattern of ALLOWED_URL_PATTERNS) {
     if (pattern.test(normalized)) {
       return { allowed: true, normalizedUrl: normalized };
+    }
+  }
+
+  // Check against custom domains
+  if (settings?.customDomains) {
+    const customPatterns = settings.customDomains
+      .split('\n')
+      .map(d => domainToPattern(d))
+      .filter((p): p is RegExp => p !== null);
+
+    for (const pattern of customPatterns) {
+      if (pattern.test(normalized)) {
+        return { allowed: true, normalizedUrl: normalized };
+      }
     }
   }
 
@@ -194,9 +287,16 @@ Security:
     OpenUrlSchema.shape,
     async (params: OpenUrlInput) => {
       try {
+        // Load URL settings from backend
+        const urlSettings = await loadUrlSettings();
+
         // Validate URL
-        const validation = isAllowedUrl(params.url);
+        const validation = isAllowedUrl(params.url, urlSettings);
         if (!validation.allowed || !validation.normalizedUrl) {
+          const customDomainsNote = urlSettings.customDomains
+            ? `\n- Custom: ${urlSettings.customDomains.split('\n').filter(d => d.trim()).join(', ')}`
+            : '';
+
           return {
             content: [{
               type: "text",
@@ -216,9 +316,9 @@ Security:
 - AI Image: bing.com/images/create, chatgpt.com, ideogram.ai, leonardo.ai, tensor.art, playground.com, lexica.art
 - AI Chat: claude.ai, perplexity.ai, deepseek.com, phind.com, you.com, gemini.google.com, copilot.microsoft.com
 - AI/ML: huggingface.co, replicate.com, openrouter.ai
-- Design: figma.com, dribbble.com, unsplash.com, iconify.design
+- Design: figma.com, dribbble.com, unsplash.com, iconify.design${customDomainsNote}
 
-Please provide a URL from one of the allowed domains.`
+Please provide a URL from one of the allowed domains, or add custom domains in Settings > MCP Tools > Open URL.`
             }],
             isError: true
           };

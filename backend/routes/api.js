@@ -1273,42 +1273,49 @@ router.post('/console-log', asyncHandler(async (req, res) => {
 const fs = require('fs').promises;
 const configPath = require('path').join(__dirname, '../../mcp-config.json');
 
-// Default MCP tool groups - these are enabled by default
-const DEFAULT_MCP_GROUPS = ['core', 'interaction', 'navigation', 'console'];
-
-// All available tool groups with metadata
-const MCP_TOOL_GROUPS = {
-  core: { name: 'Core', tools: 4, required: true, desc: 'List tabs, switch, rename, page info' },
-  interaction: { name: 'Interaction', tools: 5, desc: 'Click, fill, screenshot, download image, inspect' },
-  navigation: { name: 'Navigation', tools: 1, desc: 'Open URLs (GitHub, localhost, Vercel, etc.)' },
-  console: { name: 'Console', tools: 2, desc: 'Get console logs, execute JavaScript' },
-  downloads: { name: 'Downloads', tools: 2, power: true, desc: 'Download any file, list downloads' },
-  cookies: { name: 'Cookies', tools: 3, power: true, desc: 'Check auth, get cookies, inspect sessions' },
-  history: { name: 'History', tools: 3, power: true, desc: 'Search browsing history, frequent sites' },
-  bookmarks: { name: 'Bookmarks', tools: 4, power: true, desc: 'Save, search, organize bookmarks' },
-  network: { name: 'Network', tools: 4, power: true, desc: 'Monitor API calls, capture responses' }
-};
-
-// Token estimates per tool group (for UI display)
-const TOKEN_ESTIMATES = {
-  core: 800, interaction: 1200, navigation: 400, console: 600,
-  downloads: 600, cookies: 700, history: 700, bookmarks: 800, network: 1500
-};
+// Default MCP tools (individual tool IDs) - core tools always enabled
+const CORE_TOOLS = ['tabz_list_tabs', 'tabz_switch_tab', 'tabz_rename_tab', 'tabz_get_page_info'];
+const DEFAULT_ENABLED_TOOLS = [
+  ...CORE_TOOLS,
+  'tabz_click', 'tabz_fill', 'tabz_screenshot', 'tabz_open_url', 'tabz_get_console_logs'
+];
 
 /**
  * GET /api/mcp-config - Get MCP tool configuration
- * Returns enabled tool groups and available groups metadata
+ * Returns enabled tools and URL settings
  */
 router.get('/mcp-config', asyncHandler(async (req, res) => {
-  let config = { enabledGroups: DEFAULT_MCP_GROUPS };
+  let config = {
+    enabledTools: DEFAULT_ENABLED_TOOLS,
+    allowAllUrls: false,
+    customDomains: ''
+  };
 
   try {
     const data = await fs.readFile(configPath, 'utf-8');
-    config = JSON.parse(data);
+    const savedConfig = JSON.parse(data);
 
-    // Ensure core is always enabled
-    if (!config.enabledGroups.includes('core')) {
-      config.enabledGroups.unshift('core');
+    // Support both new (enabledTools) and legacy (enabledGroups) formats
+    if (savedConfig.enabledTools) {
+      config.enabledTools = savedConfig.enabledTools;
+    } else if (savedConfig.enabledGroups) {
+      // Legacy format - return defaults for migration
+      console.log('[API] Legacy MCP config format detected, using defaults');
+    }
+
+    // URL settings
+    if (savedConfig.allowAllUrls !== undefined) {
+      config.allowAllUrls = savedConfig.allowAllUrls;
+    }
+    if (savedConfig.customDomains !== undefined) {
+      config.customDomains = savedConfig.customDomains;
+    }
+
+    // Ensure core tools are always enabled
+    for (const coreTool of CORE_TOOLS) {
+      if (!config.enabledTools.includes(coreTool)) {
+        config.enabledTools.unshift(coreTool);
+      }
     }
   } catch (err) {
     // File doesn't exist, use defaults
@@ -1317,67 +1324,64 @@ router.get('/mcp-config', asyncHandler(async (req, res) => {
     }
   }
 
-  // Calculate estimated tokens
-  const estimatedTokens = config.enabledGroups.reduce(
-    (sum, group) => sum + (TOKEN_ESTIMATES[group] || 500), 0
-  );
-
   res.json({
     success: true,
-    enabledGroups: config.enabledGroups,
-    availableGroups: MCP_TOOL_GROUPS,
-    tokenEstimates: TOKEN_ESTIMATES,
-    estimatedTokens
+    enabledTools: config.enabledTools,
+    allowAllUrls: config.allowAllUrls,
+    customDomains: config.customDomains
   });
 }));
 
 /**
  * POST /api/mcp-config - Save MCP tool configuration
- * Body: { enabledGroups: string[] }
+ * Body: { enabledTools: string[], allowAllUrls?: boolean, customDomains?: string }
  */
 router.post('/mcp-config', asyncHandler(async (req, res) => {
-  const { enabledGroups } = req.body;
+  const { enabledTools, allowAllUrls, customDomains } = req.body;
 
-  if (!Array.isArray(enabledGroups)) {
-    return res.status(400).json({
-      error: 'Invalid format',
-      message: 'enabledGroups must be an array'
-    });
+  // Read existing config to preserve other settings
+  let existingConfig = {};
+  try {
+    const data = await fs.readFile(configPath, 'utf-8');
+    existingConfig = JSON.parse(data);
+  } catch (err) {
+    // File doesn't exist, start fresh
   }
 
-  // Validate groups
-  const validGroups = Object.keys(MCP_TOOL_GROUPS);
-  const invalidGroups = enabledGroups.filter(g => !validGroups.includes(g));
-  if (invalidGroups.length > 0) {
-    return res.status(400).json({
-      error: 'Invalid groups',
-      message: `Unknown groups: ${invalidGroups.join(', ')}`,
-      validGroups
-    });
-  }
-
-  // Ensure core is always included
-  const finalGroups = enabledGroups.includes('core')
-    ? enabledGroups
-    : ['core', ...enabledGroups];
-
+  // Build new config
   const config = {
-    enabledGroups: finalGroups,
+    ...existingConfig,
     updatedAt: new Date().toISOString()
   };
 
-  await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
+  // Update enabledTools if provided
+  if (Array.isArray(enabledTools)) {
+    // Ensure core tools are always included
+    const finalTools = [...enabledTools];
+    for (const coreTool of CORE_TOOLS) {
+      if (!finalTools.includes(coreTool)) {
+        finalTools.unshift(coreTool);
+      }
+    }
+    config.enabledTools = finalTools;
+  }
 
-  // Calculate estimated tokens
-  const estimatedTokens = finalGroups.reduce(
-    (sum, group) => sum + (TOKEN_ESTIMATES[group] || 500), 0
-  );
+  // Update URL settings if provided
+  if (allowAllUrls !== undefined) {
+    config.allowAllUrls = Boolean(allowAllUrls);
+  }
+  if (customDomains !== undefined) {
+    config.customDomains = String(customDomains);
+  }
+
+  await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
 
   res.json({
     success: true,
     message: 'MCP config saved successfully. Restart Claude Code to apply changes.',
-    enabledGroups: finalGroups,
-    estimatedTokens
+    enabledTools: config.enabledTools,
+    allowAllUrls: config.allowAllUrls,
+    customDomains: config.customDomains
   });
 }));
 

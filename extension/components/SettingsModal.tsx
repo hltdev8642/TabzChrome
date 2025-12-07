@@ -1,47 +1,43 @@
 import React, { useState, useEffect } from 'react'
-import { X, Terminal as TerminalIcon, Plus, Edit, Trash2, GripVertical, Palette, Wrench, Zap, AlertTriangle } from 'lucide-react'
+import { X, Terminal as TerminalIcon, Plus, Edit, Trash2, GripVertical, Palette, Wrench, AlertTriangle, Settings, ChevronDown, ChevronUp } from 'lucide-react'
 import { themes, themeNames } from '../styles/themes'
 
-// MCP Tool Groups configuration
-interface McpToolGroup {
+// Individual MCP Tools configuration with accurate token counts from /context
+interface McpTool {
   id: string
   name: string
-  tools: number
   desc: string
-  locked?: boolean
-  power?: boolean
+  tokens: number
+  locked?: boolean  // Core tools that are always enabled
 }
 
-const MCP_TOOL_GROUPS: McpToolGroup[] = [
-  { id: 'core', name: 'Core', tools: 4, locked: true,
-    desc: 'List tabs, switch, rename, page info' },
-  { id: 'interaction', name: 'Interaction', tools: 5,
-    desc: 'Click, fill, screenshot, download image, inspect' },
-  { id: 'navigation', name: 'Navigation', tools: 1,
-    desc: 'Open URLs (GitHub, localhost, Vercel, etc.)' },
-  { id: 'console', name: 'Console', tools: 2,
-    desc: 'Get console logs, execute JavaScript' },
-  { id: 'downloads', name: 'Downloads', tools: 2, power: true,
-    desc: 'Download any file, list downloads' },
-  { id: 'cookies', name: 'Cookies', tools: 3, power: true,
-    desc: 'Check auth, get cookies, inspect sessions' },
-  { id: 'history', name: 'History', tools: 3, power: true,
-    desc: 'Search browsing history, frequent sites' },
-  { id: 'bookmarks', name: 'Bookmarks', tools: 4, power: true,
-    desc: 'Save, search, organize bookmarks' },
-  { id: 'network', name: 'Network', tools: 4, power: true,
-    desc: 'Monitor API calls, capture responses' },
+const MCP_TOOLS: McpTool[] = [
+  // Core tools (always enabled)
+  { id: 'tabz_list_tabs', name: 'List Tabs', desc: 'List all open browser tabs', tokens: 974, locked: true },
+  { id: 'tabz_switch_tab', name: 'Switch Tab', desc: 'Switch to a specific tab by ID', tokens: 940, locked: true },
+  { id: 'tabz_rename_tab', name: 'Rename Tab', desc: 'Assign custom names to tabs', tokens: 1000, locked: true },
+  { id: 'tabz_get_page_info', name: 'Page Info', desc: 'Get URL and title of current page', tokens: 885, locked: true },
+  // Interaction tools
+  { id: 'tabz_click', name: 'Click', desc: 'Click elements by CSS selector', tokens: 986 },
+  { id: 'tabz_fill', name: 'Fill', desc: 'Fill form inputs with text', tokens: 1100 },
+  { id: 'tabz_screenshot', name: 'Screenshot', desc: 'Capture page screenshots to disk', tokens: 995 },
+  { id: 'tabz_download_image', name: 'Download Image', desc: 'Download images from pages', tokens: 1000 },
+  { id: 'tabz_get_element', name: 'Inspect Element', desc: 'Get HTML/CSS details of elements', tokens: 1300 },
+  // Navigation
+  { id: 'tabz_open_url', name: 'Open URL', desc: 'Open allowed URLs (GitHub, localhost, etc.)', tokens: 1600 },
+  // Console/Script
+  { id: 'tabz_get_console_logs', name: 'Console Logs', desc: 'View browser console output', tokens: 1100 },
+  { id: 'tabz_execute_script', name: 'Execute Script', desc: 'Run JavaScript in browser tab', tokens: 1100 },
 ]
 
-const TOKEN_ESTIMATES: Record<string, number> = {
-  core: 800, interaction: 1200, navigation: 400, console: 600,
-  downloads: 600, cookies: 700, history: 700, bookmarks: 800, network: 1500
-}
+// All tool IDs for reference
+const ALL_TOOL_IDS = MCP_TOOLS.map(t => t.id)
+const CORE_TOOL_IDS = MCP_TOOLS.filter(t => t.locked).map(t => t.id)
 
 const PRESETS = {
-  minimal: ['core'],
-  standard: ['core', 'interaction', 'navigation', 'console'],
-  full: MCP_TOOL_GROUPS.map(g => g.id),
+  minimal: CORE_TOOL_IDS,
+  standard: [...CORE_TOOL_IDS, 'tabz_click', 'tabz_fill', 'tabz_screenshot', 'tabz_open_url', 'tabz_get_console_logs'],
+  full: ALL_TOOL_IDS,
 }
 
 type TabType = 'profiles' | 'mcp'
@@ -99,10 +95,15 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [dropPosition, setDropPosition] = useState<'above' | 'below' | null>(null)
 
-  // MCP state
-  const [mcpEnabledGroups, setMcpEnabledGroups] = useState<string[]>(PRESETS.standard)
+  // MCP state - now tracks individual tools instead of groups
+  const [mcpEnabledTools, setMcpEnabledTools] = useState<string[]>(PRESETS.standard)
   const [mcpConfigChanged, setMcpConfigChanged] = useState(false)
   const [mcpLoading, setMcpLoading] = useState(false)
+
+  // URL settings for tabz_open_url
+  const [urlSettingsExpanded, setUrlSettingsExpanded] = useState(false)
+  const [allowAllUrls, setAllowAllUrls] = useState(false)
+  const [customDomains, setCustomDomains] = useState('')
 
   // Reset form state when modal opens
   useEffect(() => {
@@ -124,19 +125,38 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       fetch('http://localhost:8129/api/mcp-config')
         .then(res => res.json())
         .then(data => {
-          if (data.enabledGroups) {
-            setMcpEnabledGroups(data.enabledGroups)
-            // Sync to Chrome storage
-            chrome.storage.local.set({ mcpEnabledGroups: data.enabledGroups })
+          if (data.enabledTools) {
+            setMcpEnabledTools(data.enabledTools)
+            chrome.storage.local.set({ mcpEnabledTools: data.enabledTools })
+          } else if (data.enabledGroups) {
+            console.log('[Settings] Migrating from groups to individual tools')
+            setMcpEnabledTools(PRESETS.standard)
+          }
+          // Load URL settings
+          if (data.allowAllUrls !== undefined) {
+            setAllowAllUrls(data.allowAllUrls)
+          }
+          if (data.customDomains) {
+            setCustomDomains(data.customDomains)
           }
         })
         .catch(err => {
           console.error('[Settings] Failed to load MCP config from backend:', err)
           // Fallback to Chrome storage
-          chrome.storage.local.get(['mcpEnabledGroups'], (result) => {
-            if (result.mcpEnabledGroups && Array.isArray(result.mcpEnabledGroups)) {
-              setMcpEnabledGroups(result.mcpEnabledGroups as string[])
+          chrome.storage.local.get(['mcpEnabledTools', 'mcpEnabledGroups', 'allowAllUrls', 'customDomains'], (result) => {
+            if (result.mcpEnabledTools && Array.isArray(result.mcpEnabledTools)) {
+              setMcpEnabledTools(result.mcpEnabledTools as string[])
               console.log('[Settings] Loaded MCP config from Chrome storage')
+            } else if (result.mcpEnabledGroups) {
+              console.log('[Settings] Migrating from groups to individual tools')
+              setMcpEnabledTools(PRESETS.standard)
+            }
+            // Load URL settings from Chrome storage
+            if (result.allowAllUrls !== undefined) {
+              setAllowAllUrls(result.allowAllUrls as boolean)
+            }
+            if (result.customDomains) {
+              setCustomDomains(result.customDomains as string)
             }
           })
         })
@@ -313,28 +333,29 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   }
 
   // MCP handlers
-  const handleMcpGroupToggle = (groupId: string) => {
-    // Core is always required
-    if (groupId === 'core') return
+  const handleMcpToolToggle = (toolId: string) => {
+    // Core tools are always required
+    const tool = MCP_TOOLS.find(t => t.id === toolId)
+    if (tool?.locked) return
 
-    setMcpEnabledGroups(prev => {
-      const newGroups = prev.includes(groupId)
-        ? prev.filter(g => g !== groupId)
-        : [...prev, groupId]
-      return newGroups
+    setMcpEnabledTools(prev => {
+      const newTools = prev.includes(toolId)
+        ? prev.filter(t => t !== toolId)
+        : [...prev, toolId]
+      return newTools
     })
     setMcpConfigChanged(true)
   }
 
   const handleMcpPreset = (preset: keyof typeof PRESETS) => {
-    setMcpEnabledGroups(PRESETS[preset])
+    setMcpEnabledTools(PRESETS[preset])
     setMcpConfigChanged(true)
   }
 
   const handleMcpSave = async () => {
     // Always save to Chrome storage first
-    chrome.storage.local.set({ mcpEnabledGroups }, () => {
-      console.log('[Settings] MCP config saved to Chrome storage:', mcpEnabledGroups)
+    chrome.storage.local.set({ mcpEnabledTools, allowAllUrls, customDomains }, () => {
+      console.log('[Settings] MCP config saved to Chrome storage:', { mcpEnabledTools, allowAllUrls, customDomains })
     })
 
     // Then sync to backend
@@ -342,21 +363,22 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       const response = await fetch('http://localhost:8129/api/mcp-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabledGroups: mcpEnabledGroups })
+        body: JSON.stringify({ enabledTools: mcpEnabledTools, allowAllUrls, customDomains })
       })
       const data = await response.json()
       if (data.success) {
-        console.log('[Settings] MCP config synced to backend:', mcpEnabledGroups)
+        console.log('[Settings] MCP config synced to backend:', { mcpEnabledTools, allowAllUrls, customDomains })
       }
     } catch (err) {
       console.error('[Settings] Failed to sync MCP config to backend (Chrome storage saved):', err)
     }
   }
 
-  // Calculate token estimate
-  const estimatedTokens = mcpEnabledGroups.reduce(
-    (sum, g) => sum + (TOKEN_ESTIMATES[g] || 500), 0
-  )
+  // Calculate token estimate from individual tools
+  const estimatedTokens = mcpEnabledTools.reduce((sum, toolId) => {
+    const tool = MCP_TOOLS.find(t => t.id === toolId)
+    return sum + (tool?.tokens || 0)
+  }, 0)
 
   if (!isOpen) return null
 
@@ -747,94 +769,149 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </button>
               </div>
 
-              {/* Tool Groups */}
+              {/* Individual Tools */}
               {mcpLoading ? (
                 <div className="text-center py-8 text-gray-500">
                   Loading MCP configuration...
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {/* Standard tools */}
-                  {MCP_TOOL_GROUPS.filter(g => !g.power).map((group) => {
-                    const isEnabled = mcpEnabledGroups.includes(group.id)
-                    return (
-                      <label
-                        key={group.id}
-                        className={`
-                          flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all
-                          ${isEnabled
-                            ? 'bg-[#00ff88]/5 border-[#00ff88]/30'
-                            : 'bg-black/30 border-gray-800 hover:border-gray-700'
-                          }
-                          ${group.locked ? 'cursor-not-allowed opacity-80' : ''}
-                        `}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isEnabled}
-                          onChange={() => handleMcpGroupToggle(group.id)}
-                          disabled={group.locked}
-                          className="mt-0.5 w-4 h-4 rounded border-gray-600 bg-black/50 text-[#00ff88] focus:ring-[#00ff88] focus:ring-offset-0 disabled:cursor-not-allowed"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-white text-sm">{group.name}</span>
-                            <span className="text-xs text-gray-500">({group.tools} tools)</span>
-                            {group.locked && (
-                              <span className="text-xs px-1.5 py-0.5 rounded bg-gray-800 text-gray-400">
-                                Required
-                              </span>
-                            )}
-                            <span className="text-xs text-gray-600 ml-auto">
-                              ~{TOKEN_ESTIMATES[group.id]} tokens
+                  {/* Core tools (always enabled) */}
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Core Tools</span>
+                      <span className="text-xs text-gray-600">(always enabled)</span>
+                    </div>
+                    <div className="space-y-1">
+                      {MCP_TOOLS.filter(t => t.locked).map((tool) => (
+                        <div
+                          key={tool.id}
+                          className="flex items-center gap-3 p-2 rounded-lg bg-black/20 border border-gray-800/50 opacity-70"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={true}
+                            disabled={true}
+                            className="w-4 h-4 rounded border-gray-600 bg-black/50 text-[#00ff88] cursor-not-allowed"
+                          />
+                          <div className="flex-1 min-w-0 flex items-center gap-2">
+                            <span className="font-medium text-white text-sm">{tool.name}</span>
+                            <span className="text-xs text-gray-500 truncate">{tool.desc}</span>
+                            <span className="text-xs text-gray-600 ml-auto flex-shrink-0">
+                              {tool.tokens.toLocaleString()} tok
                             </span>
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">{group.desc}</p>
                         </div>
-                      </label>
-                    )
-                  })}
-
-                  {/* Power tools section */}
-                  <div className="mt-6 pt-4 border-t border-gray-800">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Zap className="h-4 w-4 text-yellow-500" />
-                      <span className="text-sm font-medium text-gray-300">Power Tools</span>
-                      <span className="text-xs text-gray-500">(advanced features)</span>
+                      ))}
                     </div>
+                  </div>
 
-                    <div className="space-y-2">
-                      {MCP_TOOL_GROUPS.filter(g => g.power).map((group) => {
-                        const isEnabled = mcpEnabledGroups.includes(group.id)
+                  {/* Optional tools */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Optional Tools</span>
+                    </div>
+                    <div className="space-y-1">
+                      {MCP_TOOLS.filter(t => !t.locked).map((tool) => {
+                        const isEnabled = mcpEnabledTools.includes(tool.id)
+                        const isOpenUrl = tool.id === 'tabz_open_url'
+
                         return (
-                          <label
-                            key={group.id}
-                            className={`
-                              flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all
-                              ${isEnabled
-                                ? 'bg-yellow-500/5 border-yellow-500/30'
-                                : 'bg-black/30 border-gray-800 hover:border-gray-700'
-                              }
-                            `}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isEnabled}
-                              onChange={() => handleMcpGroupToggle(group.id)}
-                              className="mt-0.5 w-4 h-4 rounded border-gray-600 bg-black/50 text-yellow-500 focus:ring-yellow-500 focus:ring-offset-0"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-white text-sm">{group.name}</span>
-                                <span className="text-xs text-gray-500">({group.tools} tools)</span>
-                                <Zap className="h-3 w-3 text-yellow-500" />
-                                <span className="text-xs text-gray-600 ml-auto">
-                                  ~{TOKEN_ESTIMATES[group.id]} tokens
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-500 mt-1">{group.desc}</p>
+                          <div key={tool.id}>
+                            <div
+                              className={`
+                                flex items-center gap-3 p-2 rounded-lg border transition-all
+                                ${isEnabled
+                                  ? 'bg-[#00ff88]/5 border-[#00ff88]/30'
+                                  : 'bg-black/30 border-gray-800 hover:border-gray-700'
+                                }
+                                ${isOpenUrl && urlSettingsExpanded ? 'rounded-b-none' : ''}
+                              `}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isEnabled}
+                                onChange={() => handleMcpToolToggle(tool.id)}
+                                className="w-4 h-4 rounded border-gray-600 bg-black/50 text-[#00ff88] focus:ring-[#00ff88] focus:ring-offset-0 cursor-pointer"
+                              />
+                              <label
+                                onClick={() => handleMcpToolToggle(tool.id)}
+                                className="flex-1 min-w-0 flex items-center gap-2 cursor-pointer"
+                              >
+                                <span className="font-medium text-white text-sm">{tool.name}</span>
+                                <span className="text-xs text-gray-500 truncate">{tool.desc}</span>
+                              </label>
+                              {isOpenUrl && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setUrlSettingsExpanded(!urlSettingsExpanded)
+                                  }}
+                                  className={`
+                                    p-1 rounded transition-colors flex-shrink-0
+                                    ${urlSettingsExpanded
+                                      ? 'bg-[#00ff88]/20 text-[#00ff88]'
+                                      : 'hover:bg-white/10 text-gray-400 hover:text-white'
+                                    }
+                                  `}
+                                  title="Configure allowed URLs"
+                                >
+                                  <Settings className="h-4 w-4" />
+                                </button>
+                              )}
+                              <span className="text-xs text-gray-600 flex-shrink-0">
+                                {tool.tokens.toLocaleString()} tok
+                              </span>
                             </div>
-                          </label>
+
+                            {/* URL Settings Panel */}
+                            {isOpenUrl && urlSettingsExpanded && (
+                              <div className="border border-t-0 border-[#00ff88]/30 rounded-b-lg bg-black/40 p-3 space-y-3">
+                                {/* YOLO Mode */}
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={allowAllUrls}
+                                    onChange={(e) => {
+                                      setAllowAllUrls(e.target.checked)
+                                      setMcpConfigChanged(true)
+                                    }}
+                                    className="w-4 h-4 rounded border-gray-600 bg-black/50 text-yellow-500 focus:ring-yellow-500 focus:ring-offset-0"
+                                  />
+                                  <div>
+                                    <span className="text-sm text-white font-medium">Allow all URLs</span>
+                                    <span className="text-xs text-yellow-500 ml-2">(YOLO mode)</span>
+                                  </div>
+                                </label>
+                                {allowAllUrls && (
+                                  <div className="text-xs text-yellow-500/80 pl-7 space-y-1">
+                                    <p>⚠️ Claude can open and interact with any website.</p>
+                                    <p className="text-yellow-600">Recommended: Use a separate Chrome profile without sensitive logins (banking, email, etc.)</p>
+                                  </div>
+                                )}
+
+                                {/* Custom Domains */}
+                                <div className={allowAllUrls ? 'opacity-50 pointer-events-none' : ''}>
+                                  <label className="block text-xs text-gray-400 mb-1">
+                                    Custom allowed domains (one per line)
+                                  </label>
+                                  <textarea
+                                    value={customDomains}
+                                    onChange={(e) => {
+                                      setCustomDomains(e.target.value)
+                                      setMcpConfigChanged(true)
+                                    }}
+                                    placeholder="example.com&#10;*.mycompany.com&#10;internal.dev:8080"
+                                    rows={3}
+                                    className="w-full px-2 py-1.5 bg-black/50 border border-gray-700 rounded text-white text-xs font-mono focus:border-[#00ff88] focus:outline-none resize-none"
+                                  />
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Added to built-in domains (GitHub, localhost, Vercel, etc.)
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         )
                       })}
                     </div>
