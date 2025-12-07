@@ -95,6 +95,42 @@
 
 ## Phase 2: Future Enhancements (Post-Release)
 
+### Audio/Voice Pack for Claude Status
+Play sounds or voice announcements when Claude status changes.
+
+**Implementation options:**
+1. **Extension plays audio** (cleanest) - React to `claudeStatuses` changes in sidepanel
+   ```typescript
+   useEffect(() => {
+     if (status?.status === 'tool_use') new Audio('/sounds/tool.mp3').play()
+     if (status?.status === 'awaiting_input') new Audio('/sounds/ready.mp3').play()
+   }, [claudeStatuses])
+   ```
+2. **Hooks call Windows directly** - PowerShell from WSL
+   ```bash
+   powershell.exe -c "(New-Object Media.SoundPlayer 'C:\sounds\ready.wav').PlaySync()" &
+   ```
+3. **Windows TTS** - Dynamic announcements
+   ```bash
+   powershell.exe -c "Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('Editing file')" &
+   ```
+
+**Voice pack ideas:**
+- Tool-specific sounds (edit, bash, read, grep)
+- "Ready for input" when Claude finishes
+- Error/warning sounds
+- RTS-style advisor: "Your Claude is under attack" on errors 😂
+
+### Tmux Control Center Tab
+A dedicated tab for managing all tmux sessions - UI version of tmuxplexer.
+
+**Features:**
+- Grid/list view of all tmux sessions with Claude status badges
+- Live terminal previews via `tmux capture-pane`
+- Multi-select sessions for broadcast prompts
+- Session grouping (by project, by status)
+- Nice chat interface with multi-send (better than TUI input)
+
 ### Keyboard Shortcuts
 - `Alt+T` - Open spawn menu
 - `Alt+W` - Close active tab
