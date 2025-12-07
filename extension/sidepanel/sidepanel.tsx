@@ -39,6 +39,7 @@ function SidePanelTerminal() {
   const [customDirInput, setCustomDirInput] = useState('')
   const [isDark, setIsDark] = useState(true)  // Global dark/light mode toggle
   const [connectionCount, setConnectionCount] = useState(1)  // Track backend connections (for multi-window warning)
+  const [storageLoaded, setStorageLoaded] = useState(false)  // Track if Chrome storage has been loaded (prevents race condition)
 
   // Chat input state (paste workaround)
   const [chatInputText, setChatInputText] = useState('')
@@ -317,6 +318,7 @@ function SidePanelTerminal() {
   }, [showHistoryDropdown])
 
   // Load saved terminal sessions from Chrome storage on mount
+  // CRITICAL: Must complete before LIST_TERMINALS request to avoid race condition
   useEffect(() => {
     console.log('[Sidepanel] Checking Chrome storage for saved terminal sessions...')
     chrome.storage.local.get(['terminalSessions'], (result) => {
@@ -332,6 +334,9 @@ function SidePanelTerminal() {
       } else {
         console.log('[Sidepanel] No saved terminal sessions found in Chrome storage')
       }
+      // Mark storage as loaded so LIST_TERMINALS can proceed
+      setStorageLoaded(true)
+      console.log('[Sidepanel] ✅ Storage loaded, ready for reconciliation')
     })
   }, [])
 
@@ -350,13 +355,14 @@ function SidePanelTerminal() {
     }
   }, [sessions])
 
-  // Request terminal list when WebSocket connects
+  // Request terminal list when WebSocket connects AND storage is loaded
+  // CRITICAL: Must wait for storage to load first to preserve session names during reconciliation
   useEffect(() => {
-    if (wsConnected) {
-      console.log('[Sidepanel] WebSocket connected, requesting terminal list to sync with backend...')
+    if (wsConnected && storageLoaded) {
+      console.log('[Sidepanel] WebSocket connected + storage loaded, requesting terminal list to sync with backend...')
       sendMessage({ type: 'LIST_TERMINALS' })
     }
-  }, [wsConnected])
+  }, [wsConnected, storageLoaded])
 
   // Close profile dropdown when clicking outside
   useEffect(() => {
