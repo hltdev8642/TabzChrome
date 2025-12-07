@@ -328,10 +328,24 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     // CRITICAL: Debounce to prevent xterm.js buffer corruption during rapid resizes
     // (e.g., moving browser to vertical monitor triggers many resize events)
     const resizeObserverTimeoutRef = { current: null as ReturnType<typeof setTimeout> | null }
+    const resizeRefreshTimeoutRef = { current: null as ReturnType<typeof setTimeout> | null }
     const resizeObserver = new ResizeObserver(() => {
       if (resizeObserverTimeoutRef.current) clearTimeout(resizeObserverTimeoutRef.current)
+      if (resizeRefreshTimeoutRef.current) clearTimeout(resizeRefreshTimeoutRef.current)
+
       resizeObserverTimeoutRef.current = setTimeout(() => {
         fitTerminal()
+
+        // For tmux sessions, trigger a refresh after resize settles
+        // This forces tmux to rewrap text that may have gone off-screen
+        if (sessionName) {
+          resizeRefreshTimeoutRef.current = setTimeout(() => {
+            if (xtermRef.current && !isResizingRef.current) {
+              console.log('[Terminal] Post-resize refresh for tmux session')
+              triggerResizeTrick()
+            }
+          }, 500)  // Wait for resize to fully settle before refresh
+        }
       }, 150)  // 150ms debounce - prevents buffer corruption on rapid resize
     })
 
@@ -343,11 +357,13 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     // Store refs for cleanup
     const currentResizeObserver = resizeObserver
     const currentTimeoutRef = resizeObserverTimeoutRef
+    const currentRefreshTimeoutRef = resizeRefreshTimeoutRef
 
     // Cleanup resize observer when effect re-runs (but NOT xterm - that's handled separately)
     return () => {
       currentResizeObserver.disconnect()
       if (currentTimeoutRef.current) clearTimeout(currentTimeoutRef.current)
+      if (currentRefreshTimeoutRef.current) clearTimeout(currentRefreshTimeoutRef.current)
     }
   }, [terminalId, isActive, isInitialized]) // Re-run when isActive changes to allow deferred init
 
