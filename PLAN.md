@@ -151,6 +151,27 @@ A dedicated tab for managing all tmux sessions - UI version of tmuxplexer.
 
 ---
 
+## Known Issues to Investigate
+
+### Tmux Status Bar Rendering Glitch
+When Claude is working, sometimes the tmux status bar disappears and terminal output text appears in its place.
+
+**Suspected cause:** Conflict between:
+- `state-tracker.sh` writing Claude status
+- `tmux-status-claude.sh` (from Tabz web app) trying to update tmux status bar
+- TabzChrome doesn't use tmux status display, but hooks may still be triggering it
+
+**Symptoms:**
+- Status bar area shows random terminal output (e.g., code snippets)
+- Happens during Claude tool use
+
+**Potential fixes:**
+- Disable `tmux-status-claude.sh` hook when using TabzChrome
+- Add guard in hook to detect Chrome extension context
+- `Ctrl+L` or `tmux refresh-client -S` to fix temporarily
+
+---
+
 ## Non-Goals
 
 These are intentionally excluded from the Chrome extension:
