@@ -377,9 +377,7 @@ function connectWebSocket() {
 
 // Send message to WebSocket
 function sendToWebSocket(data: any) {
-  console.log('[Background] sendToWebSocket called, ws state:', ws?.readyState, 'data:', data)
   if (ws?.readyState === WebSocket.OPEN) {
-    console.log('[Background] ✅ Sending to WebSocket:', JSON.stringify(data))
     ws.send(JSON.stringify(data))
   } else {
     console.error('[Background] ❌ WebSocket not connected! State:', ws?.readyState, 'Cannot send:', data)
@@ -699,7 +697,10 @@ chrome.omnibox.onInputEntered.addListener(async (text, disposition) => {
 
 // Message handler from extension pages
 chrome.runtime.onMessage.addListener(async (message: ExtensionMessage, sender, sendResponse) => {
-  console.log('📬 Message received from extension:', message.type)
+  // Don't log high-frequency messages (terminal I/O, resize)
+  if (!['TERMINAL_INPUT', 'TERMINAL_RESIZE', 'RECONNECT'].includes(message.type)) {
+    console.log('📬 Message received from extension:', message.type)
+  }
 
   switch (message.type) {
     case 'OPEN_SESSION':
@@ -806,8 +807,7 @@ chrome.runtime.onMessage.addListener(async (message: ExtensionMessage, sender, s
       break
 
     case 'TERMINAL_INPUT':
-      // Forward terminal input to backend
-      console.log('📥 TERMINAL_INPUT:', { terminalId: message.terminalId, dataLength: message.data?.length })
+      // Forward terminal input to backend (high-frequency, no logging)
       sendToWebSocket({
         type: 'command',
         terminalId: message.terminalId,
@@ -817,8 +817,6 @@ chrome.runtime.onMessage.addListener(async (message: ExtensionMessage, sender, s
 
     case 'TARGETED_PANE_SEND':
       // Send directly to a specific tmux pane (for split layouts with Claude + TUI tools)
-      // This bypasses the PTY and goes straight to the pane, preventing TUI corruption
-      console.log('🎯 TARGETED_PANE_SEND:', { tmuxPane: message.tmuxPane, textLength: message.text?.length, sendEnter: message.sendEnter })
       sendToWebSocket({
         type: 'targeted-pane-send',
         tmuxPane: message.tmuxPane,
@@ -829,7 +827,6 @@ chrome.runtime.onMessage.addListener(async (message: ExtensionMessage, sender, s
 
     case 'RECONNECT':
       // Register this connection as owner of an API-spawned terminal
-      console.log('🔄 RECONNECT:', { terminalId: message.terminalId })
       sendToWebSocket({
         type: 'reconnect',
         terminalId: message.terminalId,
@@ -837,8 +834,7 @@ chrome.runtime.onMessage.addListener(async (message: ExtensionMessage, sender, s
       break
 
     case 'TERMINAL_RESIZE':
-      // Forward terminal resize to backend
-      console.log('📏 TERMINAL_RESIZE:', { terminalId: message.terminalId, cols: message.cols, rows: message.rows })
+      // Forward terminal resize to backend (high-frequency, no logging)
       sendToWebSocket({
         type: 'resize',
         terminalId: message.terminalId,
