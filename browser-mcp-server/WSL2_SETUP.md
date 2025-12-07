@@ -19,7 +19,7 @@ The MCP server runs via **Windows `node.exe`** (not WSL2), so it can access Chro
 
 ### 1. Create Chrome Debug Shortcut (One-Time)
 
-Create a batch file at `C:\Users\marci\Scripts\Chrome-Debug.bat`:
+Create a batch file (e.g., `C:\Users\YourUsername\Scripts\Chrome-Debug.bat`):
 
 ```batch
 @echo off
@@ -53,7 +53,7 @@ The project includes a `run-windows.sh` wrapper that runs via Windows `node.exe`
 {
   "mcpServers": {
     "browser": {
-      "command": "/home/matt/projects/TabzChrome/browser-mcp-server/run-windows.sh",
+      "command": "/path/to/TabzChrome/browser-mcp-server/run-windows.sh",
       "args": [],
       "env": {
         "BACKEND_URL": "http://localhost:8129"
@@ -62,6 +62,8 @@ The project includes a `run-windows.sh` wrapper that runs via Windows `node.exe`
   }
 }
 ```
+
+> Replace `/path/to/TabzChrome` with your actual clone location.
 
 ### 3. Start Everything
 
@@ -129,8 +131,8 @@ Should return Chrome version info (Browser, Protocol-Version, etc.).
 When you make changes to the source code:
 
 ```bash
-# Rebuild
-cd /home/matt/projects/TabzChrome/browser-mcp-server
+# Rebuild (from your TabzChrome clone)
+cd browser-mcp-server
 npm run build
 
 # Restart Claude Code to pick up changes
@@ -174,11 +176,11 @@ Should show `chrome`. If it shows something else, close that application and res
 
 ### Screenshots Save to Wrong Location
 
-Screenshots save to Windows path `C:\Users\marci\ai-images\`.
+Screenshots save to `~/ai-images/` by default (auto-converts to Windows path).
 
-To view in Claude Code, use the WSL path:
+To view in Claude Code from WSL, use the WSL-converted path:
 ```
-/mnt/c/Users/marci/ai-images/screenshot-xxx.png
+/mnt/c/Users/YourUsername/ai-images/screenshot-xxx.png
 ```
 
 ### Browser Window Shrinking (Fixed)
@@ -191,8 +193,8 @@ This was caused by broken CDP connection. When CDP isn't working, puppeteer may 
 |------|---------|
 | `.mcp.json` | Project MCP server config |
 | `run-windows.sh` | Wrapper to run via Windows node.exe |
-| `C:\Users\marci\Scripts\Chrome-Debug.bat` | Chrome startup script |
-| `C:\Users\marci\ai-images\` | Screenshot output directory |
+| `Chrome-Debug.bat` | Chrome startup script (you create this) |
+| `~/ai-images/` | Screenshot output directory |
 | `dist/` | Built MCP server code |
 
 ## Quick Diagnostic Commands

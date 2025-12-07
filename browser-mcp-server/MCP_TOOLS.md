@@ -532,7 +532,7 @@ The project uses `run-windows.sh` which executes via Windows `node.exe`:
 {
   "mcpServers": {
     "browser": {
-      "command": "/home/matt/projects/TabzChrome/browser-mcp-server/run-windows.sh",
+      "command": "/path/to/TabzChrome/browser-mcp-server/run-windows.sh",
       "args": [],
       "env": { "BACKEND_URL": "http://localhost:8129" }
     }
