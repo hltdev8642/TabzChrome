@@ -81,7 +81,7 @@ export const themes: Record<string, Theme> = {
     },
     light: {
       colors: {
-        background: 'transparent',
+        background: '#f0f1f3',    // Match gradient midpoint for minimumContrastRatio
         foreground: '#1a1a2e',
         cursor: '#0077b6',
         selectionBackground: 'rgba(0, 119, 182, 0.2)',
@@ -136,7 +136,7 @@ export const themes: Record<string, Theme> = {
     },
     light: {
       colors: {
-        background: 'transparent',
+        background: '#f0edf3',    // Match gradient midpoint for minimumContrastRatio
         foreground: '#282a36',
         cursor: '#c850a0',
         selectionBackground: 'rgba(200, 80, 160, 0.2)',
@@ -191,7 +191,7 @@ export const themes: Record<string, Theme> = {
     },
     light: {
       colors: {
-        background: 'transparent',
+        background: '#dceff8',    // Match gradient midpoint for minimumContrastRatio
         foreground: '#1e2030',
         cursor: '#0891b2',
         selectionBackground: 'rgba(8, 145, 178, 0.2)',
@@ -246,7 +246,7 @@ export const themes: Record<string, Theme> = {
     },
     light: {
       colors: {
-        background: 'transparent',
+        background: '#f9e2fe',    // Match gradient midpoint for minimumContrastRatio
         foreground: '#1a0033',
         cursor: '#c026d3',
         selectionBackground: 'rgba(192, 38, 211, 0.2)',
@@ -301,7 +301,7 @@ export const themes: Record<string, Theme> = {
     },
     light: {
       colors: {
-        background: 'transparent',
+        background: '#fef7d9',    // Match gradient midpoint for minimumContrastRatio
         foreground: '#78350f',
         cursor: '#b45309',
         selectionBackground: 'rgba(180, 83, 9, 0.2)',
@@ -356,7 +356,7 @@ export const themes: Record<string, Theme> = {
     },
     light: {
       colors: {
-        background: 'transparent',
+        background: '#e6fcee',    // Match gradient midpoint for minimumContrastRatio
         foreground: '#166534',
         cursor: '#15803d',
         selectionBackground: 'rgba(22, 163, 74, 0.2)',
