@@ -1,6 +1,50 @@
 import React, { useState, useEffect } from 'react'
-import { X, Terminal as TerminalIcon, Plus, Edit, Trash2, GripVertical, Palette } from 'lucide-react'
+import { X, Terminal as TerminalIcon, Plus, Edit, Trash2, GripVertical, Palette, Wrench, Zap, AlertTriangle } from 'lucide-react'
 import { themes, themeNames } from '../styles/themes'
+
+// MCP Tool Groups configuration
+interface McpToolGroup {
+  id: string
+  name: string
+  tools: number
+  desc: string
+  locked?: boolean
+  power?: boolean
+}
+
+const MCP_TOOL_GROUPS: McpToolGroup[] = [
+  { id: 'core', name: 'Core', tools: 4, locked: true,
+    desc: 'List tabs, switch, rename, page info' },
+  { id: 'interaction', name: 'Interaction', tools: 5,
+    desc: 'Click, fill, screenshot, download image, inspect' },
+  { id: 'navigation', name: 'Navigation', tools: 1,
+    desc: 'Open URLs (GitHub, localhost, Vercel, etc.)' },
+  { id: 'console', name: 'Console', tools: 2,
+    desc: 'Get console logs, execute JavaScript' },
+  { id: 'downloads', name: 'Downloads', tools: 2, power: true,
+    desc: 'Download any file, list downloads' },
+  { id: 'cookies', name: 'Cookies', tools: 3, power: true,
+    desc: 'Check auth, get cookies, inspect sessions' },
+  { id: 'history', name: 'History', tools: 3, power: true,
+    desc: 'Search browsing history, frequent sites' },
+  { id: 'bookmarks', name: 'Bookmarks', tools: 4, power: true,
+    desc: 'Save, search, organize bookmarks' },
+  { id: 'network', name: 'Network', tools: 4, power: true,
+    desc: 'Monitor API calls, capture responses' },
+]
+
+const TOKEN_ESTIMATES: Record<string, number> = {
+  core: 800, interaction: 1200, navigation: 400, console: 600,
+  downloads: 600, cookies: 700, history: 700, bookmarks: 800, network: 1500
+}
+
+const PRESETS = {
+  minimal: ['core'],
+  standard: ['core', 'interaction', 'navigation', 'console'],
+  full: MCP_TOOL_GROUPS.map(g => g.id),
+}
+
+type TabType = 'profiles' | 'mcp'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -42,6 +86,10 @@ const FONT_FAMILIES = [
 ]
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+  // Tab state
+  const [activeTab, setActiveTab] = useState<TabType>('profiles')
+
+  // Profile state
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [defaultProfile, setDefaultProfile] = useState<string>('default')
   const [isAdding, setIsAdding] = useState(false)
@@ -51,12 +99,50 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [dropPosition, setDropPosition] = useState<'above' | 'below' | null>(null)
 
+  // MCP state
+  const [mcpEnabledGroups, setMcpEnabledGroups] = useState<string[]>(PRESETS.standard)
+  const [mcpConfigChanged, setMcpConfigChanged] = useState(false)
+  const [mcpLoading, setMcpLoading] = useState(false)
+
   // Reset form state when modal opens
   useEffect(() => {
     if (isOpen) {
       setIsAdding(false)
       setEditingIndex(null)
       setFormData(DEFAULT_PROFILE)
+      setMcpConfigChanged(false)
+      // Don't reset activeTab - let user stay on their last tab
+    }
+  }, [isOpen])
+
+  // Load MCP config from backend (with Chrome storage fallback)
+  useEffect(() => {
+    if (isOpen) {
+      setMcpLoading(true)
+
+      // Try backend first, then Chrome storage as fallback
+      fetch('http://localhost:8129/api/mcp-config')
+        .then(res => res.json())
+        .then(data => {
+          if (data.enabledGroups) {
+            setMcpEnabledGroups(data.enabledGroups)
+            // Sync to Chrome storage
+            chrome.storage.local.set({ mcpEnabledGroups: data.enabledGroups })
+          }
+        })
+        .catch(err => {
+          console.error('[Settings] Failed to load MCP config from backend:', err)
+          // Fallback to Chrome storage
+          chrome.storage.local.get(['mcpEnabledGroups'], (result) => {
+            if (result.mcpEnabledGroups && Array.isArray(result.mcpEnabledGroups)) {
+              setMcpEnabledGroups(result.mcpEnabledGroups as string[])
+              console.log('[Settings] Loaded MCP config from Chrome storage')
+            }
+          })
+        })
+        .finally(() => {
+          setMcpLoading(false)
+        })
     }
   }, [isOpen])
 
@@ -226,6 +312,52 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setDropPosition(null)
   }
 
+  // MCP handlers
+  const handleMcpGroupToggle = (groupId: string) => {
+    // Core is always required
+    if (groupId === 'core') return
+
+    setMcpEnabledGroups(prev => {
+      const newGroups = prev.includes(groupId)
+        ? prev.filter(g => g !== groupId)
+        : [...prev, groupId]
+      return newGroups
+    })
+    setMcpConfigChanged(true)
+  }
+
+  const handleMcpPreset = (preset: keyof typeof PRESETS) => {
+    setMcpEnabledGroups(PRESETS[preset])
+    setMcpConfigChanged(true)
+  }
+
+  const handleMcpSave = async () => {
+    // Always save to Chrome storage first
+    chrome.storage.local.set({ mcpEnabledGroups }, () => {
+      console.log('[Settings] MCP config saved to Chrome storage:', mcpEnabledGroups)
+    })
+
+    // Then sync to backend
+    try {
+      const response = await fetch('http://localhost:8129/api/mcp-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabledGroups: mcpEnabledGroups })
+      })
+      const data = await response.json()
+      if (data.success) {
+        console.log('[Settings] MCP config synced to backend:', mcpEnabledGroups)
+      }
+    } catch (err) {
+      console.error('[Settings] Failed to sync MCP config to backend (Chrome storage saved):', err)
+    }
+  }
+
+  // Calculate token estimate
+  const estimatedTokens = mcpEnabledGroups.reduce(
+    (sum, g) => sum + (TOKEN_ESTIMATES[g] || 500), 0
+  )
+
   if (!isOpen) return null
 
   return (
@@ -234,13 +366,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
           <div className="flex items-center gap-2">
-            <TerminalIcon className="h-5 w-5 text-[#00ff88]" />
-            <h2 className="text-xl font-semibold text-white">Profiles</h2>
-            {profiles.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 text-xs rounded bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88]/30">
-                {profiles.length}
-              </span>
-            )}
+            <h2 className="text-xl font-semibold text-white">Settings</h2>
           </div>
           <button
             onClick={onClose}
@@ -250,9 +376,46 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </button>
         </div>
 
+        {/* Tab Navigation */}
+        <div className="flex border-b border-gray-800 px-6">
+          <button
+            onClick={() => setActiveTab('profiles')}
+            className={`
+              flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-[1px]
+              ${activeTab === 'profiles'
+                ? 'text-[#00ff88] border-[#00ff88]'
+                : 'text-gray-400 border-transparent hover:text-white hover:border-gray-600'
+              }
+            `}
+          >
+            <TerminalIcon className="h-4 w-4" />
+            Profiles
+            {profiles.length > 0 && (
+              <span className="px-1.5 py-0.5 text-xs rounded bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88]/30">
+                {profiles.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('mcp')}
+            className={`
+              flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-[1px]
+              ${activeTab === 'mcp'
+                ? 'text-[#00ff88] border-[#00ff88]'
+                : 'text-gray-400 border-transparent hover:text-white hover:border-gray-600'
+              }
+            `}
+          >
+            <Wrench className="h-4 w-4" />
+            MCP Tools
+          </button>
+        </div>
+
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {!isAdding ? (
+          {/* Profiles Tab */}
+          {activeTab === 'profiles' && (
+            !isAdding ? (
             <>
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm text-gray-400">
@@ -548,6 +711,154 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </div>
               </div>
             </div>
+            )
+          )}
+
+          {/* MCP Tools Tab */}
+          {activeTab === 'mcp' && (
+            <>
+              <div className="mb-4">
+                <p className="text-sm text-gray-400">
+                  Control which MCP tools are available to Claude Code.
+                  Fewer tools = less context usage = faster responses.
+                </p>
+              </div>
+
+              {/* Quick Presets */}
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xs text-gray-500">Quick presets:</span>
+                <button
+                  onClick={() => handleMcpPreset('minimal')}
+                  className="px-2 py-1 text-xs rounded bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+                >
+                  Minimal
+                </button>
+                <button
+                  onClick={() => handleMcpPreset('standard')}
+                  className="px-2 py-1 text-xs rounded bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+                >
+                  Standard
+                </button>
+                <button
+                  onClick={() => handleMcpPreset('full')}
+                  className="px-2 py-1 text-xs rounded bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+                >
+                  Full
+                </button>
+              </div>
+
+              {/* Tool Groups */}
+              {mcpLoading ? (
+                <div className="text-center py-8 text-gray-500">
+                  Loading MCP configuration...
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {/* Standard tools */}
+                  {MCP_TOOL_GROUPS.filter(g => !g.power).map((group) => {
+                    const isEnabled = mcpEnabledGroups.includes(group.id)
+                    return (
+                      <label
+                        key={group.id}
+                        className={`
+                          flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all
+                          ${isEnabled
+                            ? 'bg-[#00ff88]/5 border-[#00ff88]/30'
+                            : 'bg-black/30 border-gray-800 hover:border-gray-700'
+                          }
+                          ${group.locked ? 'cursor-not-allowed opacity-80' : ''}
+                        `}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isEnabled}
+                          onChange={() => handleMcpGroupToggle(group.id)}
+                          disabled={group.locked}
+                          className="mt-0.5 w-4 h-4 rounded border-gray-600 bg-black/50 text-[#00ff88] focus:ring-[#00ff88] focus:ring-offset-0 disabled:cursor-not-allowed"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-white text-sm">{group.name}</span>
+                            <span className="text-xs text-gray-500">({group.tools} tools)</span>
+                            {group.locked && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-gray-800 text-gray-400">
+                                Required
+                              </span>
+                            )}
+                            <span className="text-xs text-gray-600 ml-auto">
+                              ~{TOKEN_ESTIMATES[group.id]} tokens
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">{group.desc}</p>
+                        </div>
+                      </label>
+                    )
+                  })}
+
+                  {/* Power tools section */}
+                  <div className="mt-6 pt-4 border-t border-gray-800">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Zap className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm font-medium text-gray-300">Power Tools</span>
+                      <span className="text-xs text-gray-500">(advanced features)</span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {MCP_TOOL_GROUPS.filter(g => g.power).map((group) => {
+                        const isEnabled = mcpEnabledGroups.includes(group.id)
+                        return (
+                          <label
+                            key={group.id}
+                            className={`
+                              flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all
+                              ${isEnabled
+                                ? 'bg-yellow-500/5 border-yellow-500/30'
+                                : 'bg-black/30 border-gray-800 hover:border-gray-700'
+                              }
+                            `}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isEnabled}
+                              onChange={() => handleMcpGroupToggle(group.id)}
+                              className="mt-0.5 w-4 h-4 rounded border-gray-600 bg-black/50 text-yellow-500 focus:ring-yellow-500 focus:ring-offset-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-white text-sm">{group.name}</span>
+                                <span className="text-xs text-gray-500">({group.tools} tools)</span>
+                                <Zap className="h-3 w-3 text-yellow-500" />
+                                <span className="text-xs text-gray-600 ml-auto">
+                                  ~{TOKEN_ESTIMATES[group.id]} tokens
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">{group.desc}</p>
+                            </div>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Token Estimate & Restart Notice */}
+              <div className="mt-6 pt-4 border-t border-gray-800 space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Estimated context usage:</span>
+                  <span className="font-mono text-[#00ff88]">~{estimatedTokens.toLocaleString()} tokens</span>
+                </div>
+
+                {mcpConfigChanged && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                    <AlertTriangle className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+                    <span className="text-xs text-yellow-200">
+                      Restart Claude Code to apply changes
+                    </span>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
 
@@ -557,10 +868,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             onClick={onClose}
             className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-sm transition-colors"
           >
-            Cancel
+            {activeTab === 'mcp' ? 'Close' : 'Cancel'}
           </button>
           <button
-            onClick={handleSave}
+            onClick={activeTab === 'mcp' ? handleMcpSave : handleSave}
             className="px-4 py-2 bg-[#00ff88] hover:bg-[#00c8ff] text-black rounded text-sm font-medium transition-colors"
           >
             Save

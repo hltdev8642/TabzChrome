@@ -2,7 +2,7 @@
 
 **Last Updated**: December 7, 2025
 **Current Version**: 2.2.0
-**Status**: Phase 2A Complete - Foundation ✅ | Next: Phase 2B Settings UI
+**Status**: Phase 2B Complete - Settings UI ✅ | Next: Phase 2C Power Tools
 
 ---
 
@@ -792,18 +792,18 @@ const PRESETS = {
    - [x] Conditional tool registration
    - [x] Fallback defaults
 
-**Phase B: Settings UI**
+**Phase B: Settings UI** ✅ COMPLETE
 
-6. [ ] **Settings Modal - MCP Tab**
-   - [ ] Tab navigation (Profiles | MCP Tools)
-   - [ ] Tool group checkboxes
-   - [ ] Token estimate display
-   - [ ] Quick presets
-   - [ ] "Restart required" notice
+6. [x] **Settings Modal - MCP Tab**
+   - [x] Tab navigation (Profiles | MCP Tools)
+   - [x] Tool group checkboxes
+   - [x] Token estimate display
+   - [x] Quick presets
+   - [x] "Restart required" notice
 
-7. [ ] **Chrome Storage integration**
-   - [ ] Save/load MCP settings
-   - [ ] Sync to backend on change
+7. [x] **Chrome Storage integration**
+   - [x] Save/load MCP settings
+   - [x] Sync to backend on change
 
 **Phase C: Power Tools**
 
