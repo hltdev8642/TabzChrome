@@ -126,6 +126,11 @@ backend/
    - Updated technical details
    - **DON'T** add "Recently Fixed" narratives (use CHANGELOG instead)
 
+4. **CHANGELOG Rotation**
+   - Main CHANGELOG.md: Keep under 500 lines (recent 3-4 versions)
+   - Archive older versions to CHANGELOG-archive.md
+   - Always keep full history accessible, just split for readability
+
 **Keep this file focused on "how the system works NOW", not "how we got here".**
 
 ### 🏗️ Building & Deploying the Extension

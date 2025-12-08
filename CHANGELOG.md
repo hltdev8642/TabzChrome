@@ -1,3 +1,9 @@
+<!--
+CHANGELOG ROTATION POLICY:
+When this file exceeds 500 lines, move older versions to CHANGELOG-archive.md.
+Keep the most recent 3-4 major versions in the main file.
+-->
+
 # Changelog
 
 All notable changes to Tabz - Chrome Edition will be documented in this file.
