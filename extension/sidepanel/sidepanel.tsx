@@ -6,7 +6,7 @@ import { Terminal } from '../components/Terminal'
 import { SettingsModal, type Profile } from '../components/SettingsModal'
 import { connectToBackground, sendMessage } from '../shared/messaging'
 import { getLocal, setLocal } from '../shared/storage'
-import { useClaudeStatus, getStatusEmoji, getStatusText } from '../hooks/useClaudeStatus'
+import { useClaudeStatus, getStatusEmoji, getStatusText, getFullStatusText } from '../hooks/useClaudeStatus'
 import { useCommandHistory } from '../hooks/useCommandHistory'
 import '../styles/globals.css'
 
@@ -1199,7 +1199,9 @@ function SidePanelTerminal() {
           {/* Session Tabs */}
           {sessions.length > 0 && (
             <div className="relative border-b bg-gradient-to-r from-[#0f0f0f]/50 to-[#1a1a1a]/50">
-              <div className="flex gap-1 p-2 overflow-x-auto">
+              <div className="flex items-center gap-1 p-2">
+                {/* Scrollable tabs area */}
+                <div className="flex gap-1 overflow-x-auto flex-1 min-w-0">
                 {sessions.map(session => (
                   <div
                     key={session.id}
@@ -1211,7 +1213,7 @@ function SidePanelTerminal() {
                     onDragEnd={handleTabDragEnd}
                     className={`
                       flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all cursor-pointer group
-                      ${claudeStatuses.has(session.id) ? 'min-w-[160px] max-w-[220px]' : 'whitespace-nowrap'}
+                      min-w-[100px] max-w-[200px]
                       ${currentSession === session.id
                         ? 'bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30'
                         : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-gray-300 border border-transparent'
@@ -1221,19 +1223,24 @@ function SidePanelTerminal() {
                     `}
                     onClick={() => setCurrentSession(session.id)}
                     onContextMenu={(e) => handleTabContextMenu(e, session.id)}
+                    title={claudeStatuses.has(session.id)
+                      ? `${session.name}\n${getFullStatusText(claudeStatuses.get(session.id))}`
+                      : session.name
+                    }
                   >
-                    {/* Claude sessions: show detailed status. Others: show name */}
-                    {claudeStatuses.has(session.id) ? (
-                      <span
-                        className="flex-1 flex items-center gap-1 text-xs truncate min-w-0"
-                        title={`${session.name} - ${claudeStatuses.get(session.id)?.status}`}
-                      >
+                    {/* Tab content: show Claude status if detected, otherwise session name */}
+                    {/* Using consistent structure to prevent DOM thrashing */}
+                    <span className="flex-1 flex items-center gap-1 text-xs truncate min-w-0">
+                      {claudeStatuses.has(session.id) && (
                         <span className="flex-shrink-0">🤖</span>
-                        <span className="truncate">{getStatusText(claudeStatuses.get(session.id))}</span>
+                      )}
+                      <span className="truncate">
+                        {claudeStatuses.has(session.id)
+                          ? getStatusText(claudeStatuses.get(session.id))
+                          : session.name
+                        }
                       </span>
-                    ) : (
-                      <span className="flex-1 truncate">{session.name}</span>
-                    )}
+                    </span>
                     <button
                       onClick={(e) => handleCloseTab(e, session.id)}
                       className="flex-shrink-0 ml-auto p-0.5 rounded hover:bg-red-500/20 transition-colors opacity-0 group-hover:opacity-100"
@@ -1276,8 +1283,9 @@ function SidePanelTerminal() {
                     <span className="text-xs text-gray-500">Drop here</span>
                   </div>
                 )}
-                {/* Quick Add Button with Profile Dropdown */}
-                <div className="relative flex" ref={profileBtnRef}>
+                </div>
+                {/* Quick Add Button with Profile Dropdown - Fixed position outside scrollable area */}
+                <div className="relative flex flex-shrink-0" ref={profileBtnRef}>
                   <button
                     onClick={handleSpawnDefaultProfile}
                     className="flex items-center justify-center px-2 py-1.5 rounded-l-md text-sm font-medium transition-all bg-white/5 hover:bg-[#00ff88]/10 text-gray-400 hover:text-[#00ff88] border border-transparent hover:border-[#00ff88]/30"
@@ -1303,11 +1311,10 @@ function SidePanelTerminal() {
                 </div>
               </div>
 
-              {/* Profile Dropdown Menu - Outside overflow container */}
+              {/* Profile Dropdown Menu - Aligned to right edge */}
               {showProfileDropdown && profiles.length > 0 && (
                 <div
-                  className="absolute top-full mt-1 bg-[#1a1a1a] border border-gray-700 rounded-md shadow-2xl min-w-[180px] z-50 overflow-hidden"
-                  style={{ left: profileDropdownLeft !== null ? `${profileDropdownLeft}px` : undefined }}
+                  className="absolute top-full right-2 mt-1 bg-[#1a1a1a] border border-gray-700 rounded-md shadow-2xl min-w-[180px] z-50 overflow-hidden"
                 >
                   {profiles.map((profile) => {
                     // Get truncated working dir (just folder name with ./ prefix)
@@ -1601,14 +1608,15 @@ function SidePanelTerminal() {
                             <span className="w-4 flex-shrink-0">
                               {targetTabs.has(session.id) ? '☑' : '☐'}
                             </span>
-                            {claudeStatus ? (
-                              <span className="flex items-center gap-1 truncate" title={`${session.name} - ${claudeStatus.status}`}>
-                                <span className="flex-shrink-0">🤖</span>
-                                <span className="truncate">{getStatusText(claudeStatus)}</span>
+                            <span
+                              className="flex items-center gap-1 truncate"
+                              title={claudeStatus ? `${session.name}\n${getFullStatusText(claudeStatus)}` : session.name}
+                            >
+                              {claudeStatus && <span className="flex-shrink-0">🤖</span>}
+                              <span className="truncate">
+                                {claudeStatus ? getStatusText(claudeStatus) : session.name}
                               </span>
-                            ) : (
-                              <span className="truncate">{session.name}</span>
-                            )}
+                            </span>
                           </button>
                         )
                       })}

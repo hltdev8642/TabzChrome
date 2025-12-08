@@ -97,7 +97,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   // MCP state - now tracks individual tools instead of groups
   const [mcpEnabledTools, setMcpEnabledTools] = useState<string[]>(PRESETS.standard)
-  const [mcpConfigChanged, setMcpConfigChanged] = useState(false)
+  const [mcpConfigChanged, setMcpConfigChanged] = useState(false)  // Unsaved changes pending
+  const [mcpConfigSaved, setMcpConfigSaved] = useState(false)      // Changes have been saved (show restart notice)
   const [mcpLoading, setMcpLoading] = useState(false)
 
   // URL settings for tabz_open_url
@@ -112,6 +113,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setEditingIndex(null)
       setFormData(DEFAULT_PROFILE)
       setMcpConfigChanged(false)
+      setMcpConfigSaved(false)
       // Don't reset activeTab - let user stay on their last tab
     }
   }, [isOpen])
@@ -373,8 +375,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       console.error('[Settings] Failed to sync MCP config to backend (Chrome storage saved):', err)
     }
 
-    // Close modal after save
-    onClose()
+    // Mark as saved (shows restart notice) and clear changed flag
+    setMcpConfigSaved(true)
+    setMcpConfigChanged(false)
+    // Don't close modal - let user see the restart notice
   }
 
   // Calculate token estimate from individual tools
@@ -929,14 +933,21 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   <span className="font-mono text-[#00ff88]">~{estimatedTokens.toLocaleString()} tokens</span>
                 </div>
 
-                {mcpConfigChanged && (
-                  <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
-                    <AlertTriangle className="h-4 w-4 text-yellow-500 flex-shrink-0" />
-                    <span className="text-xs text-yellow-200">
-                      Restart Claude Code to apply changes
+                {mcpConfigSaved ? (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                    <span className="text-green-400 flex-shrink-0">✓</span>
+                    <span className="text-xs text-green-200">
+                      Saved! Restart Claude Code to apply changes
                     </span>
                   </div>
-                )}
+                ) : mcpConfigChanged ? (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                    <span className="text-blue-400 flex-shrink-0">●</span>
+                    <span className="text-xs text-blue-200">
+                      Unsaved changes
+                    </span>
+                  </div>
+                ) : null}
               </div>
             </>
           )}
@@ -948,14 +959,25 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             onClick={onClose}
             className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-sm transition-colors"
           >
-            {activeTab === 'mcp' ? 'Close' : 'Cancel'}
+            {activeTab === 'mcp' && mcpConfigSaved ? 'Done' : activeTab === 'mcp' ? 'Close' : 'Cancel'}
           </button>
-          <button
-            onClick={activeTab === 'mcp' ? handleMcpSave : handleSave}
-            className="px-4 py-2 bg-[#00ff88] hover:bg-[#00c8ff] text-black rounded text-sm font-medium transition-colors"
-          >
-            Save
-          </button>
+          {activeTab === 'mcp' && mcpConfigSaved ? (
+            <span className="px-4 py-2 bg-green-600/20 text-green-400 rounded text-sm font-medium">
+              ✓ Saved
+            </span>
+          ) : (
+            <button
+              onClick={activeTab === 'mcp' ? handleMcpSave : handleSave}
+              disabled={activeTab === 'mcp' && !mcpConfigChanged}
+              className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                activeTab === 'mcp' && !mcpConfigChanged
+                  ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                  : 'bg-[#00ff88] hover:bg-[#00c8ff] text-black'
+              }`}
+            >
+              Save
+            </button>
+          )}
         </div>
       </div>
     </div>

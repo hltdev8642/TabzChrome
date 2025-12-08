@@ -1,9 +1,73 @@
 # Changelog
 
-All notable changes to Terminal Tabs - Chrome Extension will be documented in this file.
+All notable changes to Tabz - Chrome Edition will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [2.3.0] - 2025-12-07
+
+### 🚀 Major Features
+
+#### MCP Settings Tab (Phase 2A + 2B Complete)
+- **Individual Tool Toggles** - Enable/disable each of 12 MCP tools separately
+- **Token Estimates** - See estimated context usage per tool configuration
+- **Presets** - Minimal, Standard, Full tool sets with one click
+- **Configurable Allowed URLs** - Add custom domains for `tabz_open_url`, or enable "YOLO mode" for all URLs
+- **MCP Rebrand** - All tools renamed from `browser_*` → `tabz_*`
+- **Cross-Platform Scripts** - Added `run.sh` (native), `run-wsl.sh`, `run-auto.sh` (auto-detect)
+- Files: `extension/components/SettingsModal.tsx`, `tabz-mcp-server/src/`
+
+#### Claude Code Status Display
+- **Emoji Indicators in Tabs** - 🤖✅ idle, 🤖⏳ working, 🤖🔧 tool use
+- **Per-Terminal Status** - Each terminal independently shows its Claude state
+- **Smart Polling** - Only polls terminals that are running Claude Code
+- Files: `extension/hooks/useClaudeStatus.ts`, `extension/sidepanel/sidepanel.tsx`
+
+#### Command History
+- **Arrow Key Navigation** - Press ↑/↓ in chat bar to cycle through past commands
+- **Persistent Storage** - Command history saved in Chrome storage across sessions
+- **Clock Icon** - Visual indicator shows history is available
+- Files: `extension/hooks/useCommandHistory.ts`
+
+#### Targeted Pane Send for Split Layouts
+- **Tmux Split Support** - Send commands to specific panes in split tmux layouts
+- **Multi-Terminal Select** - Target multiple terminals from the chat bar
+- **Claude-Aware Routing** - Automatically routes to correct pane when Claude is in a split
+- Files: `backend/server.js`, `extension/sidepanel/sidepanel.tsx`
+
+### 🔧 Improvements
+
+- **Smart Tab Reuse** - `tabz_open_url` switches to existing tab instead of opening duplicates
+- **Terminal ID Naming** - IDs now use `ctt-{profileName}-{shortId}` for readability
+- **Command Queuing** - "Run in Terminal" context menu queues commands if terminal is busy
+- **Tab Rename Tool** - New `tabz_rename_tab` MCP tool for persistent tab names (stored by URL)
+
+### 🐛 Bug Fixes
+
+- **Chat input routing** - Always use tmux send-keys for Claude terminals
+- **Terminal names preserved** - Names survive backend restart recovery
+- **Prevent duplicate spawns** - Fixed rapid-click creating multiple terminals
+- **Console log spam** - Reduced noise in background worker logs
+- **xterm.js buffer corruption** - Added resize lock during output bursts
+- **Light theme backgrounds** - Fixed missing explicit background colors
+- **Post-resize refresh** - Tmux sessions now refresh after resize
+- **Throttle resize events** - Only trigger on actual dimension changes
+- **Pane-focus-in hook** - Disabled hook that interrupted tmux split dragging
+- **Claude status flashing** - Added 3-poll (6s) debounce before removing status from tabs
+- **Tab layout stability** - Fixed + button outside scroll area, consistent tab widths
+- **MCP preset UX** - Presets now fill checkboxes without saving; shows "Unsaved changes" indicator
+- **Profile dropdown clipping** - Fixed dropdown alignment when + button at right edge
+- **Status hover text** - Tab tooltips now show full untruncated status details
+
+### 📝 Documentation
+
+- **Docs Audit** - Removed 10+ outdated files, archived historical docs
+- **PLAN.md Updates** - Removed Windows tools (Phase 2.7), added Hotkeys Settings Tab
+- **CLAUDE.md Fixes** - Updated to 12 MCP tools, documented 6 color themes, fixed terminal ID format
+- **Version Sync** - All files now consistently at 2.3.0
 
 ---
 

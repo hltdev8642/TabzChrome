@@ -4,11 +4,11 @@
 
 A **simple, Windows Terminal-style Chrome extension** for managing bash terminals in your browser sidebar. Built with React, TypeScript, and xterm.js.
 
-**Version**: 2.1.0 (Profiles + Working Directory)
+**Version**: 2.3.0 (MCP Settings + Claude Status)
 **Status**: In Development - Windows Terminal Simplification ✨
 **Architecture**: Chrome Extension (Side Panel) + WebSocket backend
 **Philosophy**: Windows Terminal simplicity - bash with profiles and smart directory inheritance
-**Last Updated**: December 3, 2025
+**Last Updated**: December 7, 2025
 
 ---
 
@@ -45,8 +45,8 @@ backend/
 
 ### Terminal ID Prefixing (`ctt-`)
 **All Chrome extension terminals use `ctt-` prefix** (Chrome Terminal Tabs)
-- Terminal IDs: `ctt-{uuid}` (e.g., `ctt-a1b2c3d4-e5f6...`)
-- Generated in: `backend/modules/terminal-registry.js` (line ~239)
+- Terminal IDs: `ctt-{profileName}-{shortId}` (e.g., `ctt-Bash-a1b2c3d4`)
+- Generated in: `backend/modules/terminal-registry.js` (line ~247-262)
 - Activated by: `isChrome: true` flag in spawn config
 - Purpose:
   - Distinguish from web app terminals (`tt-` prefix)
@@ -166,7 +166,7 @@ npm run build:extension && rsync -av --delete dist-extension/ /mnt/c/Users/marci
   - Working directory (optional) - leave empty to inherit from header
   - Font size (12-24px)
   - Font family (6 options: monospace, JetBrains Mono, Fira Code, etc.)
-  - Theme (dark/light)
+  - Theme (6 families: high-contrast, dracula, ocean, neon, amber, matrix) + dark/light toggle
 ✅ **Global Working Directory** - Dropdown in header sets default directory:
   - Profiles without explicit workingDir inherit from this
   - Recent directories remembered (with remove option)
@@ -176,11 +176,15 @@ npm run build:extension && rsync -av --delete dist-extension/ /mnt/c/Users/marci
 ✅ **Split + Button** - Windows Terminal-style in tab bar:
   - Click + to spawn default profile
   - Click ▼ to select any profile
-✅ **Settings Modal** - Profiles management (add/edit/delete, set default)
-✅ **Tab Close Buttons** - Hover-to-show X buttons (Windows Terminal style)
+✅ **Settings Modal** - Two tabs: Profiles and MCP Tools
+  - Profiles: add/edit/delete, set default, drag-and-drop reorder
+  - MCP Tools: individual tool toggles, URL settings, token estimates
+✅ **Tab Management** - Drag-and-drop reordering, hover-to-show X close buttons
+✅ **Claude Code Status** - Emoji indicators in tabs (🤖✅ idle, 🤖⏳ working, 🤖🔧 tool use)
+✅ **Command History** - Up/down arrows in chat bar, clock icon to view history
 ✅ **Full Terminal Emulation** - xterm.js with copy/paste support
 ✅ **WebSocket Communication** - Real-time I/O via background worker
-✅ **Keyboard Shortcut** - Ctrl+Shift+9 to open sidebar
+✅ **Keyboard Shortcuts** - Ctrl+Shift+9 to open sidebar (configurable in Chrome)
 ✅ **Context Menu** - Right-click → "Toggle Terminal Sidebar" or "Paste to Terminal"
 ✅ **Connection Status** - WebSocket connection indicator in header
 ✅ **HTTP Spawn API** - Spawn terminals programmatically via REST endpoint
@@ -377,15 +381,16 @@ TabzChrome includes a **Tabz MCP Server** that enables Claude Code to programmat
 
 ### Available Tools
 
-**11 MCP tools** for browser automation (see [MCP_TOOLS.md](tabz-mcp-server/MCP_TOOLS.md)):
-- `tabz_open_url` - Open allowed URLs (GitHub, GitLab, Vercel, localhost)
-- `tabz_get_page_info` - Get current page URL and title
-- `tabz_screenshot` - Capture screenshots to disk
-- `tabz_download_image` - Download images from pages
+**12 MCP tools** for browser automation (see [MCP_TOOLS.md](tabz-mcp-server/MCP_TOOLS.md)):
 - `tabz_list_tabs` - List all open tabs
 - `tabz_switch_tab` - Switch to specific tab
+- `tabz_rename_tab` - Assign custom names to tabs (persist by URL)
+- `tabz_get_page_info` - Get current page URL and title
+- `tabz_open_url` - Open allowed URLs (GitHub, GitLab, Vercel, localhost)
 - `tabz_click` - Click elements by CSS selector
 - `tabz_fill` - Fill form inputs
+- `tabz_screenshot` - Capture screenshots to disk
+- `tabz_download_image` - Download images from pages
 - `tabz_get_element` - Inspect element HTML/CSS
 - `tabz_execute_script` - Run JavaScript in page
 - `tabz_get_console_logs` - View browser console output
@@ -432,7 +437,7 @@ See [OMNIBOX_FEATURES.md](OMNIBOX_FEATURES.md) for complete documentation.
 
 1. **WSL Connection** - If loading from WSL path, must use `localhost` not `127.0.0.1`
 2. **Paste to TUI Apps** - Text pastes directly, may corrupt TUI apps if not at prompt
-3. **No Keyboard Shortcuts** - Missing Ctrl+T, Ctrl+W, etc. (browser limitations)
+3. **Keyboard Shortcuts Need Configuration** - Alt+T/W/1-9 defined in manifest but require user to set in `chrome://extensions/shortcuts` (no defaults due to Chrome restrictions)
 
 ---
 
@@ -454,30 +459,21 @@ See [OMNIBOX_FEATURES.md](OMNIBOX_FEATURES.md) for complete documentation.
 
 ### Organized Documentation (docs/ folder)
 
-See **[docs/README.md](docs/README.md)** for complete navigation guide.
+See **[docs/README.md](docs/README.md)** for navigation guide.
 
 #### Bug Investigations (docs/bugs/)
-- **[docs/bugs/MULTI_WINDOW_REATTACH_BUG.md](docs/bugs/MULTI_WINDOW_REATTACH_BUG.md)** - Multi-window reattach investigation
 - **[docs/bugs/CONNECTION_DEBUG.md](docs/bugs/CONNECTION_DEBUG.md)** - WebSocket connection debugging
-- **[docs/bugs/](docs/bugs/)** - Additional debugging notes and investigations
+- **[docs/bugs/SESSION_DEBUG.md](docs/bugs/SESSION_DEBUG.md)** - Session debugging notes
 
 #### Planning & Analysis (docs/planning/)
-- **[docs/planning/IMPLEMENTATION_PLAN.md](docs/planning/IMPLEMENTATION_PLAN.md)** - Implementation planning
-- **[docs/planning/MISSING_FEATURES.md](docs/planning/MISSING_FEATURES.md)** - Feature tracking
-- **[docs/planning/](docs/planning/)** - Architecture analysis and brainstorming
+- **[docs/planning/](docs/planning/)** - Feature planning and integration docs
 
 #### Technical Reference (docs/reference/)
-- **[docs/reference/SPLIT_LAYOUT_DESIGN.md](docs/reference/SPLIT_LAYOUT_DESIGN.md)** - Split layout design spec
-- **[docs/reference/OPUSTRATOR_LEGACY_AUDIT.md](docs/reference/OPUSTRATOR_LEGACY_AUDIT.md)** - Legacy code audit
 - **[docs/reference/CLAUDE_CODE_COLORS.md](docs/reference/CLAUDE_CODE_COLORS.md)** - Terminal color schemes
-- **[docs/reference/](docs/reference/)** - Technical patterns and guidelines
-
-#### Implementation Phases (docs/phases/)
-- **[docs/phases/REMAINING_PHASES.md](docs/phases/REMAINING_PHASES.md)** - Current roadmap
-- **[docs/phases/](docs/phases/)** - Phase-by-phase implementation tracking
+- **[docs/reference/SEND_KEYS_SAFETY.md](docs/reference/SEND_KEYS_SAFETY.md)** - Send-keys safety guidelines
 
 #### Archived & Historical (docs/archived/)
-- **[docs/archived/](docs/archived/)** - Completed work, historical notes, legacy prompts
+- **[docs/archived/](docs/archived/)** - Completed work, historical notes, legacy code audits
 
 **Quick Navigation:**
 - 🐛 Debugging a bug? → [LESSONS_LEARNED.md](LESSONS_LEARNED.md) or [docs/bugs/](docs/bugs/)

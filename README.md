@@ -2,7 +2,7 @@
 
 **Terminal sessions in your Chrome sidebar - Windows Terminal style**
 
-![Version](https://img.shields.io/badge/version-2.1.0-blue)
+![Version](https://img.shields.io/badge/version-2.3.0-blue)
 ![Chrome](https://img.shields.io/badge/chrome-manifest%20v3-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -77,7 +77,7 @@ Click the **+** dropdown to spawn terminals from saved profiles:
 - **Working Directory** - Optional (inherits from header if empty)
 - **Startup Command** - Optional command to run on spawn (e.g., `lazygit`, `htop`)
 - **Font Size** - 12-24px per profile
-- **Theme** - Dark or Light
+- **Theme** - 6 color schemes (high-contrast, dracula, ocean, neon, amber, matrix) + dark/light toggle
 
 ### Working Directory Inheritance
 
@@ -129,17 +129,30 @@ Clicking the element queues the command to the sidebar chat input.
 
 ## Tabz MCP Integration
 
-Tabz includes an **MCP server** that lets Claude Code control your browser:
+Tabz includes an **MCP server** with 12 tools that let Claude Code control your browser:
 
 | Tool | Description |
 |------|-------------|
-| `browser_screenshot` | Capture page to disk |
-| `browser_click` | Click element by CSS selector |
-| `browser_fill` | Type into input fields |
-| `browser_execute_script` | Run JavaScript |
-| `browser_get_console_logs` | View browser console |
-| `browser_list_tabs` | List open tabs |
-| `browser_open_url` | Navigate to allowed domains |
+| `tabz_screenshot` | Capture page to disk |
+| `tabz_click` | Click element by CSS selector |
+| `tabz_fill` | Type into input fields |
+| `tabz_execute_script` | Run JavaScript |
+| `tabz_get_console_logs` | View browser console |
+| `tabz_list_tabs` | List open tabs |
+| `tabz_switch_tab` | Switch to a tab |
+| `tabz_rename_tab` | Assign custom names to tabs |
+| `tabz_open_url` | Navigate to allowed domains |
+| `tabz_get_page_info` | Get current URL/title |
+| `tabz_download_image` | Download images to disk |
+| `tabz_get_element` | Inspect element HTML/CSS |
+
+### Configure in Settings
+
+Click ⚙️ → **MCP Tools** tab to:
+- Toggle individual tools on/off
+- See token usage estimates
+- Add custom allowed domains for `tabz_open_url`
+- Apply presets (Minimal, Standard, Full)
 
 ### Interactive Command: `/ttmcp`
 
@@ -156,7 +169,7 @@ Type `/ttmcp` in Claude Code for a menu-driven interface to all browser tools.
    ```json
    {
      "mcpServers": {
-       "browser": {
+       "tabz": {
          "command": "/path/to/TabzChrome/tabz-mcp-server/run-auto.sh",
          "args": [],
          "env": { "BACKEND_URL": "http://localhost:8129" }

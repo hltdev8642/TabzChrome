@@ -1,8 +1,8 @@
 # PLAN.md - TabzChrome Roadmap
 
 **Last Updated**: December 7, 2025
-**Current Version**: 2.2.0
-**Status**: Phase 2B Complete - Settings UI ✅ | Next: Phase 2C Power Tools
+**Current Version**: 2.3.0
+**Status**: Phase 2B Complete ✅ | Next: Phase 2C Power Tools
 
 ---
 
@@ -365,44 +365,9 @@ chrome.bookmarks.create({
 
 ---
 
-### 2.7 `chrome.windows` - Multi-Window Workflows (Priority #7) 🔥🔥
+### 2.7 Cross-Platform Support (Linux, macOS, Windows) ✅ COMPLETE
 
-**Impact**: Create and arrange windows, side-by-side views.
-
-**Note**: Already have access via `"tabs"` permission.
-
-**MCP Tools to implement:**
-
-- [ ] `browser_split_view` - Open two pages side-by-side
-  - Create two windows, position left/right
-  - Specify URLs for each
-
-- [ ] `browser_popup_window` - Pop out page as reference
-  - Small always-on-top window
-  - Great for docs while coding
-
-- [ ] `browser_arrange_windows` - Organize workspace
-  - Tile windows
-  - Maximize/restore
-
-- [ ] `browser_focus_window` - Bring window to front
-  - By window ID or URL pattern
-
-**Implementation:**
-```typescript
-chrome.windows.create({
-  url: "https://docs.example.com",
-  type: "popup",
-  width: 800,
-  height: 600,
-  left: 0,
-  top: 0
-});
-```
-
----
-
-### 2.8 Cross-Platform Support (Linux, macOS, Windows) ✅ COMPLETE
+> **Note:** Phase 2.7 (`chrome.windows` multi-window tools) was removed - conflicts with sidebar simplicity philosophy.
 
 **Goal**: Ensure TabzChrome works on all major platforms, not just Windows/WSL2.
 
@@ -880,17 +845,27 @@ Play sounds or voice announcements when Claude status changes.
 - Error/warning sounds
 - RTS-style advisor: "Your Claude is under attack" on errors 😂
 
-### Tmux Control Center Tab
-A dedicated tab for managing all tmux sessions - UI version of tmuxplexer.
+### Keyboard Shortcuts Settings Tab
+A 3rd tab in Settings for viewing and configuring keyboard shortcuts.
 
 **Features:**
-- Grid/list view of all tmux sessions with Claude status badges
-- Live terminal previews via `tmux capture-pane`
-- Multi-select sessions for broadcast prompts
-- Session grouping (by project, by status)
-- Nice chat interface with multi-send (better than TUI input)
+- Display current keybindings (from manifest defaults)
+- "Open Chrome shortcuts page" button (`chrome://extensions/shortcuts`)
+- Available actions:
+  - New Tab (`Alt+T` suggested)
+  - Close Tab (`Alt+W` suggested)
+  - Next Tab (`Alt+]`)
+  - Previous Tab (`Alt+[`)
+  - Jump to Tab 1-9 (`Alt+1` through `Alt+9`)
+- Note explaining Chrome's shortcut configuration system
+- Detection of conflicts with Chrome/Windows hotkeys
 
-### Keyboard Shortcuts
+**Implementation notes:**
+- Chrome doesn't allow programmatic shortcut changes (security)
+- Tab displays what's available + links to Chrome's native config
+- Provide suggested defaults that avoid common conflicts
+
+### Keyboard Shortcuts (Manifest)
 - `Alt+T` - Open spawn menu
 - `Alt+W` - Close active tab
 - `Alt+1-9` - Jump to tab
@@ -937,8 +912,8 @@ These are intentionally excluded from the Chrome extension:
 
 - **Split terminals** - Sidebar is narrow, use tmux splits instead
 - **Multi-window support** - Chrome has one sidebar per window by design
-- **Background gradients** - Keep it simple
-- **Tab drag-and-drop** - Narrow sidebar makes this awkward
+- **Complex theming UI** - Keep it simple, 6 curated themes + dark/light toggle
+- **`chrome.windows` tools** - Multi-window workflows conflict with sidebar simplicity
 
 ---
 

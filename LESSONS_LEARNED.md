@@ -4,6 +4,54 @@ This document captures important debugging lessons, gotchas, and best practices 
 
 ---
 
+## Polling State and UI Flicker
+
+### Lesson: Debounce Polled State Changes to Prevent UI Flashing (Dec 7, 2025)
+
+**Problem**: Claude status tabs were flashing between showing status and showing name.
+
+**What Happened:**
+1. `useClaudeStatus` hook polled every 2 seconds
+2. Each poll created a new Map and replaced the old one
+3. If API briefly returned `unknown` (during tool execution), terminal disappeared from map
+4. Tab instantly switched from "🤖 🔧 Read: file.tsx" to "Bash"
+5. Next poll returned valid status, tab switched back
+6. Result: Constant flashing during active Claude work
+
+**Root Cause**: Replacing entire state on every poll. Any transient failure caused immediate UI change.
+
+**Solution**: Use a "miss counter" with threshold before removing entries:
+```typescript
+const MISS_THRESHOLD = 3  // 3 polls × 2s = 6 seconds grace
+
+const missCountsRef = useRef<Map<string, number>>(new Map())
+
+// In poll callback:
+if (result.success && result.status !== 'unknown') {
+  missCountsRef.current.set(id, 0)  // Reset on success
+  newStatuses.set(id, result.status)
+} else {
+  const misses = (missCountsRef.current.get(id) || 0) + 1
+  missCountsRef.current.set(id, misses)
+
+  // Keep previous status until threshold exceeded
+  if (misses < MISS_THRESHOLD && prevStatuses.has(id)) {
+    newStatuses.set(id, prevStatuses.get(id)!)
+  }
+}
+```
+
+**Key Insight**:
+- Transient failures are normal in polling systems
+- Don't immediately reflect failures in UI - add grace period
+- Use refs for counters (don't trigger re-renders for tracking state)
+- Pattern applies to any polled data that affects UI
+
+**Files**:
+- `extension/hooks/useClaudeStatus.ts:41-120`
+
+---
+
 ## Refs and State Management
 
 ### Lesson: Clear Refs When State Changes (Nov 13, 2025)
