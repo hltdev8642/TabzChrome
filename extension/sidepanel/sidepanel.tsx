@@ -1377,7 +1377,7 @@ function SidePanelTerminal() {
                 )}
               </div>
             ) : (
-              <div className="h-full">
+              <div className="h-full relative">
                 {sessions.map(session => {
                   // Get the CURRENT profile settings (not the snapshot from spawn time)
                   // This allows theme/font changes to affect existing terminals
@@ -1394,8 +1394,17 @@ function SidePanelTerminal() {
                   return (
                   <div
                     key={session.id}
-                    className="h-full"
-                    style={{ display: session.id === currentSession ? 'block' : 'none' }}
+                    style={{
+                      // Use visibility instead of display:none so terminals always have dimensions
+                      // This allows ResizeObserver to work and prevents "need to click to draw" issues
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      visibility: session.id === currentSession ? 'visible' : 'hidden',
+                      zIndex: session.id === currentSession ? 1 : 0,
+                    }}
                   >
                     <Terminal
                       terminalId={session.id}
