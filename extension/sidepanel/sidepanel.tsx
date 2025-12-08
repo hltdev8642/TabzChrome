@@ -700,6 +700,10 @@ function SidePanelTerminal() {
         const claudeStatus = claudeStatuses.get(terminalId)
         const tmuxPane = claudeStatus?.tmuxPane
 
+        // Get session info for tmux fallback
+        const session = sessions.find(s => s.id === terminalId)
+        const tmuxSessionName = session?.sessionName
+
         if (tmuxPane) {
           // Use targeted pane send - goes directly to Claude's pane
           // This prevents sending to TUI tools (like TFE) in other panes
@@ -709,8 +713,18 @@ function SidePanelTerminal() {
             text: chatInputText,
             sendEnter: chatInputMode === 'execute',
           })
+        } else if (tmuxSessionName) {
+          // Fallback: Use tmux session name when pane ID isn't available
+          // This is safer than PTY for Claude terminals - sends to first pane of session
+          // Avoids the bug where content gets executed by bash instead of going to Claude
+          sendMessage({
+            type: 'TMUX_SESSION_SEND',
+            sessionName: tmuxSessionName,
+            text: chatInputText,
+            sendEnter: chatInputMode === 'execute',
+          })
         } else {
-          // Standard send via PTY (for non-Claude or unknown pane layout)
+          // Last resort: PTY send (only for non-tmux terminals)
           sendMessage({
             type: 'TERMINAL_INPUT',
             terminalId,

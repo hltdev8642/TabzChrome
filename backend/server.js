@@ -283,29 +283,63 @@ wss.on('connection', (ws) => {
           // Send text directly to a specific tmux pane (bypasses PTY, goes to exact pane)
           // Used for split layouts where Claude is in one pane and a TUI tool in another
           // This prevents corrupting TUI apps when user sends commands from chat bar
-          const { tmuxPane, text, sendEnter } = data;
-          if (!tmuxPane) {
-            log.warn(`targeted-pane-send missing tmuxPane`);
-            break;
-          }
-          try {
-            const { execSync } = require('child_process');
-            if (text) {
-              // Use tmux send-keys with literal flag to handle special characters correctly
-              // The -l flag sends keys literally (without interpreting special sequences)
-              execSync(`tmux send-keys -t "${tmuxPane}" -l ${JSON.stringify(text)}`, { timeout: 5000 });
-              log.debug(`Targeted send → pane ${tmuxPane}: ${text.length} bytes`);
+          {
+            const { tmuxPane, text, sendEnter } = data;
+            if (!tmuxPane) {
+              log.warn(`targeted-pane-send missing tmuxPane`);
+              break;
             }
-            if (sendEnter) {
-              // Send Enter key (not literal, so tmux interprets it as Enter)
-              execSync(`tmux send-keys -t "${tmuxPane}" Enter`, { timeout: 5000 });
-              log.debug(`Targeted Enter → pane ${tmuxPane}`);
+            try {
+              const { execSync } = require('child_process');
+              if (text) {
+                // Use tmux send-keys with literal flag to handle special characters correctly
+                // The -l flag sends keys literally (without interpreting special sequences)
+                execSync(`tmux send-keys -t "${tmuxPane}" -l ${JSON.stringify(text)}`, { timeout: 5000 });
+                log.debug(`Targeted send → pane ${tmuxPane}: ${text.length} bytes`);
+              }
+              if (sendEnter) {
+                // CRITICAL: 300ms delay before Enter for long prompts (matches /pmux pattern)
+                // Without delay, Claude may interpret newline before full text loads
+                await new Promise(resolve => setTimeout(resolve, 300));
+                // Send Enter key (not literal, so tmux interprets it as Enter)
+                execSync(`tmux send-keys -t "${tmuxPane}" Enter`, { timeout: 5000 });
+                log.debug(`Targeted Enter → pane ${tmuxPane}`);
+              }
+            } catch (err) {
+              log.error(`Failed to send to pane ${tmuxPane}:`, err.message);
             }
-          } catch (err) {
-            log.error(`Failed to send to pane ${tmuxPane}:`, err.message);
           }
           break;
-          
+
+        case 'tmux-session-send':
+          // Send to tmux session by name (fallback when pane ID unavailable)
+          // Sends to first pane of session - safer than PTY for Claude terminals
+          {
+            const { sessionName, text: sessionText, sendEnter: sessionSendEnter } = data;
+            if (!sessionName) {
+              log.warn(`tmux-session-send missing sessionName`);
+              break;
+            }
+            try {
+              const { execSync } = require('child_process');
+              // Target the session's first pane (sessionName:0.0)
+              const target = `${sessionName}:0.0`;
+              if (sessionText) {
+                execSync(`tmux send-keys -t "${target}" -l ${JSON.stringify(sessionText)}`, { timeout: 5000 });
+                log.debug(`Session send → ${target}: ${sessionText.length} bytes`);
+              }
+              if (sessionSendEnter) {
+                // CRITICAL: 300ms delay before Enter for long prompts
+                await new Promise(resolve => setTimeout(resolve, 300));
+                execSync(`tmux send-keys -t "${target}" Enter`, { timeout: 5000 });
+                log.debug(`Session Enter → ${target}`);
+              }
+            } catch (err) {
+              log.error(`Failed to send to session ${sessionName}:`, err.message);
+            }
+          }
+          break;
+
         case 'resize':
           // Register this connection as owner of the terminal (for API-spawned terminals)
           // This ensures data flows to the frontend even if terminal was spawned via HTTP

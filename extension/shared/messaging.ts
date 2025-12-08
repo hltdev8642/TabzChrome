@@ -29,6 +29,8 @@ export type MessageType =
   | 'QUEUE_COMMAND'
   // Targeted pane send (for split layouts with Claude + TUI tools)
   | 'TARGETED_PANE_SEND'
+  // Tmux session send (fallback when pane ID unavailable)
+  | 'TMUX_SESSION_SEND'
   // Reconnect to terminal (register ownership for API-spawned terminals)
   | 'RECONNECT'
   // Browser MCP - Console capture
@@ -189,6 +191,15 @@ export interface TargetedPaneSendMessage extends BaseMessage {
   sendEnter?: boolean; // Whether to send Enter after text
 }
 
+// Tmux session send - fallback when pane ID unavailable
+// Sends to the first pane of a tmux session (safer than PTY for Claude terminals)
+export interface TmuxSessionSendMessage extends BaseMessage {
+  type: 'TMUX_SESSION_SEND';
+  sessionName: string;  // Tmux session name (e.g., 'ctt-amber-claude-abc123')
+  text?: string;        // Text to send (literal, no interpretation)
+  sendEnter?: boolean;  // Whether to send Enter after text
+}
+
 // Browser MCP - Console log entry
 export type ConsoleLogLevel = 'log' | 'info' | 'warn' | 'error' | 'debug';
 
@@ -282,6 +293,7 @@ export type ExtensionMessage =
   | OmniboxRunCommandMessage
   | QueueCommandMessage
   | TargetedPaneSendMessage
+  | TmuxSessionSendMessage
   | ReconnectMessage
   // Browser MCP messages
   | ConsoleLogMessage
