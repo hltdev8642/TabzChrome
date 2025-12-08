@@ -1213,7 +1213,7 @@ function SidePanelTerminal() {
                     onDragEnd={handleTabDragEnd}
                     className={`
                       flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all cursor-pointer group
-                      min-w-[100px] max-w-[200px]
+                      min-w-[120px] max-w-[280px] flex-1
                       ${currentSession === session.id
                         ? 'bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30'
                         : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-gray-300 border border-transparent'
