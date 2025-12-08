@@ -489,10 +489,19 @@ class TerminalRegistry extends EventEmitter {
   /**
    * Resize terminal (PTY)
    */
-  resizeTerminal(id, cols, rows) {
+  async resizeTerminal(id, cols, rows) {
     const terminal = this.terminals.get(id);
     if (!terminal) {
       throw new Error(`Terminal ${id} not found`);
+    }
+
+    // If terminal is disconnected, try to reconnect first
+    if (terminal.state === 'disconnected') {
+      console.log(`[TerminalRegistry] Terminal ${terminal.name} is disconnected, attempting reconnect before resize`);
+      const reconnected = await this.reconnectToTerminal(id);
+      if (!reconnected) {
+        throw new Error(`Terminal ${id} is disconnected and could not reconnect`);
+      }
     }
 
     // Resize PTY process
@@ -561,7 +570,7 @@ class TerminalRegistry extends EventEmitter {
   /**
    * Attempt to reconnect to existing terminal
    */
-  reconnectToTerminal(id, newAgentId) {
+  async reconnectToTerminal(id, newAgentId) {
     console.log(`[TerminalRegistry] Attempting to reconnect to terminal ${id}`);
 
     // CRITICAL FIX: First check if terminal exists in our registry
@@ -607,10 +616,35 @@ class TerminalRegistry extends EventEmitter {
       return terminal;
     }
 
-    // PTY truly doesn't exist - only recreate for terminals that were meant to be active
-    // REMOVED: The aggressive PTY recreation was causing duplicate tmux sessions
-    // If the tmux session exists, we should attach to it, not create a new one
-    console.log(`[TerminalRegistry] No PTY found for terminal ${id}, not recreating`);
+    // PTY doesn't exist - check if tmux session still exists and re-attach
+    const sessionName = terminal.sessionName || terminal.sessionId || terminal.config?.sessionName;
+    if (sessionName && ptyHandler.tmuxSessionExists(sessionName)) {
+      console.log(`[TerminalRegistry] PTY gone but tmux session ${sessionName} exists, re-attaching...`);
+      try {
+        // Re-create PTY to attach to existing tmux session
+        const ptyInfo = await ptyHandler.createPTY({
+          id: terminal.id,
+          name: terminal.name,
+          terminalType: terminal.terminalType || 'bash',
+          workingDir: terminal.workingDir,
+          cols: terminal.config?.cols || 80,
+          rows: terminal.config?.rows || 30,
+          useTmux: true,
+          sessionName: sessionName, // Attach to existing session
+          profile: terminal.profile,
+        });
+
+        terminal.state = 'active';
+        terminal.ptyInfo = ptyInfo;
+        console.log(`[TerminalRegistry] Successfully re-attached to tmux session ${sessionName}`);
+        return terminal;
+      } catch (error) {
+        console.error(`[TerminalRegistry] Failed to re-attach to tmux session ${sessionName}:`, error);
+        return null;
+      }
+    }
+
+    console.log(`[TerminalRegistry] No PTY and no tmux session found for terminal ${id}`);
     return null;
   }
 

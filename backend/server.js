@@ -466,7 +466,7 @@ wss.on('connection', (ws) => {
           terminalRegistry.cancelDisconnect(terminalId);
 
           // Now attempt to reconnect
-          const reconnected = terminalRegistry.reconnectToTerminal(terminalId);
+          const reconnected = await terminalRegistry.reconnectToTerminal(terminalId);
           if (reconnected) {
             // Add to this connection's terminal set
             connectionTerminals.add(terminalId);

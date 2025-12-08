@@ -698,11 +698,14 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
       <div className="flex-1 relative overflow-hidden">
         <div
           ref={terminalRef}
-          className={`absolute inset-0 terminal-wrapper ${sessionName ? 'hide-xterm-scrollbar' : ''}`}
+          className={`absolute terminal-wrapper ${sessionName ? 'hide-xterm-scrollbar' : ''}`}
           style={{
-            padding: '4px',
-            paddingLeft: '8px', // Extra left padding for Chrome sidebar resize handle
-            paddingBottom: '0px', // No bottom padding - ensure tmux status bar is fully visible
+            // Use inset instead of padding to avoid FitAddon miscalculating rows
+            // Padding is included in offsetHeight which FitAddon uses for row calculation
+            top: '4px',
+            left: '8px',  // Extra left margin for Chrome sidebar resize handle
+            right: '0px',
+            bottom: '0px', // No bottom margin - ensure tmux status bar is fully visible
           }}
         />
       </div>

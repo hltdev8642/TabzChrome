@@ -1348,7 +1348,7 @@ function SidePanelTerminal() {
           )}
 
           {/* Terminal View */}
-          <div className="flex-1 relative" style={{ height: sessions.length > 0 ? 'calc(100% - 50px)' : '100%' }}>
+          <div className="flex-1 relative min-h-0">
             {sessions.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-400">
                 <TerminalIcon className="h-16 w-16 mb-4 opacity-20" />

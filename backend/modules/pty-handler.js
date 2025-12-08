@@ -540,15 +540,6 @@ class PTYHandler extends EventEmitter {
       ptyInfo.process.resize(validCols, validRows);
       console.log(`[PTYHandler] Resized PTY ${ptyInfo.name}: ${validCols}x${validRows}`);
 
-      // Special handling for certain TUI apps that need screen refresh after resize
-      if (ptyInfo.name && (ptyInfo.name.includes('pyradio') || ptyInfo.name.includes('PyRadio'))) {
-        // Send Ctrl+L to refresh pyradio screen after resize
-        setTimeout(() => {
-          console.log(`[PTYHandler] Sending refresh to pyradio after resize`);
-          ptyInfo.process.write('\x0C'); // Ctrl+L
-        }, 100);
-      }
-
       return { cols: validCols, rows: validRows };
     } catch (error) {
       // Ignore ENOTTY errors which happen when terminal is not ready
