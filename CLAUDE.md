@@ -4,11 +4,11 @@
 
 A **simple, Windows Terminal-style Chrome extension** for managing bash terminals in your browser sidebar. Built with React, TypeScript, and xterm.js.
 
-**Version**: 2.3.0 (MCP Settings + Claude Status)
+**Version**: 2.4.0 (Ghost Badge + Detached Sessions)
 **Status**: In Development - Windows Terminal Simplification ✨
 **Architecture**: Chrome Extension (Side Panel) + WebSocket backend
 **Philosophy**: Windows Terminal simplicity - bash with profiles and smart directory inheritance
-**Last Updated**: December 7, 2025
+**Last Updated**: December 8, 2025
 
 ---
 
@@ -137,7 +137,7 @@ backend/
 
 **Build the extension:**
 ```bash
-npm run build:extension
+npm run build
 ```
 
 **Load/Reload in Chrome:**
@@ -152,7 +152,7 @@ npm run build:extension
 **Development workflow:**
 ```bash
 # Build and copy to Windows (recommended - more stable than WSL path)
-npm run build:extension && rsync -av --delete dist-extension/ /mnt/c/Users/marci/Desktop/TabzChrome/dist-extension/
+npm run build && rsync -av --delete dist-extension/ /mnt/c/Users/marci/Desktop/TabzChrome/dist-extension/
 # Then click Reload in chrome://extensions
 ```
 
@@ -185,6 +185,7 @@ npm run build:extension && rsync -av --delete dist-extension/ /mnt/c/Users/marci
   - Profiles: add/edit/delete, set default, drag-and-drop reorder
   - MCP Tools: individual tool toggles, URL settings, token estimates
 ✅ **Tab Management** - Drag-and-drop reordering, hover-to-show X close buttons
+✅ **Ghost Badge** - 👻 badge shows orphaned tmux sessions with reattach/kill options
 ✅ **Claude Code Status** - Emoji indicators in tabs (🤖✅ idle, 🤖⏳ working, 🤖🔧 tool use)
 ✅ **Command History** - Up/down arrows in chat bar, clock icon to view history
 ✅ **Full Terminal Emulation** - xterm.js with copy/paste support

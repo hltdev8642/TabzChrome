@@ -310,20 +310,23 @@ router.get('/agents/:id', asyncHandler(async (req, res) => {
 
 /**
  * DELETE /api/agents/:id - Close agent and cleanup
+ * Query params:
+ *   - force: boolean (default: true) - If true, kills tmux session. If false, just removes from registry (detach mode)
  */
 router.delete('/agents/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const force = req.query.force !== 'false'; // Default to true, only false if explicitly set
   const terminal = terminalRegistry.getTerminal(id);
-  
+
   if (!terminal) {
     return res.status(404).json({
       error: 'Agent not found',
       message: `No agent found with ID: ${id}`
     });
   }
-  
-  // Close terminal and kill tmux session
-  terminalRegistry.closeTerminal(id, true);
+
+  // Close terminal - force=true kills tmux, force=false just removes from registry
+  terminalRegistry.closeTerminal(id, force);
 
   // Broadcast to WebSocket clients so UI removes the tab
   const broadcast = req.app.get('broadcast');
@@ -333,11 +336,14 @@ router.delete('/agents/:id', asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    message: `Agent '${terminal.name}' closed successfully`,
+    message: force
+      ? `Agent '${terminal.name}' closed and tmux session killed`
+      : `Agent '${terminal.name}' detached (tmux session preserved)`,
     data: {
       id: terminal.id,
       name: terminal.name,
-      terminalType: terminal.terminalType
+      terminalType: terminal.terminalType,
+      detached: !force
     }
   });
 }));
@@ -1175,6 +1181,211 @@ router.post('/claude-status/cleanup', asyncHandler(async (req, res) => {
       error: err.message
     });
   }
+}));
+
+// =============================================================================
+// ORPHANED SESSIONS MANAGEMENT (Ghost Badge Feature)
+// =============================================================================
+
+/**
+ * GET /api/tmux/orphaned-sessions - List orphaned ctt-* tmux sessions
+ * Returns sessions that exist in tmux but are NOT in the terminal registry
+ * These are "ghost" sessions that can be reattached or killed
+ */
+router.get('/tmux/orphaned-sessions', asyncHandler(async (req, res) => {
+  const { execSync } = require('child_process');
+
+  try {
+    // Get all tmux sessions
+    let tmuxSessions = [];
+    try {
+      const output = execSync('tmux list-sessions -F "#{session_name}"', { encoding: 'utf8' });
+      tmuxSessions = output.trim().split('\n').filter(s => s.length > 0);
+    } catch (err) {
+      // tmux server not running or no sessions
+      if (err.status !== 1) {
+        throw err;
+      }
+    }
+
+    // Filter to only ctt-* prefixed sessions (Chrome extension terminals)
+    const cttSessions = tmuxSessions.filter(s => s.startsWith('ctt-'));
+
+    // Get all terminal IDs currently in the registry
+    const registeredIds = new Set(terminalRegistry.getAllTerminals().map(t => t.id));
+
+    // Find orphaned sessions (in tmux but not in registry)
+    const orphanedSessions = cttSessions.filter(session => !registeredIds.has(session));
+
+    res.json({
+      success: true,
+      data: {
+        orphanedSessions,
+        count: orphanedSessions.length,
+        totalTmuxSessions: tmuxSessions.length,
+        totalCttSessions: cttSessions.length,
+        registeredTerminals: registeredIds.size
+      }
+    });
+  } catch (error) {
+    console.error('[API] Failed to get orphaned sessions:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+}));
+
+/**
+ * POST /api/tmux/reattach - Reattach orphaned sessions to the terminal registry
+ * Body: { sessions: string[] } - Array of tmux session names to reattach
+ * This creates new terminal entries in the registry for orphaned tmux sessions
+ */
+router.post('/tmux/reattach', asyncHandler(async (req, res) => {
+  const { sessions } = req.body;
+  const { execSync } = require('child_process');
+
+  if (!Array.isArray(sessions) || sessions.length === 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'sessions array is required'
+    });
+  }
+
+  const results = {
+    success: [],
+    failed: []
+  };
+
+  for (const sessionName of sessions) {
+    // Validate session name (must be ctt-* prefix)
+    if (!sessionName.startsWith('ctt-')) {
+      results.failed.push({ session: sessionName, error: 'Invalid session name (must start with ctt-)' });
+      continue;
+    }
+
+    // Check if session exists in tmux
+    try {
+      execSync(`tmux has-session -t "${sessionName}" 2>/dev/null`);
+    } catch {
+      results.failed.push({ session: sessionName, error: 'Session does not exist in tmux' });
+      continue;
+    }
+
+    // Check if already in registry
+    const existingTerminal = terminalRegistry.getTerminal(sessionName);
+    if (existingTerminal) {
+      results.failed.push({ session: sessionName, error: 'Session already registered' });
+      continue;
+    }
+
+    try {
+      // Get session info from tmux for better naming
+      let paneTitle = 'Recovered Session';
+      let workingDir = process.env.HOME;
+      try {
+        const info = execSync(
+          `tmux display-message -t "${sessionName}" -p "#{pane_title}|#{pane_current_path}"`,
+          { encoding: 'utf-8' }
+        ).trim();
+        const [title, path] = info.split('|');
+        if (title && title !== 'bash') paneTitle = title;
+        if (path) workingDir = path;
+      } catch (e) {
+        // Use defaults if tmux info fails
+      }
+
+      // Extract profile name from session ID (ctt-ProfileName-shortId)
+      const parts = sessionName.split('-');
+      const profileName = parts.length >= 2 ? parts[1] : 'Recovered';
+      const displayName = `${profileName} (recovered)`;
+
+      // Register the terminal with the existing tmux session
+      const terminal = await terminalRegistry.registerTerminal({
+        id: sessionName,  // Use tmux session name as ID
+        name: displayName,
+        terminalType: 'bash',
+        workingDir,
+        useTmux: true,
+        sessionName: sessionName,  // Attach to existing session
+        isChrome: true,
+      });
+
+      results.success.push({
+        session: sessionName,
+        terminalId: terminal.id,
+        name: terminal.name
+      });
+
+      // Broadcast to WebSocket clients so UI shows the new tab
+      const broadcast = req.app.get('broadcast');
+      if (broadcast) {
+        broadcast({
+          type: 'terminal-spawned',
+          data: {
+            id: terminal.id,
+            name: terminal.name,
+            terminalType: terminal.terminalType,
+            sessionName: terminal.sessionId || sessionName,
+            workingDir: terminal.workingDir,
+          }
+        });
+      }
+    } catch (error) {
+      results.failed.push({ session: sessionName, error: error.message });
+    }
+  }
+
+  res.json({
+    success: true,
+    data: results,
+    message: `Reattached ${results.success.length} session(s), ${results.failed.length} failed`
+  });
+}));
+
+/**
+ * DELETE /api/tmux/sessions/bulk - Kill multiple tmux sessions
+ * Body: { sessions: string[] } - Array of tmux session names to kill
+ * WARNING: This is destructive and cannot be undone
+ */
+router.delete('/tmux/sessions/bulk', asyncHandler(async (req, res) => {
+  const { sessions } = req.body;
+  const { execSync } = require('child_process');
+
+  if (!Array.isArray(sessions) || sessions.length === 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'sessions array is required'
+    });
+  }
+
+  const results = {
+    killed: [],
+    failed: []
+  };
+
+  for (const sessionName of sessions) {
+    try {
+      execSync(`tmux kill-session -t "${sessionName}" 2>/dev/null`);
+      results.killed.push(sessionName);
+
+      // Broadcast to WebSocket clients so UI removes the tab (if it was registered)
+      if (sessionName.startsWith('ctt-')) {
+        const broadcast = req.app.get('broadcast');
+        if (broadcast) {
+          broadcast({ type: 'terminal-closed', data: { id: sessionName } });
+        }
+      }
+    } catch (err) {
+      results.failed.push({ session: sessionName, error: 'Session not found or already killed' });
+    }
+  }
+
+  res.json({
+    success: true,
+    data: results,
+    message: `Killed ${results.killed.length} session(s), ${results.failed.length} failed`
+  });
 }));
 
 /**

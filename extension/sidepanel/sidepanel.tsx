@@ -8,6 +8,7 @@ import { connectToBackground, sendMessage } from '../shared/messaging'
 import { getLocal, setLocal } from '../shared/storage'
 import { useClaudeStatus, getStatusEmoji, getStatusText, getFullStatusText } from '../hooks/useClaudeStatus'
 import { useCommandHistory } from '../hooks/useCommandHistory'
+import { useOrphanedSessions } from '../hooks/useOrphanedSessions'
 import '../styles/globals.css'
 
 interface TerminalSession {
@@ -26,6 +27,7 @@ function SidePanelTerminal() {
   const [wsConnected, setWsConnected] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [profiles, setProfiles] = useState<Profile[]>([])
+  const [defaultProfileId, setDefaultProfileId] = useState<string>('default')
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const [profileDropdownLeft, setProfileDropdownLeft] = useState<number | null>(null)
   const profileBtnRef = useRef<HTMLDivElement>(null)
@@ -59,6 +61,18 @@ function SidePanelTerminal() {
     resetNavigation,
   } = useCommandHistory()
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false)
+
+  // Orphaned sessions (Ghost Badge feature)
+  const {
+    orphanedSessions,
+    count: orphanedCount,
+    isLoading: orphanedLoading,
+    refresh: refreshOrphaned,
+    reattachSessions,
+    killSessions,
+  } = useOrphanedSessions()
+  const [showGhostDropdown, setShowGhostDropdown] = useState(false)
+  const [selectedOrphans, setSelectedOrphans] = useState<Set<string>>(new Set())
 
   // Claude status tracking - polls for Claude Code status in each terminal
   const claudeStatuses = useClaudeStatus(
@@ -177,6 +191,15 @@ function SidePanelTerminal() {
         })
         setProfiles(migratedProfiles)
 
+        // Set default profile ID (with validation)
+        const savedDefaultId = (result.defaultProfile as string) || 'default'
+        const profileIds = migratedProfiles.map((p: Profile) => p.id)
+        if (profileIds.includes(savedDefaultId)) {
+          setDefaultProfileId(savedDefaultId)
+        } else if (migratedProfiles.length > 0) {
+          setDefaultProfileId(migratedProfiles[0].id)
+        }
+
         // Save migrated profiles back to storage if any were updated
         const needsMigration = (result.profiles as any[]).some(
           p => p.fontSize === undefined || p.fontFamily === undefined || p.themeName === undefined || p.theme !== undefined
@@ -191,6 +214,7 @@ function SidePanelTerminal() {
           const response = await fetch(url)
           const data = await response.json()
           setProfiles(data.profiles as Profile[])
+          setDefaultProfileId(data.defaultProfile || 'default')
 
           // Save to storage so they persist
           chrome.storage.local.set({
@@ -207,6 +231,9 @@ function SidePanelTerminal() {
     const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
       if (changes.profiles) {
         setProfiles((changes.profiles.newValue as Profile[]) || [])
+      }
+      if (changes.defaultProfile) {
+        setDefaultProfileId((changes.defaultProfile.newValue as string) || 'default')
       }
     }
 
@@ -294,6 +321,22 @@ function SidePanelTerminal() {
     }
   }, [showHistoryDropdown])
 
+  // Close ghost dropdown when clicking outside
+  useEffect(() => {
+    if (!showGhostDropdown) return
+    const handleClick = () => {
+      setShowGhostDropdown(false)
+      setSelectedOrphans(new Set())
+    }
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleClick)
+    }, 100)
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('click', handleClick)
+    }
+  }, [showGhostDropdown])
+
   // Load saved terminal sessions from Chrome storage on mount
   // CRITICAL: Must complete before LIST_TERMINALS request to avoid race condition
   useEffect(() => {
@@ -373,6 +416,16 @@ function SidePanelTerminal() {
         if (data.connectionCount !== undefined) {
           setConnectionCount(data.connectionCount)
         }
+
+        // Send RECONNECT for each backend terminal to register this connection as owner
+        // This is critical after backend restart - without it, terminals freeze because
+        // the backend doesn't know to route output to this connection
+        backendTerminals.forEach((t: any) => {
+          sendMessage({
+            type: 'RECONNECT',
+            terminalId: t.id,
+          })
+        })
 
         // Get current sessions from state (which may have been restored from Chrome storage)
         setSessions(currentSessions => {
@@ -947,26 +1000,31 @@ function SidePanelTerminal() {
   }
 
   // Handle "Detach Session" from tab menu
+  // Removes from registry (so it becomes an orphan) but keeps tmux session alive
   const handleDetachSession = async () => {
     if (!contextMenu.terminalId) return
 
     const terminal = sessions.find(s => s.id === contextMenu.terminalId)
-    if (!terminal?.sessionName) return
+    if (!terminal) return
 
-    console.log(`[handleDetachSession] Detaching session: ${terminal.sessionName}`)
+    console.log(`[handleDetachSession] Detaching terminal: ${terminal.id} (session: ${terminal.sessionName})`)
 
     try {
-      const response = await fetch(`http://localhost:8129/api/tmux/detach/${terminal.sessionName}`, {
-        method: 'POST'
+      // Use DELETE /api/agents/:id?force=false to remove from registry but preserve tmux session
+      // This makes the session appear as "orphaned" in the Ghost Badge
+      const response = await fetch(`http://localhost:8129/api/agents/${terminal.id}?force=false`, {
+        method: 'DELETE'
       })
 
       const data = await response.json()
       if (data.success) {
-        console.log('[handleDetachSession] Session detached successfully')
-        // Remove from UI but session stays alive in tmux
+        console.log('[handleDetachSession] Terminal detached successfully (tmux session preserved)')
+        // UI will update via WebSocket broadcast (terminal-closed event)
+        // But also update local state immediately for responsiveness
         setSessions(prev => prev.filter(s => s.id !== terminal.id))
         if (currentSession === terminal.id) {
-          setCurrentSession(sessions[0]?.id || null)
+          const remaining = sessions.filter(s => s.id !== terminal.id)
+          setCurrentSession(remaining[0]?.id || null)
         }
       } else {
         console.error('[handleDetachSession] Failed to detach:', data.error)
@@ -1054,6 +1112,142 @@ function SidePanelTerminal() {
             >
               Disconnected
             </Badge>
+          )}
+
+          {/* Ghost Badge - Orphaned Sessions */}
+          {wsConnected && orphanedCount > 0 && (
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowGhostDropdown(!showGhostDropdown)
+                  if (!showGhostDropdown) {
+                    refreshOrphaned()
+                    setSelectedOrphans(new Set())
+                  }
+                }}
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30 hover:bg-purple-500/30 transition-colors"
+                title={`${orphanedCount} orphaned tmux session(s) - click to manage`}
+              >
+                <span>👻</span>
+                <span>{orphanedCount}</span>
+              </button>
+
+              {showGhostDropdown && (
+                <div
+                  className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-gray-700 rounded-md shadow-2xl min-w-[280px] z-50 overflow-hidden"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Header */}
+                  <div className="px-3 py-2 border-b border-gray-800 flex items-center justify-between">
+                    <span className="text-sm font-medium text-white">
+                      Detached Sessions ({orphanedCount})
+                    </span>
+                    <button
+                      onClick={() => refreshOrphaned()}
+                      className="text-xs text-gray-400 hover:text-white transition-colors"
+                      title="Refresh"
+                    >
+                      {orphanedLoading ? '...' : '↻'}
+                    </button>
+                  </div>
+
+                  {/* Select All */}
+                  <button
+                    onClick={() => {
+                      if (selectedOrphans.size === orphanedSessions.length) {
+                        setSelectedOrphans(new Set())
+                      } else {
+                        setSelectedOrphans(new Set(orphanedSessions))
+                      }
+                    }}
+                    className="w-full px-3 py-2 text-left text-xs border-b border-gray-800 text-gray-300 hover:bg-white/5 transition-colors flex items-center gap-2"
+                  >
+                    <span className="w-4">
+                      {selectedOrphans.size === orphanedSessions.length && orphanedSessions.length > 0 ? '☑' : '☐'}
+                    </span>
+                    <span>Select All</span>
+                  </button>
+
+                  {/* Session List */}
+                  <div className="max-h-[200px] overflow-y-auto">
+                    {orphanedSessions.map((session) => {
+                      // Extract display name from session ID (ctt-ProfileName-shortId)
+                      const parts = session.split('-')
+                      const profileName = parts.length >= 2 ? parts[1] : session
+                      const shortId = parts.length >= 3 ? parts.slice(2).join('-') : ''
+
+                      return (
+                        <button
+                          key={session}
+                          onClick={() => {
+                            setSelectedOrphans((prev) => {
+                              const next = new Set(prev)
+                              if (next.has(session)) {
+                                next.delete(session)
+                              } else {
+                                next.add(session)
+                              }
+                              return next
+                            })
+                          }}
+                          className={`w-full px-3 py-2 text-left text-xs transition-colors flex items-center gap-2 ${
+                            selectedOrphans.has(session)
+                              ? 'text-purple-400 bg-purple-500/10'
+                              : 'text-gray-300 hover:bg-white/5'
+                          }`}
+                          title={session}
+                        >
+                          <span className="w-4 flex-shrink-0">
+                            {selectedOrphans.has(session) ? '☑' : '☐'}
+                          </span>
+                          <span className="truncate flex-1 font-mono">
+                            {profileName}
+                            {shortId && <span className="text-gray-500 ml-1">({shortId.slice(0, 6)})</span>}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="px-3 py-2 border-t border-gray-800 flex gap-2">
+                    <button
+                      onClick={async () => {
+                        if (selectedOrphans.size === 0) return
+                        const result = await reattachSessions(Array.from(selectedOrphans))
+                        if (result.success) {
+                          setSelectedOrphans(new Set())
+                          // Keep dropdown open to show updated list
+                        }
+                      }}
+                      disabled={selectedOrphans.size === 0}
+                      className="flex-1 px-3 py-1.5 text-xs rounded bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88]/30 hover:bg-[#00ff88]/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Reattach
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (selectedOrphans.size === 0) return
+                        const confirmed = window.confirm(
+                          `Kill ${selectedOrphans.size} session(s)? This cannot be undone.`
+                        )
+                        if (confirmed) {
+                          const result = await killSessions(Array.from(selectedOrphans))
+                          if (result.success) {
+                            setSelectedOrphans(new Set())
+                          }
+                        }
+                      }}
+                      disabled={selectedOrphans.size === 0}
+                      className="flex-1 px-3 py-1.5 text-xs rounded bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Kill
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Dark/Light Mode Toggle */}
@@ -1284,10 +1478,10 @@ function SidePanelTerminal() {
                 </div>
               </div>
 
-              {/* Profile Dropdown Menu - Aligned to right edge */}
+              {/* Profile Dropdown Menu - Aligned to right edge, fixed width */}
               {showProfileDropdown && profiles.length > 0 && (
                 <div
-                  className="absolute top-full right-2 mt-1 bg-[#1a1a1a] border border-gray-700 rounded-md shadow-2xl min-w-[180px] z-50 overflow-hidden"
+                  className="absolute top-full right-2 mt-1 bg-[#1a1a1a] border border-gray-700 rounded-md shadow-2xl w-[220px] z-50 overflow-hidden"
                 >
                   {profiles.map((profile) => {
                     // Get truncated working dir (just folder name with ./ prefix)
@@ -1305,6 +1499,9 @@ function SidePanelTerminal() {
                       >
                         <div className="font-medium flex items-center gap-2">
                           <span>{profile.name}</span>
+                          {profile.id === defaultProfileId && (
+                            <span className="text-[9px] bg-[#00ff88]/20 text-[#00ff88] px-1.5 py-0.5 rounded">Default</span>
+                          )}
                           {truncatedDir && (
                             <span className="text-gray-500 font-normal text-[10px]">{truncatedDir}</span>
                           )}
@@ -1663,7 +1860,8 @@ function SidePanelTerminal() {
         >
           {(() => {
             const terminal = sessions.find(t => t.id === contextMenu.terminalId)
-            const hasSession = terminal?.sessionName  // Only tmux sessions
+            // All ctt-* terminals have tmux sessions (the ID is the session name)
+            const isTmuxSession = terminal?.id?.startsWith('ctt-') || terminal?.sessionName
 
             return (
               <>
@@ -1673,14 +1871,14 @@ function SidePanelTerminal() {
                 >
                   ✏️ Rename Tab...
                 </button>
-                {hasSession && (
+                {isTmuxSession && (
                   <>
                     <div className="context-menu-divider" />
                     <button
                       className="context-menu-item"
                       onClick={handleDetachSession}
                     >
-                      📌 Detach Session
+                      👻 Detach Session
                     </button>
                     <button
                       className="context-menu-item"

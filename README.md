@@ -2,7 +2,7 @@
 
 **Terminal sessions in your Chrome sidebar - Windows Terminal style**
 
-![Version](https://img.shields.io/badge/version-2.3.0-blue)
+![Version](https://img.shields.io/badge/version-2.4.0-blue)
 ![Chrome](https://img.shields.io/badge/chrome-manifest%20v3-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -93,6 +93,26 @@ The folder icon in the header sets a global working directory. Profiles without 
 - **Copy/Paste** - Ctrl+Shift+C / Ctrl+Shift+V
 - **Session persistence** - Terminals survive sidebar close (tmux-backed)
 - **Tab management** - Multiple terminals, click to switch
+
+### Ghost Badge - Detached Sessions Manager
+
+The 👻 badge appears in the header when orphaned tmux sessions exist (sessions running in tmux but not attached to the UI).
+
+**Use cases:**
+- Detach long-running sessions to free up tab space
+- Recover sessions after browser crash or sidebar close
+- Clean up forgotten sessions
+
+**How to use:**
+1. Right-click a tab → "👻 Detach Session" - removes from UI but keeps tmux session alive
+2. Ghost badge appears with count of detached sessions
+3. Click badge → select sessions → **Reattach** (bring back as tabs) or **Kill** (destroy)
+
+| Action | Result |
+|--------|--------|
+| Detach Session | Tab removed, tmux session preserved, appears in Ghost Badge |
+| Reattach | Session restored as a tab with full terminal history |
+| Kill | Tmux session destroyed permanently |
 
 ### Claude Code Status Detection
 

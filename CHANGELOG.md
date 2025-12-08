@@ -13,6 +13,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.4.0] - 2025-12-08
+
+### 🚀 Major Features
+
+#### Ghost Badge - Detached Sessions Manager
+- **👻 Ghost Badge** - Header badge shows count of orphaned tmux sessions
+- **Detach Session** - Right-click tab → "👻 Detach Session" removes from UI but preserves tmux session
+- **Reattach Sessions** - Select orphaned sessions and bring them back as tabs with full history
+- **Kill Sessions** - Permanently destroy selected tmux sessions with confirmation
+- **Select All** - Bulk selection for managing multiple detached sessions
+- **30s Polling** - Automatically detects new orphaned sessions
+- Files: `backend/routes/api.js`, `extension/hooks/useOrphanedSessions.ts`, `extension/sidepanel/sidepanel.tsx`
+
+### 🔧 API Changes
+
+- **`GET /api/tmux/orphaned-sessions`** - List ctt-* tmux sessions not in terminal registry
+- **`POST /api/tmux/reattach`** - Reattach orphaned sessions to registry `{ sessions: string[] }`
+- **`DELETE /api/tmux/sessions/bulk`** - Kill multiple tmux sessions `{ sessions: string[] }`
+- **`DELETE /api/agents/:id?force=false`** - New `force` parameter: `true` (default) kills tmux, `false` detaches only
+
+---
+
 ## [2.3.0] - 2025-12-07
 
 ### 🚀 Major Features
