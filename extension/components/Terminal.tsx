@@ -46,12 +46,82 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
   const isResizingRef = useRef(false)
   const resizeLockTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Write queue - buffers data during resize to prevent isWrapped buffer corruption
+  // xterm.js write() is async - data is queued and parsed later, so try/catch doesn't help
+  // When resize happens during queued write, buffer structure changes and parser crashes
+  const writeQueueRef = useRef<string[]>([])
+  const isFlushingRef = useRef(false)
+
   // Output tracking - delay resize during active output to prevent tmux status bar corruption
   // When tmux is outputting content, resizing can corrupt scroll regions and cause the status bar to disappear
   const lastOutputTimeRef = useRef(0)
   const OUTPUT_QUIET_PERIOD = 100 // ms to wait after output before allowing resize (reduced from 200)
   const resizeDeferCountRef = useRef(0) // Track deferrals to prevent infinite loop
   const MAX_RESIZE_DEFERRALS = 3 // Max times to defer before forcing resize
+
+  // Safe write function that queues data during resize operations
+  // CRITICAL: xterm.js write() is async - data gets queued internally and parsed later
+  // If resize happens while data is queued, the parser crashes with "Cannot set isWrapped"
+  // This function queues data during resize and flushes after resize completes
+  const safeWrite = (data: string) => {
+    if (!xtermRef.current) return
+
+    // If resize is in progress, queue the data instead of writing
+    if (isResizingRef.current) {
+      writeQueueRef.current.push(data)
+      return
+    }
+
+    // Write directly if not resizing
+    try {
+      xtermRef.current.write(data)
+    } catch (e) {
+      // Buffer may be in inconsistent state - queue for later
+      console.warn('[Terminal] Write failed, queueing:', e)
+      writeQueueRef.current.push(data)
+    }
+  }
+
+  // Flush queued writes after resize completes
+  // Uses requestAnimationFrame to ensure buffer is stable before writing
+  const flushWriteQueue = () => {
+    if (isFlushingRef.current || writeQueueRef.current.length === 0) return
+    if (!xtermRef.current) return
+
+    // Don't flush if still resizing
+    if (isResizingRef.current) {
+      // Try again after resize lock is released
+      setTimeout(flushWriteQueue, 100)
+      return
+    }
+
+    isFlushingRef.current = true
+
+    // Use requestAnimationFrame to ensure we're in a stable state
+    requestAnimationFrame(() => {
+      if (!xtermRef.current || isResizingRef.current) {
+        isFlushingRef.current = false
+        // Retry if conditions changed
+        if (writeQueueRef.current.length > 0) {
+          setTimeout(flushWriteQueue, 50)
+        }
+        return
+      }
+
+      // Flush all queued data
+      const data = writeQueueRef.current.join('')
+      writeQueueRef.current = []
+
+      try {
+        xtermRef.current.write(data)
+      } catch (e) {
+        // If write still fails, the buffer is corrupted - log but don't re-queue
+        console.error('[Terminal] Flush write failed (buffer may be corrupted):', e)
+      }
+
+      isFlushingRef.current = false
+    })
+  }
 
   // Resize trick to force complete redraw (used for theme/font changes and manual refresh)
   // CRITICAL: Uses resize lock and try/catch to prevent buffer corruption
@@ -94,10 +164,12 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
           }
         }
         isResizingRef.current = false
+        flushWriteQueue()  // Flush any data queued during resize
       }, 100)
     } catch (e) {
       console.warn('[Terminal] Resize trick step 1 failed:', e)
       isResizingRef.current = false
+      flushWriteQueue()  // Flush any data queued during resize
     }
   }
 
@@ -219,10 +291,12 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
         // Release lock after a short delay to allow buffer to stabilize
         resizeLockTimeoutRef.current = setTimeout(() => {
           isResizingRef.current = false
+          flushWriteQueue()  // Flush any data queued during resize
         }, 50)
       } catch (e) {
         console.warn('[Terminal] Fit failed (buffer may be mid-update):', e)
         isResizingRef.current = false
+        flushWriteQueue()  // Flush any data queued during resize
       }
     }
 
@@ -408,13 +482,10 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
           // The emoji still renders correctly without VS16, just uses default presentation
           const sanitizedData = message.data.replace(/\uFE0F/g, '')
 
-          // Wrap write in try/catch - buffer corruption can cause isWrapped errors during resize
-          try {
-            xtermRef.current.write(sanitizedData)
-          } catch (e) {
-            // Buffer may be in inconsistent state during resize - log but don't crash
-            console.warn('[Terminal] Write failed (likely resize in progress):', e)
-          }
+          // Use safeWrite to queue data during resize operations
+          // Direct write() is async - xterm queues data and parses later
+          // If resize happens while data is queued, parser crashes with "isWrapped" error
+          safeWrite(sanitizedData)
         } else {
           console.warn('[Terminal] ⚠️ Cannot write - xterm:', !!xtermRef.current, 'data:', !!message.data)
         }
@@ -522,10 +593,12 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
         // Release resize lock after buffer stabilizes
         setTimeout(() => {
           isResizingRef.current = false
+          flushWriteQueue()  // Flush any data queued during resize
         }, 50)
       } catch (e) {
         console.warn('[Terminal] Settings redraw failed:', e)
         isResizingRef.current = false
+        flushWriteQueue()  // Flush any data queued during resize
       }
     }, 100)
   }, [fontSize, fontFamily, themeName, isDark, terminalId])
@@ -584,6 +657,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
           // Release resize lock after buffer stabilizes
           setTimeout(() => {
             isResizingRef.current = false
+            flushWriteQueue()  // Flush any data queued during resize
           }, 50)
 
           // Only send if dimensions actually changed
@@ -601,6 +675,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
         } catch (e) {
           console.warn('[Terminal] Window resize fit failed:', e)
           isResizingRef.current = false
+          flushWriteQueue()  // Flush any data queued during resize
         }
       }, 150) // 150ms debounce - matches ResizeObserver debounce
     }
@@ -675,10 +750,12 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
           // Release resize lock
           setTimeout(() => {
             isResizingRef.current = false
+            flushWriteQueue()  // Flush any data queued during resize
           }, 50)
         } catch (e) {
           console.warn('[Terminal] Tab activation fit failed:', e)
           isResizingRef.current = false
+          flushWriteQueue()  // Flush any data queued during resize
         }
       }
     }, 100) // 100ms delay for visibility transition
