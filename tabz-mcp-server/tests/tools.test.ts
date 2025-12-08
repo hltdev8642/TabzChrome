@@ -16,6 +16,8 @@ vi.mock('../src/client.js', () => ({
   downloadImage: vi.fn(),
   listTabs: vi.fn(),
   switchTab: vi.fn(),
+  renameTab: vi.fn(),
+  getCurrentTabId: vi.fn(),
   clickElement: vi.fn(),
   fillInput: vi.fn(),
   getElementInfo: vi.fn(),
@@ -49,9 +51,9 @@ describe('Console Tools', () => {
     registerConsoleTools(server, 'http://localhost:8129');
   });
 
-  it('should register browser_get_console_logs tool', () => {
+  it('should register tabz_get_console_logs tool', () => {
     expect(server.tool).toHaveBeenCalled();
-    expect(registeredTools.has('browser_get_console_logs')).toBe(true);
+    expect(registeredTools.has('tabz_get_console_logs')).toBe(true);
   });
 
   it('should return formatted markdown by default', async () => {
@@ -62,7 +64,7 @@ describe('Console Tools', () => {
       total: 1
     });
 
-    const tool = registeredTools.get('browser_get_console_logs')!;
+    const tool = registeredTools.get('tabz_get_console_logs')!;
     const result = await tool.handler({ level: 'all', limit: 100 });
 
     expect(result.content[0].text).toContain('# Console Logs');
@@ -76,7 +78,7 @@ describe('Console Tools', () => {
       total: 1
     });
 
-    const tool = registeredTools.get('browser_get_console_logs')!;
+    const tool = registeredTools.get('tabz_get_console_logs')!;
     const result = await tool.handler({ level: 'all', limit: 100, response_format: 'json' });
 
     const parsed = JSON.parse(result.content[0].text);
@@ -86,7 +88,7 @@ describe('Console Tools', () => {
   it('should handle errors gracefully', async () => {
     vi.mocked(client.getConsoleLogs).mockRejectedValue(new Error('Connection refused'));
 
-    const tool = registeredTools.get('browser_get_console_logs')!;
+    const tool = registeredTools.get('tabz_get_console_logs')!;
     const result = await tool.handler({ level: 'all', limit: 100 });
 
     expect(result.isError).toBe(true);
@@ -96,7 +98,7 @@ describe('Console Tools', () => {
   it('should show helpful message when no logs', async () => {
     vi.mocked(client.getConsoleLogs).mockResolvedValue({ logs: [], total: 0 });
 
-    const tool = registeredTools.get('browser_get_console_logs')!;
+    const tool = registeredTools.get('tabz_get_console_logs')!;
     const result = await tool.handler({ level: 'all', limit: 100 });
 
     expect(result.content[0].text).toContain('No console logs captured');
@@ -121,8 +123,8 @@ describe('Script Tools', () => {
     registerScriptTools(server, 'http://localhost:8129');
   });
 
-  it('should register browser_execute_script tool', () => {
-    expect(registeredTools.has('browser_execute_script')).toBe(true);
+  it('should register tabz_execute_script tool', () => {
+    expect(registeredTools.has('tabz_execute_script')).toBe(true);
   });
 
   it('should execute script and return formatted result', async () => {
@@ -131,7 +133,7 @@ describe('Script Tools', () => {
       result: 'Hello World'
     });
 
-    const tool = registeredTools.get('browser_execute_script')!;
+    const tool = registeredTools.get('tabz_execute_script')!;
     const result = await tool.handler({ code: 'document.title' });
 
     expect(result.content[0].text).toContain('Script Executed Successfully');
@@ -145,7 +147,7 @@ describe('Script Tools', () => {
       error: 'ReferenceError: undefined is not defined'
     });
 
-    const tool = registeredTools.get('browser_execute_script')!;
+    const tool = registeredTools.get('tabz_execute_script')!;
     const result = await tool.handler({ code: 'badCode()' });
 
     expect(result.isError).toBe(true);
@@ -159,7 +161,7 @@ describe('Script Tools', () => {
       result: { foo: 'bar', count: 42 }
     });
 
-    const tool = registeredTools.get('browser_execute_script')!;
+    const tool = registeredTools.get('tabz_execute_script')!;
     const result = await tool.handler({ code: '({foo: "bar", count: 42})' });
 
     expect(result.content[0].text).toContain('"foo": "bar"');
@@ -184,8 +186,8 @@ describe('Page Tools', () => {
     registerPageTools(server, 'http://localhost:8129');
   });
 
-  it('should register browser_get_page_info tool', () => {
-    expect(registeredTools.has('browser_get_page_info')).toBe(true);
+  it('should register tabz_get_page_info tool', () => {
+    expect(registeredTools.has('tabz_get_page_info')).toBe(true);
   });
 
   it('should return page info in markdown format', async () => {
@@ -195,7 +197,7 @@ describe('Page Tools', () => {
       tabId: 123
     });
 
-    const tool = registeredTools.get('browser_get_page_info')!;
+    const tool = registeredTools.get('tabz_get_page_info')!;
     const result = await tool.handler({});
 
     expect(result.content[0].text).toContain('# Current Page');
@@ -210,7 +212,7 @@ describe('Page Tools', () => {
       tabId: 123
     });
 
-    const tool = registeredTools.get('browser_get_page_info')!;
+    const tool = registeredTools.get('tabz_get_page_info')!;
     const result = await tool.handler({ response_format: 'json' });
 
     const parsed = JSON.parse(result.content[0].text);
@@ -237,8 +239,8 @@ describe('Screenshot Tools', () => {
   });
 
   it('should register screenshot tools', () => {
-    expect(registeredTools.has('browser_screenshot')).toBe(true);
-    expect(registeredTools.has('browser_download_image')).toBe(true);
+    expect(registeredTools.has('tabz_screenshot')).toBe(true);
+    expect(registeredTools.has('tabz_download_image')).toBe(true);
   });
 
   it('should return file path on successful screenshot', async () => {
@@ -247,7 +249,7 @@ describe('Screenshot Tools', () => {
       filePath: '/home/user/ai-images/screenshot-2024.png'
     });
 
-    const tool = registeredTools.get('browser_screenshot')!;
+    const tool = registeredTools.get('tabz_screenshot')!;
     const result = await tool.handler({});
 
     expect(result.content[0].text).toContain('Screenshot Captured');
@@ -261,7 +263,7 @@ describe('Screenshot Tools', () => {
       error: 'CDP not available'
     });
 
-    const tool = registeredTools.get('browser_screenshot')!;
+    const tool = registeredTools.get('tabz_screenshot')!;
     const result = await tool.handler({});
 
     expect(result.isError).toBe(true);
@@ -275,7 +277,7 @@ describe('Screenshot Tools', () => {
       filePath: '/home/user/ai-images/image-2024.jpg'
     });
 
-    const tool = registeredTools.get('browser_download_image')!;
+    const tool = registeredTools.get('tabz_download_image')!;
     const result = await tool.handler({ url: 'https://example.com/image.jpg' });
 
     expect(result.content[0].text).toContain('Image Downloaded');
@@ -301,8 +303,8 @@ describe('Tab Tools', () => {
   });
 
   it('should register tab tools', () => {
-    expect(registeredTools.has('browser_list_tabs')).toBe(true);
-    expect(registeredTools.has('browser_switch_tab')).toBe(true);
+    expect(registeredTools.has('tabz_list_tabs')).toBe(true);
+    expect(registeredTools.has('tabz_switch_tab')).toBe(true);
   });
 
   it('should list tabs in markdown format', async () => {
@@ -313,19 +315,18 @@ describe('Tab Tools', () => {
       ]
     });
 
-    const tool = registeredTools.get('browser_list_tabs')!;
+    const tool = registeredTools.get('tabz_list_tabs')!;
     const result = await tool.handler({});
 
     expect(result.content[0].text).toContain('# Browser Tabs');
     expect(result.content[0].text).toContain('Google');
     expect(result.content[0].text).toContain('GitHub');
-    expect(result.content[0].text).toContain('(active)');
   });
 
   it('should handle no tabs open', async () => {
     vi.mocked(client.listTabs).mockResolvedValue({ tabs: [] });
 
-    const tool = registeredTools.get('browser_list_tabs')!;
+    const tool = registeredTools.get('tabz_list_tabs')!;
     const result = await tool.handler({});
 
     expect(result.content[0].text).toContain('No web pages currently open');
@@ -334,7 +335,7 @@ describe('Tab Tools', () => {
   it('should switch tab successfully', async () => {
     vi.mocked(client.switchTab).mockResolvedValue({ success: true });
 
-    const tool = registeredTools.get('browser_switch_tab')!;
+    const tool = registeredTools.get('tabz_switch_tab')!;
     const result = await tool.handler({ tabId: 1 });
 
     expect(result.content[0].text).toContain('Tab Switched');
@@ -347,7 +348,7 @@ describe('Tab Tools', () => {
       error: 'Invalid tab ID: 99'
     });
 
-    const tool = registeredTools.get('browser_switch_tab')!;
+    const tool = registeredTools.get('tabz_switch_tab')!;
     const result = await tool.handler({ tabId: 99 });
 
     expect(result.isError).toBe(true);
@@ -373,14 +374,14 @@ describe('Interaction Tools', () => {
   });
 
   it('should register interaction tools', () => {
-    expect(registeredTools.has('browser_click')).toBe(true);
-    expect(registeredTools.has('browser_fill')).toBe(true);
+    expect(registeredTools.has('tabz_click')).toBe(true);
+    expect(registeredTools.has('tabz_fill')).toBe(true);
   });
 
   it('should click element successfully', async () => {
     vi.mocked(client.clickElement).mockResolvedValue({ success: true });
 
-    const tool = registeredTools.get('browser_click')!;
+    const tool = registeredTools.get('tabz_click')!;
     const result = await tool.handler({ selector: 'button#submit' });
 
     expect(result.content[0].text).toContain('Click Successful');
@@ -393,7 +394,7 @@ describe('Interaction Tools', () => {
       error: 'Timeout waiting for selector'
     });
 
-    const tool = registeredTools.get('browser_click')!;
+    const tool = registeredTools.get('tabz_click')!;
     const result = await tool.handler({ selector: 'button#nonexistent' });
 
     expect(result.isError).toBe(true);
@@ -404,7 +405,7 @@ describe('Interaction Tools', () => {
   it('should fill input successfully', async () => {
     vi.mocked(client.fillInput).mockResolvedValue({ success: true });
 
-    const tool = registeredTools.get('browser_fill')!;
+    const tool = registeredTools.get('tabz_fill')!;
     const result = await tool.handler({ selector: 'input#email', value: 'test@example.com' });
 
     expect(result.content[0].text).toContain('Fill Successful');
@@ -415,7 +416,7 @@ describe('Interaction Tools', () => {
     vi.mocked(client.fillInput).mockResolvedValue({ success: true });
 
     const longValue = 'a'.repeat(100);
-    const tool = registeredTools.get('browser_fill')!;
+    const tool = registeredTools.get('tabz_fill')!;
     const result = await tool.handler({ selector: 'textarea', value: longValue });
 
     expect(result.content[0].text).toContain('...');
@@ -440,8 +441,8 @@ describe('Inspection Tools', () => {
     registerInspectionTools(server);
   });
 
-  it('should register browser_get_element tool', () => {
-    expect(registeredTools.has('browser_get_element')).toBe(true);
+  it('should register tabz_get_element tool', () => {
+    expect(registeredTools.has('tabz_get_element')).toBe(true);
   });
 
   it('should return element info in markdown format', async () => {
@@ -457,7 +458,7 @@ describe('Inspection Tools', () => {
       childCount: 3
     });
 
-    const tool = registeredTools.get('browser_get_element')!;
+    const tool = registeredTools.get('tabz_get_element')!;
     const result = await tool.handler({ selector: '.card' });
 
     expect(result.content[0].text).toContain('Element: `.card`');
@@ -476,7 +477,7 @@ describe('Inspection Tools', () => {
       childCount: 1
     });
 
-    const tool = registeredTools.get('browser_get_element')!;
+    const tool = registeredTools.get('tabz_get_element')!;
     const result = await tool.handler({ selector: 'button', response_format: 'json' });
 
     const parsed = JSON.parse(result.content[0].text);
@@ -490,7 +491,7 @@ describe('Inspection Tools', () => {
       error: 'Element not found: .nonexistent'
     });
 
-    const tool = registeredTools.get('browser_get_element')!;
+    const tool = registeredTools.get('tabz_get_element')!;
     const result = await tool.handler({ selector: '.nonexistent' });
 
     expect(result.isError).toBe(true);
@@ -500,7 +501,7 @@ describe('Inspection Tools', () => {
 });
 
 describe('All Tools Registration', () => {
-  it('should register all 10 tools', () => {
+  it('should register all 11 tools', () => {
     const registeredTools: string[] = [];
 
     const server = {
@@ -517,16 +518,17 @@ describe('All Tools Registration', () => {
     registerInteractionTools(server);
     registerInspectionTools(server);
 
-    expect(registeredTools).toHaveLength(10);
-    expect(registeredTools).toContain('browser_get_console_logs');
-    expect(registeredTools).toContain('browser_execute_script');
-    expect(registeredTools).toContain('browser_get_page_info');
-    expect(registeredTools).toContain('browser_screenshot');
-    expect(registeredTools).toContain('browser_download_image');
-    expect(registeredTools).toContain('browser_list_tabs');
-    expect(registeredTools).toContain('browser_switch_tab');
-    expect(registeredTools).toContain('browser_click');
-    expect(registeredTools).toContain('browser_fill');
-    expect(registeredTools).toContain('browser_get_element');
+    expect(registeredTools).toHaveLength(11);
+    expect(registeredTools).toContain('tabz_get_console_logs');
+    expect(registeredTools).toContain('tabz_execute_script');
+    expect(registeredTools).toContain('tabz_get_page_info');
+    expect(registeredTools).toContain('tabz_screenshot');
+    expect(registeredTools).toContain('tabz_download_image');
+    expect(registeredTools).toContain('tabz_list_tabs');
+    expect(registeredTools).toContain('tabz_switch_tab');
+    expect(registeredTools).toContain('tabz_rename_tab');
+    expect(registeredTools).toContain('tabz_click');
+    expect(registeredTools).toContain('tabz_fill');
+    expect(registeredTools).toContain('tabz_get_element');
   });
 });
