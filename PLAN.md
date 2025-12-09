@@ -128,14 +128,32 @@ Add audio playback through Chrome for better Windows audio quality (vs WSL→mpv
 | Type | Implementation | Notes |
 |------|----------------|-------|
 | Simple sounds | Bundled MP3s | `extension/sounds/ready.mp3` |
-| Web Speech TTS | `window.speechSynthesis` | Uses Windows voices, no setup |
-| Custom clips | User provides MP3s | Point to local directory |
+| **Edge TTS via backend** | Backend generates, Chrome plays | Neural voices + Windows audio (recommended) |
+| Web Speech TTS | `window.speechSynthesis` | Windows SAPI5 voices (lower quality) |
+
+**Recommended: Edge TTS + Chrome playback**
+
+```
+Extension detects state change
+    ↓
+POST /api/audio/generate { text: "Claude ready", voice: "..." }
+    ↓
+Backend runs edge-tts → returns MP3 path (cached)
+    ↓
+Extension fetches MP3 → plays via <audio> element
+```
+
+- **Neural voice quality** (Azure voices via edge-tts - free, no API key)
+- **Windows audio routing** (Chrome plays the MP3)
+- **Caching** (same text = same cached file, instant playback)
+- **Voice selection** (reuse ~/.claude/audio-config.sh settings)
 
 **Files to modify:**
-- `extension/sounds/` - Add audio files (ready.mp3, working.mp3, etc.)
-- `extension/sidepanel/sidepanel.tsx` - Add `useEffect` to watch state + play audio
+- `extension/sounds/` - Bundled fallback sounds (ready.mp3, etc.)
+- `extension/sidepanel/sidepanel.tsx` - Watch state + play audio
 - `extension/components/SettingsModal.tsx` - Audio settings section
 - `extension/shared/storage.ts` - Persist audio preferences
+- `backend/routes/api.js` - `POST /api/audio/generate` endpoint (runs edge-tts, returns MP3 URL)
 
 **Settings UI mockup:**
 ```
