@@ -185,6 +185,45 @@ speak("Claude ready");
 
 **Debounce:** Same concept as audio-announcer.sh - skip if last sound was <1s ago
 
+**MP3 Cache Cleanup:**
+```
+/tmp/claude-audio-cache/
+├── {hash}.mp3  # Cached by voice+rate+text hash
+└── ...
+```
+
+- Common phrases reuse same file ("Claude ready", "Reading", etc.)
+- Dynamic text creates unique files ("Reading config.json")
+- Cleanup strategy:
+  - On backend start: delete files older than 24h
+  - Or: `find /tmp/claude-audio-cache -mtime +1 -delete` via cron/startup
+  - Keep cache small by using short phrases (not full filenames)
+
+**Subagent Handling:**
+
+State files exist per-session:
+```
+/tmp/claude-code-state/
+├── {main_session}.json      # Main Claude
+├── {subagent_1}.json        # Subagent (Task tool)
+├── {subagent_2}.json        # Another subagent
+└── ...
+```
+
+Audio should probably only trigger for **main session** transitions:
+- Subagents finishing doesn't mean main Claude is ready
+- Main session tracks `subagent_count` - only "ready" when count = 0
+- Check `subagent_count === 0` before playing "ready" sound
+
+```typescript
+// Only announce ready when main session is truly idle
+if (status === 'awaiting_input' && subagentCount === 0) {
+  playSound('ready');
+}
+```
+
+Alternatively, could announce "All agents complete" when last subagent finishes.
+
 ---
 
 ### 3. Profile Organization (Categories + Search)
