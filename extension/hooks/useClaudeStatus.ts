@@ -25,7 +25,7 @@ interface TerminalInfo {
 }
 
 // Number of consecutive "unknown" responses before removing a terminal from the map
-// At 2s polling, 3 misses = 6 seconds of grace period before tab stops showing status
+// At 3s polling, 3 misses = 9 seconds of grace period before tab stops showing status
 const MISS_THRESHOLD = 3
 
 /**
@@ -141,8 +141,8 @@ export function useClaudeStatus(terminals: TerminalInfo[]): Map<string, ClaudeSt
     // Initial check
     checkStatus()
 
-    // Poll every 5 seconds (reduced from 2s to prevent Chrome DevTools lag)
-    const interval = setInterval(checkStatus, 5000)
+    // Poll every 3 seconds (balance between responsiveness and performance)
+    const interval = setInterval(checkStatus, 3000)
 
     return () => clearInterval(interval)
   }, [terminalsKey])  // Use stable key instead of array reference to prevent re-running on every render
