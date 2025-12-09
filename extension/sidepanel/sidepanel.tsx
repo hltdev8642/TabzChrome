@@ -506,6 +506,30 @@ function SidePanelTerminal() {
           break
         }
 
+        // For recovered sessions (no profile), try to find matching profile from session ID
+        // Session ID format: ctt-ProfileName-shortId (e.g., ctt-bash-a1b2c3d4)
+        let effectiveTerminalProfile = terminal.profile
+        if (!effectiveTerminalProfile) {
+          const parts = terminal.id.split('-')
+          if (parts.length >= 2) {
+            const profileNameFromId = parts[1].toLowerCase()
+            // Look up profile by name (case-insensitive match)
+            chrome.storage.local.get(['profiles'], (result) => {
+              const storedProfiles = (result.profiles as Profile[]) || []
+              const matchedProfile = storedProfiles.find(p =>
+                p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').startsWith(profileNameFromId)
+              )
+              if (matchedProfile) {
+                console.log(`[terminal-spawned] Recovered session ${terminal.id} matched to profile:`, matchedProfile.name)
+                // Update the session with the matched profile
+                setSessions(prev => prev.map(s =>
+                  s.id === terminal.id ? { ...s, profile: matchedProfile } : s
+                ))
+              }
+            })
+          }
+        }
+
         setSessions(prev => {
           // Check if terminal already exists (from restore)
           if (prev.find(s => s.id === terminal.id)) {
@@ -518,7 +542,7 @@ function SidePanelTerminal() {
             active: false,
             sessionName: terminal.sessionName,  // Store tmux session name
             workingDir: terminal.workingDir,    // Store working directory for Claude status
-            profile: terminal.profile,          // Store profile settings
+            profile: effectiveTerminalProfile,  // Store profile settings (may be updated async)
           }]
         })
         setCurrentSession(terminal.id)

@@ -213,9 +213,18 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
 
     // Debounced resize - only send to backend after dimensions stabilize AND actually changed
     // Pattern from terminal-tabs: track previous dimensions to avoid unnecessary resize events
+    // CRITICAL: First resize is sent immediately (or with short delay) for reattached terminals
+    // Subsequent resizes use longer debounce to avoid interrupting tmux split drag
     let resizeTimeout: ReturnType<typeof setTimeout> | null = null
     const debouncedSendResize = () => {
       if (resizeTimeout) clearTimeout(resizeTimeout)
+
+      // Check if this is the first resize (dimensions were 0,0)
+      const isFirstResize = prevDimensionsRef.current.cols === 0 && prevDimensionsRef.current.rows === 0
+
+      // First resize uses shorter delay for fast init; subsequent resizes use longer debounce
+      const debounceMs = isFirstResize ? 100 : 1000
+
       resizeTimeout = setTimeout(() => {
         if (xtermRef.current) {
           const cols = xtermRef.current.cols
@@ -234,7 +243,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
             rows,
           })
         }
-      }, 1000)  // 1000ms debounce - longer to avoid interrupting tmux split drag
+      }, debounceMs)
     }
 
     // Fit terminal to container with dimension verification and resize lock

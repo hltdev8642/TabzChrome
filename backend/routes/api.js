@@ -1318,18 +1318,12 @@ router.post('/tmux/reattach', asyncHandler(async (req, res) => {
       });
 
       // Broadcast to WebSocket clients so UI shows the new tab
+      // IMPORTANT: Send the full terminal object (same as normal spawn in server.js:79)
+      // This ensures profile, sessionName, ptyInfo etc are all included
+      // Previously only sent a subset which caused missing profile settings on reattach
       const broadcast = req.app.get('broadcast');
       if (broadcast) {
-        broadcast({
-          type: 'terminal-spawned',
-          data: {
-            id: terminal.id,
-            name: terminal.name,
-            terminalType: terminal.terminalType,
-            sessionName: terminal.sessionId || sessionName,
-            workingDir: terminal.workingDir,
-          }
-        });
+        broadcast({ type: 'terminal-spawned', data: terminal });
       }
     } catch (error) {
       results.failed.push({ session: sessionName, error: error.message });
