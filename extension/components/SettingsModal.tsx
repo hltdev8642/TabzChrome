@@ -93,7 +93,7 @@ const DEFAULT_PROFILE: Profile = {
   name: '',
   workingDir: '',  // Empty = inherit from header
   command: '',
-  fontSize: 14,
+  fontSize: 16,
   fontFamily: 'monospace',
   themeName: 'high-contrast',
 }
@@ -337,7 +337,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
           return {
             ...p,
-            fontSize: p.fontSize ?? 14,
+            fontSize: p.fontSize ?? 16,
             fontFamily: p.fontFamily ?? 'monospace',
             themeName: themeName ?? 'high-contrast',
             // Remove old theme field
@@ -615,7 +615,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             name: p.name,
             workingDir: p.workingDir || '',
             command: p.command || '',
-            fontSize: p.fontSize ?? 14,
+            fontSize: p.fontSize ?? 16,
             fontFamily: p.fontFamily ?? 'monospace',
             themeName: p.themeName ?? 'high-contrast',
           })

@@ -234,7 +234,7 @@ function SidePanelTerminal() {
 
           return {
             ...p,
-            fontSize: p.fontSize ?? 14,
+            fontSize: p.fontSize ?? 16,
             fontFamily: p.fontFamily ?? 'monospace',
             themeName: themeName ?? 'high-contrast',
             theme: undefined, // Remove old field
@@ -461,7 +461,10 @@ function SidePanelTerminal() {
   // Watch Claude status changes and trigger audio notifications
   useEffect(() => {
     // If master mute is on, no audio plays regardless of profile settings
-    if (audioGlobalMute) return
+    if (audioGlobalMute) {
+      console.log('[Audio] Master mute is on, skipping')
+      return
+    }
 
     // Check each terminal for status transitions
     claudeStatuses.forEach((status, terminalId) => {
@@ -470,12 +473,20 @@ function SidePanelTerminal() {
       const currentStatus = status.status
       const currentSubagentCount = status.subagent_count || 0
 
+      // Log all status changes for debugging
+      if (prevStatus !== currentStatus) {
+        console.log(`[Audio] Status change for ${terminalId}: ${prevStatus} → ${currentStatus}`, { tool: status.current_tool })
+      }
+
       // Find the session to get its profile and assigned voice
       const session = sessions.find(s => s.id === terminalId)
 
       // Check if audio is enabled for this profile (uses getAudioSettingsForProfile logic)
       const audioForProfile = getAudioSettingsForProfile(session?.profile, session?.assignedVoice)
       if (!audioForProfile.enabled) {
+        if (prevStatus !== currentStatus) {
+          console.log(`[Audio] Audio disabled for profile. audioSettings.enabled=${audioSettings.enabled}, audioGlobalMute=${audioGlobalMute}, profileMode=${session?.profile?.audioOverrides?.mode}`)
+        }
         prevClaudeStatusesRef.current.set(terminalId, currentStatus)
         prevSubagentCountsRef.current.set(terminalId, currentSubagentCount)
         return
@@ -496,10 +507,17 @@ function SidePanelTerminal() {
       }
 
       // EVENT: Ready notification (processing/tool_use → awaiting_input)
-      if (audioSettings.events.ready &&
+      const shouldPlayReady = audioSettings.events.ready &&
           (prevStatus === 'processing' || prevStatus === 'tool_use') &&
           currentStatus === 'awaiting_input' &&
-          currentSubagentCount === 0) {
+          currentSubagentCount === 0
+
+      if (currentStatus === 'awaiting_input' && prevStatus !== 'awaiting_input') {
+        console.log(`[Audio] Ready check: events.ready=${audioSettings.events.ready}, prevStatus=${prevStatus}, subagents=${currentSubagentCount}, shouldPlay=${shouldPlayReady}`)
+      }
+
+      if (shouldPlayReady) {
+        console.log(`[Audio] Playing ready notification: "${getDisplayName()} ready"`)
         playAudio(`${getDisplayName()} ready`, session)
       }
 
@@ -1991,7 +2009,7 @@ function SidePanelTerminal() {
                       terminalType={session.type}
                       workingDir={session.workingDir || effectiveProfile?.workingDir}
                       tmuxSession={session.sessionName}
-                      fontSize={effectiveProfile?.fontSize || 14}
+                      fontSize={effectiveProfile?.fontSize || 16}
                       fontFamily={effectiveProfile?.fontFamily || 'monospace'}
                       themeName={effectiveProfile?.themeName || 'high-contrast'}
                       isDark={isDark}
