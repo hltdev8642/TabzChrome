@@ -177,6 +177,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   // Audio settings state (full settings object)
   const [audioSettings, setAudioSettings] = useState<AudioSettings>(DEFAULT_AUDIO_SETTINGS)
   const [audioTestPlaying, setAudioTestPlaying] = useState(false)
+  const [profileAudioTestPlaying, setProfileAudioTestPlaying] = useState(false)
   const [profileAudioExpanded, setProfileAudioExpanded] = useState(false)  // Audio section in profile edit form
 
   // Reset form state when modal opens
@@ -618,9 +619,14 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     updateAudioSettings({ events: { ...audioSettings.events, ...eventUpdates } })
   }
 
-  const handleAudioTest = async () => {
-    if (audioTestPlaying) return
-    setAudioTestPlaying(true)
+  // Generic audio test function - plays sample with given settings
+  const testAudioWithSettings = async (
+    voice: string,
+    rate: string,
+    volume: number,
+    setPlaying: (playing: boolean) => void
+  ) => {
+    setPlaying(true)
 
     try {
       const response = await fetch('http://localhost:8129/api/audio/generate', {
@@ -628,25 +634,47 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: 'Claude ready',
-          voice: audioSettings.voice,
-          rate: audioSettings.rate
+          voice,
+          rate
         })
       })
       const data = await response.json()
 
       if (data.success && data.url) {
         const audio = new Audio(data.url)
-        audio.volume = audioSettings.volume
-        audio.onended = () => setAudioTestPlaying(false)
-        audio.onerror = () => setAudioTestPlaying(false)
+        audio.volume = volume
+        audio.onended = () => setPlaying(false)
+        audio.onerror = () => setPlaying(false)
         await audio.play()
       } else {
-        setAudioTestPlaying(false)
+        setPlaying(false)
       }
     } catch (err) {
       console.error('[Settings] Audio test failed:', err)
-      setAudioTestPlaying(false)
+      setPlaying(false)
     }
+  }
+
+  // Test global audio settings
+  const handleAudioTest = async () => {
+    if (audioTestPlaying) return
+    await testAudioWithSettings(
+      audioSettings.voice,
+      audioSettings.rate,
+      audioSettings.volume,
+      setAudioTestPlaying
+    )
+  }
+
+  // Test profile-specific audio settings (uses profile overrides or falls back to global)
+  const handleProfileAudioTest = async () => {
+    if (profileAudioTestPlaying) return
+    await testAudioWithSettings(
+      formData.audioOverrides?.voice || audioSettings.voice,
+      formData.audioOverrides?.rate || audioSettings.rate,
+      audioSettings.volume,
+      setProfileAudioTestPlaying
+    )
   }
 
   // Calculate token estimate from individual tools
@@ -1212,6 +1240,19 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                             />
                           )}
                         </div>
+                      )}
+
+                      {/* Test Button - only show if not disabled */}
+                      {formData.audioOverrides?.mode !== 'disabled' && (
+                        <button
+                          type="button"
+                          onClick={handleProfileAudioTest}
+                          disabled={profileAudioTestPlaying}
+                          className="w-full px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          <Volume2 className="h-4 w-4" />
+                          {profileAudioTestPlaying ? 'Playing...' : 'Test Voice'}
+                        </button>
                       )}
                     </div>
                   )}
