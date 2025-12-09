@@ -802,7 +802,10 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
       }}
     >
       {/* Terminal body - full height, status shown in tmux status bar */}
-      <div className="flex-1 relative overflow-hidden">
+      <div
+        className="flex-1 relative overflow-hidden"
+        onContextMenu={(e) => e.preventDefault()}  // Disable browser context menu so TUI apps/tmux can use right-click
+      >
         <div
           ref={terminalRef}
           className={`absolute terminal-wrapper ${sessionName ? 'hide-xterm-scrollbar' : ''}`}
