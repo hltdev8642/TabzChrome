@@ -72,62 +72,90 @@
 
 **Goal**: Play sounds when Claude Code status changes (idle→working, working→idle, tool use).
 
-**Current state tracking**: You have hooks that track Claude status via terminal output parsing.
+**Existing Infrastructure** (already working!):
 
-**Options to explore:**
-
-#### Option A: Chrome Extension Audio (Simplest)
 ```
-Extension plays audio files when claudeStatuses changes
-```
-
-1. Add audio files to extension (`extension/sounds/`)
-   - `ready.mp3` - Claude finished, ready for input
-   - `working.mp3` - Claude started working (optional, might be annoying)
-   - `tool.mp3` - Tool use detected (optional)
-
-2. In sidepanel, watch `claudeStatuses` state changes
-3. Use Web Audio API or `<audio>` element to play sounds
-4. Add Settings toggle: "Enable audio notifications"
-5. Optional: Per-sound toggles, volume slider
-
-**Pros:** Simple, works offline, instant
-**Cons:** Limited to bundled sounds
-
-#### Option B: Backend Audio via PowerShell TTS (Windows)
-```
-Backend triggers PowerShell speech synthesis
+~/.claude/hooks/
+├── state-tracker.sh      # Writes state to /tmp/claude-code-state/{session}.json
+├── audio-announcer.sh    # Edge TTS with caching, mutex, debounce
+└── audio-config.sh       # Voice, rate, pitch, volume, toggles
 ```
 
-1. Backend endpoint: `POST /api/audio/speak` with text
-2. Calls PowerShell: `Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('Claude is ready')`
-3. Extension calls this endpoint on status change
+**State tracker output** (`/tmp/claude-code-state/{session}.json`):
+```json
+{
+  "session_id": "...",
+  "status": "awaiting_input|processing|tool_use|idle",
+  "current_tool": "Read|Edit|Bash|Task|...",
+  "subagent_count": 0,
+  "last_updated": "2025-12-09T...",
+  "hook_type": "stop|pre-tool|post-tool|..."
+}
+```
 
-**Pros:** Dynamic text, RTS advisor style ("Construction complete")
-**Cons:** Windows only, slight latency, requires backend
+**Audio announcer features**:
+- Edge TTS via `edge-tts` CLI (Linux/WSL)
+- Audio caching (generate once, replay from cache)
+- Mutex lock (prevents overlapping announcements)
+- Debounce for rapid tool calls (1000ms default)
+- Custom clips directory option
+- Per-event toggles: `ANNOUNCE_TOOLS`, `ANNOUNCE_READY`, `ANNOUNCE_SESSION_START`
+- Triggered by `CLAUDE_AUDIO=1` env var
 
-#### Option C: Hybrid (Recommended?)
-- Use Chrome extension audio for simple beeps/chimes
-- Optional TTS for verbose announcements via backend
+**TabzChrome Integration Options:**
+
+#### Option A: Read State Files (Already Done!)
+The extension already reads `/tmp/claude-code-state/` for the emoji indicators (🤖✅, 🤖⏳, 🤖🔧).
+
+#### Option B: Chrome Extension Plays Sounds (Independent)
+```
+Extension plays bundled sounds when claudeStatuses changes
+```
+
+1. Add audio files to extension (`extension/sounds/ready.mp3`, etc.)
+2. Watch `claudeStatuses` state in sidepanel
+3. Play sounds via Web Audio API
+4. Add Settings toggles
+
+**Pros:** Works without WSL/Linux, instant, self-contained
+**Cons:** Separate from existing TTS system, bundled sounds only
+
+#### Option C: Trigger Existing Audio System via Backend
+```
+Backend calls audio-announcer.sh when extension requests
+```
+
+1. Backend endpoint: `POST /api/audio/announce` with event type
+2. Backend runs: `~/.claude/hooks/audio-announcer.sh stop "Claude"`
+3. Uses existing TTS, caching, config
+
+**Pros:** Reuses your existing audio setup, same voices/settings
+**Cons:** Requires backend, Linux/WSL only
+
+#### Option D: Hybrid (Recommended)
+- **Quick beeps/chimes**: Chrome extension plays bundled sounds (instant feedback)
+- **Verbose TTS**: Optional backend trigger for your existing audio-announcer.sh
+- Toggle in Settings: "Use simple sounds" vs "Use TTS announcements"
 
 **Files to modify:**
-- `extension/sounds/` - Add audio files
-- `extension/sidepanel/sidepanel.tsx` - Add audio playback logic
-- `extension/components/SettingsModal.tsx` - Add audio settings
-- `extension/shared/storage.ts` - Persist audio preferences
-- (Option B) `backend/routes/api.js` - TTS endpoint
+- `extension/sounds/` - Add simple audio files
+- `extension/sidepanel/sidepanel.tsx` - Watch claudeStatuses, play sounds
+- `extension/components/SettingsModal.tsx` - Audio settings tab
+- `backend/routes/api.js` - Optional TTS endpoint
 
 **Settings UI mockup:**
 ```
 Audio Notifications
   [x] Enable sounds
-  [ ] Play sound when Claude starts working
   [x] Play sound when Claude is ready for input
+  [ ] Play sound when Claude starts working
   [ ] Play sound on tool use
 
   Volume: [====|----] 50%
 
-  [ ] Use Windows TTS for announcements (experimental)
+  Audio Mode:
+    ( ) Simple sounds (built-in chimes)
+    (•) TTS announcements (uses ~/.claude/audio-config.sh)
 ```
 
 ---
