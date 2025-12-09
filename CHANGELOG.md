@@ -13,6 +13,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.6.0] - 2025-12-09
+
+### 🚀 Major Features
+
+#### Auto-Voice Assignment for Claude Sessions
+- **Unique Voices per Session** - Each Claude session automatically gets a different voice from a pool of 10
+- **Voice Pool** - Andrew, Emma, Sonia, Ryan, Natasha, William, Brian, Aria, Guy, Jenny (US/UK/AU accents)
+- **Round-Robin Assignment** - First session gets Andrew, second gets Emma, etc.
+- **Profile Override Priority** - Profile voice settings still take precedence over auto-assigned voice
+- **Tell Sessions Apart by Ear** - Hear "Sonia ready" vs "Andrew ready" to know which Claude finished
+- Files: `extension/sidepanel/sidepanel.tsx`
+
+#### Audio Settings UX Refactor
+- **Per-Profile Audio Settings** - Moved audio configuration from Audio tab into each profile's edit form
+- **Audio Mode Dropdown** - Three options per profile:
+  - "Use default" - Follows header toggle and global defaults
+  - "Enabled" - Always plays (respects master mute)
+  - "Disabled" - Never plays, even when header audio is on
+- **Voice/Rate Overrides** - Optional per-profile voice and speech rate settings
+- **Simplified Audio Tab** - Renamed to "Claude Audio", now only shows global defaults (voice, rate, volume, events)
+- **Removed Profile Overrides Section** - No longer needed since settings are in profiles
+- Files: `extension/components/SettingsModal.tsx`, `extension/sidepanel/sidepanel.tsx`
+
+#### Header Mute Button
+- **Quick Mute Toggle** - 🔊/🔇 icon in header between keyboard and settings icons
+- **Master Mute** - One click to silence all audio notifications
+- **Visual Feedback** - Green when active, gray when muted or disabled
+- **Persisted State** - Mute preference saved to Chrome storage
+- Files: `extension/sidepanel/sidepanel.tsx`
+
+### 🐛 Bug Fixes
+
+- **Tab switching flash** - Removed scheduleTmuxRefresh workaround that caused terminals to flash when switching tabs (actual fix was moving tmux status bar to top)
+
+---
+
 ## [2.5.0] - 2025-12-09
 
 ### 🚀 Major Features

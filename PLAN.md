@@ -1,25 +1,46 @@
 # PLAN.md - TabzChrome Roadmap
 
 **Last Updated**: December 9, 2025
-**Current Version**: 2.5.0
+**Current Version**: 2.6.0
 **Status**: Pre-release polish | Next: Profile Organization
 
 ---
 
-## Recently Completed (v2.5.0)
+## Recently Completed (v2.6.0)
+
+### ✅ Auto-Voice Assignment - COMPLETE
+
+- **Unique Voices per Session** - Each Claude session gets a different voice from pool of 10
+- **Voice Pool** - Andrew, Emma, Sonia, Ryan, Natasha, William, Brian, Aria, Guy, Jenny
+- **Round-Robin** - First session gets Andrew, second Emma, etc.
+- **Profile Override Priority** - Profile settings take precedence over auto-assigned voice
+- Files: `extension/sidepanel/sidepanel.tsx`
+
+### ✅ Audio Settings UX Refactor - COMPLETE
+
+- **Per-Profile Audio** - Moved audio settings into profile edit form (collapsible section)
+- **Audio Mode** - "Use default" / "Enabled" / "Disabled" per profile
+- **Voice/Rate Overrides** - Optional per-profile voice and speech rate
+- **Header Mute Button** - 🔊/🔇 toggle for quick master mute
+- **Renamed Tab** - "Audio" → "Claude Audio" for clarity
+- Files: `extension/components/SettingsModal.tsx`, `extension/sidepanel/sidepanel.tsx`
+
+---
+
+## Completed (v2.5.0)
 
 ### ✅ Audio Notifications for Claude Status - COMPLETE
 
 - **Chrome Audio Playback** - Neural TTS via edge-tts, played through Chrome (better than WSL audio)
 - **Backend Endpoint** - `POST /api/audio/generate` generates and caches MP3s
-- **Settings UI** - New "Audio" tab with master toggle, "Ready" notification toggle, volume slider, test button
+- **Settings UI** - New "Claude Audio" tab with defaults (voice, rate, volume, events)
 - **Named Announcements** - Says "Claude ready", "Claude 1 ready", "Claude 2 ready" based on tab name/order
 - **Smart Detection** - Only plays when `processing/tool_use → awaiting_input` AND `subagent_count === 0`
 - Files: `backend/server.js`, `extension/sidepanel/sidepanel.tsx`, `extension/components/SettingsModal.tsx`
 
 ### ✅ Profile Import/Export - COMPLETE
 
-- **Export** - Download all profiles as `tabz-profiles-{date}.json`
+- **Export** - Download all profiles as `tabz-profiles-{date}.json` (includes audioOverrides)
 - **Import** - Load profiles from JSON with validation, merge or replace options
 - Files: `extension/components/SettingsModal.tsx`
 

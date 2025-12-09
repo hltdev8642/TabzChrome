@@ -121,11 +121,12 @@ export interface AudioSettings {
 }
 
 // Per-profile audio overrides
+export type AudioMode = 'default' | 'enabled' | 'disabled'
+
 export interface ProfileAudioOverrides {
-  enabled?: boolean    // null/undefined = use global
-  voice?: string
-  rate?: string
-  events?: Partial<AudioEventSettings>
+  mode?: AudioMode     // 'default' = follow global, 'enabled' = always on, 'disabled' = never
+  voice?: string       // Override voice (undefined = use global default)
+  rate?: string        // Override rate (undefined = use global default)
 }
 
 const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
@@ -176,7 +177,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   // Audio settings state (full settings object)
   const [audioSettings, setAudioSettings] = useState<AudioSettings>(DEFAULT_AUDIO_SETTINGS)
   const [audioTestPlaying, setAudioTestPlaying] = useState(false)
-  const [expandedProfileAudio, setExpandedProfileAudio] = useState<string | null>(null)
+  const [profileAudioExpanded, setProfileAudioExpanded] = useState(false)  // Audio section in profile edit form
 
   // Reset form state when modal opens
   useEffect(() => {
@@ -275,12 +276,26 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       } else {
         // Migrate old profiles: ensure all required fields have defaults
         // Also migrate old 'theme' field to new 'themeName' field
+        // Also migrate old audioOverrides format (enabled: boolean) to new format (mode: AudioMode)
         const migratedProfiles = (result.profiles as any[]).map(p => {
           // Convert old theme field to themeName
           let themeName = p.themeName
           if (!themeName && p.theme) {
             // Map old 'dark'/'light' to new theme names
             themeName = p.theme === 'light' ? 'high-contrast' : 'high-contrast'
+          }
+
+          // Migrate audioOverrides: convert enabled:false to mode:'disabled'
+          let audioOverrides = p.audioOverrides
+          if (audioOverrides) {
+            const { enabled, events, ...rest } = audioOverrides
+            // Convert enabled: false → mode: 'disabled'
+            if (enabled === false) {
+              audioOverrides = { ...rest, mode: 'disabled' as AudioMode }
+            } else if (events !== undefined || enabled !== undefined) {
+              // Remove old fields (events, enabled)
+              audioOverrides = Object.keys(rest).length > 0 ? rest : undefined
+            }
           }
 
           return {
@@ -290,6 +305,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             themeName: themeName ?? 'high-contrast',
             // Remove old theme field
             theme: undefined,
+            audioOverrides,
           }
         })
         setProfiles(migratedProfiles)
@@ -309,10 +325,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
         // Save migrated profiles back to storage if any were updated
         const needsMigration = (result.profiles as any[]).some(
-          p => p.fontSize === undefined || p.fontFamily === undefined || p.themeName === undefined || p.theme !== undefined
+          p => p.fontSize === undefined || p.fontFamily === undefined || p.themeName === undefined || p.theme !== undefined ||
+               (p.audioOverrides && (p.audioOverrides.enabled !== undefined || p.audioOverrides.events !== undefined))
         )
         if (needsMigration) {
-          console.log('[Settings] Migrating old profiles with missing fields or old theme format')
+          console.log('[Settings] Migrating old profiles with missing fields or old theme/audio format')
           chrome.storage.local.set({ profiles: migratedProfiles })
         }
       }
@@ -632,27 +649,6 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
   }
 
-  // Profile audio override handlers
-  const updateProfileAudioOverrides = (profileId: string, overrides: ProfileAudioOverrides | undefined) => {
-    const updatedProfiles = profiles.map(p =>
-      p.id === profileId ? { ...p, audioOverrides: overrides } : p
-    )
-    setProfiles(updatedProfiles)
-    // Auto-save profiles when audio overrides change
-    chrome.storage.local.set({ profiles: updatedProfiles })
-  }
-
-  const getProfileAudioSummary = (profile: Profile): string => {
-    if (!profile.audioOverrides) return 'Global defaults'
-    const overrides = profile.audioOverrides
-    if (overrides.enabled === false) return 'Audio OFF'
-    if (overrides.voice) {
-      const voice = TTS_VOICES.find(v => v.value === overrides.voice)
-      return voice?.label || overrides.voice
-    }
-    return 'Custom'
-  }
-
   // Calculate token estimate from individual tools
   const estimatedTokens = mcpEnabledTools.reduce((sum, toolId) => {
     const tool = MCP_TOOLS.find(t => t.id === toolId)
@@ -777,7 +773,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             `}
           >
             <Volume2 className="h-4 w-4" />
-            Audio
+            Claude Audio
           </button>
         </div>
 
@@ -1078,6 +1074,147 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   <p className="text-xs text-gray-500 mt-2">
                     Use the header toggle to switch between dark/light mode
                   </p>
+                </div>
+
+                {/* Audio Settings - Collapsible */}
+                <div className="border border-gray-800 rounded-lg overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setProfileAudioExpanded(!profileAudioExpanded)}
+                    className="w-full px-3 py-2 flex items-center justify-between bg-black/30 hover:bg-black/40 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 text-sm text-gray-300">
+                      <Volume2 className="h-4 w-4" />
+                      Audio Settings
+                      {formData.audioOverrides?.mode && formData.audioOverrides.mode !== 'default' && (
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${
+                          formData.audioOverrides.mode === 'disabled'
+                            ? 'bg-gray-600/50 text-gray-400'
+                            : 'bg-[#00ff88]/20 text-[#00ff88]'
+                        }`}>
+                          {formData.audioOverrides.mode === 'disabled' ? 'Off' : 'On'}
+                        </span>
+                      )}
+                    </div>
+                    {profileAudioExpanded ? (
+                      <ChevronUp className="h-4 w-4 text-gray-500" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-gray-500" />
+                    )}
+                  </button>
+
+                  {profileAudioExpanded && (
+                    <div className="px-3 py-3 space-y-4 border-t border-gray-800">
+                      {/* Audio Mode */}
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Audio Mode</label>
+                        <select
+                          value={formData.audioOverrides?.mode || 'default'}
+                          onChange={(e) => {
+                            const mode = e.target.value as AudioMode
+                            setFormData({
+                              ...formData,
+                              audioOverrides: mode === 'default' && !formData.audioOverrides?.voice && !formData.audioOverrides?.rate
+                                ? undefined
+                                : { ...formData.audioOverrides, mode: mode === 'default' ? undefined : mode }
+                            })
+                          }}
+                          className="w-full px-3 py-2 bg-black/50 border border-gray-700 rounded text-white text-sm focus:border-[#00ff88] focus:outline-none"
+                        >
+                          <option value="default">Use default (follows header toggle)</option>
+                          <option value="enabled">Enabled (always on, respects mute)</option>
+                          <option value="disabled">Disabled (never plays audio)</option>
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {formData.audioOverrides?.mode === 'disabled'
+                            ? 'Audio will never play for this profile'
+                            : formData.audioOverrides?.mode === 'enabled'
+                              ? 'Audio always plays unless header mute is on'
+                              : 'Follows the global audio enable setting'}
+                        </p>
+                      </div>
+
+                      {/* Voice Override - only show if not disabled */}
+                      {formData.audioOverrides?.mode !== 'disabled' && (
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">Voice</label>
+                          <select
+                            value={formData.audioOverrides?.voice || ''}
+                            onChange={(e) => {
+                              const voice = e.target.value || undefined
+                              const newOverrides = { ...formData.audioOverrides, voice }
+                              // Clean up empty overrides
+                              if (!newOverrides.mode && !newOverrides.voice && !newOverrides.rate) {
+                                setFormData({ ...formData, audioOverrides: undefined })
+                              } else {
+                                setFormData({ ...formData, audioOverrides: newOverrides })
+                              }
+                            }}
+                            className="w-full px-3 py-2 bg-black/50 border border-gray-700 rounded text-white text-sm focus:border-[#00ff88] focus:outline-none"
+                          >
+                            <option value="">
+                              Use default ({TTS_VOICES.find(v => v.value === audioSettings.voice)?.label || audioSettings.voice})
+                            </option>
+                            {TTS_VOICES.map((voice) => (
+                              <option key={voice.value} value={voice.value}>
+                                {voice.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Rate Override - only show if not disabled */}
+                      {formData.audioOverrides?.mode !== 'disabled' && (
+                        <div>
+                          <label className="flex items-center gap-2 mb-1">
+                            <input
+                              type="checkbox"
+                              checked={!!formData.audioOverrides?.rate}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setFormData({
+                                    ...formData,
+                                    audioOverrides: { ...formData.audioOverrides, rate: audioSettings.rate }
+                                  })
+                                } else {
+                                  const { rate, ...rest } = formData.audioOverrides || {}
+                                  setFormData({
+                                    ...formData,
+                                    audioOverrides: Object.keys(rest).length > 0 ? rest : undefined
+                                  })
+                                }
+                              }}
+                              className="w-4 h-4 rounded border-gray-600 bg-black/50 text-[#00ff88]"
+                            />
+                            <span className="text-xs text-gray-400">
+                              Override speech rate: {formData.audioOverrides?.rate || audioSettings.rate}
+                            </span>
+                          </label>
+                          {formData.audioOverrides?.rate && (
+                            <input
+                              type="range"
+                              min="-50"
+                              max="100"
+                              step="10"
+                              value={parseInt(formData.audioOverrides.rate)}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value)
+                                setFormData({
+                                  ...formData,
+                                  audioOverrides: {
+                                    ...formData.audioOverrides,
+                                    rate: val >= 0 ? `+${val}%` : `${val}%`
+                                  }
+                                })
+                              }}
+                              className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[#00ff88]"
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Buttons */}
@@ -1514,177 +1651,6 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   <Volume2 className="h-4 w-4" />
                   {audioTestPlaying ? 'Playing...' : 'Test Sound'}
                 </button>
-              </div>
-
-              {/* Profile Overrides Section */}
-              <div className={`space-y-3 ${!audioSettings.enabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                <h4 className="text-sm font-medium text-white">Profile Overrides</h4>
-                <p className="text-xs text-gray-500">
-                  Give different Claude sessions different voices, or disable audio for specific profiles.
-                </p>
-                <div className="bg-black/30 border border-gray-800 rounded-lg divide-y divide-gray-800">
-                  {profiles.map((profile) => (
-                    <div key={profile.id}>
-                      <button
-                        onClick={() => setExpandedProfileAudio(
-                          expandedProfileAudio === profile.id ? null : profile.id
-                        )}
-                        className="w-full flex items-center justify-between p-3 hover:bg-white/5 transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className={`w-2 h-2 rounded-full ${
-                            profile.audioOverrides?.enabled === false
-                              ? 'bg-gray-500'
-                              : profile.audioOverrides?.voice
-                                ? 'bg-[#00c8ff]'
-                                : 'bg-[#00ff88]'
-                          }`} />
-                          <span className="text-sm text-white">{profile.name}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500">{getProfileAudioSummary(profile)}</span>
-                          {expandedProfileAudio === profile.id ? (
-                            <ChevronUp className="h-4 w-4 text-gray-400" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 text-gray-400" />
-                          )}
-                        </div>
-                      </button>
-
-                      {/* Expanded Profile Settings */}
-                      {expandedProfileAudio === profile.id && (
-                        <div className="px-3 pb-3 pt-1 space-y-3 border-t border-gray-800/50 bg-black/20">
-                          {/* Enable/Disable Override */}
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={profile.audioOverrides?.enabled !== false}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  // Remove the enabled:false override
-                                  const { enabled, ...rest } = profile.audioOverrides || {}
-                                  updateProfileAudioOverrides(
-                                    profile.id,
-                                    Object.keys(rest).length > 0 ? rest : undefined
-                                  )
-                                } else {
-                                  // Set enabled:false
-                                  updateProfileAudioOverrides(profile.id, {
-                                    ...profile.audioOverrides,
-                                    enabled: false
-                                  })
-                                }
-                              }}
-                              className="w-4 h-4 rounded border-gray-600 bg-black/50 text-[#00ff88]"
-                            />
-                            <span className="text-sm text-white">Audio enabled for this profile</span>
-                          </label>
-
-                          {profile.audioOverrides?.enabled !== false && (
-                            <>
-                              {/* Voice Override */}
-                              <div>
-                                <label className="flex items-center gap-2 mb-1">
-                                  <input
-                                    type="checkbox"
-                                    checked={!!profile.audioOverrides?.voice}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        updateProfileAudioOverrides(profile.id, {
-                                          ...profile.audioOverrides,
-                                          voice: audioSettings.voice
-                                        })
-                                      } else {
-                                        const { voice, ...rest } = profile.audioOverrides || {}
-                                        updateProfileAudioOverrides(
-                                          profile.id,
-                                          Object.keys(rest).length > 0 ? rest : undefined
-                                        )
-                                      }
-                                    }}
-                                    className="w-4 h-4 rounded border-gray-600 bg-black/50 text-[#00ff88]"
-                                  />
-                                  <span className="text-xs text-gray-400">Override voice</span>
-                                </label>
-                                {profile.audioOverrides?.voice && (
-                                  <select
-                                    value={profile.audioOverrides.voice}
-                                    onChange={(e) => updateProfileAudioOverrides(profile.id, {
-                                      ...profile.audioOverrides,
-                                      voice: e.target.value
-                                    })}
-                                    className="w-full px-2 py-1.5 bg-black/50 border border-gray-700 rounded text-white text-sm focus:border-[#00ff88] focus:outline-none"
-                                  >
-                                    {TTS_VOICES.map((voice) => (
-                                      <option key={voice.value} value={voice.value}>
-                                        {voice.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                )}
-                              </div>
-
-                              {/* Rate Override */}
-                              <div>
-                                <label className="flex items-center gap-2 mb-1">
-                                  <input
-                                    type="checkbox"
-                                    checked={!!profile.audioOverrides?.rate}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        updateProfileAudioOverrides(profile.id, {
-                                          ...profile.audioOverrides,
-                                          rate: audioSettings.rate
-                                        })
-                                      } else {
-                                        const { rate, ...rest } = profile.audioOverrides || {}
-                                        updateProfileAudioOverrides(
-                                          profile.id,
-                                          Object.keys(rest).length > 0 ? rest : undefined
-                                        )
-                                      }
-                                    }}
-                                    className="w-4 h-4 rounded border-gray-600 bg-black/50 text-[#00ff88]"
-                                  />
-                                  <span className="text-xs text-gray-400">
-                                    Override rate: {profile.audioOverrides?.rate || audioSettings.rate}
-                                  </span>
-                                </label>
-                                {profile.audioOverrides?.rate && (
-                                  <input
-                                    type="range"
-                                    min="-50"
-                                    max="100"
-                                    step="10"
-                                    value={parseInt(profile.audioOverrides.rate)}
-                                    onChange={(e) => {
-                                      const val = parseInt(e.target.value)
-                                      updateProfileAudioOverrides(profile.id, {
-                                        ...profile.audioOverrides,
-                                        rate: val >= 0 ? `+${val}%` : `${val}%`
-                                      })
-                                    }}
-                                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[#00ff88]"
-                                  />
-                                )}
-                              </div>
-                            </>
-                          )}
-
-                          {/* Reset Button */}
-                          {profile.audioOverrides && (
-                            <button
-                              onClick={() => updateProfileAudioOverrides(profile.id, undefined)}
-                              className="text-xs text-gray-400 hover:text-white transition-colors"
-                            >
-                              Reset to global defaults
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
               </div>
 
               {/* Info */}

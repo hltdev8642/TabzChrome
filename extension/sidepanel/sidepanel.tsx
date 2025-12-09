@@ -1,15 +1,29 @@
 import React, { useEffect, useState, useRef } from 'react'
 import ReactDOM from 'react-dom/client'
-import { Terminal as TerminalIcon, Settings, Plus, X, ChevronDown, FolderOpen, Moon, Sun, History, Keyboard } from 'lucide-react'
+import { Terminal as TerminalIcon, Settings, Plus, X, ChevronDown, FolderOpen, Moon, Sun, History, Keyboard, Volume2, VolumeX } from 'lucide-react'
 import { Badge } from '../components/ui/badge'
 import { Terminal } from '../components/Terminal'
-import { SettingsModal, type Profile, type AudioSettings, type ProfileAudioOverrides } from '../components/SettingsModal'
+import { SettingsModal, type Profile, type AudioSettings, type ProfileAudioOverrides, type AudioMode } from '../components/SettingsModal'
 import { connectToBackground, sendMessage } from '../shared/messaging'
 import { getLocal, setLocal } from '../shared/storage'
 import { useClaudeStatus, getStatusEmoji, getStatusText, getFullStatusText, getRobotEmojis } from '../hooks/useClaudeStatus'
 import { useCommandHistory } from '../hooks/useCommandHistory'
 import { useOrphanedSessions } from '../hooks/useOrphanedSessions'
 import '../styles/globals.css'
+
+// Voice pool for auto-assignment (rotates through these when no profile override)
+const VOICE_POOL = [
+  'en-US-AndrewMultilingualNeural',  // Andrew (US Male)
+  'en-US-EmmaMultilingualNeural',    // Emma (US Female)
+  'en-GB-SoniaNeural',               // Sonia (UK Female)
+  'en-GB-RyanNeural',                // Ryan (UK Male)
+  'en-AU-NatashaNeural',             // Natasha (AU Female)
+  'en-AU-WilliamNeural',             // William (AU Male)
+  'en-US-BrianMultilingualNeural',   // Brian (US Male)
+  'en-US-AriaNeural',                // Aria (US Female)
+  'en-US-GuyNeural',                 // Guy (US Male)
+  'en-US-JennyNeural',               // Jenny (US Female)
+]
 
 interface TerminalSession {
   id: string
@@ -19,6 +33,7 @@ interface TerminalSession {
   sessionName?: string  // Tmux session name (only for tmux-based terminals)
   workingDir?: string   // Working directory for Claude status polling
   profile?: Profile     // Profile settings for this terminal
+  assignedVoice?: string  // Auto-assigned voice for audio (when no profile override)
 }
 
 function SidePanelTerminal() {
@@ -92,6 +107,7 @@ function SidePanelTerminal() {
     events: { ready: true, sessionStart: false, tools: false, subagents: false },
     toolDebounceMs: 1000,
   })
+  const [audioGlobalMute, setAudioGlobalMute] = useState(false)  // Master mute toggle in header
   const prevClaudeStatusesRef = useRef<Map<string, string>>(new Map())  // Track previous statuses for transition detection
   const prevSubagentCountsRef = useRef<Map<string, number>>(new Map())  // Track subagent counts for change detection
   const lastAudioTimeRef = useRef<number>(0)  // Debounce audio playback
@@ -194,18 +210,34 @@ function SidePanelTerminal() {
       if (result.profiles && Array.isArray(result.profiles) && result.profiles.length > 0) {
         // Migrate old profiles: ensure all required fields have defaults
         // Also migrate old 'theme' field to new 'themeName' field
+        // Also migrate old audioOverrides format (enabled: boolean) to new format (mode: AudioMode)
         const migratedProfiles = (result.profiles as any[]).map(p => {
           // Convert old theme field to themeName
           let themeName = p.themeName
           if (!themeName && p.theme) {
             themeName = 'high-contrast' // Map old dark/light to high-contrast
           }
+
+          // Migrate audioOverrides: convert enabled:false to mode:'disabled'
+          let audioOverrides = p.audioOverrides
+          if (audioOverrides) {
+            const { enabled, events, ...rest } = audioOverrides
+            // Convert enabled: false → mode: 'disabled'
+            if (enabled === false) {
+              audioOverrides = { ...rest, mode: 'disabled' as AudioMode }
+            } else if (events !== undefined || enabled !== undefined) {
+              // Remove old fields (events, enabled)
+              audioOverrides = Object.keys(rest).length > 0 ? rest : undefined
+            }
+          }
+
           return {
             ...p,
             fontSize: p.fontSize ?? 14,
             fontFamily: p.fontFamily ?? 'monospace',
             themeName: themeName ?? 'high-contrast',
             theme: undefined, // Remove old field
+            audioOverrides,
           }
         })
         setProfiles(migratedProfiles)
@@ -221,7 +253,8 @@ function SidePanelTerminal() {
 
         // Save migrated profiles back to storage if any were updated
         const needsMigration = (result.profiles as any[]).some(
-          p => p.fontSize === undefined || p.fontFamily === undefined || p.themeName === undefined || p.theme !== undefined
+          p => p.fontSize === undefined || p.fontFamily === undefined || p.themeName === undefined || p.theme !== undefined ||
+               (p.audioOverrides && (p.audioOverrides.enabled !== undefined || p.audioOverrides.events !== undefined))
         )
         if (needsMigration) {
           chrome.storage.local.set({ profiles: migratedProfiles })
@@ -264,7 +297,7 @@ function SidePanelTerminal() {
 
   // Load global working directory, recent dirs, dark mode, and audio settings from Chrome storage
   useEffect(() => {
-    chrome.storage.local.get(['globalWorkingDir', 'recentDirs', 'isDark', 'audioSettings'], (result) => {
+    chrome.storage.local.get(['globalWorkingDir', 'recentDirs', 'isDark', 'audioSettings', 'audioGlobalMute'], (result) => {
       if (result.globalWorkingDir && typeof result.globalWorkingDir === 'string') {
         setGlobalWorkingDir(result.globalWorkingDir)
       }
@@ -276,6 +309,9 @@ function SidePanelTerminal() {
       }
       if (result.audioSettings && typeof result.audioSettings === 'object') {
         setAudioSettings(prev => ({ ...prev, ...(result.audioSettings as Partial<AudioSettings>) }))
+      }
+      if (typeof result.audioGlobalMute === 'boolean') {
+        setAudioGlobalMute(result.audioGlobalMute)
       }
     })
   }, [])
@@ -295,6 +331,11 @@ function SidePanelTerminal() {
     chrome.storage.local.set({ isDark })
   }, [isDark])
 
+  // Save audio mute state when it changes
+  useEffect(() => {
+    chrome.storage.local.set({ audioGlobalMute })
+  }, [audioGlobalMute])
+
   // Listen for audioSettings changes from settings modal
   useEffect(() => {
     const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
@@ -306,20 +347,67 @@ function SidePanelTerminal() {
     return () => chrome.storage.onChanged.removeListener(handleStorageChange)
   }, [])
 
+  // Get the next available voice from the pool (round-robin based on active sessions)
+  // Returns a voice that isn't currently in use, or cycles through if all are used
+  const getNextAvailableVoice = (): string => {
+    const usedVoices = sessions
+      .filter(s => s.assignedVoice)
+      .map(s => s.assignedVoice!)
+
+    // Find first unused voice
+    for (const voice of VOICE_POOL) {
+      if (!usedVoices.includes(voice)) {
+        return voice
+      }
+    }
+
+    // All voices used - pick based on session count (round-robin)
+    return VOICE_POOL[sessions.length % VOICE_POOL.length]
+  }
+
   // Get merged audio settings for a profile (global + profile overrides)
-  const getAudioSettingsForProfile = (profile?: Profile): { voice: string; rate: string; volume: number; enabled: boolean } => {
+  // Logic matrix:
+  // | Header Mute | Profile Mode | Result |
+  // |-------------|--------------|--------|
+  // | OFF (🔊)    | default      | ✅ Plays (if audioSettings.enabled) |
+  // | OFF (🔊)    | enabled      | ✅ Plays |
+  // | OFF (🔊)    | disabled     | ❌ Silent |
+  // | ON (🔇)     | default      | ❌ Silent (master mute) |
+  // | ON (🔇)     | enabled      | ❌ Silent (master mute) |
+  // | ON (🔇)     | disabled     | ❌ Silent |
+  const getAudioSettingsForProfile = (profile?: Profile, assignedVoice?: string): { voice: string; rate: string; volume: number; enabled: boolean } => {
     const overrides = profile?.audioOverrides
+    const mode = overrides?.mode || 'default'
+
+    // Determine if audio is enabled for this profile
+    let enabled = false
+    if (mode === 'disabled') {
+      // Profile explicitly disabled - never plays
+      enabled = false
+    } else if (audioGlobalMute) {
+      // Master mute is on - nothing plays
+      enabled = false
+    } else if (mode === 'enabled') {
+      // Profile explicitly enabled - plays (respects master mute above)
+      enabled = true
+    } else {
+      // mode === 'default' - follow global settings
+      enabled = audioSettings.enabled
+    }
+
     return {
-      voice: overrides?.voice || audioSettings.voice,
+      // Voice priority: 1. Profile override, 2. Auto-assigned voice, 3. Global default
+      voice: overrides?.voice || assignedVoice || audioSettings.voice,
       rate: overrides?.rate || audioSettings.rate,
       volume: audioSettings.volume,
-      enabled: overrides?.enabled !== false && audioSettings.enabled,
+      enabled,
     }
   }
 
   // Audio playback helper - plays MP3 from backend cache via Chrome
-  const playAudio = async (text: string, profile?: Profile, isToolAnnouncement = false) => {
-    const settings = getAudioSettingsForProfile(profile)
+  // Now accepts session to use auto-assigned voice when no profile override
+  const playAudio = async (text: string, session?: TerminalSession, isToolAnnouncement = false) => {
+    const settings = getAudioSettingsForProfile(session?.profile, session?.assignedVoice)
     if (!settings.enabled) return
 
     // Debounce: use separate timers for tools vs other announcements
@@ -357,7 +445,8 @@ function SidePanelTerminal() {
 
   // Watch Claude status changes and trigger audio notifications
   useEffect(() => {
-    if (!audioSettings.enabled) return
+    // If master mute is on, no audio plays regardless of profile settings
+    if (audioGlobalMute) return
 
     // Check each terminal for status transitions
     claudeStatuses.forEach((status, terminalId) => {
@@ -366,14 +455,12 @@ function SidePanelTerminal() {
       const currentStatus = status.status
       const currentSubagentCount = status.subagent_count || 0
 
-      // Find the session to get its profile
+      // Find the session to get its profile and assigned voice
       const session = sessions.find(s => s.id === terminalId)
-      const profile = session?.profile
 
-      // Check if audio is enabled for this profile
-      const profileEnabled = profile?.audioOverrides?.enabled !== false
-
-      if (!profileEnabled) {
+      // Check if audio is enabled for this profile (uses getAudioSettingsForProfile logic)
+      const audioForProfile = getAudioSettingsForProfile(session?.profile, session?.assignedVoice)
+      if (!audioForProfile.enabled) {
         prevClaudeStatusesRef.current.set(terminalId, currentStatus)
         prevSubagentCountsRef.current.set(terminalId, currentSubagentCount)
         return
@@ -382,7 +469,7 @@ function SidePanelTerminal() {
       // Get the display name for announcements
       const getDisplayName = () => {
         if (!session) return 'Claude'
-        const baseName = profile?.name || session.name || 'Claude'
+        const baseName = session.profile?.name || session.name || 'Claude'
         const sameNameSessions = sessions.filter(s =>
           (s.profile?.name || s.name) === baseName
         )
@@ -398,7 +485,7 @@ function SidePanelTerminal() {
           (prevStatus === 'processing' || prevStatus === 'tool_use') &&
           currentStatus === 'awaiting_input' &&
           currentSubagentCount === 0) {
-        playAudio(`${getDisplayName()} ready`, profile)
+        playAudio(`${getDisplayName()} ready`, session)
       }
 
       // EVENT: Tool announcements (idle/processing → tool_use)
@@ -420,17 +507,17 @@ function SidePanelTerminal() {
           case 'WebSearch': announcement = 'Searching web'; break
           default: announcement = `Using ${toolName}`
         }
-        playAudio(announcement, profile, true)
+        playAudio(announcement, session, true)
       }
 
       // EVENT: Subagent count changes
       if (audioSettings.events.subagents && currentSubagentCount !== prevSubagentCount) {
         if (currentSubagentCount > prevSubagentCount) {
           // New subagent spawned
-          playAudio(`${currentSubagentCount} agent${currentSubagentCount > 1 ? 's' : ''} running`, profile, true)
+          playAudio(`${currentSubagentCount} agent${currentSubagentCount > 1 ? 's' : ''} running`, session, true)
         } else if (currentSubagentCount === 0 && prevSubagentCount > 0) {
           // All subagents finished
-          playAudio('All agents complete', profile)
+          playAudio('All agents complete', session)
         }
       }
 
@@ -446,7 +533,7 @@ function SidePanelTerminal() {
         prevSubagentCountsRef.current.delete(id)
       }
     }
-  }, [claudeStatuses, audioSettings, sessions])
+  }, [claudeStatuses, audioSettings, audioGlobalMute, sessions])
 
   // Helper to add a directory to recent list
   const addToRecentDirs = (dir: string) => {
@@ -710,6 +797,15 @@ function SidePanelTerminal() {
           if (prev.find(s => s.id === terminal.id)) {
             return prev
           }
+
+          // Auto-assign a voice from the pool (round-robin based on current sessions)
+          const usedVoices = prev.filter(s => s.assignedVoice).map(s => s.assignedVoice!)
+          let assignedVoice = VOICE_POOL.find(v => !usedVoices.includes(v))
+          if (!assignedVoice) {
+            // All voices used - pick based on session count (round-robin)
+            assignedVoice = VOICE_POOL[prev.length % VOICE_POOL.length]
+          }
+
           return [...prev, {
             id: terminal.id,
             name: terminal.name || terminal.id,
@@ -718,6 +814,7 @@ function SidePanelTerminal() {
             sessionName: terminal.sessionName,  // Store tmux session name
             workingDir: terminal.workingDir,    // Store working directory for Claude status
             profile: effectiveTerminalProfile,  // Store profile settings (may be updated async)
+            assignedVoice,  // Auto-assigned voice for audio notifications
           }]
         })
         setCurrentSession(terminal.id)
@@ -1546,6 +1643,21 @@ function SidePanelTerminal() {
             title="Keyboard Shortcuts"
           >
             <Keyboard className="h-4 w-4" />
+          </button>
+
+          {/* Audio Mute Toggle */}
+          <button
+            onClick={() => setAudioGlobalMute(!audioGlobalMute)}
+            className={`p-1.5 rounded-md transition-colors ${
+              audioGlobalMute
+                ? 'text-gray-500 hover:bg-white/5 hover:text-gray-400'
+                : audioSettings.enabled
+                  ? 'text-[#00ff88] hover:bg-[#00ff88]/10'
+                  : 'text-gray-400 hover:bg-[#00ff88]/10 hover:text-[#00ff88]'
+            }`}
+            title={audioGlobalMute ? 'Audio muted (click to unmute)' : 'Audio enabled (click to mute)'}
+          >
+            {audioGlobalMute ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
 
           {/* Settings Button */}
