@@ -13,6 +13,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.7.0] - 2025-12-09
+
+### 🚀 Major Features
+
+#### Profile Categories with Color-Coded Tabs
+- **Category Field** - Optional category for each profile (e.g., "Claude Code", "TUI Tools", "Gemini")
+- **Collapsible Groups** - Profiles grouped by category with expand/collapse headers
+- **9-Color Palette** - Green, Blue, Purple, Orange, Red, Yellow, Cyan, Pink, Gray
+- **Inline Color Picker** - Click color dots next to category header to change color
+- **Color-Coded Tabs** - Selected terminal tabs show category color (background tint, text, border)
+- **Search Bar** - Filter profiles by name, command, or category
+- **Autocomplete** - Category input suggests existing categories from other profiles
+- **Category Settings Persistence** - Colors and collapsed state saved to Chrome storage
+- Files: `extension/components/SettingsModal.tsx`, `extension/sidepanel/sidepanel.tsx`
+
+#### Claude Status Shows Profile Name
+- **Profile Name in Ready State** - When Claude is idle, shows "✓ Claude Worker" instead of "✓ Ready"
+- **Easier Multi-Claude Identification** - Visual status now matches audio announcements
+- Files: `extension/hooks/useClaudeStatus.ts`, `extension/sidepanel/sidepanel.tsx`
+
+### 🔧 Technical Details
+
+- **New Types** - `CategorySettings` interface, `CATEGORY_COLORS` palette constant
+- **Real-time Updates** - Category color changes broadcast via CustomEvent to update tabs immediately
+- **Profile Schema** - Added optional `category?: string` field to Profile interface
+
+---
+
 ## [2.6.0] - 2025-12-09
 
 ### 🚀 Major Features

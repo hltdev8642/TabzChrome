@@ -2,7 +2,7 @@
 
 **Terminal sessions in your Chrome sidebar - Windows Terminal style**
 
-![Version](https://img.shields.io/badge/version-2.4.0-blue)
+![Version](https://img.shields.io/badge/version-2.7.0-blue)
 ![Chrome](https://img.shields.io/badge/chrome-manifest%20v3-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -13,7 +13,8 @@
 A Chrome extension that puts bash terminals in your browser's sidebar. Browse the web with your terminals always visible - no window juggling, no Alt+Tab.
 
 **Key features:**
-- **Profiles** - Save terminal configurations (working directory, startup command, font, theme)
+- **Profiles with Categories** - Organize profiles into color-coded groups (Claude Code, TUI Tools, etc.)
+- **Color-coded tabs** - Terminal tabs show category colors for easy identification
 - **Persistent sessions** - Terminals survive sidebar close/reopen (powered by tmux)
 - **Smart directory inheritance** - Set a global working directory, profiles inherit it
 - **Tabz MCP tools** - Let Claude Code control your browser (screenshots, clicks, form filling)
@@ -74,10 +75,21 @@ npm start  # Runs on port 8129
 Click the **+** dropdown to spawn terminals from saved profiles:
 
 - **Name** - Display name for the profile
+- **Category** - Optional grouping (e.g., "Claude Code", "TUI Tools") with color coding
 - **Working Directory** - Optional (inherits from header if empty)
 - **Startup Command** - Optional command to run on spawn (e.g., `lazygit`, `htop`)
 - **Font Size** - 12-24px per profile
 - **Theme** - 6 color schemes (high-contrast, dracula, ocean, neon, amber, matrix) + dark/light toggle
+
+#### Profile Categories
+
+Organize your profiles into color-coded groups:
+
+- **Collapsible Groups** - Click category header to expand/collapse
+- **9 Colors** - Green, Blue, Purple, Orange, Red, Yellow, Cyan, Pink, Gray
+- **Color Picker** - Click color dots next to category to change color
+- **Color-Coded Tabs** - Selected terminal tabs show their category color
+- **Search** - Filter profiles by name, command, or category
 
 #### Import/Export Profiles
 

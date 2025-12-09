@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { X, Terminal as TerminalIcon, Plus, Edit, Trash2, GripVertical, Palette, Wrench, AlertTriangle, Settings, ChevronDown, ChevronUp, Download, Upload, Volume2 } from 'lucide-react'
+import { X, Terminal as TerminalIcon, Plus, Edit, Trash2, GripVertical, Palette, Wrench, AlertTriangle, Settings, ChevronDown, ChevronUp, ChevronRight, Download, Upload, Volume2, Search, FolderOpen } from 'lucide-react'
 import { themes, themeNames } from '../styles/themes'
 
 // Individual MCP Tools configuration with accurate token counts from /context
@@ -62,7 +62,31 @@ export interface Profile {
   fontFamily: string
   themeName: string  // Theme family name (high-contrast, dracula, ocean, etc.)
   audioOverrides?: ProfileAudioOverrides  // Optional per-profile audio settings
+  category?: string  // Optional category for grouping (e.g., "Claude Code", "TUI Tools")
 }
+
+// Category settings stored separately from profiles
+export interface CategorySettings {
+  [categoryName: string]: {
+    color: string       // Hex color (e.g., "#22c55e")
+    collapsed?: boolean // UI state: is category collapsed in settings
+  }
+}
+
+// Category color palette - designed for good contrast on dark backgrounds
+export const CATEGORY_COLORS = [
+  { name: 'Green', value: '#22c55e', text: '#000000' },   // Default/matrix green
+  { name: 'Blue', value: '#3b82f6', text: '#ffffff' },    // Bright blue
+  { name: 'Purple', value: '#a855f7', text: '#ffffff' },  // Purple
+  { name: 'Orange', value: '#f97316', text: '#000000' },  // Orange
+  { name: 'Red', value: '#ef4444', text: '#ffffff' },     // Red
+  { name: 'Yellow', value: '#eab308', text: '#000000' },  // Yellow
+  { name: 'Cyan', value: '#06b6d4', text: '#000000' },    // Cyan
+  { name: 'Pink', value: '#ec4899', text: '#ffffff' },    // Pink
+  { name: 'Gray', value: '#6b7280', text: '#ffffff' },    // Neutral gray
+] as const
+
+export const DEFAULT_CATEGORY_COLOR = '#6b7280'  // Gray for uncategorized
 
 const DEFAULT_PROFILE: Profile = {
   id: '',
@@ -180,6 +204,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [profileAudioTestPlaying, setProfileAudioTestPlaying] = useState(false)
   const [profileAudioExpanded, setProfileAudioExpanded] = useState(false)  // Audio section in profile edit form
 
+  // Category settings state
+  const [categorySettings, setCategorySettings] = useState<CategorySettings>({})
+  const [profileSearchQuery, setProfileSearchQuery] = useState('')  // Search/filter profiles
+
   // Reset form state when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -191,6 +219,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setShowImportDialog(false)
       setPendingImportProfiles([])
       setImportWarnings([])
+      setProfileSearchQuery('')  // Reset search when modal opens
       // Don't reset activeTab - let user stay on their last tab
     }
   }, [isOpen])
@@ -248,6 +277,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         if (result.audioSettings) {
           // Merge with defaults to handle missing fields from older versions
           setAudioSettings({ ...DEFAULT_AUDIO_SETTINGS, ...result.audioSettings })
+        }
+      })
+
+      // Load category settings from Chrome storage
+      chrome.storage.local.get(['categorySettings'], (result) => {
+        if (result.categorySettings) {
+          setCategorySettings(result.categorySettings as CategorySettings)
         }
       })
     }
@@ -445,6 +481,85 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setDraggedIndex(null)
     setDragOverIndex(null)
     setDropPosition(null)
+  }
+
+  // Category helpers
+  const getUniqueCategories = (): string[] => {
+    const categories = new Set<string>()
+    profiles.forEach(p => {
+      if (p.category) categories.add(p.category)
+    })
+    return Array.from(categories).sort()
+  }
+
+  const toggleCategoryCollapsed = (categoryName: string) => {
+    const newSettings = {
+      ...categorySettings,
+      [categoryName]: {
+        ...categorySettings[categoryName],
+        collapsed: !categorySettings[categoryName]?.collapsed,
+      }
+    }
+    setCategorySettings(newSettings)
+    chrome.storage.local.set({ categorySettings: newSettings })
+  }
+
+  const setCategoryColor = (categoryName: string, color: string) => {
+    const newSettings = {
+      ...categorySettings,
+      [categoryName]: {
+        ...categorySettings[categoryName],
+        color,
+      }
+    }
+    setCategorySettings(newSettings)
+    chrome.storage.local.set({ categorySettings: newSettings })
+    // Broadcast change so sidepanel updates tabs
+    window.dispatchEvent(new CustomEvent('categorySettingsChanged', { detail: newSettings }))
+  }
+
+  const getCategoryColor = (categoryName: string): string => {
+    return categorySettings[categoryName]?.color || DEFAULT_CATEGORY_COLOR
+  }
+
+  // Group profiles by category, filtering by search query
+  const getGroupedProfiles = (): { category: string; profiles: { profile: Profile; originalIndex: number }[] }[] => {
+    const query = profileSearchQuery.toLowerCase().trim()
+
+    // Filter profiles by search query (name, command, category)
+    const filteredProfiles = profiles
+      .map((profile, index) => ({ profile, originalIndex: index }))
+      .filter(({ profile }) => {
+        if (!query) return true
+        return (
+          profile.name.toLowerCase().includes(query) ||
+          (profile.command?.toLowerCase().includes(query)) ||
+          (profile.category?.toLowerCase().includes(query))
+        )
+      })
+
+    // Group by category
+    const groups: Map<string, { profile: Profile; originalIndex: number }[]> = new Map()
+
+    filteredProfiles.forEach(item => {
+      const category = item.profile.category || ''
+      if (!groups.has(category)) {
+        groups.set(category, [])
+      }
+      groups.get(category)!.push(item)
+    })
+
+    // Sort: categorized first (alphabetically), then uncategorized at the end
+    const sortedCategories = Array.from(groups.keys()).sort((a, b) => {
+      if (!a && b) return 1  // Uncategorized goes last
+      if (a && !b) return -1
+      return a.localeCompare(b)
+    })
+
+    return sortedCategories.map(category => ({
+      category,
+      profiles: groups.get(category)!
+    }))
   }
 
   // Export/Import handlers
@@ -862,6 +977,28 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </p>
               </div>
 
+              {/* Search Bar */}
+              {profiles.length > 0 && (
+                <div className="mb-4 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                  <input
+                    type="text"
+                    value={profileSearchQuery}
+                    onChange={(e) => setProfileSearchQuery(e.target.value)}
+                    placeholder="Search profiles..."
+                    className="w-full pl-10 pr-3 py-2 bg-black/50 border border-gray-700 rounded text-white text-sm focus:border-[#00ff88] focus:outline-none"
+                  />
+                  {profileSearchQuery && (
+                    <button
+                      onClick={() => setProfileSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Profile List */}
               {profiles.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
@@ -875,75 +1012,143 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {profiles.map((profile, index) => (
-                    <div
-                      key={profile.id}
-                      draggable
-                      onDragStart={() => handleDragStart(index)}
-                      onDragOver={(e) => handleDragOver(e, index)}
-                      onDragLeave={handleDragLeave}
-                      onDrop={() => handleDrop(index)}
-                      onDragEnd={handleDragEnd}
-                      className={`
-                        relative bg-black/30 border rounded-lg p-3 transition-all
-                        ${draggedIndex === index ? 'opacity-50 border-[#00ff88]' : 'border-gray-800'}
-                        ${draggedIndex === null ? 'hover:bg-black/40' : ''}
-                      `}
-                    >
-                      {/* Drop indicator line - above */}
-                      {dragOverIndex === index && dropPosition === 'above' && (
-                        <div className="absolute -top-[5px] left-0 right-0 h-[2px] bg-[#00ff88] rounded-full shadow-[0_0_6px_#00ff88]" />
-                      )}
-                      {/* Drop indicator line - below */}
-                      {dragOverIndex === index && dropPosition === 'below' && (
-                        <div className="absolute -bottom-[5px] left-0 right-0 h-[2px] bg-[#00ff88] rounded-full shadow-[0_0_6px_#00ff88]" />
-                      )}
-                      <div className="flex items-start gap-2">
-                        {/* Drag Handle */}
-                        <div
-                          className="flex-shrink-0 pt-0.5 cursor-grab active:cursor-grabbing text-gray-600 hover:text-gray-400 transition-colors"
-                          title="Drag to reorder"
-                        >
-                          <GripVertical className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-white text-sm">{profile.name}</span>
-                            {profile.id === defaultProfile && (
-                              <span className="text-xs px-2 py-0.5 rounded bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88]/30">
-                                Default
-                              </span>
+                <div className="space-y-3">
+                  {getGroupedProfiles().map(({ category, profiles: categoryProfiles }) => {
+                    const isCollapsed = category && categorySettings[category]?.collapsed
+                    const categoryColor = category ? getCategoryColor(category) : DEFAULT_CATEGORY_COLOR
+
+                    return (
+                      <div key={category || '__uncategorized__'} className="space-y-2">
+                        {/* Category Header (only show if category exists) */}
+                        {category && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => toggleCategoryCollapsed(category)}
+                              className="flex items-center gap-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
+                            >
+                              {isCollapsed ? (
+                                <ChevronRight className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                              <span
+                                className="w-3 h-3 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: categoryColor }}
+                              />
+                              <span>{category}</span>
+                              <span className="text-gray-500 font-normal">({categoryProfiles.length})</span>
+                            </button>
+                            {/* Color picker */}
+                            <div className="flex items-center gap-1 ml-auto">
+                              {CATEGORY_COLORS.map(color => (
+                                <button
+                                  key={color.value}
+                                  onClick={() => setCategoryColor(category, color.value)}
+                                  className={`w-4 h-4 rounded-full transition-transform hover:scale-125 ${
+                                    categoryColor === color.value ? 'ring-2 ring-white ring-offset-1 ring-offset-black' : ''
+                                  }`}
+                                  style={{ backgroundColor: color.value }}
+                                  title={color.name}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Uncategorized label */}
+                        {!category && categoryProfiles.length > 0 && getUniqueCategories().length > 0 && (
+                          <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
+                            <span
+                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: DEFAULT_CATEGORY_COLOR }}
+                            />
+                            <span>Uncategorized</span>
+                            <span className="font-normal">({categoryProfiles.length})</span>
+                          </div>
+                        )}
+
+                        {/* Profile items (hidden if category is collapsed) */}
+                        {!isCollapsed && categoryProfiles.map(({ profile, originalIndex }) => (
+                          <div
+                            key={profile.id}
+                            draggable
+                            onDragStart={() => handleDragStart(originalIndex)}
+                            onDragOver={(e) => handleDragOver(e, originalIndex)}
+                            onDragLeave={handleDragLeave}
+                            onDrop={() => handleDrop(originalIndex)}
+                            onDragEnd={handleDragEnd}
+                            className={`
+                              relative bg-black/30 border rounded-lg p-3 transition-all
+                              ${category ? 'ml-5' : ''}
+                              ${draggedIndex === originalIndex ? 'opacity-50 border-[#00ff88]' : 'border-gray-800'}
+                              ${draggedIndex === null ? 'hover:bg-black/40' : ''}
+                            `}
+                            style={category ? { borderLeftColor: categoryColor, borderLeftWidth: '3px' } : undefined}
+                          >
+                            {/* Drop indicator line - above */}
+                            {dragOverIndex === originalIndex && dropPosition === 'above' && (
+                              <div className="absolute -top-[5px] left-0 right-0 h-[2px] bg-[#00ff88] rounded-full shadow-[0_0_6px_#00ff88]" />
                             )}
+                            {/* Drop indicator line - below */}
+                            {dragOverIndex === originalIndex && dropPosition === 'below' && (
+                              <div className="absolute -bottom-[5px] left-0 right-0 h-[2px] bg-[#00ff88] rounded-full shadow-[0_0_6px_#00ff88]" />
+                            )}
+                            <div className="flex items-start gap-2">
+                              {/* Drag Handle */}
+                              <div
+                                className="flex-shrink-0 pt-0.5 cursor-grab active:cursor-grabbing text-gray-600 hover:text-gray-400 transition-colors"
+                                title="Drag to reorder"
+                              >
+                                <GripVertical className="h-4 w-4" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-medium text-white text-sm">{profile.name}</span>
+                                  {profile.id === defaultProfile && (
+                                    <span className="text-xs px-2 py-0.5 rounded bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88]/30">
+                                      Default
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">📁 {profile.workingDir || '(inherit from header)'}</div>
+                                {profile.command && (
+                                  <div className="text-xs text-gray-500 mt-1 font-mono">▶ {profile.command}</div>
+                                )}
+                                <div className="flex gap-3 mt-2 text-xs text-gray-400">
+                                  <span>Font: {profile.fontSize}px {profile.fontFamily.split(',')[0].replace(/'/g, '')}</span>
+                                  <span>Theme: {themes[profile.themeName]?.name || profile.themeName}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleEditProfile(originalIndex)}
+                                  className="p-1.5 hover:bg-[#00ff88]/10 rounded text-gray-400 hover:text-[#00ff88] transition-colors"
+                                  title="Edit"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteProfile(originalIndex)}
+                                  className="p-1.5 hover:bg-red-500/10 rounded text-gray-400 hover:text-red-400 transition-colors"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">📁 {profile.workingDir || '(inherit from header)'}</div>
-                          {profile.command && (
-                            <div className="text-xs text-gray-500 mt-1 font-mono">▶ {profile.command}</div>
-                          )}
-                          <div className="flex gap-3 mt-2 text-xs text-gray-400">
-                            <span>Font: {profile.fontSize}px {profile.fontFamily.split(',')[0].replace(/'/g, '')}</span>
-                            <span>Theme: {themes[profile.themeName]?.name || profile.themeName}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleEditProfile(index)}
-                            className="p-1.5 hover:bg-[#00ff88]/10 rounded text-gray-400 hover:text-[#00ff88] transition-colors"
-                            title="Edit"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteProfile(index)}
-                            className="p-1.5 hover:bg-red-500/10 rounded text-gray-400 hover:text-red-400 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
+                        ))}
                       </div>
+                    )
+                  })}
+
+                  {/* No results message */}
+                  {profileSearchQuery && getGroupedProfiles().length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <Search className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                      <p>No profiles match "{profileSearchQuery}"</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </>
@@ -1000,6 +1205,39 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Command to run when terminal spawns
+                  </p>
+                </div>
+
+                {/* Category */}
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Category (optional)</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={formData.category || ''}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      placeholder="e.g., Claude Code, TUI Tools"
+                      list="category-suggestions"
+                      className="flex-1 px-3 py-2 bg-black/50 border border-gray-700 rounded text-white text-sm focus:border-[#00ff88] focus:outline-none"
+                    />
+                    <datalist id="category-suggestions">
+                      {getUniqueCategories().map(cat => (
+                        <option key={cat} value={cat} />
+                      ))}
+                    </datalist>
+                    {formData.category && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, category: '' })}
+                        className="px-2 py-1 text-gray-400 hover:text-gray-200 transition-colors"
+                        title="Clear category"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Group profiles together and color-code terminal tabs
                   </p>
                 </div>
 

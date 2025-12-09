@@ -1,12 +1,33 @@
 # PLAN.md - TabzChrome Roadmap
 
 **Last Updated**: December 9, 2025
-**Current Version**: 2.6.0
-**Status**: Pre-release polish | Next: Profile Organization
+**Current Version**: 2.7.0
+**Status**: Profile Organization Complete | Next: Power Tools
 
 ---
 
-## Recently Completed (v2.6.0)
+## Recently Completed (v2.7.0)
+
+### ✅ Profile Categories with Colors - COMPLETE
+
+- **Category Field** - Optional `category` field on profiles (e.g., "Claude Code", "TUI Tools")
+- **Collapsible Groups** - Profiles grouped by category with expand/collapse
+- **Color Palette** - 9 colors: Green, Blue, Purple, Orange, Red, Yellow, Cyan, Pink, Gray
+- **Color Picker** - Click dots next to category header to set color
+- **Colored Tabs** - Selected terminal tabs show category color (background, text, border)
+- **Search Bar** - Filter profiles by name, command, or category
+- **Autocomplete** - Category input suggests existing categories
+- Files: `extension/components/SettingsModal.tsx`, `extension/sidepanel/sidepanel.tsx`
+
+### ✅ Claude Status Shows Profile Name - COMPLETE
+
+- **Profile Name in Ready State** - When Claude is idle, shows "✓ {ProfileName}" instead of "✓ Ready"
+- **Easier Identification** - Matches audio announcements which use profile names
+- Files: `extension/hooks/useClaudeStatus.ts`, `extension/sidepanel/sidepanel.tsx`
+
+---
+
+## Completed (v2.6.0)
 
 ### ✅ Auto-Voice Assignment - COMPLETE
 
@@ -51,89 +72,6 @@
 - **Ctrl+Shift+9 Opens Sidebar** - Changed to `_execute_action` so keyboard shortcut actually works
 - **Copy Session ID** - Right-click tab → "📋 Copy Session ID" for tmux conductor workflows
 - Files: `extension/manifest.json`, `extension/background/background.ts`, `extension/sidepanel/sidepanel.tsx`
-
----
-
-## Next Up: Pre-Release Features
-
-### 1. Profile Organization (Categories + Search)
-
-**Goal**: Make long profile lists manageable with categories and/or search.
-
-**Options:**
-
-#### Option A: Collapsible Categories
-```
-▼ Claude Code (4)
-    Claude (default)
-    Claude --dangerously-skip-permissions
-    Claude Resume
-    Claude Opus
-▼ TUI Tools (3)
-    lazygit
-    htop
-    btop
-► Development (2)  [collapsed]
-```
-
-**Implementation:**
-1. Add `category` field to profile schema (optional, default: "Uncategorized")
-2. Group profiles by category in UI
-3. Collapsible headers with count badge
-4. Remember collapsed state in Chrome storage
-5. Add category selector in profile edit form
-6. Drag-drop to reorder within category
-
-**Considerations:**
-- Migration: existing profiles get "Uncategorized" or infer from name
-- Default profile indicator still visible
-- Categories could be user-defined or preset list
-
-#### Option B: Search/Filter Bar
-```
-[🔍 Search profiles...        ]
-```
-
-1. Add search input above profile list
-2. Filter profiles by name/command as user types
-3. Highlight matching text
-4. Show "No matches" if empty
-
-**Pros:** Simpler to implement, no schema changes
-**Cons:** Doesn't help visual organization
-
-#### Option C: Both (Recommended)
-- Categories for organization
-- Search for quick access when you know what you want
-- Search filters across all categories
-
-**Files to modify:**
-- `extension/components/SettingsModal.tsx` - UI changes
-- `extension/shared/storage.ts` - Profile schema update (if categories)
-- Profile type definition
-
-**Profile schema addition:**
-```typescript
-interface Profile {
-  id: string;
-  name: string;
-  workingDir?: string;
-  command?: string;
-  fontSize: number;
-  fontFamily: string;
-  theme: string;
-  category?: string;  // NEW: optional category
-}
-```
-
----
-
-### Implementation Order
-
-1. **Profile Search** - Quick win, no schema changes
-2. **Profile Categories** - Full organization solution
-3. **Audio: Basic sounds** - Add files, playback logic, settings
-4. **Audio: TTS** (optional) - If you want dynamic announcements
 
 ---
 

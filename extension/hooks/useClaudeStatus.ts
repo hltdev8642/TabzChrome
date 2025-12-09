@@ -187,14 +187,15 @@ export function getStatusEmoji(status: ClaudeStatus | undefined): string {
 /**
  * Get detailed status text for display (matches Tabz format)
  * Returns emoji + tool name + detail, e.g., "🔧 Read: settings.tsx"
+ * When idle/ready, shows profile name if provided, otherwise "Ready"
  */
-export function getStatusText(status: ClaudeStatus | undefined): string {
+export function getStatusText(status: ClaudeStatus | undefined, profileName?: string): string {
   if (!status) return ''
 
   switch (status.status) {
     case 'idle':
     case 'awaiting_input':
-      return '✓ Ready'
+      return profileName ? `✓ ${profileName}` : '✓ Ready'
     case 'processing': {
       // Show what just completed if we have the info (prevents flashing)
       if (status.current_tool && status.details?.args) {

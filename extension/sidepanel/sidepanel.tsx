@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { Terminal as TerminalIcon, Settings, Plus, X, ChevronDown, FolderOpen, Moon, Sun, History, Keyboard, Volume2, VolumeX } from 'lucide-react'
 import { Badge } from '../components/ui/badge'
 import { Terminal } from '../components/Terminal'
-import { SettingsModal, type Profile, type AudioSettings, type ProfileAudioOverrides, type AudioMode } from '../components/SettingsModal'
+import { SettingsModal, type Profile, type AudioSettings, type ProfileAudioOverrides, type AudioMode, type CategorySettings, DEFAULT_CATEGORY_COLOR } from '../components/SettingsModal'
 import { connectToBackground, sendMessage } from '../shared/messaging'
 import { getLocal, setLocal } from '../shared/storage'
 import { useClaudeStatus, getStatusEmoji, getStatusText, getFullStatusText, getRobotEmojis } from '../hooks/useClaudeStatus'
@@ -108,6 +108,7 @@ function SidePanelTerminal() {
     toolDebounceMs: 1000,
   })
   const [audioGlobalMute, setAudioGlobalMute] = useState(false)  // Master mute toggle in header
+  const [categorySettings, setCategorySettings] = useState<CategorySettings>({})  // Category colors for tabs
   const prevClaudeStatusesRef = useRef<Map<string, string>>(new Map())  // Track previous statuses for transition detection
   const prevSubagentCountsRef = useRef<Map<string, number>>(new Map())  // Track subagent counts for change detection
   const lastAudioTimeRef = useRef<number>(0)  // Debounce audio playback
@@ -295,9 +296,9 @@ function SidePanelTerminal() {
     }
   }, [])
 
-  // Load global working directory, recent dirs, dark mode, and audio settings from Chrome storage
+  // Load global working directory, recent dirs, dark mode, audio settings, and category settings from Chrome storage
   useEffect(() => {
-    chrome.storage.local.get(['globalWorkingDir', 'recentDirs', 'isDark', 'audioSettings', 'audioGlobalMute'], (result) => {
+    chrome.storage.local.get(['globalWorkingDir', 'recentDirs', 'isDark', 'audioSettings', 'audioGlobalMute', 'categorySettings'], (result) => {
       if (result.globalWorkingDir && typeof result.globalWorkingDir === 'string') {
         setGlobalWorkingDir(result.globalWorkingDir)
       }
@@ -313,7 +314,21 @@ function SidePanelTerminal() {
       if (typeof result.audioGlobalMute === 'boolean') {
         setAudioGlobalMute(result.audioGlobalMute)
       }
+      if (result.categorySettings && typeof result.categorySettings === 'object') {
+        setCategorySettings(result.categorySettings as CategorySettings)
+      }
     })
+
+    // Listen for category settings changes from SettingsModal
+    const handleCategorySettingsChange = (e: Event) => {
+      const customEvent = e as CustomEvent<CategorySettings>
+      setCategorySettings(customEvent.detail)
+    }
+    window.addEventListener('categorySettingsChanged', handleCategorySettingsChange)
+
+    return () => {
+      window.removeEventListener('categorySettingsChanged', handleCategorySettingsChange)
+    }
   }, [])
 
   // Save global working directory when it changes
@@ -1332,6 +1347,13 @@ function SidePanelTerminal() {
     }
   }
 
+  // Get category color for a session's profile
+  const getSessionCategoryColor = (session: TerminalSession): string | null => {
+    const category = session.profile?.category
+    if (!category) return null
+    return categorySettings[category]?.color || DEFAULT_CATEGORY_COLOR
+  }
+
   // Handle "Kill Session" from tab menu
   const handleKillSession = async () => {
     if (!contextMenu.terminalId) return
@@ -1689,7 +1711,11 @@ function SidePanelTerminal() {
               <div className="flex items-center gap-1 p-2">
                 {/* Scrollable tabs area */}
                 <div className="flex gap-1 overflow-x-auto flex-1 min-w-0">
-                {sessions.map(session => (
+                {sessions.map(session => {
+                  const categoryColor = getSessionCategoryColor(session)
+                  const isSelected = currentSession === session.id
+
+                  return (
                   <div
                     key={session.id}
                     draggable
@@ -1701,13 +1727,20 @@ function SidePanelTerminal() {
                     className={`
                       flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all cursor-pointer group
                       min-w-[120px] max-w-[280px] flex-1
-                      ${currentSession === session.id
-                        ? 'bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30'
+                      ${isSelected
+                        ? categoryColor
+                          ? 'border'  // Use inline styles for category color
+                          : 'bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30'
                         : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-gray-300 border border-transparent'
                       }
                       ${draggedTabId === session.id ? 'opacity-50' : ''}
                       ${dragOverTabId === session.id ? 'border-l-2 border-l-[#00ff88]' : ''}
                     `}
+                    style={isSelected && categoryColor ? {
+                      backgroundColor: `${categoryColor}15`,  // 15 = ~8% opacity in hex
+                      color: categoryColor,
+                      borderColor: `${categoryColor}50`,  // 50 = ~31% opacity in hex
+                    } : undefined}
                     onClick={() => setCurrentSession(session.id)}
                     onContextMenu={(e) => handleTabContextMenu(e, session.id)}
                     title={claudeStatuses.has(session.id)
@@ -1724,7 +1757,7 @@ function SidePanelTerminal() {
                       )}
                       <span className="truncate">
                         {claudeStatuses.has(session.id)
-                          ? getStatusText(claudeStatuses.get(session.id))
+                          ? getStatusText(claudeStatuses.get(session.id), session.profile?.name)
                           : session.name
                         }
                       </span>
@@ -1737,7 +1770,8 @@ function SidePanelTerminal() {
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                ))}
+                  )
+                })}
                 {/* End drop zone - for dropping tab at the end */}
                 {draggedTabId && (
                   <div
@@ -2114,7 +2148,7 @@ function SidePanelTerminal() {
                             >
                               {claudeStatus && <span className="flex-shrink-0">🤖</span>}
                               <span className="truncate">
-                                {claudeStatus ? getStatusText(claudeStatus) : session.name}
+                                {claudeStatus ? getStatusText(claudeStatus, session.profile?.name) : session.name}
                               </span>
                             </span>
                           </button>
