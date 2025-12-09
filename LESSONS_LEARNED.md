@@ -4,6 +4,53 @@ This document captures important debugging lessons, gotchas, and best practices 
 
 ---
 
+## Tmux Status Bar Position
+
+### Lesson: Put Tmux Status Bar at TOP When Running Claude Code (Dec 9, 2025)
+
+**Problem**: Tmux status bar would disappear and show terminal content from above the viewport in its place.
+
+**What Happened:**
+1. During Claude Code output (especially diffs with ANSI colors), the green tmux status bar at bottom would vanish
+2. In its place, a line of terminal content that should be *above* the visible area would appear
+3. The corruption also triggered during sidebar resize or extension reload
+4. `Ctrl+L` didn't fix it; `Ctrl+a r` (reload tmux config) temporarily fixed it but it recurred
+
+**Root Cause**: Scroll region conflict between tmux and Claude Code's dynamic statusline.
+
+- Tmux uses escape codes (`\e[1;24r`) to define scroll regions, protecting the status bar
+- Claude Code has its own statusline at the bottom that can **grow/shrink dynamically** (tool use, subagents, bypass mode)
+- When both compete for the bottom rows, scroll region calculations get corrupted
+- The row "above" the viewport bleeds into where the status bar should be
+
+**Solution**: Move tmux status bar to the **top**:
+```bash
+# In .tmux-terminal-tabs.conf
+set -g status-position top
+```
+
+This gives each their own space:
+- Tmux status bar → top (static, 1 row)
+- Claude Code statusline → bottom (dynamic, 1-2 rows)
+
+**What Didn't Work:**
+- `tmux refresh-client` - only redraws, doesn't fix scroll regions
+- `tmux resize-window` trick - caused visual artifacts (dots around terminal)
+- Removing dynamic `#{pane_current_path}` from status - didn't help
+- Removing Claude status script from status bar - didn't help
+- Debounced resize tricks in Terminal.tsx - helped but didn't fully fix
+
+**Key Insight**:
+- When two systems manage the same screen area (bottom rows), scroll region bugs are inevitable
+- The fix isn't better timing or refresh logic - it's **separation of concerns**
+- Put tmux status at top, let Claude Code own the bottom
+
+**Files**:
+- `.tmux-terminal-tabs.conf:60-64` - status-position top
+- `extension/components/Terminal.tsx:65-84` - scheduleTmuxRefresh (still useful for resize recovery)
+
+---
+
 ## Polling State and UI Flicker
 
 ### Lesson: Debounce Polled State Changes to Prevent UI Flashing (Dec 7, 2025)

@@ -682,14 +682,15 @@ router.post('/tmux/sessions/:name/command', asyncHandler(async (req, res) => {
 
 /**
  * POST /api/tmux/refresh/:name - Refresh tmux client display
+ * Uses refresh-client which redraws without changing dimensions.
+ * The PTY resize trick is handled in Terminal.tsx (triggerResizeTrick).
  */
 router.post('/tmux/refresh/:name', asyncHandler(async (req, res) => {
   const { name } = req.params;
   const { execSync } = require('child_process');
 
   try {
-    // Use tmux refresh-client to redraw the terminal without sending any input
-    // This refreshes the tmux display without interfering with the running application
+    // Use tmux refresh-client to redraw the terminal
     execSync(`tmux refresh-client -t "${name}"`);
 
     res.json({

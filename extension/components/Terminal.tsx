@@ -55,9 +55,33 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
   // Output tracking - delay resize during active output to prevent tmux status bar corruption
   // When tmux is outputting content, resizing can corrupt scroll regions and cause the status bar to disappear
   const lastOutputTimeRef = useRef(0)
-  const OUTPUT_QUIET_PERIOD = 100 // ms to wait after output before allowing resize (reduced from 200)
+  const OUTPUT_QUIET_PERIOD = 150 // ms to wait after output before allowing resize
   const resizeDeferCountRef = useRef(0) // Track deferrals to prevent infinite loop
-  const MAX_RESIZE_DEFERRALS = 3 // Max times to defer before forcing resize
+  const MAX_RESIZE_DEFERRALS = 5 // Max times to defer before forcing resize
+
+  // Pending tmux refresh - schedule a refresh-client after resize settles
+  const pendingTmuxRefreshRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Schedule a resize trick to fix scroll region corruption after resize
+  // Uses debouncing - only fires once after all resize events settle
+  // The resize trick (shrink cols by 1, then restore) forces tmux to recalculate scroll regions
+  const scheduleTmuxRefresh = () => {
+    if (!tmuxSession) return // Only for tmux sessions
+
+    // Clear any pending refresh
+    if (pendingTmuxRefreshRef.current) {
+      clearTimeout(pendingTmuxRefreshRef.current)
+    }
+
+    // Schedule resize trick after resize settles (800ms after last resize)
+    // Longer delay ensures sidebar drag is complete before refreshing
+    pendingTmuxRefreshRef.current = setTimeout(() => {
+      // Use the existing triggerResizeTrick which does PTY-level resize
+      // This sends SIGWINCH to tmux and forces scroll region recalculation
+      triggerResizeTrick()
+      pendingTmuxRefreshRef.current = null
+    }, 800)
+  }
 
   // Safe write function that queues data during resize operations
   // CRITICAL: xterm.js write() is async - data gets queued internally and parsed later
@@ -301,6 +325,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
         resizeLockTimeoutRef.current = setTimeout(() => {
           isResizingRef.current = false
           flushWriteQueue()  // Flush any data queued during resize
+          scheduleTmuxRefresh()  // Schedule tmux refresh to fix scroll region corruption
         }, 50)
       } catch (e) {
         console.warn('[Terminal] Fit failed (buffer may be mid-update):', e)
@@ -462,6 +487,11 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
         xtermRef.current = null
       }
       fitAddonRef.current = null
+      // Clean up pending tmux refresh
+      if (pendingTmuxRefreshRef.current) {
+        clearTimeout(pendingTmuxRefreshRef.current)
+        pendingTmuxRefreshRef.current = null
+      }
     }
   }, [terminalId])
 
@@ -667,6 +697,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
           setTimeout(() => {
             isResizingRef.current = false
             flushWriteQueue()  // Flush any data queued during resize
+            scheduleTmuxRefresh()  // Schedule tmux refresh to fix scroll region corruption
           }, 50)
 
           // Only send if dimensions actually changed
@@ -760,6 +791,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
           setTimeout(() => {
             isResizingRef.current = false
             flushWriteQueue()  // Flush any data queued during resize
+            scheduleTmuxRefresh()  // Schedule additional refresh after resize settles
           }, 50)
         } catch (e) {
           console.warn('[Terminal] Tab activation fit failed:', e)
