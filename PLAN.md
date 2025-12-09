@@ -102,61 +102,70 @@
 - Per-event toggles: `ANNOUNCE_TOOLS`, `ANNOUNCE_READY`, `ANNOUNCE_SESSION_START`
 - Triggered by `CLAUDE_AUDIO=1` env var
 
-**TabzChrome Integration Options:**
+**TabzChrome Integration - Chrome Native Audio (Recommended)**
 
-#### Option A: Read State Files (Already Done!)
-The extension already reads `/tmp/claude-code-state/` for the emoji indicators (🤖✅, 🤖⏳, 🤖🔧).
+The extension already reads state from `/tmp/claude-code-state/` for emoji indicators.
+Add audio playback through Chrome for better Windows audio quality (vs WSL→mpv).
 
-#### Option B: Chrome Extension Plays Sounds (Independent)
-```
-Extension plays bundled sounds when claudeStatuses changes
-```
+**Why Chrome audio is better:**
+- Native Windows audio stack (proper device selection, volume mixer)
+- No WSL audio routing complexity
+- Web Speech API for TTS (no edge-tts CLI needed)
+- Extension already has the state data
 
-1. Add audio files to extension (`extension/sounds/ready.mp3`, etc.)
-2. Watch `claudeStatuses` state in sidepanel
-3. Play sounds via Web Audio API
-4. Add Settings toggles
+**Implementation:**
 
-**Pros:** Works without WSL/Linux, instant, self-contained
-**Cons:** Separate from existing TTS system, bundled sounds only
+1. **Watch state changes** in sidepanel (already tracking `claudeStatuses`)
+2. **Detect transitions**:
+   - `processing` → `awaiting_input` = "Ready" sound
+   - `idle` → `processing` = "Working" sound (optional)
+   - `tool_use` events = Tool sounds (optional)
+3. **Play audio** via Web Audio API or HTML5 `<audio>`
+4. **Optional TTS** via Web Speech API (`speechSynthesis.speak()`)
 
-#### Option C: Trigger Existing Audio System via Backend
-```
-Backend calls audio-announcer.sh when extension requests
-```
+**Audio options:**
 
-1. Backend endpoint: `POST /api/audio/announce` with event type
-2. Backend runs: `~/.claude/hooks/audio-announcer.sh stop "Claude"`
-3. Uses existing TTS, caching, config
-
-**Pros:** Reuses your existing audio setup, same voices/settings
-**Cons:** Requires backend, Linux/WSL only
-
-#### Option D: Hybrid (Recommended)
-- **Quick beeps/chimes**: Chrome extension plays bundled sounds (instant feedback)
-- **Verbose TTS**: Optional backend trigger for your existing audio-announcer.sh
-- Toggle in Settings: "Use simple sounds" vs "Use TTS announcements"
+| Type | Implementation | Notes |
+|------|----------------|-------|
+| Simple sounds | Bundled MP3s | `extension/sounds/ready.mp3` |
+| Web Speech TTS | `window.speechSynthesis` | Uses Windows voices, no setup |
+| Custom clips | User provides MP3s | Point to local directory |
 
 **Files to modify:**
-- `extension/sounds/` - Add simple audio files
-- `extension/sidepanel/sidepanel.tsx` - Watch claudeStatuses, play sounds
-- `extension/components/SettingsModal.tsx` - Audio settings tab
-- `backend/routes/api.js` - Optional TTS endpoint
+- `extension/sounds/` - Add audio files (ready.mp3, working.mp3, etc.)
+- `extension/sidepanel/sidepanel.tsx` - Add `useEffect` to watch state + play audio
+- `extension/components/SettingsModal.tsx` - Audio settings section
+- `extension/shared/storage.ts` - Persist audio preferences
 
 **Settings UI mockup:**
 ```
 Audio Notifications
   [x] Enable sounds
-  [x] Play sound when Claude is ready for input
+  [x] Play sound when Claude is ready
   [ ] Play sound when Claude starts working
-  [ ] Play sound on tool use
+  [ ] Announce tool usage
 
   Volume: [====|----] 50%
 
-  Audio Mode:
-    ( ) Simple sounds (built-in chimes)
-    (•) TTS announcements (uses ~/.claude/audio-config.sh)
+  Sound Type:
+    (•) Simple chimes (built-in)
+    ( ) Text-to-speech (Windows voices)
 ```
+
+**Web Speech TTS example:**
+```typescript
+const speak = (text: string) => {
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 1.2;  // Slightly faster
+  utterance.voice = speechSynthesis.getVoices().find(v => v.name.includes('David'));
+  speechSynthesis.speak(utterance);
+};
+
+// On state change: awaiting_input
+speak("Claude ready");
+```
+
+**Debounce:** Same concept as audio-announcer.sh - skip if last sound was <1s ago
 
 ---
 
