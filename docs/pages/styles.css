@@ -71,9 +71,12 @@ code, pre, kbd, .terminal-body {
 }
 
 .logo-icon-img {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     vertical-align: middle;
+    margin-right: 0.5rem;
+    position: relative;
+    top: -2px;
 }
 
 .logo-text {
@@ -128,11 +131,19 @@ code, pre, kbd, .terminal-body {
 
 /* Main Content */
 .content {
-    margin-left: var(--sidebar-width);
     padding: 2rem 3rem;
     max-width: 1200px;
-    margin-right: auto;
-    margin-left: calc(var(--sidebar-width) + max(0px, (100vw - var(--sidebar-width) - 1200px) / 2));
+    margin-left: var(--sidebar-width);
+    margin-right: 0;
+}
+
+/* Center content on wide screens */
+@media (min-width: 1600px) {
+    .content {
+        margin-left: auto;
+        margin-right: auto;
+        padding-left: calc(var(--sidebar-width) + 3rem);
+    }
 }
 
 /* Hero Section */

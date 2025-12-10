@@ -51,12 +51,6 @@
   },
   "commands": {
     "_execute_action": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+9",
-        "windows": "Ctrl+Shift+9",
-        "mac": "Command+Shift+9",
-        "linux": "Ctrl+Shift+9"
-      },
       "description": "Toggle terminal sidebar"
     },
     "new-tab": {
@@ -72,7 +66,16 @@
       "description": "Close current terminal tab"
     },
     "paste-selection": {
+      "suggested_key": {
+        "default": "Alt+V"
+      },
       "description": "Paste selected text to terminal"
+    },
+    "send-to-chat": {
+      "suggested_key": {
+        "default": "Alt+C"
+      },
+      "description": "Send selected text to chat"
     },
     "next-tab": {
       "description": "Switch to next terminal tab"
@@ -112,7 +115,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/content.ts-0lEhZaM-.js"
+        "assets/content.ts-Diu_6xwJ.js"
       ],
       "matches": [
         "<all_urls>"
@@ -133,7 +136,7 @@
         "spawn-options.json",
         "profiles.json",
         "icons/tabz-logo-light.png",
-        "assets/content.ts-0lEhZaM-.js"
+        "assets/content.ts-Diu_6xwJ.js"
       ],
       "use_dynamic_url": false
     }

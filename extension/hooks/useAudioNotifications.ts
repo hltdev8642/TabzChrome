@@ -66,6 +66,7 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
   const lastAudioTimeRef = useRef<number>(0)
   const lastToolAudioTimeRef = useRef<number>(0)
   const lastReadyAnnouncementRef = useRef<Map<string, number>>(new Map()) // Prevent duplicate ready announcements
+  const announcedReadyForStatusRef = useRef<Map<string, string>>(new Map()) // Track which status we last announced ready for
 
   // Track if component is mounted to avoid state updates after unmount
   const isMountedRef = useRef(true)
@@ -165,16 +166,30 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
 
   // Audio playback helper - plays MP3 from backend cache via Chrome
   const playAudio = useCallback(async (text: string, session?: TerminalSession, isToolAnnouncement = false) => {
+    console.log(`[Audio:playAudio] Called with text="${text}", isToolAnnouncement=${isToolAnnouncement}`)
     const settings = getAudioSettingsForProfile(session?.profile, session?.assignedVoice)
-    if (!settings.enabled) return
+    if (!settings.enabled) {
+      console.log(`[Audio:playAudio] Audio not enabled for this profile, skipping`)
+      return
+    }
 
     // Debounce: use separate timers for tools vs other announcements
     const now = Date.now()
     if (isToolAnnouncement) {
-      if (now - lastToolAudioTimeRef.current < audioSettings.toolDebounceMs) return
+      const timeSinceLast = now - lastToolAudioTimeRef.current
+      console.log(`[Audio:playAudio] Tool debounce check: ${timeSinceLast}ms since last (threshold: ${audioSettings.toolDebounceMs}ms)`)
+      if (timeSinceLast < audioSettings.toolDebounceMs) {
+        console.log(`[Audio:playAudio] ❌ BLOCKED by tool debounce`)
+        return
+      }
       lastToolAudioTimeRef.current = now
     } else {
-      if (now - lastAudioTimeRef.current < 1000) return
+      const timeSinceLast = now - lastAudioTimeRef.current
+      console.log(`[Audio:playAudio] Non-tool debounce check: ${timeSinceLast}ms since last (threshold: 1000ms)`)
+      if (timeSinceLast < 1000) {
+        console.log(`[Audio:playAudio] ❌ BLOCKED by non-tool debounce`)
+        return
+      }
       lastAudioTimeRef.current = now
     }
 
@@ -205,6 +220,9 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
   useEffect(() => {
     // If master mute is on, no audio plays regardless of profile settings
     if (audioGlobalMute) return
+
+    // DEBUG: Log effect trigger
+    console.log(`[Audio] useEffect triggered, claudeStatuses.size=${claudeStatuses.size}, sessions.length=${sessions.length}`)
 
     // Check each terminal for status transitions
     claudeStatuses.forEach((status, terminalId) => {
@@ -239,21 +257,51 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
       }
 
       // EVENT: Ready notification (processing/tool_use → awaiting_input)
-      // Use a 60-second cooldown per terminal to prevent duplicate announcements
-      // (WebSocket reconnections can trigger false transitions 30+ seconds later)
+      // Multiple safeguards to prevent duplicate announcements:
+      // 1. Only trigger on actual status TRANSITION (prevStatus must be processing/tool_use)
+      // 2. 60-second cooldown per terminal
+      // 3. Track which status update we announced for (prevents re-announcing same state)
       const lastReadyTime = lastReadyAnnouncementRef.current.get(terminalId) || 0
+      const lastAnnouncedStatus = announcedReadyForStatusRef.current.get(terminalId)
       const now = Date.now()
       const readyCooldown = 60000 // 60 seconds
 
+      // Create a unique key for this status state to prevent re-announcing the same ready state
+      const statusKey = `${currentStatus}-${status.last_updated || now}`
+      const alreadyAnnouncedThisState = lastAnnouncedStatus === statusKey
+
+      // DEBUG: Log transition detection
+      console.log(`[Audio] Terminal ${terminalId}: prevStatus=${prevStatus} → currentStatus=${currentStatus}, subagents=${currentSubagentCount}`)
+      console.log(`[Audio]   lastReadyTime=${lastReadyTime}, timeSince=${now - lastReadyTime}ms, statusKey=${statusKey}, alreadyAnnounced=${alreadyAnnouncedThisState}`)
+
+      const isValidTransition = (prevStatus === 'processing' || prevStatus === 'tool_use') && currentStatus === 'awaiting_input'
+
+      // Clear the "already announced" flag when terminal starts working again
+      // This allows a new ready announcement after the next work session completes
+      if (currentStatus === 'processing' || currentStatus === 'tool_use') {
+        announcedReadyForStatusRef.current.delete(terminalId)
+      }
+      const cooldownPassed = now - lastReadyTime > readyCooldown
       const shouldPlayReady = audioSettings.events.ready &&
-          (prevStatus === 'processing' || prevStatus === 'tool_use') &&
-          currentStatus === 'awaiting_input' &&
+          isValidTransition &&
           currentSubagentCount === 0 &&
-          (now - lastReadyTime > readyCooldown)
+          cooldownPassed &&
+          !alreadyAnnouncedThisState
+
+      // DEBUG: Log ready decision
+      if (currentStatus === 'awaiting_input') {
+        console.log(`[Audio] Ready check for ${terminalId}: shouldPlay=${shouldPlayReady}`)
+        console.log(`[Audio]   events.ready=${audioSettings.events.ready}, isValidTransition=${isValidTransition}, cooldownPassed=${cooldownPassed}, alreadyAnnounced=${alreadyAnnouncedThisState}`)
+      }
 
       if (shouldPlayReady) {
+        const announcementId = Math.random().toString(36).substring(7)
+        console.log(`[Audio] 🔊 PLAYING ready announcement for ${terminalId} [announcement-${announcementId}] at ${new Date().toISOString()}`)
         lastReadyAnnouncementRef.current.set(terminalId, now)
-        playAudio(`${getDisplayName()} ready`, session)
+        announcedReadyForStatusRef.current.set(terminalId, statusKey)
+        const displayName = getDisplayName()
+        console.log(`[Audio]   Calling playAudio with: "${displayName} ready"`)
+        playAudio(`${displayName} ready`, session)
       }
 
       // EVENT: Tool announcements
@@ -326,6 +374,9 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
         prevClaudeStatusesRef.current.delete(id)
         prevToolNamesRef.current.delete(id)
         prevSubagentCountsRef.current.delete(id)
+        announcedReadyForStatusRef.current.delete(id)
+        // Note: We intentionally keep lastReadyAnnouncementRef entries
+        // to maintain cooldown even if terminal briefly disappears
       }
     }
   }, [claudeStatuses, audioSettings, audioGlobalMute, sessions, getAudioSettingsForProfile, playAudio])
