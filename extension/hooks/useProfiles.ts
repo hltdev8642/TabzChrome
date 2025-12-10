@@ -22,10 +22,12 @@ export interface UseProfilesReturn {
   getGroupedProfilesForDropdown: () => { category: string; profiles: Profile[] }[]
   getCategoryColor: (category: string) => string
   getSessionCategoryColor: (session: TerminalSession, categorySettings: CategorySettings) => string | null
+  categorySettings: CategorySettings
+  setCategorySettings: React.Dispatch<React.SetStateAction<CategorySettings>>
 }
 
 interface UseProfilesParams {
-  categorySettings: CategorySettings
+  // No longer needs categorySettings - it's managed internally
 }
 
 const DEFAULT_CATEGORY_COLOR = '#6b7280'  // Gray for uncategorized
@@ -35,20 +37,26 @@ const DEFAULT_CATEGORY_COLOR = '#6b7280'  // Gray for uncategorized
  * - Loads profiles from Chrome storage (or profiles.json on first run)
  * - Handles profile migration for old formats
  * - Provides helpers for category grouping and colors
+ * - Manages categorySettings (category colors and order)
  */
-export function useProfiles({ categorySettings }: UseProfilesParams): UseProfilesReturn {
+export function useProfiles(_params: UseProfilesParams): UseProfilesReturn {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [defaultProfileId, setDefaultProfileId] = useState<string>('default')
   const [dropdownCollapsedCategories, setDropdownCollapsedCategories] = useState<Set<string>>(new Set())
+  const [categorySettings, setCategorySettings] = useState<CategorySettings>({})
 
   // Track if component is mounted to avoid state updates after unmount
   const isMountedRef = useRef(true)
 
-  // Load profiles from Chrome storage (or initialize from profiles.json if not present)
+  // Load profiles and categorySettings from Chrome storage (or initialize from profiles.json if not present)
   useEffect(() => {
     isMountedRef.current = true
 
-    chrome.storage.local.get(['profiles', 'defaultProfile'], async (result) => {
+    chrome.storage.local.get(['profiles', 'defaultProfile', 'categorySettings'], async (result) => {
+      // Load categorySettings
+      if (result.categorySettings && typeof result.categorySettings === 'object') {
+        setCategorySettings(result.categorySettings as CategorySettings)
+      }
       if (!isMountedRef.current) return
 
       if (result.profiles && Array.isArray(result.profiles) && result.profiles.length > 0) {
@@ -136,12 +144,25 @@ export function useProfiles({ categorySettings }: UseProfilesParams): UseProfile
       if (changes.defaultProfile) {
         setDefaultProfileId((changes.defaultProfile.newValue as string) || 'default')
       }
+      if (changes.categorySettings) {
+        setCategorySettings((changes.categorySettings.newValue as CategorySettings) || {})
+      }
+    }
+
+    // Listen for category settings changes from SettingsModal (via custom event)
+    const handleCategorySettingsChange = (e: Event) => {
+      if (!isMountedRef.current) return
+      const customEvent = e as CustomEvent<CategorySettings>
+      setCategorySettings(customEvent.detail)
     }
 
     chrome.storage.onChanged.addListener(handleStorageChange)
+    window.addEventListener('categorySettingsChanged', handleCategorySettingsChange)
+
     return () => {
       isMountedRef.current = false
       chrome.storage.onChanged.removeListener(handleStorageChange)
+      window.removeEventListener('categorySettingsChanged', handleCategorySettingsChange)
     }
   }, [])
 
@@ -210,5 +231,7 @@ export function useProfiles({ categorySettings }: UseProfilesParams): UseProfile
     getGroupedProfilesForDropdown,
     getCategoryColor,
     getSessionCategoryColor,
+    categorySettings,
+    setCategorySettings,
   }
 }

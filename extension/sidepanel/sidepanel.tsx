@@ -58,19 +58,8 @@ function SidePanelTerminal() {
     addToRecentDirs,
   } = useWorkingDirectory()
 
-  // Audio notifications hook - handles audio settings, category settings, and status announcements
-  // Note: We pass empty sessions initially, will be updated after useTerminalSessions
-  const audioNotifications = useAudioNotifications({ sessions: [], claudeStatuses: new Map() })
-  const {
-    audioSettings,
-    audioGlobalMute,
-    setAudioGlobalMute,
-    categorySettings,
-    setCategorySettings,
-    getNextAvailableVoice,
-  } = audioNotifications
-
   // Profiles hook - manages terminal profiles with category support
+  // Note: categorySettings is loaded inside this hook, not passed as a dependency
   const {
     profiles,
     setProfiles,
@@ -81,7 +70,12 @@ function SidePanelTerminal() {
     getGroupedProfilesForDropdown,
     getCategoryColor,
     getSessionCategoryColor,
-  } = useProfiles({ categorySettings })
+    categorySettings,
+    setCategorySettings,
+  } = useProfiles({})
+
+  // Placeholder for getNextAvailableVoice - will be provided by audio hook below
+  const getNextAvailableVoiceRef = useRef<() => string>(() => 'en-US-AndrewMultilingualNeural')
 
   // Terminal sessions hook - manages sessions, storage sync, and WebSocket message handling
   const {
@@ -97,7 +91,7 @@ function SidePanelTerminal() {
   } = useTerminalSessions({
     wsConnected,
     profiles,
-    getNextAvailableVoice,
+    getNextAvailableVoice: () => getNextAvailableVoiceRef.current(),
   })
 
   // Claude status tracking - polls for Claude Code status in each terminal
@@ -108,6 +102,21 @@ function SidePanelTerminal() {
       workingDir: s.workingDir,
     }))
   )
+
+  // Audio notifications hook - handles audio settings, category settings, and status announcements
+  // IMPORTANT: This must be after useTerminalSessions and useClaudeStatus so it receives real data
+  const audioNotifications = useAudioNotifications({ sessions, claudeStatuses })
+  const {
+    audioSettings,
+    audioGlobalMute,
+    setAudioGlobalMute,
+    getNextAvailableVoice,
+  } = audioNotifications
+
+  // Update the ref so useTerminalSessions can use it
+  useEffect(() => {
+    getNextAvailableVoiceRef.current = getNextAvailableVoice
+  }, [getNextAvailableVoice])
 
   // Chat input hook - manages chat bar state and handlers
   const chatInput = useChatInput({
@@ -641,8 +650,8 @@ function SidePanelTerminal() {
                     onDrop={(e) => handleTabDrop(e, session.id)}
                     onDragEnd={handleTabDragEnd}
                     className={`
-                      flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all cursor-pointer group
-                      min-w-[120px] max-w-[280px] flex-1
+                      flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm font-medium transition-all cursor-pointer group
+                      min-w-[120px] max-w-[320px] flex-1
                       ${isSelected
                         ? categoryColor
                           ? 'border'  // Use inline styles for category color
@@ -680,7 +689,7 @@ function SidePanelTerminal() {
                     </span>
                     <button
                       onClick={(e) => handleCloseTab(e, session.id)}
-                      className="flex-shrink-0 ml-auto p-0.5 rounded hover:bg-red-500/20 transition-colors opacity-0 group-hover:opacity-100"
+                      className="flex-shrink-0 ml-1 p-0.5 rounded hover:bg-red-500/20 transition-colors opacity-0 group-hover:opacity-100"
                       title="Close tab"
                     >
                       <X className="h-3.5 w-3.5" />

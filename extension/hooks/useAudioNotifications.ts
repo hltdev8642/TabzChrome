@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import type { Profile, AudioSettings, CategorySettings } from '../components/SettingsModal'
+import type { Profile, AudioSettings } from '../components/SettingsModal'
 import type { ClaudeStatus } from './useClaudeStatus'
 
 // Re-export types that consumers need
-export type { AudioSettings, CategorySettings }
+export type { AudioSettings }
 
 // Voice pool for auto-assignment (rotates through these when no profile override)
 const VOICE_POOL = [
@@ -35,8 +35,6 @@ export interface UseAudioNotificationsReturn {
   audioSettings: AudioSettings
   audioGlobalMute: boolean
   setAudioGlobalMute: (mute: boolean) => void
-  categorySettings: CategorySettings
-  setCategorySettings: React.Dispatch<React.SetStateAction<CategorySettings>>
   getNextAvailableVoice: () => string
   getAudioSettingsForProfile: (profile?: Profile, assignedVoice?: string) => { voice: string; rate: string; volume: number; enabled: boolean }
   playAudio: (text: string, session?: TerminalSession, isToolAnnouncement?: boolean) => Promise<void>
@@ -60,7 +58,6 @@ const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
 export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNotificationsParams): UseAudioNotificationsReturn {
   const [audioSettings, setAudioSettings] = useState<AudioSettings>(DEFAULT_AUDIO_SETTINGS)
   const [audioGlobalMute, setAudioGlobalMute] = useState(false)
-  const [categorySettings, setCategorySettings] = useState<CategorySettings>({})
 
   // Refs for tracking state transitions
   const prevClaudeStatusesRef = useRef<Map<string, string>>(new Map())
@@ -72,11 +69,11 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
   // Track if component is mounted to avoid state updates after unmount
   const isMountedRef = useRef(true)
 
-  // Load audio settings and category settings from Chrome storage
+  // Load audio settings from Chrome storage
   useEffect(() => {
     isMountedRef.current = true
 
-    chrome.storage.local.get(['audioSettings', 'audioGlobalMute', 'categorySettings'], (result) => {
+    chrome.storage.local.get(['audioSettings', 'audioGlobalMute'], (result) => {
       if (!isMountedRef.current) return
 
       if (result.audioSettings && typeof result.audioSettings === 'object') {
@@ -85,22 +82,10 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
       if (typeof result.audioGlobalMute === 'boolean') {
         setAudioGlobalMute(result.audioGlobalMute)
       }
-      if (result.categorySettings && typeof result.categorySettings === 'object') {
-        setCategorySettings(result.categorySettings as CategorySettings)
-      }
     })
-
-    // Listen for category settings changes from SettingsModal
-    const handleCategorySettingsChange = (e: Event) => {
-      if (!isMountedRef.current) return
-      const customEvent = e as CustomEvent<CategorySettings>
-      setCategorySettings(customEvent.detail)
-    }
-    window.addEventListener('categorySettingsChanged', handleCategorySettingsChange)
 
     return () => {
       isMountedRef.current = false
-      window.removeEventListener('categorySettingsChanged', handleCategorySettingsChange)
     }
   }, [])
 
@@ -335,8 +320,6 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
     audioSettings,
     audioGlobalMute,
     setAudioGlobalMute,
-    categorySettings,
-    setCategorySettings,
     getNextAvailableVoice,
     getAudioSettingsForProfile,
     playAudio,
