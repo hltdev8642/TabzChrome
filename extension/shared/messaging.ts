@@ -62,6 +62,7 @@ export interface SpawnTerminalMessage extends BaseMessage {
   useTmux?: boolean;
   name?: string; // Friendly name for the tab
   profile?: Profile; // Profile settings (fontSize, fontFamily, theme, workingDir)
+  isDark?: boolean; // Global dark/light mode for COLORFGBG env var
 }
 
 export interface CloseSessionMessage extends BaseMessage {

@@ -959,6 +959,7 @@ chrome.runtime.onMessage.addListener(async (message: ExtensionMessage, sender, s
           name: message.name || message.spawnOption || 'Terminal', // Friendly name
           profile: message.profile, // Pass profile to backend for storage
           isChrome: true, // Flag to indicate this is from Chrome extension (for ctt- prefix)
+          isDark: message.isDark, // Pass dark/light mode for COLORFGBG env var
         },
         requestId,
       })

@@ -94,7 +94,8 @@ class PTYHandler extends EventEmitter {
       cols = this.defaultCols,
       rows = this.defaultRows,
       env = {},
-      profile = null
+      profile = null,
+      isDark = true, // Default to dark mode if not specified
     } = terminalConfig;
 
     log.info(`Creating PTY: ${name} (${terminalType})`, {
@@ -127,9 +128,10 @@ class PTYHandler extends EventEmitter {
     // Determine terminal background for lipgloss/charm apps
     // COLORFGBG format: "foreground;background" (ANSI color indices)
     // Light theme: "0;15" (black on white), Dark theme: "15;0" (white on black)
-    const isLightTheme = profile?.theme === 'light';
+    // isDark comes from the sidebar's global dark/light toggle
+    const isLightTheme = isDark === false;
     const colorFgBg = isLightTheme ? '0;15' : '15;0';
-    log.info(`Theme detection: profile=${JSON.stringify(profile)}, isLightTheme=${isLightTheme}, COLORFGBG=${colorFgBg}`);
+    log.debug(`Theme detection: isDark=${isDark}, isLightTheme=${isLightTheme}, COLORFGBG=${colorFgBg}`);
 
     const enhancedEnv = {
       ...filteredEnv,
@@ -538,7 +540,7 @@ class PTYHandler extends EventEmitter {
 
     try {
       ptyInfo.process.resize(validCols, validRows);
-      console.log(`[PTYHandler] Resized PTY ${ptyInfo.name}: ${validCols}x${validRows}`);
+      log.debug(`Resized PTY ${ptyInfo.name}: ${validCols}x${validRows}`);
 
       // For tmux sessions, refresh the client after resize to fix scroll region corruption
       // This forces tmux to recalculate its display, preventing status bar disappearing issues
@@ -556,7 +558,7 @@ class PTYHandler extends EventEmitter {
     } catch (error) {
       // Ignore ENOTTY errors which happen when terminal is not ready
       if (error.code !== 'ENOTTY') {
-        console.error(`[PTYHandler] Failed to resize PTY ${terminalId}:`, error);
+        log.error(`Failed to resize PTY ${terminalId}:`, error);
       }
       return { cols: validCols, rows: validRows }; // Return dimensions even if resize failed
     }
@@ -569,7 +571,7 @@ class PTYHandler extends EventEmitter {
     const ptyInfo = this.processes.get(terminalId);
     if (!ptyInfo) return;
 
-    console.log(`[PTYHandler] Disconnecting PTY ${ptyInfo.name}, starting ${this.gracePeriodMs/1000}s grace period`);
+    log.debug(`Disconnecting PTY ${ptyInfo.name}, starting ${this.gracePeriodMs/1000}s grace period`);
 
     // Clear any existing timeout for this terminal to prevent timer leak
     if (this.disconnectedProcesses.has(terminalId)) {
@@ -580,7 +582,7 @@ class PTYHandler extends EventEmitter {
 
     // Set a timeout to kill the process after grace period
     const timeout = setTimeout(() => {
-      console.log(`[PTYHandler] Grace period expired for ${ptyInfo.name}, killing process`);
+      log.debug(`Grace period expired for ${ptyInfo.name}, killing process`);
       this.killPTY(terminalId);
       this.disconnectedProcesses.delete(terminalId);
     }, this.gracePeriodMs);
@@ -594,7 +596,7 @@ class PTYHandler extends EventEmitter {
    */
   reconnectPTY(terminalId) {
     if (this.disconnectedProcesses.has(terminalId)) {
-      console.log(`[PTYHandler] Reconnecting to PTY ${terminalId}, cancelling grace period`);
+      log.debug(`Reconnecting to PTY ${terminalId}, cancelling grace period`);
       clearTimeout(this.disconnectedProcesses.get(terminalId));
       this.disconnectedProcesses.delete(terminalId);
 
@@ -613,7 +615,7 @@ class PTYHandler extends EventEmitter {
    */
   cancelDisconnect(terminalId) {
     if (this.disconnectedProcesses.has(terminalId)) {
-      console.log(`[PTYHandler] Canceling disconnect timer for PTY ${terminalId}`);
+      log.debug(`Canceling disconnect timer for PTY ${terminalId}`);
       clearTimeout(this.disconnectedProcesses.get(terminalId));
       this.disconnectedProcesses.delete(terminalId);
 
@@ -621,7 +623,7 @@ class PTYHandler extends EventEmitter {
       const ptyInfo = this.processes.get(terminalId);
       if (ptyInfo) {
         ptyInfo.status = 'active';
-        console.log(`[PTYHandler] Canceled disconnect for PTY ${ptyInfo.name}`);
+        log.debug(`Canceled disconnect for PTY ${ptyInfo.name}`);
       }
       return true;
     }
@@ -644,25 +646,25 @@ class PTYHandler extends EventEmitter {
       return true; // Already destroyed
     }
 
-    console.log(`[PTYHandler] Killing PTY ${ptyInfo.name} (PID: ${ptyInfo.pid})`);
+    log.debug(`Killing PTY ${ptyInfo.name} (PID: ${ptyInfo.pid})`);
 
     try {
       // Clean up handlers first to prevent memory leaks
       this.cleanupHandlers(ptyInfo);
-      
+
       // Send termination signal
       ptyInfo.process.kill(signal);
-      
+
       // Wait for graceful exit with timeout
       await new Promise((resolve) => {
         let cleaned = false;
-        
+
         // Force kill after timeout
         const timeout = setTimeout(() => {
           if (!cleaned) {
             cleaned = true;
             try {
-              console.log(`[PTYHandler] Force killing PTY ${ptyInfo.name}`);
+              log.debug(`Force killing PTY ${ptyInfo.name}`);
               ptyInfo.process.kill('SIGKILL');
             } catch (e) {
               // Process might already be dead
@@ -670,7 +672,7 @@ class PTYHandler extends EventEmitter {
             resolve();
           }
         }, 2000); // 2 second timeout
-        
+
         // Check if process already exited
         // Since we already have an exit handler from setupEventHandlers,
         // we just need to wait for it or timeout
@@ -681,7 +683,7 @@ class PTYHandler extends EventEmitter {
               cleaned = true;
               clearTimeout(timeout);
               clearInterval(checkInterval);
-              console.log(`[PTYHandler] PTY ${ptyInfo.name} exited gracefully`);
+              log.debug(`PTY ${ptyInfo.name} exited gracefully`);
               resolve();
             }
           }
@@ -694,7 +696,7 @@ class PTYHandler extends EventEmitter {
 
     } catch (error) {
       if (error.code !== 'ESRCH') { // "No such process" is OK
-        console.error(`[PTYHandler] Error killing PTY ${terminalId}:`, error);
+        log.error(`Error killing PTY ${terminalId}:`, error);
       }
       // Clean up handlers and remove from map
       this.cleanupHandlers(ptyInfo);
@@ -733,7 +735,7 @@ class PTYHandler extends EventEmitter {
    * @param {boolean} force - If true, kill immediately; if false, use grace period
    */
   async cleanupWithGrace(force = false) {
-    console.log(`[PTYHandler] Cleaning up all PTY processes (force: ${force})...`);
+    log.debug(`Cleaning up all PTY processes (force: ${force})...`);
 
     // Clear all grace period timeouts first
     for (const timeout of this.disconnectedProcesses.values()) {
@@ -748,13 +750,13 @@ class PTYHandler extends EventEmitter {
         promises.push(this.killPTY(terminalId));
       }
       await Promise.all(promises);
-      console.log(`[PTYHandler] Force killed ${promises.length} PTY processes`);
+      log.debug(`Force killed ${promises.length} PTY processes`);
     } else {
       // Mark all as disconnected with grace period
       for (const terminalId of this.processes.keys()) {
         this.disconnectPTY(terminalId);
       }
-      console.log(`[PTYHandler] Marked ${this.processes.size} PTY processes for graceful cleanup`);
+      log.debug(`Marked ${this.processes.size} PTY processes for graceful cleanup`);
     }
   }
 
@@ -804,12 +806,12 @@ class PTYHandler extends EventEmitter {
    * Immediate cleanup of all resources on server shutdown
    */
   cleanupImmediate() {
-    console.log('[PTYHandler] Cleaning up all PTY processes and timers');
+    log.info('Cleaning up all PTY processes and timers');
 
     // Clear all grace period timers to prevent leaks
     for (const [terminalId, timeout] of this.disconnectedProcesses.entries()) {
       clearTimeout(timeout);
-      console.log(`[PTYHandler] Cleared timer for terminal ${terminalId}`);
+      log.debug(`Cleared timer for terminal ${terminalId}`);
     }
     this.disconnectedProcesses.clear();
 
@@ -817,11 +819,11 @@ class PTYHandler extends EventEmitter {
     for (const [terminalId, ptyInfo] of this.processes.entries()) {
       try {
         if (ptyInfo.pty && !ptyInfo.pty.killed) {
-          console.log(`[PTYHandler] Killing PTY ${ptyInfo.name} (PID: ${ptyInfo.pid})`);
+          log.debug(`Killing PTY ${ptyInfo.name} (PID: ${ptyInfo.pid})`);
           ptyInfo.pty.kill();
         }
       } catch (error) {
-        console.error(`[PTYHandler] Error killing PTY ${terminalId}:`, error);
+        log.error(`Error killing PTY ${terminalId}:`, error);
       }
     }
     this.processes.clear();

@@ -16,6 +16,9 @@ const ptyHandler = require('./pty-handler');
 const { spawn, exec } = require('child_process');
 const { promisify } = require('util');
 const execAsync = promisify(exec);
+const { createModuleLogger } = require('./logger');
+
+const log = createModuleLogger('UnifiedSpawn');
 
 // Spawn handlers for different terminal types
 const handlers = new Map();
@@ -156,21 +159,21 @@ class UnifiedSpawnSystem {
     const requestId = options.requestId || uuidv4();
     const startTime = Date.now();
 
-    console.log('[UnifiedSpawn] Spawn request FULL CONFIG:', JSON.stringify(options, null, 2));
-    
+    log.debug('Spawn request FULL CONFIG:', JSON.stringify(options, null, 2));
+
     // Extra debug for Gemini
     if (options?.terminalType === 'gemini') {
-      console.log('[UnifiedSpawn] *** GEMINI TERMINAL DETECTED ***');
-      console.log('[UnifiedSpawn] Gemini options:', JSON.stringify(options, null, 2));
+      log.debug('*** GEMINI TERMINAL DETECTED ***');
+      log.debug('Gemini options:', JSON.stringify(options, null, 2));
     } else if (options?.name?.includes('gemini')) {
-      console.log('[UnifiedSpawn] WARNING: Name contains "gemini" but type is:', options?.terminalType);
+      log.warn('Name contains "gemini" but type is:', options?.terminalType);
     }
 
     try {
       // 1. Validate basic options
       const validation = await this.validateSpawnRequest(options);
       if (!validation.valid) {
-        console.error('[UnifiedSpawn] Validation failed:', validation.error);
+        log.error('Validation failed:', validation.error);
         return {
           success: false,
           error: validation.error,
@@ -202,7 +205,7 @@ class UnifiedSpawnSystem {
       // 4. Get handler for terminal type
       const handler = handlers.get(options.terminalType);
       if (!handler) {
-        console.error(`[UnifiedSpawn] Unknown terminal type: ${options.terminalType}. Available types:`, Array.from(handlers.keys()));
+        log.error(`Unknown terminal type: ${options.terminalType}. Available types:`, Array.from(handlers.keys()));
         return {
           success: false,
           error: `Unknown terminal type: ${options.terminalType}`,
@@ -211,7 +214,7 @@ class UnifiedSpawnSystem {
       }
       // Debug Gemini spawn
       if (options.terminalType === 'gemini') {
-        console.log('[UnifiedSpawn] Processing Gemini spawn request with handler:', handler);
+        log.debug('Processing Gemini spawn request with handler:', handler);
       }
 
       // 5. Validate with type-specific handler
@@ -244,7 +247,7 @@ class UnifiedSpawnSystem {
         : `${options.terminalType}_${options.name}`;
 
       if (this.activeSpawns.has(spawnKey)) {
-        console.log('[UnifiedSpawn] Duplicate spawn prevented:', spawnKey);
+        log.warn('Duplicate spawn prevented:', spawnKey);
         return {
           success: false,
           error: `Terminal ${options.name} is already being spawned`,
@@ -285,9 +288,9 @@ class UnifiedSpawnSystem {
       };
 
     } catch (error) {
-      console.error('[UnifiedSpawn] Spawn failed:', error);
-      console.error('[UnifiedSpawn] Error stack:', error.stack);
-      console.error('[UnifiedSpawn] Failed config was:', JSON.stringify(options, null, 2));
+      log.error('Spawn failed:', error);
+      log.error('Error stack:', error.stack);
+      log.debug('Failed config was:', JSON.stringify(options, null, 2));
       this.spawnsInProgress.delete(requestId);
 
       return {
@@ -402,7 +405,7 @@ class UnifiedSpawnSystem {
       }
     };
 
-    console.log(`[UnifiedSpawn] Spawning ${terminalType} terminal with config:`, finalConfig);
+    log.debug(`Spawning ${terminalType} terminal with config:`, finalConfig);
 
     try {
       // All terminals spawn locally (docker-ai uses docker.exe ai command locally)
@@ -416,7 +419,7 @@ class UnifiedSpawnSystem {
       return terminal;
 
     } catch (error) {
-      console.error(`[UnifiedSpawn] Failed to spawn ${terminalType} terminal:`, error);
+      log.error(`Failed to spawn ${terminalType} terminal:`, error);
       throw error;
     }
   }
@@ -441,11 +444,11 @@ class UnifiedSpawnSystem {
     config.rows = rows;
     config.size = size; // Store original size for later reference
 
-    console.log(`[UnifiedSpawn] Terminal size: ${size.width}x${size.height} -> ${cols}x${rows} (cols x rows)`);
+    log.debug(`Terminal size: ${size.width}x${size.height} -> ${cols}x${rows} (cols x rows)`);
 
     // Check if this is an offline terminal resuming
     if (config.isOfflineMenu) {
-      console.log('[UnifiedSpawn] Spawning offline menu for terminal type:', terminalType);
+      log.debug('Spawning offline menu for terminal type:', terminalType);
 
       // Override to spawn the offline menu
       config.command = `node ${__dirname}/../scripts/offline-menu.js ${terminalType} "${config.workingDir || process.cwd()}"`;
@@ -482,7 +485,7 @@ class UnifiedSpawnSystem {
     // Handle bash terminals with commands array (TFE, Micro Editor, etc.)
     else if (terminalType === 'bash' && config.commands && config.commands.length > 0) {
       config.command = config.commands.join(' && ');  // Join multiple commands with &&
-      console.log(`[UnifiedSpawn] Setting bash command from commands array:`, config.command);
+      log.debug(`Setting bash command from commands array:`, config.command);
     }
 
     // Ensure tmux is enabled for resumable terminals
@@ -511,7 +514,7 @@ class UnifiedSpawnSystem {
       // Agent-specific settings are applied elsewhere
       // PTY handler manages command execution to avoid duplication
     } catch (error) {
-      console.error(`Failed to load agent config from ${configPath}:`, error);
+      log.error(`Failed to load agent config from ${configPath}:`, error);
     }
   }
 

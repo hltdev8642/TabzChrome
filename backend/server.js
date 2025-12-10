@@ -1,6 +1,12 @@
+// CRITICAL: Load dotenv FIRST before ANY other imports
+// This ensures LOG_LEVEL and other env vars are available when logger.js initializes
+// (logger.js is loaded transitively via terminal-registry -> pty-handler -> logger)
+// Use override:true so .env takes precedence over inherited shell env vars (like from tmux)
+require('dotenv').config({ override: true });
+
 /**
  * Tabz - Simplified Backend
- * 
+ *
  * Core principles:
  * - Single source of truth for terminal state (terminalRegistry)
  * - Direct terminal type from agent config
@@ -8,7 +14,6 @@
  * - Clean WebSocket communication
  */
 
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const WebSocket = require('ws');

@@ -24,8 +24,9 @@ if (process.env.LOG_FILE) {
 }
 
 // Create logger instance with custom formatting
+// Consola log levels: 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=trace
 const logger = createConsola({
-  level: parseInt(process.env.LOG_LEVEL) || 4, // 0=silent, 1=fatal, 2=error, 3=warn, 4=info, 5=debug
+  level: parseInt(process.env.LOG_LEVEL) || 3, // Default to info (3)
   fancy: false, // Use simple output for better compatibility with tmux
   formatOptions: {
     colors: true,

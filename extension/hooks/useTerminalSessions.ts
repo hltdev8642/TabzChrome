@@ -125,15 +125,25 @@ export function useTerminalSessions({
         // This is critical after backend restart - without it, terminals freeze because
         // the backend doesn't know to route output to this connection
         // Skip terminals we've already reconnected to (prevents duplicate reconnects from multiple terminals messages)
-        backendTerminals.forEach((t: any) => {
-          if (!reconnectedTerminalsRef.current.has(t.id)) {
-            reconnectedTerminalsRef.current.add(t.id)
-            sendMessage({
-              type: 'RECONNECT',
-              terminalId: t.id,
-            })
-          }
-        })
+        // Add small delay to let backend fully initialize after recovery broadcast
+        setTimeout(() => {
+          backendTerminals.forEach((t: any) => {
+            if (!reconnectedTerminalsRef.current.has(t.id)) {
+              reconnectedTerminalsRef.current.add(t.id)
+              sendMessage({
+                type: 'RECONNECT',
+                terminalId: t.id,
+              })
+            }
+          })
+          // Trigger terminal refresh after reconnects to fix terminal dimensions
+          // This forces terminals to refit after backend restart
+          // REFRESH_TERMINALS is broadcast to all terminal components and triggers
+          // triggerResizeTrick() which properly handles resize with locks
+          // Use delays to ensure terminals have finished reconnecting first
+          setTimeout(() => sendMessage({ type: 'REFRESH_TERMINALS' }), 200)
+          setTimeout(() => sendMessage({ type: 'REFRESH_TERMINALS' }), 700)
+        }, 300)
 
         // Get current sessions from state (which may have been restored from Chrome storage)
         setSessions(currentSessions => {

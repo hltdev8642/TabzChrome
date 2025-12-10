@@ -388,6 +388,7 @@ function SidePanelTerminal() {
         workingDir: effectiveWorkingDir,
         command: profile.command,
         profile: { ...profile, workingDir: effectiveWorkingDir },
+        isDark, // Pass global dark/light mode to backend for COLORFGBG env var
       })
       addToRecentDirs(effectiveWorkingDir)
     })

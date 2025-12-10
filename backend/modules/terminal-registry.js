@@ -14,6 +14,9 @@
 const EventEmitter = require('events');
 const crypto = require('crypto');
 const os = require('os');
+const { createModuleLogger } = require('./logger');
+
+const log = createModuleLogger('TerminalRegistry');
 
 /**
  * Generate a short random ID (8 hex chars = 4 billion combinations)
@@ -79,7 +82,7 @@ class TerminalRegistry extends EventEmitter {
       }
     });
 
-    console.log('[TerminalRegistry] Updated name counters:', Array.from(this.nameCounters.entries()));
+    log.debug('Updated name counters:', Array.from(this.nameCounters.entries()));
   }
 
   /**
@@ -100,7 +103,7 @@ class TerminalRegistry extends EventEmitter {
           const match = data.match(/ACTION:(\w+)/);
           if (match) {
             const action = match[1];
-            console.log(`[TerminalRegistry] Offline menu action: ${action} for ${terminal.originalTerminalId}`);
+            log.debug(`Offline menu action: ${action} for ${terminal.originalTerminalId}`);
 
             // Handle the action
             if (action === 'resume' || action === 'new' || action === 'start' || action === 'launch') {
@@ -129,9 +132,9 @@ class TerminalRegistry extends EventEmitter {
 
               unifiedSpawn.spawn(spawnConfig).then((result) => {
                 if (result.success) {
-                  console.log('[TerminalRegistry] Successfully spawned actual terminal after menu selection');
+                  log.success('Successfully spawned actual terminal after menu selection');
                 } else {
-                  console.error('[TerminalRegistry] Failed to spawn actual terminal:', result.error);
+                  log.error('Failed to spawn actual terminal:', result.error);
                 }
               });
             } else if (action === 'exit') {
@@ -158,7 +161,7 @@ class TerminalRegistry extends EventEmitter {
 
         // Check if this is a tmux terminal
         if (terminal.sessionId || terminal.sessionName) {
-          console.log(`[TerminalRegistry] PTY closed for tmux terminal ${terminal.name}`);
+          log.debug(`PTY closed for tmux terminal ${terminal.name}`);
 
           // Check if the tmux session still exists
           const sessionName = terminal.sessionName || terminal.sessionId;
@@ -166,11 +169,11 @@ class TerminalRegistry extends EventEmitter {
 
           if (sessionExists) {
             // Session still exists - user might have detached or PTY died
-            console.log(`[TerminalRegistry] Tmux session ${sessionName} still exists, marking as disconnected`);
+            log.debug(`Tmux session ${sessionName} still exists, marking as disconnected`);
             terminal.state = 'disconnected';
           } else {
             // Session ended (user typed exit/Ctrl+D) - clean up
-            console.log(`[TerminalRegistry] Tmux session ${sessionName} ended, removing terminal`);
+            log.debug(`Tmux session ${sessionName} ended, removing terminal`);
             this.terminals.delete(terminalId);
             this.emit('closed', terminalId);
           }
@@ -196,7 +199,7 @@ class TerminalRegistry extends EventEmitter {
       );
 
       if (existingTerminal) {
-        console.log(`[TerminalRegistry] 🔄 Reconnecting to existing terminal ${existingTerminal.name} (session: ${sessionName})`);
+        log.info(`🔄 Reconnecting to existing terminal ${existingTerminal.name} (session: ${sessionName})`);
 
         // Update existing terminal state for reconnection
         existingTerminal.state = 'spawning';
@@ -218,7 +221,7 @@ class TerminalRegistry extends EventEmitter {
         try {
           // Kill old PTY if it exists (reconnection scenario)
           if (existingTerminal.ptyInfo) {
-            console.log(`[TerminalRegistry] Killing old PTY for ${existingTerminal.name}`);
+            log.debug(`Killing old PTY for ${existingTerminal.name}`);
             await ptyHandler.killPTY(existingTerminal.id).catch(() => {});
           }
 
@@ -228,16 +231,16 @@ class TerminalRegistry extends EventEmitter {
           existingTerminal.state = 'active';
           existingTerminal.ptyInfo = ptyInfo;
 
-          console.log(`[TerminalRegistry] ✅ Reconnected to terminal ${existingTerminal.name} (ID: ${existingTerminal.id}, session: ${sessionName})`);
+          log.success(`✅ Reconnected to terminal ${existingTerminal.name} (ID: ${existingTerminal.id}, session: ${sessionName})`);
           return existingTerminal;
         } catch (error) {
-          console.error(`[TerminalRegistry] Failed to reconnect terminal ${existingTerminal.name}:`, error);
+          log.error(`Failed to reconnect terminal ${existingTerminal.name}:`, error);
           existingTerminal.state = 'error';
           existingTerminal.error = error.message;
           throw error;
         }
       } else {
-        console.log(`[TerminalRegistry] Session ${sessionName} not in registry, creating new terminal`);
+        log.debug(`Session ${sessionName} not in registry, creating new terminal`);
       }
     }
 
@@ -287,7 +290,7 @@ class TerminalRegistry extends EventEmitter {
         t.name === candidateName && (t.state === 'active' || t.state === 'spawning' || t.state === 'disconnected')
       ));
       name = candidateName;
-      console.log(`[TerminalRegistry] Name '${providedName}' already exists, using '${name}'`);
+      log.debug(`Name '${providedName}' already exists, using '${name}'`);
     }
     // Enhanced config with generated values
     const terminalConfig = {
@@ -299,18 +302,18 @@ class TerminalRegistry extends EventEmitter {
       rows: config.rows || 30
     };
 
-    console.log(`[TerminalRegistry] Working directory: ${config.workingDir} -> ${terminalConfig.workingDir}`);
+    log.debug(`Working directory: ${config.workingDir} -> ${terminalConfig.workingDir}`);
 
     // Debug terminal type
-    console.log(`[TerminalRegistry] Registering terminal with type: '${terminalConfig.terminalType}' (config.terminalType: '${config.terminalType}')`);
-    
+    log.debug(`Registering terminal with type: '${terminalConfig.terminalType}' (config.terminalType: '${config.terminalType}')`);
+
     // Guard against incorrect start commands for certain types
     // For gemini, ensure we don't accidentally start an interactive bash instead of the CLI
     if (terminalConfig.terminalType === 'gemini') {
-      console.log('[TerminalRegistry] Special handling for Gemini terminal');
+      log.debug('Special handling for Gemini terminal');
       // If a generic bash start was provided, ignore it and let PTY handler auto-exec gemini
       if (typeof terminalConfig.command === 'string' && /\bbash\b/.test(terminalConfig.command)) {
-        console.log('[TerminalRegistry] Removing bash command from Gemini config');
+        log.debug('Removing bash command from Gemini config');
         delete terminalConfig.command;
       }
       // If no explicit commands provided, ensure default auto-exec will run
@@ -318,7 +321,7 @@ class TerminalRegistry extends EventEmitter {
         terminalConfig.commands = [];
       }
     } else {
-      console.log(`[TerminalRegistry] No special handling for type: ${terminalConfig.terminalType}`);
+      log.debug(`No special handling for type: ${terminalConfig.terminalType}`);
     }
 
     // Terminal state - everything in one place
@@ -349,7 +352,7 @@ class TerminalRegistry extends EventEmitter {
 
     try {
       // Always use local PTY
-      console.log(`[TerminalRegistry] Creating local PTY for ${name}`);
+      log.debug(`Creating local PTY for ${name}`);
 
       // Create local PTY process
       const ptyInfo = ptyHandler.createPTY(terminalConfig);
@@ -361,17 +364,17 @@ class TerminalRegistry extends EventEmitter {
       if (ptyInfo.tmuxSession) {
         terminal.sessionId = ptyInfo.tmuxSession;
         terminal.sessionName = ptyInfo.tmuxSession; // Backward compatibility
-        console.log(`[TerminalRegistry] ✅ Terminal ${name} using tmux session: ${ptyInfo.tmuxSession}`);
+        log.debug(`✅ Terminal ${name} using tmux session: ${ptyInfo.tmuxSession}`);
       } else {
-        console.log(`[TerminalRegistry] ⚠️  Terminal ${name} NOT using tmux (ptyInfo.tmuxSession is ${ptyInfo.tmuxSession})`);
-        console.log(`[TerminalRegistry] ⚠️  Original config had useTmux: ${config.useTmux}, sessionName: ${config.sessionName}`);
+        log.warn(`⚠️  Terminal ${name} NOT using tmux (ptyInfo.tmuxSession is ${ptyInfo.tmuxSession})`);
+        log.debug(`⚠️  Original config had useTmux: ${config.useTmux}, sessionName: ${config.sessionName}`);
       }
 
-      console.log(`[TerminalRegistry] ✅ Successfully registered terminal ${name} (${terminal.terminalType}), ID: ${id}, sessionId: ${terminal.sessionId || 'NONE'}`);
+      log.info(`✅ Successfully registered terminal ${name} (${terminal.terminalType}), ID: ${id}, sessionId: ${terminal.sessionId || 'NONE'}`);
       return terminal;
 
     } catch (error) {
-      console.error(`[TerminalRegistry] Failed to register terminal ${name}:`, error);
+      log.error(`Failed to register terminal ${name}:`, error);
       terminal.state = 'error';
       terminal.error = error.message;
       throw error;
@@ -462,7 +465,7 @@ class TerminalRegistry extends EventEmitter {
 
         const toRemove = group.slice(1); // Remove all but the first (newest)
         toRemove.forEach(terminal => {
-          console.log(`[TerminalRegistry] Cleaning up duplicate terminal: ${terminal.name} (${terminal.id})`);
+          log.debug(`Cleaning up duplicate terminal: ${terminal.name} (${terminal.id})`);
           this.closeTerminal(terminal.id);
         });
       }
@@ -495,7 +498,7 @@ class TerminalRegistry extends EventEmitter {
 
     // If terminal is disconnected, try to reconnect first
     if (terminal.state === 'disconnected') {
-      console.log(`[TerminalRegistry] Terminal ${terminal.name} is disconnected, attempting reconnect before resize`);
+      log.debug(`Terminal ${terminal.name} is disconnected, attempting reconnect before resize`);
       const reconnected = await this.reconnectToTerminal(id);
       if (!reconnected) {
         throw new Error(`Terminal ${id} is disconnected and could not reconnect`);
@@ -512,24 +515,24 @@ class TerminalRegistry extends EventEmitter {
   disconnectTerminal(id) {
     const terminal = this.terminals.get(id);
     if (!terminal) {
-      console.log(`[TerminalRegistry] Terminal ${id} not found for disconnection`);
+      log.debug(`Terminal ${id} not found for disconnection`);
       return;
     }
 
-    console.log(`[TerminalRegistry] 🔌 disconnectTerminal called for: ${terminal.name} (ID: ${id})`);
-    console.log(`[TerminalRegistry]    sessionId: ${terminal.sessionId || 'NONE'}`);
-    console.log(`[TerminalRegistry]    sessionName: ${terminal.sessionName || 'NONE'}`);
-    console.log(`[TerminalRegistry]    current state: ${terminal.state}`);
+    log.debug(`🔌 disconnectTerminal called for: ${terminal.name} (ID: ${id})`);
+    log.debug(`   sessionId: ${terminal.sessionId || 'NONE'}`);
+    log.debug(`   sessionName: ${terminal.sessionName || 'NONE'}`);
+    log.debug(`   current state: ${terminal.state}`);
 
     // CRITICAL FIX: Don't disconnect tmux-backed terminals
     // Tmux sessions persist across WebSocket reconnections (e.g., Vite HMR)
     if (terminal.sessionId || terminal.sessionName) {
-      console.log(`[TerminalRegistry] ✅ Skipping disconnect for tmux-backed terminal ${terminal.name} (session: ${terminal.sessionId || terminal.sessionName})`);
-      console.log(`[TerminalRegistry] ✅ Tmux sessions persist across WebSocket reconnections`);
+      log.debug(`✅ Skipping disconnect for tmux-backed terminal ${terminal.name} (session: ${terminal.sessionId || terminal.sessionName})`);
+      log.debug(`✅ Tmux sessions persist across WebSocket reconnections`);
       return;
     }
 
-    console.log(`[TerminalRegistry] ⚠️  Disconnecting NON-TMUX terminal ${terminal.name} - starting grace period`);
+    log.debug(`⚠️  Disconnecting NON-TMUX terminal ${terminal.name} - starting grace period`);
     terminal.state = 'disconnected';
 
     // Use grace period for PTY process
@@ -543,12 +546,12 @@ class TerminalRegistry extends EventEmitter {
    * This should be called BEFORE attempting to reconnect
    */
   cancelDisconnect(id) {
-    console.log(`[TerminalRegistry] Attempting to cancel disconnect for terminal ${id}`);
+    log.debug(`Attempting to cancel disconnect for terminal ${id}`);
 
     // Check if terminal exists in registry
     const terminal = this.terminals.get(id);
     if (!terminal) {
-      console.log(`[TerminalRegistry] Terminal ${id} not found in registry`);
+      log.debug(`Terminal ${id} not found in registry`);
       return false;
     }
 
@@ -556,7 +559,7 @@ class TerminalRegistry extends EventEmitter {
     if (ptyHandler.canReconnectPTY(id)) {
       const canceled = ptyHandler.cancelDisconnect(id);
       if (canceled) {
-        console.log(`[TerminalRegistry] Successfully canceled disconnect for terminal ${terminal.name}`);
+        log.debug(`Successfully canceled disconnect for terminal ${terminal.name}`);
         terminal.state = 'active';
         return true;
       }
@@ -569,26 +572,26 @@ class TerminalRegistry extends EventEmitter {
    * Attempt to reconnect to existing terminal
    */
   async reconnectToTerminal(id, newAgentId) {
-    console.log(`[TerminalRegistry] Attempting to reconnect to terminal ${id}`);
+    log.debug(`Attempting to reconnect to terminal ${id}`);
 
     // CRITICAL FIX: First check if terminal exists in our registry
     const terminal = this.terminals.get(id);
     if (!terminal) {
-      console.log(`[TerminalRegistry] Terminal ${id} not found in registry`);
+      log.debug(`Terminal ${id} not found in registry`);
       return null;
     }
 
     // FIX: If terminal already has valid ptyInfo and is active, just return it
     // This handles RECONNECT for freshly spawned terminals (not disconnected)
     if (terminal.ptyInfo && terminal.state === 'active') {
-      console.log(`[TerminalRegistry] Terminal ${terminal.name} already has active PTY, returning`);
+      log.debug(`Terminal ${terminal.name} already has active PTY, returning`);
       return terminal;
     }
 
     // Check if PTY process was disconnected and cancel grace period
     const ptyInfo = ptyHandler.reconnectPTY(id);
     if (ptyInfo) {
-      console.log(`[TerminalRegistry] Successfully reconnected to PTY for terminal ${terminal.name}`);
+      log.debug(`Successfully reconnected to PTY for terminal ${terminal.name}`);
       terminal.state = 'active';
       terminal.ptyInfo = ptyInfo;
 
@@ -608,7 +611,7 @@ class TerminalRegistry extends EventEmitter {
     // FIX: Also check if PTY exists in processes (not disconnected but still there)
     const existingPty = ptyHandler.getProcess(id);
     if (existingPty) {
-      console.log(`[TerminalRegistry] Found existing PTY for terminal ${terminal.name}`);
+      log.debug(`Found existing PTY for terminal ${terminal.name}`);
       terminal.state = 'active';
       terminal.ptyInfo = existingPty;
       return terminal;
@@ -617,7 +620,7 @@ class TerminalRegistry extends EventEmitter {
     // PTY doesn't exist - check if tmux session still exists and re-attach
     const sessionName = terminal.sessionName || terminal.sessionId || terminal.config?.sessionName;
     if (sessionName && ptyHandler.tmuxSessionExists(sessionName)) {
-      console.log(`[TerminalRegistry] PTY gone but tmux session ${sessionName} exists, re-attaching...`);
+      log.debug(`PTY gone but tmux session ${sessionName} exists, re-attaching...`);
       try {
         // Re-create PTY to attach to existing tmux session
         const ptyInfo = await ptyHandler.createPTY({
@@ -634,15 +637,15 @@ class TerminalRegistry extends EventEmitter {
 
         terminal.state = 'active';
         terminal.ptyInfo = ptyInfo;
-        console.log(`[TerminalRegistry] Successfully re-attached to tmux session ${sessionName}`);
+        log.debug(`Successfully re-attached to tmux session ${sessionName}`);
         return terminal;
       } catch (error) {
-        console.error(`[TerminalRegistry] Failed to re-attach to tmux session ${sessionName}:`, error);
+        log.error(`Failed to re-attach to tmux session ${sessionName}:`, error);
         return null;
       }
     }
 
-    console.log(`[TerminalRegistry] No PTY and no tmux session found for terminal ${id}`);
+    log.debug(`No PTY and no tmux session found for terminal ${id}`);
     return null;
   }
 
@@ -656,7 +659,7 @@ class TerminalRegistry extends EventEmitter {
       return true;
     }
 
-    console.log(`[TerminalRegistry] Closing terminal ${terminal.name} (force=${force})`);
+    log.debug(`Closing terminal ${terminal.name} (force=${force})`);
 
     try {
       // Handle tmux-backed terminals
@@ -665,18 +668,18 @@ class TerminalRegistry extends EventEmitter {
 
         if (force) {
           // FORCE CLOSE (X button): Kill the tmux session entirely
-          console.log(`[TerminalRegistry] Force close - killing tmux session: ${sessionName}`);
+          log.debug(`Force close - killing tmux session: ${sessionName}`);
           try {
             const { execSync } = require('child_process');
             execSync(`tmux kill-session -t "${sessionName}" 2>/dev/null || true`);
-            console.log(`[TerminalRegistry] ✅ Killed tmux session: ${sessionName}`);
+            log.debug(`✅ Killed tmux session: ${sessionName}`);
           } catch (error) {
-            console.log(`[TerminalRegistry] Tmux session ${sessionName} may not exist (already killed)`);
+            log.debug(`Tmux session ${sessionName} may not exist (already killed)`);
           }
           await ptyHandler.killPTY(id);
         } else {
           // NORMAL CLOSE (power off): Just detach from tmux, leave session running for reconnection
-          console.log(`[TerminalRegistry] Power off - detaching from tmux session (session preserved): ${sessionName}`);
+          log.debug(`Power off - detaching from tmux session (session preserved): ${sessionName}`);
           await ptyHandler.killPTY(id); // This just kills the PTY attachment, not the tmux session
         }
       } else {
@@ -689,10 +692,10 @@ class TerminalRegistry extends EventEmitter {
       }
 
       this.terminals.delete(id);
-      console.log(`[TerminalRegistry] ✅ Terminal ${terminal.name} removed from registry`);
+      log.debug(`✅ Terminal ${terminal.name} removed from registry`);
       return true;
     } catch (error) {
-      console.error(`[TerminalRegistry] Error closing terminal ${id}:`, error);
+      log.error(`Error closing terminal ${id}:`, error);
       // Remove from registry anyway
       this.terminals.delete(id);
       throw error;
@@ -711,8 +714,8 @@ class TerminalRegistry extends EventEmitter {
    * Clean up all terminals
    */
   async cleanup() {
-    console.log('[TerminalRegistry] Cleaning up all terminals...');
-    
+    log.info('Cleaning up all terminals...');
+
     const promises = [];
     for (const terminal of this.terminals.values()) {
       promises.push(ptyHandler.killPTY(terminal.id));
@@ -723,8 +726,8 @@ class TerminalRegistry extends EventEmitter {
 
     // Cleanup PTY handler
     await ptyHandler.cleanupImmediate();
-    
-    console.log('[TerminalRegistry] Cleanup complete');
+
+    log.info('Cleanup complete');
   }
 
   /**
