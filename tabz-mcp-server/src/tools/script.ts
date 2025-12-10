@@ -66,7 +66,17 @@ Examples:
 Error Handling:
   - Syntax errors in code will be returned in the error field
   - Permission errors occur on chrome:// pages
-  - Timeout errors if script takes too long`,
+  - Timeout errors if script takes too long
+
+CLI Quoting (mcp-cli):
+  When using mcp-cli with complex JS code containing quotes, use heredoc to avoid escaping issues:
+
+  mcp-cli call tabz/tabz_execute_script - <<'EOF'
+  {"code": "document.querySelector('button').click()"}
+  EOF
+
+  The <<'EOF' syntax passes JSON literally without bash interpretation.
+  Use single quotes inside JS, double quotes for JSON wrapper.`,
     ExecuteScriptSchema.shape,
     async (params: ExecuteScriptInput) => {
       try {
