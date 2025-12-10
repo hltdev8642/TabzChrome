@@ -567,16 +567,17 @@ td code {
     font-size: 0.8rem;
     color: var(--text-muted);
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+    flex-direction: column;
+    gap: 0.4rem;
 }
 
 .tui-card .install code {
     color: var(--green);
     background: var(--bg-tertiary);
-    padding: 0.25rem 0.5rem;
+    padding: 0.3rem 0.6rem;
     border-radius: 4px;
-    display: inline-block;
+    display: block;
+    width: fit-content;
 }
 
 .tui-grid {
