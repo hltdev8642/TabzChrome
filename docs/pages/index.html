@@ -12,8 +12,8 @@
 <body>
     <nav class="sidebar">
         <div class="logo">
-            <span class="logo-icon">></span>
-            <span class="logo-text">TabzChrome</span>
+            <img src="icon.png" alt="Tabz" class="logo-icon-img">
+            <span class="logo-text">Tabz</span>
         </div>
         <ul class="nav-links">
             <li><a href="index.html" class="active">Home</a></li>
@@ -36,7 +36,7 @@
     <main class="content">
         <header class="hero">
             <h1>TabzChrome</h1>
-            <p class="tagline">Terminal sessions in your Chrome sidebar</p>
+            <p class="tagline">Full Linux terminals in your Chrome sidebar</p>
             <div class="hero-badges">
                 <span class="badge">v2.7.0</span>
                 <span class="badge">Manifest V3</span>
@@ -75,7 +75,7 @@
                 <a href="mcp-tools.html" class="card">
                     <div class="card-icon">🔧</div>
                     <h3>MCP Tools</h3>
-                    <p>12 browser automation tools for Claude Code. Screenshots, clicks, form filling, and more.</p>
+                    <p>20 browser automation tools for Claude Code. Screenshots, clicks, network capture, downloads, and more.</p>
                 </a>
 
                 <a href="cli-tools.html" class="card">
@@ -114,8 +114,20 @@
             <h2>At a Glance</h2>
             <div class="ref-grid">
                 <div class="ref-item">
-                    <h4>Open Sidebar</h4>
-                    <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>9</kbd>
+                    <h4>New Terminal Tab</h4>
+                    <kbd>Alt</kbd> + <kbd>T</kbd>
+                </div>
+                <div class="ref-item">
+                    <h4>Close Terminal Tab</h4>
+                    <kbd>Alt</kbd> + <kbd>W</kbd>
+                </div>
+                <div class="ref-item">
+                    <h4>Paste to Terminal</h4>
+                    <kbd>Alt</kbd> + <kbd>V</kbd>
+                </div>
+                <div class="ref-item">
+                    <h4>Send to Chat</h4>
+                    <kbd>Alt</kbd> + <kbd>C</kbd>
                 </div>
                 <div class="ref-item">
                     <h4>Copy in Terminal</h4>
@@ -124,18 +136,6 @@
                 <div class="ref-item">
                     <h4>Paste in Terminal</h4>
                     <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>V</kbd>
-                </div>
-                <div class="ref-item">
-                    <h4>Backend Port</h4>
-                    <code>localhost:8129</code>
-                </div>
-                <div class="ref-item">
-                    <h4>Chrome Debug Port</h4>
-                    <code>localhost:9222</code>
-                </div>
-                <div class="ref-item">
-                    <h4>Terminal ID Prefix</h4>
-                    <code>ctt-</code>
                 </div>
             </div>
         </section>

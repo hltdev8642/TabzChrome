@@ -237,6 +237,10 @@ const wss = new WebSocket.Server({ server });
 // Track active WebSocket connections
 const activeConnections = new Set();
 
+// Track sidebar connections separately (for accurate "multiple browser windows" warning)
+// Web pages (like docs site) sending QUEUE_COMMAND should NOT count as browser windows
+const sidebarConnections = new Set();
+
 // Track if session recovery is complete (prevents frontend from clearing Chrome storage too early)
 let recoveryComplete = false;
 
@@ -306,6 +310,17 @@ wss.on('connection', (ws) => {
       data = JSON.parse(message);
       
       switch (data.type) {
+        case 'identify':
+          // Client type identification - sidebar vs web page
+          // Only sidebar connections should count towards "multiple browser windows" warning
+          if (data.clientType === 'sidebar') {
+            sidebarConnections.add(ws);
+            log.info(`[WS] Client identified as sidebar (${sidebarConnections.size} sidebar connections)`);
+          } else {
+            log.info(`[WS] Client identified as ${data.clientType || 'unknown'} (not counted as browser window)`);
+          }
+          break;
+
         case 'spawn':
           // Spawn deduplication - prevent same requestId from spawning twice
           // This catches race conditions, double-clicks, or duplicate WebSocket messages
@@ -517,11 +532,13 @@ wss.on('connection', (ws) => {
           // List all active terminals in the registry, filtered to ctt- prefix only
           const allTerminals = terminalRegistry.getAllTerminals();
           const chromeTerminals = allTerminals.filter(t => t.id && t.id.startsWith('ctt-'));
-          log.info(`[WS] Listing ${chromeTerminals.length} Chrome terminals (${allTerminals.length} total), ${activeConnections.size} connections, recoveryComplete=${recoveryComplete}`);
+          // connectionCount uses sidebarConnections, not activeConnections
+          // This prevents web pages (like docs site) from triggering "multiple browser windows" warning
+          log.info(`[WS] Listing ${chromeTerminals.length} Chrome terminals (${allTerminals.length} total), ${sidebarConnections.size} sidebar connections (${activeConnections.size} total), recoveryComplete=${recoveryComplete}`);
           ws.send(JSON.stringify({
             type: 'terminals',
             data: chromeTerminals,
-            connectionCount: activeConnections.size,
+            connectionCount: sidebarConnections.size,
             recoveryComplete: recoveryComplete
           }));
           break;
@@ -733,8 +750,9 @@ wss.on('connection', (ws) => {
     // Clear terminal references to free memory
     connectionTerminals.clear();
 
-    // Remove from active connections
+    // Remove from active connections and sidebar connections
     activeConnections.delete(ws);
+    sidebarConnections.delete(ws);
     // Clean up event listeners
     ws.removeListener('message', messageHandler);
     ws.removeListener('close', closeHandler);
@@ -840,6 +858,7 @@ setInterval(() => {
   deadConnections.forEach(ws => {
     log.debug('Removing dead WebSocket connection');
     activeConnections.delete(ws);
+    sidebarConnections.delete(ws);
     try {
       ws.terminate();
     } catch (e) {
@@ -902,6 +921,7 @@ const gracefulShutdown = async () => {
     }
   });
   activeConnections.clear();
+  sidebarConnections.clear();
   
   // Close WebSocket server
   wss.close(() => {
@@ -1029,11 +1049,11 @@ server.listen(PORT, async () => {
           const allTerminals = terminalRegistry.getAllTerminals();
           const chromeTerminals = allTerminals.filter(t => t.id && t.id.startsWith('ctt-'));
           recoveryComplete = true;
-          log.info(`[WS] Broadcasting ${chromeTerminals.length} recovered terminals to ${activeConnections.size} clients (recoveryComplete=true)`);
+          log.info(`[WS] Broadcasting ${chromeTerminals.length} recovered terminals to ${activeConnections.size} clients (${sidebarConnections.size} sidebars, recoveryComplete=true)`);
           broadcast({
             type: 'terminals',
             data: chromeTerminals,
-            connectionCount: activeConnections.size,
+            connectionCount: sidebarConnections.size,
             recoveryComplete: true
           });
         } else {

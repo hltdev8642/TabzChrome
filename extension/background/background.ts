@@ -466,6 +466,12 @@ function connectWebSocket() {
     console.log('✅ Background WebSocket connected')
     wsReconnectAttempts = 0 // Reset reconnect counter on successful connection
     chrome.alarms.clear(ALARM_WS_RECONNECT) // Clear any pending reconnect alarm
+
+    // Identify as sidebar to backend so it counts us for "multiple browser windows" warning
+    // Web pages connecting via WebSocket (like docs site) won't send this, so they won't
+    // be counted, preventing false "duplicate output" warnings for users
+    sendToWebSocket({ type: 'identify', clientType: 'sidebar' })
+
     updateBadge()
     broadcastToClients({ type: 'WS_CONNECTED' })
   }
@@ -1492,15 +1498,13 @@ chrome.commands.onCommand.addListener(async (command) => {
     return
   }
 
-  // Handle paste-selection - get selected text from active tab
+  // Handle paste-selection - paste directly to active terminal
   if (command === 'paste-selection') {
     console.log('[Background] Paste selection shortcut triggered')
     try {
-      // Get the active tab
       const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true })
 
       if (activeTab?.id) {
-        // Execute script to get selected text
         const results = await chrome.scripting.executeScript({
           target: { tabId: activeTab.id },
           func: () => window.getSelection()?.toString() || ''
@@ -1508,24 +1512,72 @@ chrome.commands.onCommand.addListener(async (command) => {
 
         const selectedText = results[0]?.result
         if (selectedText) {
-          console.log('[Background] 📋 Queuing selection to chat:', selectedText.substring(0, 50) + '...')
+          console.log('[Background] 📋 Pasting to terminal:', selectedText.substring(0, 50) + '...')
 
-          // Open sidebar if not already open
-          const windows = await chrome.windows.getAll({ windowTypes: ['normal'] })
-          const currentWindow = windows.find(w => w.focused) || windows[0]
-          if (currentWindow?.id) {
+          // If sidebar is already open, broadcast immediately
+          if (connectedClients.size > 0) {
+            broadcastToClients({
+              type: 'PASTE_COMMAND',
+              command: selectedText,
+            })
+          } else {
+            // Store for when sidebar connects, then try to open it
+            pendingPasteCommand = selectedText
             try {
-              await chrome.sidePanel.open({ windowId: currentWindow.id })
+              const windows = await chrome.windows.getAll({ windowTypes: ['normal'] })
+              const currentWindow = windows.find(w => w.focused) || windows[0]
+              if (currentWindow?.id) {
+                await chrome.sidePanel.open({ windowId: currentWindow.id })
+              }
             } catch (e) {
-              // Sidebar might already be open, that's fine
+              console.debug('[Background] Could not open sidebar:', e)
             }
           }
+        } else {
+          console.log('[Background] No text selected')
+        }
+      }
+    } catch (err) {
+      console.error('[Background] Failed to get selection:', err)
+    }
+    return
+  }
 
-          // Queue to chat input - lets user choose which terminal
-          broadcastToClients({
-            type: 'QUEUE_COMMAND',
-            command: selectedText,
-          })
+  // Handle send-to-chat - queue to chat input bar for review
+  if (command === 'send-to-chat') {
+    console.log('[Background] Send to chat shortcut triggered')
+    try {
+      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true })
+
+      if (activeTab?.id) {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: activeTab.id },
+          func: () => window.getSelection()?.toString() || ''
+        })
+
+        const selectedText = results[0]?.result
+        if (selectedText) {
+          console.log('[Background] 📋 Sending to chat:', selectedText.substring(0, 50) + '...')
+
+          // If sidebar is already open, broadcast immediately
+          if (connectedClients.size > 0) {
+            broadcastToClients({
+              type: 'QUEUE_COMMAND',
+              command: selectedText,
+            })
+          } else {
+            // Store for when sidebar connects, then try to open it
+            pendingQueueCommand = selectedText
+            try {
+              const windows = await chrome.windows.getAll({ windowTypes: ['normal'] })
+              const currentWindow = windows.find(w => w.focused) || windows[0]
+              if (currentWindow?.id) {
+                await chrome.sidePanel.open({ windowId: currentWindow.id })
+              }
+            } catch (e) {
+              console.debug('[Background] Could not open sidebar:', e)
+            }
+          }
         } else {
           console.log('[Background] No text selected')
         }

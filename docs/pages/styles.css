@@ -70,6 +70,12 @@ code, pre, kbd, .terminal-body {
     font-size: 1.25rem;
 }
 
+.logo-icon-img {
+    width: 32px;
+    height: 32px;
+    vertical-align: middle;
+}
+
 .logo-text {
     font-weight: 600;
     font-size: 1.1rem;
@@ -125,6 +131,8 @@ code, pre, kbd, .terminal-body {
     margin-left: var(--sidebar-width);
     padding: 2rem 3rem;
     max-width: 1200px;
+    margin-right: auto;
+    margin-left: calc(var(--sidebar-width) + max(0px, (100vw - var(--sidebar-width) - 1200px) / 2));
 }
 
 /* Hero Section */
@@ -404,6 +412,16 @@ footer a:hover {
     font-size: 0.8rem;
     margin: 0.25rem 0.25rem 0.25rem 0;
     color: var(--text-secondary);
+}
+
+.trigger-tag[data-terminal-command] {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.trigger-tag[data-terminal-command]:hover {
+    background: var(--accent);
+    color: var(--bg-primary);
 }
 
 .code-block {

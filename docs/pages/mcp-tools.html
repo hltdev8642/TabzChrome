@@ -12,8 +12,8 @@
 <body>
     <nav class="sidebar">
         <div class="logo">
-            <span class="logo-icon">></span>
-            <span class="logo-text">TabzChrome</span>
+            <img src="icon.png" alt="Tabz" class="logo-icon-img">
+            <span class="logo-text">Tabz</span>
         </div>
         <ul class="nav-links">
             <li><a href="index.html">Home</a></li>
@@ -36,7 +36,7 @@
     <main class="content">
         <header class="hero" style="padding: 2rem 0;">
             <h1>MCP Tools Reference</h1>
-            <p class="tagline">12 browser automation tools for Claude Code</p>
+            <p class="tagline">20 browser automation tools for Claude Code</p>
         </header>
 
         <section>
@@ -115,6 +115,41 @@
                         <td>"console logs", "errors", "browser logs"</td>
                         <td>View browser console output</td>
                     </tr>
+                    <tr>
+                        <td><code>tabz_enable_network_capture</code></td>
+                        <td>"capture network", "monitor requests"</td>
+                        <td>Start capturing network requests</td>
+                    </tr>
+                    <tr>
+                        <td><code>tabz_get_network_requests</code></td>
+                        <td>"show requests", "API calls", "network log"</td>
+                        <td>List captured XHR/fetch requests</td>
+                    </tr>
+                    <tr>
+                        <td><code>tabz_get_api_response</code></td>
+                        <td>"get response", "API response body"</td>
+                        <td>Get full response body for a request</td>
+                    </tr>
+                    <tr>
+                        <td><code>tabz_clear_network_requests</code></td>
+                        <td>"clear network", "reset capture"</td>
+                        <td>Clear captured network requests</td>
+                    </tr>
+                    <tr>
+                        <td><code>tabz_download_file</code></td>
+                        <td>"download file", "save URL"</td>
+                        <td>Download any file via Chrome</td>
+                    </tr>
+                    <tr>
+                        <td><code>tabz_get_downloads</code></td>
+                        <td>"list downloads", "download status"</td>
+                        <td>List recent downloads with status</td>
+                    </tr>
+                    <tr>
+                        <td><code>tabz_cancel_download</code></td>
+                        <td>"cancel download", "stop download"</td>
+                        <td>Cancel in-progress download</td>
+                    </tr>
                 </tbody>
             </table>
         </section>
@@ -130,10 +165,10 @@
             <p class="description">Capture a screenshot of the current viewport (what's visible on screen).</p>
             <div class="triggers">
                 <h4>Trigger phrases:</h4>
-                <span class="trigger-tag">"screenshot my view"</span>
-                <span class="trigger-tag">"what do I see"</span>
-                <span class="trigger-tag">"capture viewport"</span>
-                <span class="trigger-tag">"screenshot that button"</span>
+                <span class="trigger-tag" data-terminal-command="Take a screenshot of my current view">screenshot my view</span>
+                <span class="trigger-tag" data-terminal-command="What do I see on this page?">what do I see</span>
+                <span class="trigger-tag" data-terminal-command="Capture the viewport">capture viewport</span>
+                <span class="trigger-tag" data-terminal-command="Screenshot that button">screenshot that button</span>
             </div>
             <div class="code-wrapper">
                 <div class="code-block"><code><span class="comment">// Capture viewport</span>
@@ -152,9 +187,9 @@
             <p class="description">Capture the entire scrollable page in one image. Best for first-time page exploration.</p>
             <div class="triggers">
                 <h4>Trigger phrases:</h4>
-                <span class="trigger-tag">"full page screenshot"</span>
-                <span class="trigger-tag">"entire page"</span>
-                <span class="trigger-tag">"whole page"</span>
+                <span class="trigger-tag" data-terminal-command="Take a full page screenshot">full page screenshot</span>
+                <span class="trigger-tag" data-terminal-command="Capture the entire page">entire page</span>
+                <span class="trigger-tag" data-terminal-command="Screenshot the whole page">whole page</span>
             </div>
             <div class="code-wrapper">
                 <div class="code-block"><code><span class="comment">// Capture full scrollable page</span>
@@ -197,9 +232,9 @@
             <p class="description">Click an element on the page.</p>
             <div class="triggers">
                 <h4>Trigger phrases:</h4>
-                <span class="trigger-tag">"click the submit button"</span>
-                <span class="trigger-tag">"press the login button"</span>
-                <span class="trigger-tag">"click on that link"</span>
+                <span class="trigger-tag" data-terminal-command="Click the submit button">click the submit button</span>
+                <span class="trigger-tag" data-terminal-command="Press the login button">press the login button</span>
+                <span class="trigger-tag" data-terminal-command="Click on that link">click on that link</span>
             </div>
             <div class="code-wrapper">
                 <div class="code-block"><code><span class="comment">// By ID</span>
@@ -221,9 +256,9 @@
             <p class="description">Fill an input field with text.</p>
             <div class="triggers">
                 <h4>Trigger phrases:</h4>
-                <span class="trigger-tag">"fill in the email field"</span>
-                <span class="trigger-tag">"type my username"</span>
-                <span class="trigger-tag">"enter text in search"</span>
+                <span class="trigger-tag" data-terminal-command="Fill in the email field with test@example.com">fill in the email field</span>
+                <span class="trigger-tag" data-terminal-command="Type my username in the login form">type my username</span>
+                <span class="trigger-tag" data-terminal-command="Enter text in the search box">enter text in search</span>
             </div>
             <div class="code-wrapper">
                 <div class="code-block"><code><span class="comment">// By ID</span>
@@ -275,9 +310,9 @@
             <p class="description">List all open browser tabs with their IDs, URLs, and titles.</p>
             <div class="triggers">
                 <h4>Trigger phrases:</h4>
-                <span class="trigger-tag">"what tabs are open"</span>
-                <span class="trigger-tag">"list all tabs"</span>
-                <span class="trigger-tag">"show me the tabs"</span>
+                <span class="trigger-tag" data-terminal-command="What tabs are open in my browser?">what tabs are open</span>
+                <span class="trigger-tag" data-terminal-command="List all my browser tabs">list all tabs</span>
+                <span class="trigger-tag" data-terminal-command="Show me the tabs">show me the tabs</span>
             </div>
             <div class="code-wrapper">
                 <div class="code-block"><code><span class="comment">// List all tabs</span>
@@ -327,9 +362,9 @@
             <p class="description">Open a URL in the browser. Only allowed domains (GitHub, localhost, Vercel, etc.).</p>
             <div class="triggers">
                 <h4>Trigger phrases:</h4>
-                <span class="trigger-tag">"open GitHub repo"</span>
-                <span class="trigger-tag">"navigate to localhost"</span>
-                <span class="trigger-tag">"open my Vercel app"</span>
+                <span class="trigger-tag" data-terminal-command="Open the GitHub repo">open GitHub repo</span>
+                <span class="trigger-tag" data-terminal-command="Navigate to localhost:3000">navigate to localhost</span>
+                <span class="trigger-tag" data-terminal-command="Open my Vercel app">open my Vercel app</span>
             </div>
             <div class="code-wrapper">
                 <div class="code-block"><code><span class="comment">// Open GitHub repo</span>
@@ -403,9 +438,9 @@
             <p class="description">Retrieve console output (log, warn, error, info, debug) from browser tabs.</p>
             <div class="triggers">
                 <h4>Trigger phrases:</h4>
-                <span class="trigger-tag">"show me the console"</span>
-                <span class="trigger-tag">"are there any errors"</span>
-                <span class="trigger-tag">"check for JS errors"</span>
+                <span class="trigger-tag" data-terminal-command="Show me the browser console logs">show me the console</span>
+                <span class="trigger-tag" data-terminal-command="Are there any JavaScript errors in the console?">are there any errors</span>
+                <span class="trigger-tag" data-terminal-command="Check for JS errors on this page">check for JS errors</span>
             </div>
             <div class="code-wrapper">
                 <div class="code-block"><code><span class="comment">// All logs</span>
@@ -419,6 +454,142 @@
 
 <span class="comment">// From specific tab</span>
 { <span class="string">"tabId"</span>: <span class="number">2</span>, <span class="string">"level"</span>: <span class="string">"warn"</span> }</code></div>
+            </div>
+        </div>
+
+        <!-- Network Capture -->
+        <div class="category-header">
+            <span class="emoji">🌐</span>
+            <h3>Network Capture Tools</h3>
+        </div>
+
+        <div class="tool-card">
+            <h3>tabz_enable_network_capture</h3>
+            <p class="description">Start capturing network requests (XHR/fetch) on a tab. Must be called before get_network_requests.</p>
+            <div class="triggers">
+                <h4>Trigger phrases:</h4>
+                <span class="trigger-tag" data-terminal-command="Start capturing network requests on this page">capture network requests</span>
+                <span class="trigger-tag" data-terminal-command="Monitor API calls on this tab">monitor API calls</span>
+                <span class="trigger-tag" data-terminal-command="Enable network logging">start network logging</span>
+            </div>
+            <div class="code-wrapper">
+                <div class="code-block"><code><span class="comment">// Enable on current tab</span>
+{}
+
+<span class="comment">// Enable on specific tab</span>
+{ <span class="string">"tabId"</span>: <span class="number">2</span> }</code></div>
+            </div>
+        </div>
+
+        <div class="tool-card">
+            <h3>tabz_get_network_requests</h3>
+            <p class="description">List all captured network requests. Returns URL, method, status, timing, and size.</p>
+            <div class="triggers">
+                <h4>Trigger phrases:</h4>
+                <span class="trigger-tag" data-terminal-command="Show me the network requests">show network requests</span>
+                <span class="trigger-tag" data-terminal-command="What API calls were made on this page?">what API calls were made</span>
+                <span class="trigger-tag" data-terminal-command="List all captured network requests">list requests</span>
+            </div>
+            <div class="code-wrapper">
+                <div class="code-block"><code><span class="comment">// All requests</span>
+{}
+
+<span class="comment">// Filter by URL pattern</span>
+{ <span class="string">"filter"</span>: <span class="string">"api.github.com"</span> }
+
+<span class="comment">// Only failed requests</span>
+{ <span class="string">"statusFilter"</span>: <span class="string">"error"</span> }</code></div>
+            </div>
+        </div>
+
+        <div class="tool-card">
+            <h3>tabz_get_api_response</h3>
+            <p class="description">Get the full response body for a specific network request by its request ID.</p>
+            <div class="triggers">
+                <h4>Trigger phrases:</h4>
+                <span class="trigger-tag">"get response body"</span>
+                <span class="trigger-tag">"show API response"</span>
+                <span class="trigger-tag">"what did that request return"</span>
+            </div>
+            <div class="code-wrapper">
+                <div class="code-block"><code><span class="comment">// Get response by request ID (from get_network_requests)</span>
+{ <span class="string">"requestId"</span>: <span class="string">"12345.67"</span> }</code></div>
+            </div>
+        </div>
+
+        <div class="tool-card">
+            <h3>tabz_clear_network_requests</h3>
+            <p class="description">Clear all captured network requests from memory.</p>
+            <div class="triggers">
+                <h4>Trigger phrases:</h4>
+                <span class="trigger-tag">"clear network log"</span>
+                <span class="trigger-tag">"reset network capture"</span>
+            </div>
+            <div class="code-wrapper">
+                <div class="code-block"><code><span class="comment">// Clear for current tab</span>
+{}
+
+<span class="comment">// Clear for specific tab</span>
+{ <span class="string">"tabId"</span>: <span class="number">2</span> }</code></div>
+            </div>
+        </div>
+
+        <!-- Downloads -->
+        <div class="category-header">
+            <span class="emoji">📥</span>
+            <h3>Download Tools</h3>
+        </div>
+
+        <div class="tool-card">
+            <h3>tabz_download_file</h3>
+            <p class="description">Download any file via Chrome's download manager. Returns both Windows and WSL paths.</p>
+            <div class="triggers">
+                <h4>Trigger phrases:</h4>
+                <span class="trigger-tag" data-terminal-command="Download this file">download this file</span>
+                <span class="trigger-tag" data-terminal-command="Save the PDF to disk">save the PDF</span>
+                <span class="trigger-tag" data-terminal-command="Download from this URL">download from URL</span>
+            </div>
+            <div class="code-wrapper">
+                <div class="code-block"><code><span class="comment">// Basic download</span>
+{ <span class="string">"url"</span>: <span class="string">"https://example.com/file.pdf"</span> }
+
+<span class="comment">// Custom filename</span>
+{ <span class="string">"url"</span>: <span class="string">"https://example.com/data.json"</span>, <span class="string">"filename"</span>: <span class="string">"my-data.json"</span> }
+
+<span class="comment">// Overwrite existing</span>
+{ <span class="string">"url"</span>: <span class="string">"..."</span>, <span class="string">"conflictAction"</span>: <span class="string">"overwrite"</span> }</code></div>
+            </div>
+        </div>
+
+        <div class="tool-card">
+            <h3>tabz_get_downloads</h3>
+            <p class="description">List recent downloads with their status (in_progress, complete, interrupted).</p>
+            <div class="triggers">
+                <h4>Trigger phrases:</h4>
+                <span class="trigger-tag">"list downloads"</span>
+                <span class="trigger-tag">"download status"</span>
+                <span class="trigger-tag">"what's downloading"</span>
+            </div>
+            <div class="code-wrapper">
+                <div class="code-block"><code><span class="comment">// Recent downloads</span>
+{}
+
+<span class="comment">// Limit results</span>
+{ <span class="string">"limit"</span>: <span class="number">10</span> }</code></div>
+            </div>
+        </div>
+
+        <div class="tool-card">
+            <h3>tabz_cancel_download</h3>
+            <p class="description">Cancel an in-progress download by its download ID.</p>
+            <div class="triggers">
+                <h4>Trigger phrases:</h4>
+                <span class="trigger-tag">"cancel download"</span>
+                <span class="trigger-tag">"stop downloading"</span>
+            </div>
+            <div class="code-wrapper">
+                <div class="code-block"><code><span class="comment">// Cancel by download ID (from get_downloads)</span>
+{ <span class="string">"downloadId"</span>: <span class="number">123</span> }</code></div>
             </div>
         </div>
 
@@ -480,5 +651,56 @@
     <footer>
         <p>Built with React, TypeScript, xterm.js | <a href="https://github.com/GGPrompts/TabzChrome">GitHub</a></p>
     </footer>
+
+    <script>
+        // WebSocket connection for sending commands to TabzChrome
+        let ws = null;
+
+        function connectWS() {
+            if (ws && ws.readyState === WebSocket.OPEN) return;
+            try {
+                ws = new WebSocket('ws://localhost:8129');
+                ws.onopen = () => console.log('Connected to TabzChrome');
+                ws.onerror = (e) => console.log('WebSocket error:', e);
+            } catch (e) {
+                console.log('Could not connect to TabzChrome');
+            }
+        }
+
+        function queueToTabz(command) {
+            connectWS();
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'QUEUE_COMMAND', command }));
+                return true;
+            }
+            return false;
+        }
+
+        // Handle data-terminal-command clicks
+        document.querySelectorAll('[data-terminal-command]').forEach(el => {
+            el.addEventListener('click', function(e) {
+                e.preventDefault();
+                const cmd = this.getAttribute('data-terminal-command');
+                const success = queueToTabz(cmd);
+
+                if (success) {
+                    const originalBg = this.style.background;
+                    const originalColor = this.style.color;
+                    this.style.background = 'var(--green)';
+                    this.style.color = 'var(--bg-primary)';
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '✓ Sent!';
+                    setTimeout(() => {
+                        this.style.background = originalBg;
+                        this.style.color = originalColor;
+                        this.innerHTML = originalText;
+                    }, 1500);
+                }
+            });
+        });
+
+        // Try to connect on load
+        connectWS();
+    </script>
 </body>
 </html>

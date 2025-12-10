@@ -1,6 +1,6 @@
 # Tabz
 
-**Terminal sessions in your Chrome sidebar - Windows Terminal style**
+**Full Linux terminals in your Chrome sidebar**
 
 ![Version](https://img.shields.io/badge/version-2.7.0-blue)
 ![Chrome](https://img.shields.io/badge/chrome-manifest%20v3-green)
@@ -10,14 +10,30 @@
 
 ## What Is This?
 
-A Chrome extension that puts bash terminals in your browser's sidebar. Browse the web with your terminals always visible - no window juggling, no Alt+Tab.
+**Real bash terminals running in your browser sidebar.** Not a web-based terminal emulator - actual Linux shells connected via WebSocket to your local machine.
 
-**Key features:**
-- **Profiles with Categories** - Organize profiles into color-coded groups (Claude Code, TUI Tools, etc.)
-- **Color-coded tabs** - Terminal tabs show category colors for easy identification
-- **Persistent sessions** - Terminals survive sidebar close/reopen (powered by tmux)
+Run anything you'd run in a normal terminal:
+- **Claude Code, Gemini CLI, OpenAI Codex** - AI coding assistants side-by-side with your browser
+- **TUI applications** - lazygit, htop, btop, vim, neovim, midnight commander
+- **Development servers** - npm, yarn, docker, kubectl, any CLI tool
+- **Full interactivity** - colors, mouse support, copy/paste, scrollback
+
+Browse the web with your terminals always visible - no window juggling, no Alt+Tab. Terminals persist in tmux sessions, so they survive sidebar close/reopen and even browser restarts.
+
+**Why this exists:** If you use AI coding tools (Claude Code, Gemini, Codex), you need terminals visible while browsing docs, PRs, and issues. Tabz keeps them docked to your browser instead of buried behind windows.
+
+**Give your AI full control:** Through MCP tools and REST API, Claude Code can control your browser (screenshots, clicks, form filling, network inspection) and spawn/kill terminal sessions programmatically. Your AI assistant becomes a true automation partner.
+
+> ⚠️ **Security Note:** By default, MCP tools only allow access to safe domains (GitHub, GitLab, Vercel, localhost, AI image generators). "YOLO mode" can be enabled in settings to allow all URLs, but we recommend using a **separate Chrome profile** without personal accounts or saved passwords if you do.
+
+### Key Features
+
+- **Persistent sessions** - Powered by tmux, terminals survive everything
+- **Profiles system** - Save configurations for different tools (Claude Code, lazygit, htop)
+- **Category organization** - Color-coded groups for easy identification
 - **Smart directory inheritance** - Set a global working directory, profiles inherit it
 - **Tabz MCP tools** - Let Claude Code control your browser (screenshots, clicks, form filling)
+- **Keyboard shortcuts** - Quick access to paste text, send to chat, spawn terminals
 
 ---
 
