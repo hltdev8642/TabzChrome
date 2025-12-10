@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import ReactDOM from 'react-dom/client'
-import { Terminal as TerminalIcon, Settings, Plus, X, ChevronDown, ChevronRight, Moon, Sun, History, Keyboard, Volume2, VolumeX } from 'lucide-react'
+import { Terminal as TerminalIcon, Settings, Plus, X, ChevronDown, Moon, Sun, Keyboard, Volume2, VolumeX } from 'lucide-react'
 import { Badge } from '../components/ui/badge'
 import { Terminal } from '../components/Terminal'
 import { SettingsModal, type Profile } from '../components/SettingsModal'
@@ -8,30 +8,19 @@ import { ProfileDropdown } from '../components/ProfileDropdown'
 import { SessionContextMenu } from '../components/SessionContextMenu'
 import { GhostBadgeDropdown } from '../components/GhostBadgeDropdown'
 import { WorkingDirDropdown } from '../components/WorkingDirDropdown'
+import { ChatInputBar } from '../components/ChatInputBar'
 import { connectToBackground, sendMessage } from '../shared/messaging'
-import { getLocal, setLocal } from '../shared/storage'
 import { useClaudeStatus, getStatusEmoji, getStatusText, getFullStatusText, getRobotEmojis } from '../hooks/useClaudeStatus'
 import { useCommandHistory } from '../hooks/useCommandHistory'
 import { useOrphanedSessions } from '../hooks/useOrphanedSessions'
 import { useWorkingDirectory } from '../hooks/useWorkingDirectory'
 import { useProfiles } from '../hooks/useProfiles'
 import { useAudioNotifications } from '../hooks/useAudioNotifications'
+import { useTerminalSessions, type TerminalSession } from '../hooks/useTerminalSessions'
+import { useChatInput } from '../hooks/useChatInput'
 import '../styles/globals.css'
 
-interface TerminalSession {
-  id: string
-  name: string
-  type: string
-  active: boolean
-  sessionName?: string  // Tmux session name (only for tmux-based terminals)
-  workingDir?: string   // Working directory for Claude status polling
-  profile?: Profile     // Profile settings for this terminal
-  assignedVoice?: string  // Auto-assigned voice for audio (when no profile override)
-}
-
 function SidePanelTerminal() {
-  const [sessions, setSessions] = useState<TerminalSession[]>([])
-  const [currentSession, setCurrentSession] = useState<string | null>(null)
   const [wsConnected, setWsConnected] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
@@ -44,27 +33,9 @@ function SidePanelTerminal() {
   const [showDirDropdown, setShowDirDropdown] = useState(false)
   const [customDirInput, setCustomDirInput] = useState('')
   const [isDark, setIsDark] = useState(true)  // Global dark/light mode toggle
-  const [connectionCount, setConnectionCount] = useState(1)  // Track backend connections (for multi-window warning)
-  const [storageLoaded, setStorageLoaded] = useState(false)  // Track if Chrome storage has been loaded (prevents race condition)
 
-  // Chat input state (paste workaround)
-  const [chatInputText, setChatInputText] = useState('')
-  const [chatInputMode, setChatInputMode] = useState<'execute' | 'send'>('execute')
-  const chatInputRef = useRef<HTMLInputElement>(null)
-
-  // Multi-send target state
-  const [targetTabs, setTargetTabs] = useState<Set<string>>(new Set())  // Empty = current tab only
-  const [showTargetDropdown, setShowTargetDropdown] = useState(false)
-
-  // Command history
-  const {
-    history: commandHistory,
-    addToHistory,
-    removeFromHistory,
-    navigateHistory,
-    resetNavigation,
-  } = useCommandHistory()
-  const [showHistoryDropdown, setShowHistoryDropdown] = useState(false)
+  // Command history hook
+  const commandHistoryHook = useCommandHistory()
 
   // Orphaned sessions (Ghost Badge feature)
   const {
@@ -78,15 +49,6 @@ function SidePanelTerminal() {
   const [showGhostDropdown, setShowGhostDropdown] = useState(false)
   const [selectedOrphans, setSelectedOrphans] = useState<Set<string>>(new Set())
 
-  // Claude status tracking - polls for Claude Code status in each terminal
-  const claudeStatuses = useClaudeStatus(
-    sessions.map(s => ({
-      id: s.id,
-      sessionName: s.sessionName,
-      workingDir: s.workingDir,
-    }))
-  )
-
   // Working directory hook - manages global working dir and recent dirs
   const {
     globalWorkingDir,
@@ -97,6 +59,8 @@ function SidePanelTerminal() {
   } = useWorkingDirectory()
 
   // Audio notifications hook - handles audio settings, category settings, and status announcements
+  // Note: We pass empty sessions initially, will be updated after useTerminalSessions
+  const audioNotifications = useAudioNotifications({ sessions: [], claudeStatuses: new Map() })
   const {
     audioSettings,
     audioGlobalMute,
@@ -104,9 +68,7 @@ function SidePanelTerminal() {
     categorySettings,
     setCategorySettings,
     getNextAvailableVoice,
-    getAudioSettingsForProfile,
-    playAudio,
-  } = useAudioNotifications({ sessions, claudeStatuses })
+  } = audioNotifications
 
   // Profiles hook - manages terminal profiles with category support
   const {
@@ -121,22 +83,44 @@ function SidePanelTerminal() {
     getSessionCategoryColor,
   } = useProfiles({ categorySettings })
 
-  const portRef = useRef<chrome.runtime.Port | null>(null)
+  // Terminal sessions hook - manages sessions, storage sync, and WebSocket message handling
+  const {
+    sessions,
+    setSessions,
+    currentSession,
+    setCurrentSession,
+    storageLoaded,
+    sessionsRef,
+    currentSessionRef,
+    connectionCount,
+    handleWebSocketMessage,
+  } = useTerminalSessions({
+    wsConnected,
+    profiles,
+    getNextAvailableVoice,
+  })
 
-  // Refs for keyboard shortcut handlers (to access current state from callbacks)
-  const sessionsRef = useRef<TerminalSession[]>([])
-  const currentSessionRef = useRef<string | null>(null)
+  // Claude status tracking - polls for Claude Code status in each terminal
+  const claudeStatuses = useClaudeStatus(
+    sessions.map(s => ({
+      id: s.id,
+      sessionName: s.sessionName,
+      workingDir: s.workingDir,
+    }))
+  )
+
+  // Chat input hook - manages chat bar state and handlers
+  const chatInput = useChatInput({
+    sessions,
+    currentSession,
+    claudeStatuses,
+    commandHistory: commandHistoryHook,
+  })
+
+  const portRef = useRef<chrome.runtime.Port | null>(null)
   const globalWorkingDirRef = useRef<string>('~')
 
-  // Keep refs in sync with state
-  useEffect(() => {
-    sessionsRef.current = sessions
-  }, [sessions])
-
-  useEffect(() => {
-    currentSessionRef.current = currentSession
-  }, [currentSession])
-
+  // Keep globalWorkingDir ref in sync with state (for keyboard handlers)
   useEffect(() => {
     globalWorkingDirRef.current = globalWorkingDir
   }, [globalWorkingDir])
@@ -183,9 +167,9 @@ function SidePanelTerminal() {
       } else if (message.type === 'OMNIBOX_RUN_COMMAND') {
         handleOmniboxRunCommand(message.command)
       } else if (message.type === 'QUEUE_COMMAND') {
-        setChatInputText(message.command)
-        setChatInputMode('execute')
-        setTimeout(() => chatInputRef.current?.focus(), 100)
+        chatInput.setChatInputText(message.command)
+        chatInput.setChatInputMode('execute')
+        setTimeout(() => chatInput.chatInputRef.current?.focus(), 100)
       }
     })
 
@@ -239,32 +223,6 @@ function SidePanelTerminal() {
     }
   }, [showDirDropdown])
 
-  // Close target dropdown when clicking outside
-  useEffect(() => {
-    if (!showTargetDropdown) return
-    const handleClick = () => setShowTargetDropdown(false)
-    const timer = setTimeout(() => {
-      document.addEventListener('click', handleClick)
-    }, 100)
-    return () => {
-      clearTimeout(timer)
-      document.removeEventListener('click', handleClick)
-    }
-  }, [showTargetDropdown])
-
-  // Close history dropdown when clicking outside
-  useEffect(() => {
-    if (!showHistoryDropdown) return
-    const handleClick = () => setShowHistoryDropdown(false)
-    const timer = setTimeout(() => {
-      document.addEventListener('click', handleClick)
-    }, 100)
-    return () => {
-      clearTimeout(timer)
-      document.removeEventListener('click', handleClick)
-    }
-  }, [showHistoryDropdown])
-
   // Close ghost dropdown when clicking outside
   useEffect(() => {
     if (!showGhostDropdown) return
@@ -280,36 +238,6 @@ function SidePanelTerminal() {
       document.removeEventListener('click', handleClick)
     }
   }, [showGhostDropdown])
-
-  // Load saved terminal sessions from Chrome storage on mount
-  // CRITICAL: Must complete before LIST_TERMINALS request to avoid race condition
-  useEffect(() => {
-    chrome.storage.local.get(['terminalSessions'], (result) => {
-      if (result.terminalSessions && Array.isArray(result.terminalSessions)) {
-        setSessions(result.terminalSessions)
-        if (result.terminalSessions.length > 0) {
-          setCurrentSession(result.terminalSessions[0].id)
-        }
-      }
-      setStorageLoaded(true)
-    })
-  }, [])
-
-  // Save terminal sessions to Chrome storage whenever they change
-  useEffect(() => {
-    if (sessions.length > 0) {
-      chrome.storage.local.set({ terminalSessions: sessions })
-    } else {
-      chrome.storage.local.remove('terminalSessions')
-    }
-  }, [sessions])
-
-  // Request terminal list when WebSocket connects AND storage is loaded
-  useEffect(() => {
-    if (wsConnected && storageLoaded) {
-      sendMessage({ type: 'LIST_TERMINALS' })
-    }
-  }, [wsConnected, storageLoaded])
 
   // Close profile dropdown when clicking outside
   useEffect(() => {
@@ -347,183 +275,6 @@ function SidePanelTerminal() {
       document.removeEventListener('click', handleClick)
     }
   }, [showEmptyStateDropdown])
-
-  const handleWebSocketMessage = (data: any) => {
-    switch (data.type) {
-      case 'terminals':
-        // Terminal list received from backend - reconcile with stored sessions
-        // Filter to only ctt- prefixed terminals (Chrome extension terminals)
-        const backendTerminals = (data.data || []).filter((t: any) => t.id && t.id.startsWith('ctt-'))
-        const recoveryComplete = data.recoveryComplete === true
-
-        // Track connection count for multi-window warning
-        if (data.connectionCount !== undefined) {
-          setConnectionCount(data.connectionCount)
-        }
-
-        // Send RECONNECT for each backend terminal to register this connection as owner
-        // This is critical after backend restart - without it, terminals freeze because
-        // the backend doesn't know to route output to this connection
-        backendTerminals.forEach((t: any) => {
-          sendMessage({
-            type: 'RECONNECT',
-            terminalId: t.id,
-          })
-        })
-
-        // Get current sessions from state (which may have been restored from Chrome storage)
-        setSessions(currentSessions => {
-          // Filter current sessions to only ctt- prefixed (clean up any old non-prefixed sessions)
-          const filteredSessions = currentSessions.filter(s => s.id && s.id.startsWith('ctt-'))
-          // Create a map of existing sessions by ID
-          const sessionMap = new Map(filteredSessions.map(s => [s.id, s]))
-
-          // Update or add backend terminals
-          backendTerminals.forEach((t: any) => {
-            const existingSession = sessionMap.get(t.id)
-            if (existingSession) {
-              // Update existing session with backend data, preserving the name from Chrome storage
-              // CRITICAL: Use ?? to preserve existing sessionName if backend returns undefined
-              // This prevents chat send from falling back to unreliable TERMINAL_INPUT path
-              sessionMap.set(t.id, {
-                ...existingSession,
-                sessionName: t.sessionName ?? existingSession.sessionName,
-                workingDir: t.workingDir ?? existingSession.workingDir,
-                active: false,
-              })
-            } else {
-              // Add new terminal from backend
-              sessionMap.set(t.id, {
-                id: t.id,
-                name: t.name || t.id,
-                type: t.terminalType || 'bash',
-                active: false,
-                sessionName: t.sessionName,
-                profile: t.profile,
-              })
-            }
-          })
-
-          // Only remove sessions that no longer exist in backend AFTER recovery is complete
-          // This prevents clearing Chrome storage before the backend has recovered tmux sessions
-          if (recoveryComplete) {
-            const backendIds = new Set(backendTerminals.map((t: any) => t.id))
-            for (const [id, _] of sessionMap) {
-              if (!backendIds.has(id)) {
-                sessionMap.delete(id)
-              }
-            }
-          }
-
-          const updatedSessions = Array.from(sessionMap.values())
-
-          // 🔧 FIX: Only reset current session if it was removed from backend
-          // Don't reset just because currentSession state hasn't synced yet
-          setCurrentSession(prevCurrent => {
-            // If no sessions, clear current
-            if (updatedSessions.length === 0) {
-              return null
-            }
-
-            // If current session still exists in updated list, keep it
-            if (prevCurrent && updatedSessions.find(s => s.id === prevCurrent)) {
-              return prevCurrent
-            }
-
-            // Fall back to first session (current was removed)
-            return updatedSessions[0].id
-          })
-
-          return updatedSessions
-        })
-        break
-      case 'session-list':
-        setSessions(data.sessions || [])
-        break
-      case 'terminal-spawned':
-        // Backend sends: { type: 'terminal-spawned', data: terminalObject, requestId }
-        // terminalObject has: { id, name, terminalType, profile, ... }
-        const terminal = data.data || data
-
-        // Ignore non-ctt terminals (from other projects sharing this backend)
-        if (!terminal.id || !terminal.id.startsWith('ctt-')) {
-          break
-        }
-
-        // For recovered sessions (no profile), try to find matching profile from session ID
-        // Session ID format: ctt-ProfileName-shortId (e.g., ctt-bash-a1b2c3d4)
-        let effectiveTerminalProfile = terminal.profile
-        if (!effectiveTerminalProfile) {
-          const parts = terminal.id.split('-')
-          if (parts.length >= 2) {
-            const profileNameFromId = parts[1].toLowerCase()
-            // Look up profile by name (case-insensitive match)
-            chrome.storage.local.get(['profiles'], (result) => {
-              const storedProfiles = (result.profiles as Profile[]) || []
-              const matchedProfile = storedProfiles.find(p =>
-                p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').startsWith(profileNameFromId)
-              )
-              if (matchedProfile) {
-                // Update the session with the matched profile
-                setSessions(prev => prev.map(s =>
-                  s.id === terminal.id ? { ...s, profile: matchedProfile } : s
-                ))
-              }
-            })
-          }
-        }
-
-        setSessions(prev => {
-          // Check if terminal already exists (from restore)
-          if (prev.find(s => s.id === terminal.id)) {
-            return prev
-          }
-
-          // Auto-assign a voice from the pool (uses getNextAvailableVoice from hook)
-          const assignedVoice = getNextAvailableVoice()
-
-          return [...prev, {
-            id: terminal.id,
-            name: terminal.name || terminal.id,
-            type: terminal.terminalType || 'bash',
-            active: false,
-            sessionName: terminal.sessionName,  // Store tmux session name
-            workingDir: terminal.workingDir,    // Store working directory for Claude status
-            profile: effectiveTerminalProfile,  // Store profile settings (may be updated async)
-            assignedVoice,  // Auto-assigned voice for audio notifications
-          }]
-        })
-        setCurrentSession(terminal.id)
-
-        // For API-spawned terminals, send reconnect to register this connection as owner
-        // This enables chat input to send commands to the terminal
-        sendMessage({
-          type: 'RECONNECT',
-          terminalId: terminal.id,
-        })
-        break
-      case 'terminal-closed':
-        // Backend sends: { type: 'terminal-closed', data: { id: terminalId } }
-        const closedTerminalId = data.data?.id || data.terminalId || data.id
-        // Terminal closed
-        setSessions(prev => {
-          const closedIndex = prev.findIndex(s => s.id === closedTerminalId)
-          const updated = prev.filter(s => s.id !== closedTerminalId)
-
-          // If closed terminal was active, switch to adjacent terminal
-          setCurrentSession(prevCurrent => {
-            if (prevCurrent !== closedTerminalId) return prevCurrent
-            if (updated.length === 0) return null
-            // Prefer the terminal that was after the closed one, else the one before
-            const newIndex = Math.min(closedIndex, updated.length - 1)
-            return updated[newIndex]?.id || null
-          })
-
-          return updated
-        })
-        break
-    }
-  }
 
   const handleSpawnTerminal = () => {
     sendMessage({
@@ -658,148 +409,6 @@ function SidePanelTerminal() {
   const handleTabDragEnd = () => {
     setDraggedTabId(null)
     setDragOverTabId(null)
-  }
-
-  // Chat input handlers - alternative to direct terminal paste
-  const handleChatInputSend = () => {
-    if (!chatInputText.trim()) return
-
-    // Add to command history
-    addToHistory(chatInputText.trim())
-
-    // Determine target terminals: selected tabs or current tab
-    const targets = targetTabs.size > 0
-      ? Array.from(targetTabs)
-      : currentSession ? [currentSession] : []
-
-    if (targets.length === 0) return
-
-    // Send to each target with slight stagger for multi-send
-    targets.forEach((terminalId, index) => {
-      const delay = index * 50 // 50ms stagger between sends
-
-      setTimeout(() => {
-        // Check if this terminal has Claude status with a pane ID
-        // If so, use targeted pane send to avoid corrupting TUI tools in split layouts
-        const claudeStatus = claudeStatuses.get(terminalId)
-        const tmuxPane = claudeStatus?.tmuxPane
-
-        // Get session info for tmux fallback
-        const session = sessions.find(s => s.id === terminalId)
-        const tmuxSessionName = session?.sessionName
-
-        if (tmuxPane) {
-          // Use targeted pane send - goes directly to Claude's pane
-          // This prevents sending to TUI tools (like TFE) in other panes
-          sendMessage({
-            type: 'TARGETED_PANE_SEND',
-            tmuxPane,
-            text: chatInputText,
-            sendEnter: chatInputMode === 'execute',
-          })
-        } else if (tmuxSessionName) {
-          // Fallback: Use tmux session name when pane ID isn't available
-          // This is safer than PTY for Claude terminals - sends to first pane of session
-          // Avoids the bug where content gets executed by bash instead of going to Claude
-          sendMessage({
-            type: 'TMUX_SESSION_SEND',
-            sessionName: tmuxSessionName,
-            text: chatInputText,
-            sendEnter: chatInputMode === 'execute',
-          })
-        } else {
-          // Last resort: PTY send (only for non-tmux terminals)
-          // This path is less reliable for "execute" mode - two separate messages instead of atomic tmux send
-          console.warn(`[ChatSend] Using PTY fallback for terminal ${terminalId} - sessionName missing. Session:`, session)
-          sendMessage({
-            type: 'TERMINAL_INPUT',
-            terminalId,
-            data: chatInputText,
-          })
-
-          // If execute mode, send Enter after 300ms delay
-          // CRITICAL: Delay prevents submit before text loads (especially for Claude Code)
-          if (chatInputMode === 'execute') {
-            setTimeout(() => {
-              sendMessage({
-                type: 'TERMINAL_INPUT',
-                terminalId,
-                data: '\r',
-              })
-            }, 300)
-          }
-        }
-      }, delay)
-    })
-
-    // Clear input after sending
-    setChatInputText('')
-
-    // Keep focus on input for next message
-    chatInputRef.current?.focus()
-  }
-
-  // Toggle a tab in the target selection
-  const toggleTargetTab = (tabId: string) => {
-    setTargetTabs(prev => {
-      const next = new Set(prev)
-      if (next.has(tabId)) {
-        next.delete(tabId)
-      } else {
-        next.add(tabId)
-      }
-      return next
-    })
-  }
-
-  // Select/deselect all tabs
-  const selectAllTargetTabs = () => {
-    if (targetTabs.size === sessions.length) {
-      setTargetTabs(new Set())
-    } else {
-      setTargetTabs(new Set(sessions.map(s => s.id)))
-    }
-  }
-
-  // Get display label for target dropdown
-  const getTargetLabel = () => {
-    if (targetTabs.size === 0) return 'Current'
-    if (targetTabs.size === 1) {
-      const id = Array.from(targetTabs)[0]
-      const session = sessions.find(s => s.id === id)
-      return session?.name || 'Tab'
-    }
-    return `${targetTabs.size} tabs`
-  }
-
-  const handleChatInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      handleChatInputSend()
-    } else if (e.key === 'Escape') {
-      e.preventDefault()
-      setChatInputText('')
-      resetNavigation()
-      chatInputRef.current?.blur()
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      const historyCommand = navigateHistory('up', chatInputText)
-      if (historyCommand !== null) {
-        setChatInputText(historyCommand)
-      }
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      const historyCommand = navigateHistory('down', chatInputText)
-      if (historyCommand !== null) {
-        setChatInputText(historyCommand)
-      }
-    }
-  }
-
-  // Reset history navigation when user types manually
-  const handleChatInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setChatInputText(e.target.value)
-    resetNavigation()
   }
 
   // Keyboard shortcut handlers (use refs to access current state from callbacks)
@@ -1432,184 +1041,18 @@ function SidePanelTerminal() {
 
           {/* Chat Input Bar - Multi-send with target selection */}
           {sessions.length > 0 && (
-            <div className="border-t border-gray-700 bg-[#1a1a1a] flex items-center gap-2 px-2 py-1.5">
-              {/* History dropdown button */}
-              <div className="relative">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setShowHistoryDropdown(!showHistoryDropdown)
-                  }}
-                  className={`h-7 w-7 flex items-center justify-center bg-black border rounded transition-colors ${
-                    commandHistory.length > 0
-                      ? 'border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300'
-                      : 'border-gray-700 text-gray-600 cursor-not-allowed'
-                  }`}
-                  title={commandHistory.length > 0 ? `Command history (${commandHistory.length})` : 'No command history'}
-                  disabled={commandHistory.length === 0}
-                >
-                  <History className="h-3.5 w-3.5" />
-                </button>
-
-                {showHistoryDropdown && commandHistory.length > 0 && (
-                  <div className="absolute bottom-full left-0 mb-1 bg-[#1a1a1a] border border-gray-700 rounded-md shadow-2xl min-w-[280px] max-w-[400px] z-50 overflow-hidden">
-                    <div className="px-3 py-1.5 border-b border-gray-800 text-xs text-gray-500 flex items-center justify-between">
-                      <span>Command History</span>
-                      <span className="text-gray-600">↑↓ to navigate</span>
-                    </div>
-                    <div className="max-h-[250px] overflow-y-auto">
-                      {commandHistory.map((cmd, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between px-3 py-2 hover:bg-[#00ff88]/10 transition-colors text-xs font-mono border-b border-gray-800 last:border-b-0 group"
-                        >
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setChatInputText(cmd)
-                              setShowHistoryDropdown(false)
-                              chatInputRef.current?.focus()
-                            }}
-                            className="flex-1 text-left text-gray-300 hover:text-white truncate pr-2"
-                            title={cmd}
-                          >
-                            {cmd}
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              removeFromHistory(cmd)
-                            }}
-                            className="ml-2 p-0.5 rounded hover:bg-red-500/20 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                            title="Remove from history"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <input
-                ref={chatInputRef}
-                type="text"
-                className="flex-1 h-7 px-3 bg-black border border-gray-600 rounded text-sm text-white font-mono focus:border-[#00ff88]/50 focus:outline-none placeholder-gray-500"
-                value={chatInputText}
-                onChange={handleChatInputChange}
-                onKeyDown={handleChatInputKeyDown}
-                placeholder={chatInputMode === 'execute' ? "↑↓ history • Enter to execute" : "↑↓ history • Enter to send"}
-              />
-              {/* Target tabs dropdown */}
-              <div className="relative">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setShowTargetDropdown(!showTargetDropdown)
-                  }}
-                  className={`h-7 px-2 flex items-center gap-1 bg-black border rounded text-xs cursor-pointer transition-colors ${
-                    targetTabs.size > 0
-                      ? 'border-[#00ff88]/50 text-[#00ff88]'
-                      : 'border-gray-600 text-gray-300 hover:border-gray-500'
-                  }`}
-                  title="Target terminals"
-                >
-                  <span className="max-w-[60px] truncate">{getTargetLabel()}</span>
-                  <ChevronDown className="h-3 w-3 flex-shrink-0" />
-                </button>
-
-                {showTargetDropdown && (
-                  <div className="absolute bottom-full left-0 mb-1 bg-[#1a1a1a] border border-gray-700 rounded-md shadow-2xl min-w-[160px] z-50 overflow-hidden">
-                    {/* Current tab option */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setTargetTabs(new Set())
-                        setShowTargetDropdown(false)
-                      }}
-                      className={`w-full px-3 py-2 text-left text-xs border-b border-gray-800 transition-colors flex items-center gap-2 ${
-                        targetTabs.size === 0
-                          ? 'text-[#00ff88] bg-[#00ff88]/10'
-                          : 'text-gray-300 hover:bg-white/5'
-                      }`}
-                    >
-                      <span className="w-4">{targetTabs.size === 0 ? '●' : '○'}</span>
-                      <span>Current Tab</span>
-                    </button>
-
-                    {/* Divider */}
-                    <div className="border-b border-gray-700 my-1" />
-
-                    {/* Individual tabs with checkboxes */}
-                    <div className="max-h-[200px] overflow-y-auto">
-                      {sessions.map((session) => {
-                        const claudeStatus = claudeStatuses.get(session.id)
-                        return (
-                          <button
-                            key={session.id}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              toggleTargetTab(session.id)
-                            }}
-                            className={`w-full px-3 py-1.5 text-left text-xs transition-colors flex items-center gap-2 ${
-                              targetTabs.has(session.id)
-                                ? 'text-[#00ff88] bg-[#00ff88]/5'
-                                : 'text-gray-300 hover:bg-white/5'
-                            }`}
-                          >
-                            <span className="w-4 flex-shrink-0">
-                              {targetTabs.has(session.id) ? '☑' : '☐'}
-                            </span>
-                            <span
-                              className="flex items-center gap-1 truncate"
-                              title={claudeStatus ? `${session.name}\n${getFullStatusText(claudeStatus)}` : session.name}
-                            >
-                              {claudeStatus && <span className="flex-shrink-0">🤖</span>}
-                              <span className="truncate">
-                                {claudeStatus ? getStatusText(claudeStatus, session.profile?.name) : session.name}
-                              </span>
-                            </span>
-                          </button>
-                        )
-                      })}
-                    </div>
-
-                    {/* Select All / None */}
-                    {sessions.length > 1 && (
-                      <>
-                        <div className="border-t border-gray-700 mt-1" />
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            selectAllTargetTabs()
-                          }}
-                          className="w-full px-3 py-2 text-left text-xs text-gray-400 hover:bg-white/5 transition-colors"
-                        >
-                          {targetTabs.size === sessions.length ? 'Deselect All' : 'Select All'}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-              <select
-                value={chatInputMode}
-                onChange={(e) => setChatInputMode(e.target.value as 'execute' | 'send')}
-                className="h-7 px-2 bg-black border border-gray-600 rounded text-xs text-gray-300 focus:border-[#00ff88]/50 focus:outline-none cursor-pointer"
-                title="Send mode"
-              >
-                <option value="execute">Execute</option>
-                <option value="send">Send</option>
-              </select>
-              <button
-                onClick={handleChatInputSend}
-                disabled={!chatInputText.trim()}
-                className="h-7 px-3 bg-[#00ff88]/20 border border-[#00ff88]/30 rounded text-xs text-[#00ff88] font-medium hover:bg-[#00ff88]/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Send
-              </button>
-            </div>
+            <ChatInputBar
+              chatInput={chatInput}
+              commandHistory={{
+                history: commandHistoryHook.history,
+                removeFromHistory: commandHistoryHook.removeFromHistory,
+              }}
+              sessions={sessions}
+              claudeStatuses={claudeStatuses}
+              getStatusEmoji={getStatusEmoji}
+              getStatusText={getStatusText}
+              getFullStatusText={getFullStatusText}
+            />
           )}
         </div>
       </div>
