@@ -353,27 +353,27 @@ The folder icon in the header opens the working directory dropdown.
 
 Located at `extension/manifest.json`:
 
-```json
-{
-  "name": "Terminal Tabs - Browser Edition",
-  "version": "1.0.0",
-  "permissions": [
-    "storage",          // Settings persistence
-    "contextMenus",     // Right-click menu
-    "tabs",             // Tab information
-    "sidePanel",        // Sidebar access
-    "clipboardRead",    // Paste in terminal
-    "clipboardWrite"    // Copy from terminal
-  ],
-  "commands": {
-    "toggle-sidebar": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+9"
-      }
-    }
-  }
-}
-```
+**Active Permissions:**
+- `storage` - Settings persistence (profiles, sessions, recent dirs)
+- `contextMenus` - Right-click menu (Paste to Terminal, Send to Chat)
+- `tabs` - Tab information for MCP tools
+- `sidePanel` - Sidebar access
+- `clipboardRead` / `clipboardWrite` - Terminal copy/paste
+- `notifications` - Terminal alerts
+- `scripting` - Content script injection
+- `activeTab` - Current tab access
+- `alarms` - WebSocket reconnection scheduling
+- `debugger` - CDP for screenshots and browser automation
+- `downloads` - Download MCP tools
+- `webRequest` - Network capture MCP tools
+
+**Reserved for Phase 2C (not yet implemented):**
+- `cookies` - Future cookie inspection/management MCP tools
+- `history` - Future browser history MCP tools
+- `bookmarks` - Future bookmark management MCP tools
+
+**Keyboard Shortcuts:**
+- `Ctrl+Shift+9` - Toggle sidebar (configurable in chrome://extensions/shortcuts)
 
 ---
 

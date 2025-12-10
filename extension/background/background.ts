@@ -14,8 +14,9 @@ const ALARM_SESSION_HEALTH = 'session-health'
 // Track connected clients (popup, sidepanel, devtools)
 const connectedClients = new Set<chrome.runtime.Port>()
 
-// Pending command to queue (for race condition when sidebar opens fresh)
-let pendingQueueCommand: string | null = null
+// Pending commands (for race condition when sidebar opens fresh)
+let pendingQueueCommand: string | null = null  // Goes to chat bar
+let pendingPasteCommand: string | null = null  // Goes directly to terminal
 
 // ============================================
 // BROWSER MCP - Console Log Storage
@@ -1160,6 +1161,25 @@ chrome.runtime.onMessage.addListener(async (message: ExtensionMessage, sender, s
       }
       return true // Keep channel open for async response
 
+    // ============================================
+    // Content Script - Command Queue
+    // ============================================
+    case 'QUEUE_COMMAND':
+      // Content script wants to queue a command to chat input
+      if (message.command) {
+        console.log('📋 Queue command from content script:', message.command.substring(0, 50) + '...')
+        if (connectedClients.size > 0) {
+          broadcastToClients({
+            type: 'QUEUE_COMMAND',
+            command: message.command,
+          })
+        } else {
+          // Store for when sidebar connects
+          pendingQueueCommand = message.command
+        }
+      }
+      break
+
     default:
       // Forward other messages to WebSocket
       sendToWebSocket(message)
@@ -1226,7 +1246,16 @@ chrome.runtime.onConnect.addListener((port) => {
     wsConnected: currentState,
   })
 
-  // ✅ Send any pending queue command (from context menu before sidebar was ready)
+  // ✅ Send any pending commands (from context menu before sidebar was ready)
+  if (pendingPasteCommand) {
+    setTimeout(() => {
+      port.postMessage({
+        type: 'PASTE_COMMAND',
+        command: pendingPasteCommand,
+      })
+      pendingPasteCommand = null
+    }, 200)  // Small delay to let React initialize
+  }
   if (pendingQueueCommand) {
     setTimeout(() => {
       port.postMessage({
@@ -1357,20 +1386,24 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     const selectedText = info.selectionText
     console.log('📋 Pasting to terminal:', selectedText.substring(0, 50) + '...')
 
-    try {
-      const windowId = await getValidWindowId()
-      if (windowId) {
-        await chrome.sidePanel.open({ windowId })
-
-        setTimeout(() => {
-          broadcastToClients({
-            type: 'PASTE_COMMAND',
-            command: selectedText,
-          })
-        }, 300)
+    // If sidebar is already open (has connected clients), broadcast immediately
+    if (connectedClients.size > 0) {
+      broadcastToClients({
+        type: 'PASTE_COMMAND',
+        command: selectedText,
+      })
+    } else {
+      // Store for when sidebar connects, then try to open it
+      pendingPasteCommand = selectedText
+      try {
+        const windowId = await getValidWindowId()
+        if (windowId) {
+          await chrome.sidePanel.open({ windowId })
+        }
+      } catch (err) {
+        // Sidebar may already be open but not connected yet, or gesture context lost
+        console.debug('[Background] Could not open sidebar:', err)
       }
-    } catch (err) {
-      console.error('[Background] Failed to paste to terminal:', err)
     }
   }
 
@@ -1379,28 +1412,24 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     const selectedText = info.selectionText
     console.log('📋 Sending to chat:', selectedText.substring(0, 50) + '...')
 
-    try {
-      const windowId = await getValidWindowId()
-      if (windowId) {
-        // Store pending command (will be sent when client connects if no clients yet)
-        pendingQueueCommand = selectedText
-
-        await chrome.sidePanel.open({ windowId })
-
-        // Try to send immediately if clients already connected
-        if (connectedClients.size > 0) {
-          setTimeout(() => {
-            broadcastToClients({
-              type: 'QUEUE_COMMAND',
-              command: selectedText,
-            })
-            pendingQueueCommand = null
-          }, 300)
+    // If sidebar is already open (has connected clients), broadcast immediately
+    if (connectedClients.size > 0) {
+      broadcastToClients({
+        type: 'QUEUE_COMMAND',
+        command: selectedText,
+      })
+    } else {
+      // Store for when sidebar connects, then try to open it
+      pendingQueueCommand = selectedText
+      try {
+        const windowId = await getValidWindowId()
+        if (windowId) {
+          await chrome.sidePanel.open({ windowId })
         }
-        // If no clients connected, pendingQueueCommand will be sent when they connect
+      } catch (err) {
+        // Sidebar may already be open but not connected yet, or gesture context lost
+        console.debug('[Background] Could not open sidebar:', err)
       }
-    } catch (err) {
-      console.error('[Background] Failed to send to chat:', err)
     }
   }
 })

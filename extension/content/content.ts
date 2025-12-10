@@ -264,9 +264,13 @@ function detectCustomCommands() {
 // Detect runnable commands in code blocks
 function detectPackageCommands() {
   // Look for code blocks with runnable commands
-  const codeBlocks = document.querySelectorAll('pre code, code')
+  // Include plain <pre> for sites like npm that don't wrap in <code>
+  const codeBlocks = document.querySelectorAll('pre code, pre, code')
 
   codeBlocks.forEach(block => {
+    // Skip <pre> elements that contain <code> (handled by 'pre code' selector)
+    if (block.tagName === 'PRE' && block.querySelector('code')) return
+
     const text = block.textContent || ''
 
     // Check for runnable commands - package managers, installers, CLI tools
@@ -309,11 +313,11 @@ function detectPackageCommands() {
 
     for (const pattern of commandPatterns) {
       if (pattern.test(text)) {
-        // Add a "Run in Terminal" button next to the code block
+        // Add a "Send to Tabz" button next to the code block
         if (!block.parentElement?.querySelector('.terminal-tabs-run-btn')) {
           const btn = document.createElement('button')
           btn.className = 'terminal-tabs-run-btn'
-          btn.textContent = '▶ Run in Terminal'
+          btn.textContent = '▶ Send to Tabz'
           btn.style.cssText = `
             position: absolute;
             top: 4px;
