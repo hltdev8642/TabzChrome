@@ -65,6 +65,7 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
   const prevSubagentCountsRef = useRef<Map<string, number>>(new Map())
   const lastAudioTimeRef = useRef<number>(0)
   const lastToolAudioTimeRef = useRef<number>(0)
+  const lastReadyAnnouncementRef = useRef<Map<string, number>>(new Map()) // Prevent duplicate ready announcements
 
   // Track if component is mounted to avoid state updates after unmount
   const isMountedRef = useRef(true)
@@ -238,12 +239,20 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
       }
 
       // EVENT: Ready notification (processing/tool_use → awaiting_input)
+      // Use a 60-second cooldown per terminal to prevent duplicate announcements
+      // (WebSocket reconnections can trigger false transitions 30+ seconds later)
+      const lastReadyTime = lastReadyAnnouncementRef.current.get(terminalId) || 0
+      const now = Date.now()
+      const readyCooldown = 60000 // 60 seconds
+
       const shouldPlayReady = audioSettings.events.ready &&
           (prevStatus === 'processing' || prevStatus === 'tool_use') &&
           currentStatus === 'awaiting_input' &&
-          currentSubagentCount === 0
+          currentSubagentCount === 0 &&
+          (now - lastReadyTime > readyCooldown)
 
       if (shouldPlayReady) {
+        lastReadyAnnouncementRef.current.set(terminalId, now)
         playAudio(`${getDisplayName()} ready`, session)
       }
 
@@ -256,8 +265,9 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
       const isNewTool = currentToolName !== '' && currentToolName !== prevToolName
 
       // Skip internal Claude session files (session memory updates)
+      // Only applies to file operations (Read/Edit/Write), not Bash/Grep/etc.
       const filePath = status.details?.args?.file_path || ''
-      const isInternalFile = filePath.includes('/.claude/') || filePath.includes('/session-memory/')
+      const isInternalFile = filePath && (filePath.includes('/.claude/') || filePath.includes('/session-memory/'))
 
       if (audioSettings.events.tools && isActiveStatus && isNewTool && !isInternalFile) {
         let announcement = ''
