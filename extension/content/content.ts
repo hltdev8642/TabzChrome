@@ -320,7 +320,7 @@ function detectPackageCommands() {
           btn.textContent = '▶ Send to Tabz'
           btn.style.cssText = `
             position: absolute;
-            top: 4px;
+            bottom: 4px;
             right: 4px;
             padding: 4px 8px;
             font-size: 12px;
