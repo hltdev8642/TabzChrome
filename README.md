@@ -232,7 +232,7 @@ Clicking the element queues the command to the sidebar chat input.
 
 ## Tabz MCP Integration
 
-Tabz includes an **MCP server** with 17 tools that let Claude Code control your browser:
+Tabz includes an **MCP server** with 20 tools that let Claude Code control your browser:
 
 | Tool | Description |
 |------|-------------|
@@ -253,6 +253,9 @@ Tabz includes an **MCP server** with 17 tools that let Claude Code control your 
 | `tabz_get_network_requests` | List captured XHR/fetch requests |
 | `tabz_get_api_response` | Get full response body for a request |
 | `tabz_clear_network_requests` | Clear captured requests |
+| `tabz_download_file` | Download any URL to disk |
+| `tabz_get_downloads` | List recent downloads with status |
+| `tabz_cancel_download` | Cancel in-progress download |
 
 ### Configure in Settings
 

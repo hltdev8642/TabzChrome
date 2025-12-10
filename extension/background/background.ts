@@ -14,6 +14,9 @@ const ALARM_SESSION_HEALTH = 'session-health'
 // Track connected clients (popup, sidepanel, devtools)
 const connectedClients = new Set<chrome.runtime.Port>()
 
+// Pending command to queue (for race condition when sidebar opens fresh)
+let pendingQueueCommand: string | null = null
+
 // ============================================
 // BROWSER MCP - Console Log Storage
 // ============================================
@@ -228,6 +231,206 @@ async function handleBrowserGetPageInfo(message: { requestId: string; tabId?: nu
   }
 }
 
+// ============================================
+// BROWSER MCP - Download Handlers
+// ============================================
+
+/**
+ * Convert Windows path to WSL path
+ * e.g., "C:\Users\matt\Downloads\file.png" -> "/mnt/c/Users/matt/Downloads/file.png"
+ */
+function windowsToWslPath(windowsPath: string): string {
+  // Check if it's a Windows-style path (C:\, D:\, etc.)
+  const match = windowsPath.match(/^([A-Za-z]):\\(.*)$/)
+  if (match) {
+    const driveLetter = match[1].toLowerCase()
+    const restOfPath = match[2].replace(/\\/g, '/')
+    return `/mnt/${driveLetter}/${restOfPath}`
+  }
+  return windowsPath
+}
+
+// Handle download file request from backend (MCP server)
+async function handleBrowserDownloadFile(message: {
+  requestId: string
+  url: string
+  filename?: string
+  conflictAction?: 'uniquify' | 'overwrite' | 'prompt'
+}) {
+  try {
+    const downloadOptions: chrome.downloads.DownloadOptions = {
+      url: message.url,
+      conflictAction: message.conflictAction || 'uniquify'
+    }
+
+    if (message.filename) {
+      downloadOptions.filename = message.filename
+    }
+
+    // Start the download
+    const downloadId = await new Promise<number>((resolve, reject) => {
+      chrome.downloads.download(downloadOptions, (id) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message))
+        } else if (id === undefined) {
+          reject(new Error('Download failed to start'))
+        } else {
+          resolve(id)
+        }
+      })
+    })
+
+    // Wait for download to complete (with timeout)
+    const result = await new Promise<{
+      success: boolean
+      filename?: string
+      windowsPath?: string
+      wslPath?: string
+      fileSize?: number
+      error?: string
+    }>((resolve) => {
+      const timeout = setTimeout(() => {
+        resolve({
+          success: true,
+          error: 'Download started but completion check timed out. Check chrome://downloads for status.'
+        })
+      }, 30000) // 30 second timeout
+
+      const checkDownload = () => {
+        chrome.downloads.search({ id: downloadId }, (results) => {
+          if (results.length === 0) {
+            clearTimeout(timeout)
+            resolve({ success: false, error: 'Download not found' })
+            return
+          }
+
+          const download = results[0]
+
+          if (download.state === 'complete') {
+            clearTimeout(timeout)
+            const windowsPath = download.filename
+            resolve({
+              success: true,
+              filename: windowsPath.split(/[/\\]/).pop() || download.filename,
+              windowsPath: windowsPath,
+              wslPath: windowsToWslPath(windowsPath),
+              fileSize: download.fileSize
+            })
+          } else if (download.state === 'interrupted') {
+            clearTimeout(timeout)
+            resolve({
+              success: false,
+              error: download.error || 'Download interrupted'
+            })
+          } else {
+            // Still in progress, check again
+            setTimeout(checkDownload, 500)
+          }
+        })
+      }
+
+      // Start checking after a brief delay
+      setTimeout(checkDownload, 100)
+    })
+
+    sendToWebSocket({
+      type: 'browser-download-result',
+      requestId: message.requestId,
+      ...result
+    })
+  } catch (err) {
+    sendToWebSocket({
+      type: 'browser-download-result',
+      requestId: message.requestId,
+      success: false,
+      error: (err as Error).message
+    })
+  }
+}
+
+// Handle get downloads request from backend (MCP server)
+async function handleBrowserGetDownloads(message: {
+  requestId: string
+  limit?: number
+  state?: 'in_progress' | 'complete' | 'interrupted' | 'all'
+}) {
+  try {
+    const query: chrome.downloads.DownloadQuery = {
+      limit: message.limit || 20,
+      orderBy: ['-startTime']
+    }
+
+    if (message.state && message.state !== 'all') {
+      query.state = message.state
+    }
+
+    const downloads = await new Promise<chrome.downloads.DownloadItem[]>((resolve) => {
+      chrome.downloads.search(query, resolve)
+    })
+
+    const formattedDownloads = downloads.map((d) => ({
+      id: d.id,
+      url: d.url,
+      filename: d.filename.split(/[/\\]/).pop() || d.filename,
+      state: d.state,
+      bytesReceived: d.bytesReceived,
+      totalBytes: d.totalBytes,
+      startTime: d.startTime,
+      endTime: d.endTime,
+      error: d.error,
+      mime: d.mime,
+      windowsPath: d.filename,
+      wslPath: windowsToWslPath(d.filename)
+    }))
+
+    sendToWebSocket({
+      type: 'browser-downloads-list',
+      requestId: message.requestId,
+      downloads: formattedDownloads,
+      total: formattedDownloads.length
+    })
+  } catch (err) {
+    sendToWebSocket({
+      type: 'browser-downloads-list',
+      requestId: message.requestId,
+      downloads: [],
+      total: 0,
+      error: (err as Error).message
+    })
+  }
+}
+
+// Handle cancel download request from backend (MCP server)
+async function handleBrowserCancelDownload(message: {
+  requestId: string
+  downloadId: number
+}) {
+  try {
+    await new Promise<void>((resolve, reject) => {
+      chrome.downloads.cancel(message.downloadId, () => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message))
+        } else {
+          resolve()
+        }
+      })
+    })
+
+    sendToWebSocket({
+      type: 'browser-cancel-download-result',
+      requestId: message.requestId,
+      success: true
+    })
+  } catch (err) {
+    sendToWebSocket({
+      type: 'browser-cancel-download-result',
+      requestId: message.requestId,
+      success: false,
+      error: (err as Error).message
+    })
+  }
+}
+
 // Initialize background service worker
 console.log('Terminal Tabs background service worker starting...')
 
@@ -331,6 +534,22 @@ function connectWebSocket() {
         // Get page info (request from MCP server via backend)
         console.log('🔧 Browser MCP: get-page-info request', message.requestId)
         handleBrowserGetPageInfo(message)
+      }
+      // ============================================
+      // BROWSER MCP - Download handlers
+      // ============================================
+      else if (message.type === 'browser-download-file') {
+        // Download file (request from MCP server via backend)
+        console.log('📥 Browser MCP: download-file request', message.requestId, message.url)
+        handleBrowserDownloadFile(message)
+      } else if (message.type === 'browser-get-downloads') {
+        // Get downloads list (request from MCP server via backend)
+        console.log('📥 Browser MCP: get-downloads request', message.requestId)
+        handleBrowserGetDownloads(message)
+      } else if (message.type === 'browser-cancel-download') {
+        // Cancel download (request from MCP server via backend)
+        console.log('📥 Browser MCP: cancel-download request', message.requestId, message.downloadId)
+        handleBrowserCancelDownload(message)
       } else {
         // Broadcast other messages as WS_MESSAGE
         const clientMessage: ExtensionMessage = {
@@ -1007,6 +1226,17 @@ chrome.runtime.onConnect.addListener((port) => {
     wsConnected: currentState,
   })
 
+  // ✅ Send any pending queue command (from context menu before sidebar was ready)
+  if (pendingQueueCommand) {
+    setTimeout(() => {
+      port.postMessage({
+        type: 'QUEUE_COMMAND',
+        command: pendingQueueCommand,
+      })
+      pendingQueueCommand = null
+    }, 200)  // Small delay to let React initialize
+  }
+
   port.onDisconnect.addListener(() => {
     connectedClients.delete(port)
   })
@@ -1042,16 +1272,25 @@ function setupContextMenus() {
       }
     })
 
-    // Context menu for selected text - paste into terminal
+    // Context menu for selected text - paste directly into terminal
     chrome.contextMenus.create({
       id: 'paste-to-terminal',
       title: 'Paste "%s" to Terminal',
-      contexts: ['selection'],  // Only shows when text is selected
+      contexts: ['selection'],
     }, () => {
       if (chrome.runtime.lastError) {
         console.error('Error creating paste-to-terminal menu:', chrome.runtime.lastError)
-      } else {
-        console.log('✅ Paste menu created')
+      }
+    })
+
+    // Context menu for selected text - queue to chat input
+    chrome.contextMenus.create({
+      id: 'send-to-chat',
+      title: 'Send "%s" to Chat',
+      contexts: ['selection'],
+    }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('Error creating send-to-chat menu:', chrome.runtime.lastError)
       }
     })
 
@@ -1114,26 +1353,54 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   }
 
   if (menuId === 'paste-to-terminal' && info.selectionText) {
+    // Paste directly into active terminal
     const selectedText = info.selectionText
-    console.log('📋 Queuing to chat:', selectedText)
+    console.log('📋 Pasting to terminal:', selectedText.substring(0, 50) + '...')
 
     try {
       const windowId = await getValidWindowId()
       if (windowId) {
-        // Open sidebar if not already open
         await chrome.sidePanel.open({ windowId })
 
-        // Wait a bit for sidebar to be ready
         setTimeout(() => {
-          // Queue command to chat input - lets user choose which terminal
           broadcastToClients({
-            type: 'QUEUE_COMMAND',
+            type: 'PASTE_COMMAND',
             command: selectedText,
           })
-        }, 500)  // Increased delay for reliability
+        }, 300)
       }
     } catch (err) {
-      console.error('[Background] Failed to open sidebar for queue:', err)
+      console.error('[Background] Failed to paste to terminal:', err)
+    }
+  }
+
+  if (menuId === 'send-to-chat' && info.selectionText) {
+    // Queue to chat input bar
+    const selectedText = info.selectionText
+    console.log('📋 Sending to chat:', selectedText.substring(0, 50) + '...')
+
+    try {
+      const windowId = await getValidWindowId()
+      if (windowId) {
+        // Store pending command (will be sent when client connects if no clients yet)
+        pendingQueueCommand = selectedText
+
+        await chrome.sidePanel.open({ windowId })
+
+        // Try to send immediately if clients already connected
+        if (connectedClients.size > 0) {
+          setTimeout(() => {
+            broadcastToClients({
+              type: 'QUEUE_COMMAND',
+              command: selectedText,
+            })
+            pendingQueueCommand = null
+          }, 300)
+        }
+        // If no clients connected, pendingQueueCommand will be sent when they connect
+      }
+    } catch (err) {
+      console.error('[Background] Failed to send to chat:', err)
     }
   }
 })

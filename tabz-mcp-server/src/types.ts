@@ -78,3 +78,43 @@ export interface NetworkResponseResult {
   request?: NetworkRequest;
   error?: string;
 }
+
+// Download types
+export type DownloadState = 'in_progress' | 'complete' | 'interrupted';
+export type ConflictAction = 'uniquify' | 'overwrite' | 'prompt';
+
+export interface DownloadItem {
+  id: number;
+  url: string;
+  filename: string;
+  state: DownloadState;
+  bytesReceived: number;
+  totalBytes: number;
+  startTime: string;
+  endTime?: string;
+  error?: string;
+  mime?: string;
+  // Dual paths for WSL compatibility
+  windowsPath?: string;
+  wslPath?: string;
+}
+
+export interface DownloadResult {
+  success: boolean;
+  downloadId?: number;
+  filename?: string;
+  windowsPath?: string;
+  wslPath?: string;
+  fileSize?: number;
+  error?: string;
+}
+
+export interface DownloadListResponse {
+  downloads: DownloadItem[];
+  total: number;
+}
+
+export interface CancelDownloadResult {
+  success: boolean;
+  error?: string;
+}

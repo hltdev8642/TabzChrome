@@ -634,6 +634,41 @@ wss.on('connection', (ws) => {
           }
           break;
 
+        case 'browser-download-result':
+          // Receive download result from Chrome extension
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              filename: data.filename,
+              windowsPath: data.windowsPath,
+              wslPath: data.wslPath,
+              fileSize: data.fileSize,
+              error: data.error
+            });
+          }
+          break;
+
+        case 'browser-downloads-list':
+          // Receive downloads list from Chrome extension
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              downloads: data.downloads,
+              total: data.total,
+              error: data.error
+            });
+          }
+          break;
+
+        case 'browser-cancel-download-result':
+          // Receive cancel download result from Chrome extension
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              error: data.error
+            });
+          }
+          break;
+
         // ============================================
         // QUEUE_COMMAND - Forward to Chrome extension
         // ============================================

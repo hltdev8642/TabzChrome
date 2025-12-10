@@ -128,14 +128,16 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 - [ ] `tabz_set_breakpoint` - Debug JavaScript issues
 - [ ] `tabz_get_coverage` - Code coverage analysis
 
-### 2.3 `chrome.downloads` - File Download Control (TODO)
+### 2.3 `chrome.downloads` - File Download Control ✅ COMPLETE
 
 **Impact**: Download any file type, not just images. Essential for AI tool workflows.
 
-**Tools to implement:**
-- [ ] `tabz_download_file` - Download any file with optional filename/path
-- [ ] `tabz_get_downloads` - List recent downloads with status
-- [ ] `tabz_monitor_download` - Track download progress
+**Tools implemented:**
+- [x] `tabz_download_file` - Download any URL with optional filename, returns Windows + WSL paths
+- [x] `tabz_get_downloads` - List recent downloads with status/progress
+- [x] `tabz_cancel_download` - Cancel in-progress downloads
+
+**Future enhancements:**
 - [ ] `tabz_save_page` - Save page as HTML/MHTML
 - [ ] `tabz_batch_download` - Download multiple files
 

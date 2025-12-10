@@ -23,6 +23,9 @@ Quick reference for the browser MCP tools available to Claude Code.
 | `tabz_get_network_requests` | "network requests", "API calls", "what requests" | List captured network requests with filtering |
 | `tabz_get_api_response` | "API response", "response body", "request data" | Get full response body for a specific request |
 | `tabz_clear_network_requests` | "clear network", "reset requests" | Clear all captured network requests |
+| `tabz_download_file` | "download file", "download URL", "save file" | Download any URL to disk (returns Windows + WSL paths) |
+| `tabz_get_downloads` | "list downloads", "download status", "recent downloads" | List recent downloads with status and progress |
+| `tabz_cancel_download` | "cancel download", "stop download" | Cancel an in-progress download |
 
 > **Note:** Most tools support a `tabId` parameter to target a specific tab. Get tab IDs from `tabz_list_tabs`.
 
@@ -613,6 +616,75 @@ None
 Confirmation that requests were cleared.
 
 **Note:** Network capture remains active after clearing. New requests will continue to be captured.
+
+---
+
+## tabz_download_file
+
+**Purpose:** Download any URL to disk using Chrome's downloads API.
+
+**Trigger phrases:**
+- "Download this file"
+- "Download URL to disk"
+- "Save file from URL"
+
+**Parameters:**
+- `url` (required): URL of the file to download
+- `filename` (optional): Custom filename (relative to Chrome's Downloads folder)
+- `conflictAction` (optional): Action when file exists - "uniquify" (default), "overwrite", or "prompt"
+- `response_format` (optional): "markdown" (default) or "json"
+
+**Returns:**
+Both Windows and WSL paths for cross-platform compatibility:
+```json
+{
+  "success": true,
+  "windowsPath": "C:\\Users\\matt\\Downloads\\image.png",
+  "wslPath": "/mnt/c/Users/matt/Downloads/image.png",
+  "filename": "image.png",
+  "fileSize": 12345
+}
+```
+
+**Use cases:**
+- Download AI-generated images from DALL-E, Midjourney, Sora
+- Save PDFs and documents
+- Download any file Claude needs to work with
+
+---
+
+## tabz_get_downloads
+
+**Purpose:** List recent downloads with status and progress.
+
+**Trigger phrases:**
+- "List downloads"
+- "Show download status"
+- "What files downloaded?"
+
+**Parameters:**
+- `limit` (optional): Max results (1-100, default: 20)
+- `state` (optional): Filter by state - "in_progress", "complete", "interrupted", or "all" (default)
+- `response_format` (optional): "markdown" (default) or "json"
+
+**Returns:**
+List of downloads with ID, filename, status, size, and paths.
+
+---
+
+## tabz_cancel_download
+
+**Purpose:** Cancel an in-progress download.
+
+**Trigger phrases:**
+- "Cancel download"
+- "Stop downloading"
+
+**Parameters:**
+- `downloadId` (required): Download ID from `tabz_get_downloads`
+
+**Returns:**
+Confirmation of cancellation.
 
 ---
 

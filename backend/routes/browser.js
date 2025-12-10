@@ -220,6 +220,177 @@ router.get('/page-info', async (req, res) => {
   }
 });
 
+// ============================================
+// DOWNLOAD ROUTES
+// ============================================
+
+// POST /api/browser/download-file - Download a file via Chrome downloads API
+router.post('/download-file', async (req, res) => {
+  const { url, filename, conflictAction } = req.body;
+
+  if (!url) {
+    return res.status(400).json({ success: false, error: 'url is required' });
+  }
+
+  log.debug('POST /download-file', { url, filename, conflictAction });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available - backend not fully initialized'
+    });
+  }
+
+  try {
+    const requestId = `browser-${++requestIdCounter}`;
+
+    // Create promise that will be resolved by WebSocket response
+    const resultPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.delete(requestId);
+        reject(new Error('Download timed out - may still be in progress'));
+      }, 60000); // 60 second timeout for downloads
+
+      pendingRequests.set(requestId, {
+        resolve: (data) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          resolve(data);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          reject(error);
+        }
+      });
+    });
+
+    // Send request to extension via WebSocket
+    broadcast({
+      type: 'browser-download-file',
+      requestId,
+      url,
+      filename,
+      conflictAction: conflictAction || 'uniquify'
+    });
+
+    const result = await resultPromise;
+    res.json(result);
+  } catch (error) {
+    log.error('download-file error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/browser/downloads - List recent downloads
+router.get('/downloads', async (req, res) => {
+  const limit = req.query.limit ? parseInt(req.query.limit) : 20;
+  const state = req.query.state || 'all';
+
+  log.debug('GET /downloads', { limit, state });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const requestId = `browser-${++requestIdCounter}`;
+
+    const resultPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.delete(requestId);
+        reject(new Error('Request timed out'));
+      }, 10000);
+
+      pendingRequests.set(requestId, {
+        resolve: (data) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          resolve(data);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          reject(error);
+        }
+      });
+    });
+
+    broadcast({
+      type: 'browser-get-downloads',
+      requestId,
+      limit,
+      state
+    });
+
+    const result = await resultPromise;
+    res.json(result);
+  } catch (error) {
+    log.error('get-downloads error:', error);
+    res.json({ downloads: [], total: 0, error: error.message });
+  }
+});
+
+// POST /api/browser/cancel-download - Cancel an in-progress download
+router.post('/cancel-download', async (req, res) => {
+  const { downloadId } = req.body;
+
+  if (downloadId === undefined) {
+    return res.status(400).json({ success: false, error: 'downloadId is required' });
+  }
+
+  log.debug('POST /cancel-download', { downloadId });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const requestId = `browser-${++requestIdCounter}`;
+
+    const resultPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.delete(requestId);
+        reject(new Error('Request timed out'));
+      }, 10000);
+
+      pendingRequests.set(requestId, {
+        resolve: (data) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          resolve(data);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          reject(error);
+        }
+      });
+    });
+
+    broadcast({
+      type: 'browser-cancel-download',
+      requestId,
+      downloadId
+    });
+
+    const result = await resultPromise;
+    res.json(result);
+  } catch (error) {
+    log.error('cancel-download error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
 module.exports.addConsoleLog = addConsoleLog;
 module.exports.getConsoleLogs = getConsoleLogs;
