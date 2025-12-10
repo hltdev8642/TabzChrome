@@ -271,6 +271,9 @@ function detectPackageCommands() {
     // Skip <pre> elements that contain <code> (handled by 'pre code' selector)
     if (block.tagName === 'PRE' && block.querySelector('code')) return
 
+    // Skip if already processed
+    if (block.hasAttribute('data-tabz-processed')) return
+
     const text = block.textContent || ''
 
     // Check for runnable commands - package managers, installers, CLI tools
@@ -313,59 +316,68 @@ function detectPackageCommands() {
 
     for (const pattern of commandPatterns) {
       if (pattern.test(text)) {
-        // Add a "Send to Tabz" button next to the code block
-        if (!block.parentElement?.querySelector('.terminal-tabs-run-btn')) {
-          const btn = document.createElement('button')
-          btn.className = 'terminal-tabs-run-btn'
-          btn.textContent = '▶ Send to Tabz'
-          btn.style.cssText = `
-            position: absolute;
-            bottom: 4px;
-            right: 4px;
-            padding: 4px 8px;
-            font-size: 12px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            z-index: 1000;
-            opacity: 0;
-            transition: opacity 0.2s ease-in-out;
-            pointer-events: none;
-          `
-          btn.onclick = () => {
-            // Queue command to chat input - lets user choose which terminal
-            // Strip common prompt prefixes like "$ " or "> "
-            let command = text.trim()
-            command = command.replace(/^\$\s+/, '').replace(/^>\s+/, '')
-            // Convert newlines to && for multi-line commands (input doesn't support newlines)
-            // Filter out comment-only lines (# ...) but keep inline comments (cmd # comment)
-            command = command.split('\n')
-              .map(line => line.trim())
-              .filter(line => line && !line.startsWith('#'))
-              .join(' && ')
-            chrome.runtime.sendMessage({
-              type: 'QUEUE_COMMAND',
-              command: command,
-            })
-          }
+        // Mark as processed to avoid duplicate buttons
+        block.setAttribute('data-tabz-processed', 'true')
 
-          if (block.parentElement) {
-            block.parentElement.style.position = 'relative'
-            block.parentElement.appendChild(btn)
-
-            // Show button on hover
-            block.parentElement.addEventListener('mouseenter', () => {
-              btn.style.opacity = '1'
-              btn.style.pointerEvents = 'auto'
-            })
-            block.parentElement.addEventListener('mouseleave', () => {
-              btn.style.opacity = '0'
-              btn.style.pointerEvents = 'none'
-            })
-          }
+        // Make the block a positioning context for the button
+        const htmlBlock = block as HTMLElement
+        const originalPosition = window.getComputedStyle(htmlBlock).position
+        if (originalPosition === 'static') {
+          htmlBlock.style.position = 'relative'
         }
+
+        // Add a "Send to Tabz" button to this specific code block
+        const btn = document.createElement('button')
+        btn.className = 'terminal-tabs-run-btn'
+        btn.textContent = '▶ Send to Tabz'
+        btn.style.cssText = `
+          position: absolute;
+          bottom: 2px;
+          right: 2px;
+          padding: 2px 6px;
+          font-size: 11px;
+          background: #4CAF50;
+          color: white;
+          border: none;
+          border-radius: 3px;
+          cursor: pointer;
+          z-index: 1000;
+          opacity: 0;
+          transition: opacity 0.2s ease-in-out;
+          pointer-events: none;
+        `
+        btn.onclick = (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          // Queue command to chat input - lets user choose which terminal
+          // Strip common prompt prefixes like "$ " or "> "
+          let command = text.trim()
+          command = command.replace(/^\$\s+/, '').replace(/^>\s+/, '')
+          // Convert newlines to && for multi-line commands (input doesn't support newlines)
+          // Filter out comment-only lines (# ...) but keep inline comments (cmd # comment)
+          command = command.split('\n')
+            .map(line => line.trim())
+            .filter(line => line && !line.startsWith('#'))
+            .join(' && ')
+          chrome.runtime.sendMessage({
+            type: 'QUEUE_COMMAND',
+            command: command,
+          })
+        }
+
+        // Append button directly to the code block element
+        htmlBlock.appendChild(btn)
+
+        // Show button on hover of this specific block
+        htmlBlock.addEventListener('mouseenter', () => {
+          btn.style.opacity = '1'
+          btn.style.pointerEvents = 'auto'
+        })
+        htmlBlock.addEventListener('mouseleave', () => {
+          btn.style.opacity = '0'
+          btn.style.pointerEvents = 'none'
+        })
+
         break
       }
     }
