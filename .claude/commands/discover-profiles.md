@@ -4,7 +4,13 @@ Scan the user's system for installed CLI tools and help them create TabzChrome p
 
 ## Instructions
 
-1. First, open the awesome-tuis reference page so users can discover new tools:
+1. **Ask if they want to export existing profiles first.** This helps avoid duplicates:
+   - Tell user: "Would you like me to check your existing profiles? If so, click **Export** in Settings (⚙️) → Profiles tab"
+   - If they export, use `tabz_get_downloads` to find the downloaded `tabz-profiles.json`
+   - Read the file using the `wslPath` from the download info
+   - Note which tools already have profiles to avoid duplicates
+
+2. Open the awesome-tuis reference page so users can discover new tools:
 
 ```
 Use tabz MCP to open: https://github.com/rothgar/awesome-tuis
@@ -12,7 +18,7 @@ Use tabz MCP to open: https://github.com/rothgar/awesome-tuis
 
 This page has a comprehensive list of TUI applications they might want to install.
 
-2. Then, scan for installed CLI tools by running these checks:
+3. Scan for installed CLI tools by running these checks:
 
 ```bash
 # AI CLIs
@@ -31,22 +37,47 @@ for cmd in nvim vim micro nano hx emacs code; do
 done
 ```
 
-3. Present the found tools to the user in a clean list, grouped by category:
+4. Present the found tools to the user in a clean list, grouped by category:
    - **AI Assistants**: claude, codex, gemini, aider, etc.
    - **TUI Tools**: lazygit, htop, btop, ranger, etc.
    - **Editors**: nvim, vim, micro, helix, etc.
    - **Dev Tools**: docker, kubectl, npm, etc.
 
-4. Ask the user which tools they'd like to create profiles for. Mention they can browse the awesome-tuis page (now open in their browser) to discover more tools to install.
+   If user exported existing profiles, mark tools that already have profiles with "(already configured)".
 
-5. For each selected tool, generate a profile JSON with:
+5. Ask the user which tools they'd like to create profiles for. Mention they can browse the awesome-tuis page (now open in their browser) to discover more tools to install.
+
+6. For each selected tool, generate a profile JSON with:
    - Sensible `name` (e.g., "Claude Code", "LazyGit")
    - Appropriate `category` for grouping
    - Correct `command` to launch the tool
    - Empty `workingDir` (inherits from header)
    - Good defaults: `fontSize: 16`, `fontFamily: "JetBrains Mono"`, `themeName: "high-contrast"`
 
-6. Output the complete JSON array that can be imported via Settings → Profiles → Import.
+7. Output the complete JSON array and **save it to the user's Downloads folder** so they can import directly:
+
+```bash
+# Save to Downloads folder (same location Import looks by default)
+# For WSL:
+echo '$JSON_CONTENT' > "/mnt/c/Users/$USER/Downloads/new-profiles.json"
+# Or use the path from tabz_get_downloads to find the correct Downloads folder
+```
+
+Tell the user: "I've saved the profiles to your Downloads folder. In TabzChrome, go to Settings (⚙️) → Profiles → Import and select `new-profiles.json`"
+
+## Reading Existing Profiles
+
+When user exports their profiles, find and read them:
+
+```bash
+# Find recent profile export
+mcp-cli call tabz/tabz_get_downloads '{"limit": 5, "state": "complete", "response_format": "json"}'
+
+# Look for tabz-profiles*.json in the results
+# Read using the wslPath field (for WSL) or filename (for native)
+```
+
+Then parse the JSON to see which commands are already configured. Match by the `command` field.
 
 ## Example Output Format
 
