@@ -186,9 +186,24 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
       enabled = audioSettings.enabled
     }
 
+    // Determine voice: profile override > global setting > auto-assigned fallback
+    let voice: string
+    if (overrides?.voice) {
+      // Profile has explicit voice override
+      voice = overrides.voice
+    } else if (audioSettings.voice === 'random') {
+      // Global setting is "random" - use auto-assigned voice for this terminal
+      voice = assignedVoice || VOICE_POOL[0]
+    } else if (audioSettings.voice) {
+      // Global setting is a specific voice
+      voice = audioSettings.voice
+    } else {
+      // Fallback
+      voice = assignedVoice || 'en-US-AndrewMultilingualNeural'
+    }
+
     return {
-      // Voice priority: 1. Profile override, 2. Auto-assigned voice, 3. Global default
-      voice: overrides?.voice || assignedVoice || audioSettings.voice,
+      voice,
       rate: overrides?.rate || audioSettings.rate,
       volume: audioSettings.volume,
       enabled,

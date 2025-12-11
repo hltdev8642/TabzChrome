@@ -542,17 +542,12 @@ class PTYHandler extends EventEmitter {
       ptyInfo.process.resize(validCols, validRows);
       log.debug(`Resized PTY ${ptyInfo.name}: ${validCols}x${validRows}`);
 
-      // For tmux sessions, refresh the client after resize to fix scroll region corruption
-      // This forces tmux to recalculate its display, preventing status bar disappearing issues
-      if (ptyInfo.tmuxSession) {
-        setTimeout(() => {
-          try {
-            execSync(`tmux refresh-client -t "${ptyInfo.tmuxSession}" 2>/dev/null`);
-          } catch {
-            // Ignore errors - session might not exist anymore
-          }
-        }, 100); // Small delay to let resize settle
-      }
+      // NOTE: We no longer call refresh-client after resize
+      // The resize itself sends SIGWINCH which triggers tmux to redraw.
+      // Calling refresh-client was redundant and caused "redraw storms" when
+      // triggerResizeTrick() sent multiple resizes in quick succession,
+      // leading to the same output line being repeated many times on screen.
+      // If scroll region issues recur, investigate tmux config instead.
 
       return { cols: validCols, rows: validRows };
     } catch (error) {

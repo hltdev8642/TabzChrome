@@ -13,6 +13,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.7.2] - 2025-12-11
+
+### 🐛 Bug Fixes
+
+#### Terminal Corruption During WebSocket Reconnect
+- **Extended output quiet period** - Increased from 150ms to 500ms to prevent resize during active Claude streaming
+- **Increased max deferrals** - From 5 to 10 (up to 5 seconds of waiting for output to quiet)
+- **Staggered REFRESH_TERMINALS** - Random 50-550ms delay per terminal prevents simultaneous redraws
+- **Skip refresh during active output** - If output happened <100ms ago, skip the refresh entirely
+- **Removed send-keys from resize path** - `tmux send-keys ''` on first resize was redundant (SIGWINCH already triggers redraw) and could cause corruption during active output
+
+Root cause: When WebSocket reconnects, REFRESH_TERMINALS triggered `triggerResizeTrick()` on ALL terminals simultaneously. Each resize sends SIGWINCH to tmux, which redraws the screen. During active Claude output, these redraws interleaved with streaming content, causing the same lines to appear repeated many times.
+
+Files changed:
+- `extension/components/Terminal.tsx` - Output-aware deferral, staggered refresh
+- `backend/server.js` - Removed send-keys from resize handler
+
+---
+
+## [2.7.1] - 2025-12-11
+
+### 🐛 Bug Fixes
+
+#### Terminal Redraw Storm Fix
+- **Fixed terminal corruption** - Same line appearing repeated many times (20x, 57x, etc.)
+- **Root cause**: Multiple `triggerResizeTrick()` calls in rapid succession caused tmux to redraw screen content many times
+- **REFRESH_TERMINALS deduplication** - Now sent once (500ms) instead of twice (200ms + 700ms)
+- **Removed redundant refresh-client** - PTY resize already sends SIGWINCH, extra refresh-client was unnecessary
+- **Added debounce to triggerResizeTrick** - 500ms minimum between calls prevents redraw storms
+- **Removed duplicate post-connection refresh** - Terminal.tsx no longer calls triggerResizeTrick at 1200ms (handled by REFRESH_TERMINALS)
+
+Files changed:
+- `extension/hooks/useTerminalSessions.ts` - Single REFRESH_TERMINALS at 500ms
+- `extension/components/Terminal.tsx` - Debounce triggerResizeTrick, removed redundant call
+- `backend/modules/pty-handler.js` - Removed refresh-client after resize
+
+---
+
 ## [2.7.0] - 2025-12-09
 
 ### 🚀 Major Features

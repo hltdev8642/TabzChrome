@@ -2011,12 +2011,18 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       onChange={(e) => updateAudioSettings({ voice: e.target.value })}
                       className="w-full px-3 py-2 bg-black/50 border border-gray-700 rounded text-white text-sm focus:border-[#00ff88] focus:outline-none"
                     >
+                      <option value="random">Random (unique per terminal)</option>
                       {TTS_VOICES.map((voice) => (
                         <option key={voice.value} value={voice.value}>
                           {voice.label}
                         </option>
                       ))}
                     </select>
+                    {audioSettings.voice === 'random' && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Each terminal gets a unique voice. Helps distinguish multiple Claude sessions.
+                      </p>
+                    )}
                   </div>
 
                   {/* Rate Slider */}

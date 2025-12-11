@@ -1659,4 +1659,126 @@ const sessionParam = effectiveSessionName
 
 ---
 
-**Last Updated**: December 10, 2025
+### Lesson: triggerResizeTrick Causes "Redraw Storms" (Dec 11, 2025)
+
+**Problem:** Terminal shows same line repeated many times (e.g., 20x, 57x), corrupting display.
+
+**Symptoms:**
+- Backend log shows `Resized PTY Claudia: 104x58` and `105x58` oscillating
+- Same output line appears duplicated dozens of times on screen
+- Happens without physically resizing the sidebar
+
+**Root Cause:** Multiple sources triggering `triggerResizeTrick()` in rapid succession:
+
+1. **REFRESH_TERMINALS sent twice** (at 200ms and 700ms after reconnect)
+2. **Post-connection refresh** (1200ms setTimeout in Terminal.tsx)
+3. **refresh-client after each resize** (100ms delay in pty-handler.js)
+
+Each `triggerResizeTrick()` call:
+- Sends 2 resize events (cols-1, then cols)
+- Each resize triggers SIGWINCH → tmux redraws entire screen
+- Plus refresh-client called → another redraw
+
+**Result:** 3 calls × 2 resizes × 2 redraws = 12+ tmux screen redraws, each sending the full visible content to xterm.js
+
+**Solution:**
+
+1. **Send REFRESH_TERMINALS only once:**
+```typescript
+// useTerminalSessions.ts - BEFORE
+setTimeout(() => sendMessage({ type: 'REFRESH_TERMINALS' }), 200)
+setTimeout(() => sendMessage({ type: 'REFRESH_TERMINALS' }), 700)
+
+// AFTER
+setTimeout(() => sendMessage({ type: 'REFRESH_TERMINALS' }), 500)
+```
+
+2. **Remove redundant post-connection refresh:**
+```typescript
+// Terminal.tsx - Removed duplicate triggerResizeTrick() at 1200ms
+// REFRESH_TERMINALS message already handles this
+```
+
+3. **Remove refresh-client after resize:**
+```javascript
+// pty-handler.js - BEFORE
+if (ptyInfo.tmuxSession) {
+  setTimeout(() => {
+    execSync(`tmux refresh-client -t "${ptyInfo.tmuxSession}" 2>/dev/null`);
+  }, 100);
+}
+
+// AFTER - Removed entirely
+// Resize itself sends SIGWINCH which triggers tmux redraw
+```
+
+4. **Add debounce to triggerResizeTrick:**
+```typescript
+// Terminal.tsx
+const RESIZE_TRICK_DEBOUNCE_MS = 500
+if (now - lastResizeTrickTimeRef.current < RESIZE_TRICK_DEBOUNCE_MS) {
+  return  // Skip if too soon
+}
+```
+
+**Key Insight:**
+- PTY resize automatically sends SIGWINCH to the process
+- refresh-client is redundant when tmux already redraws from SIGWINCH
+- Multiple resize triggers in quick succession multiply the problem
+- Time-based debounce is the safety net against redraw storms
+
+**Files:**
+- `extension/hooks/useTerminalSessions.ts:144-145` - Single REFRESH_TERMINALS
+- `extension/components/Terminal.tsx:50-52,154-168` - Debounce triggerResizeTrick
+- `backend/modules/pty-handler.js:545-550` - Removed refresh-client
+
+---
+
+### Update: Additional Redraw Storm Mitigations (Dec 11, 2025)
+
+**The previous fix wasn't complete.** Corruption still occurred during WebSocket reconnects while Claude was actively outputting.
+
+**New Root Cause Discovery:**
+When REFRESH_TERMINALS is broadcast, ALL terminals call `triggerResizeTrick()` simultaneously. During active Claude streaming:
+1. Resize triggers SIGWINCH → tmux redraws screen
+2. Redraw data interleaves with streaming Claude output
+3. Same lines appear repeated many times
+
+**Additional Fixes:**
+
+1. **Extended output quiet period** (150ms → 500ms):
+```typescript
+const OUTPUT_QUIET_PERIOD = 500  // Wait for output to quiet before resize
+```
+
+2. **Increased max deferrals** (5 → 10):
+```typescript
+const MAX_RESIZE_DEFERRALS = 10  // Up to 5 seconds of waiting
+```
+
+3. **Staggered refresh per-terminal:**
+```typescript
+// Instead of all terminals refreshing at once:
+const staggerDelay = 50 + Math.random() * 500  // 50-550ms random delay
+setTimeout(() => triggerResizeTrick(), staggerDelay)
+```
+
+4. **Skip refresh during active output:**
+```typescript
+if (Date.now() - lastOutputTimeRef.current < 100) {
+  return  // Skip entirely if output happened <100ms ago
+}
+```
+
+**Key Insight:**
+- The original debounce prevented ONE terminal from spamming resizes
+- But with multiple terminals, they all triggered at once - still a storm
+- Staggered delays spread out the resize events across time
+- Output-aware skipping prevents any resize during active streaming
+
+**Files:**
+- `extension/components/Terminal.tsx:60-67,563-581` - All new mitigations
+
+---
+
+**Last Updated**: December 11, 2025

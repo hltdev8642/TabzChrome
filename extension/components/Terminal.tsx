@@ -46,6 +46,11 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
   const isResizingRef = useRef(false)
   const resizeLockTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Debounce for triggerResizeTrick - prevents "redraw storms" from multiple rapid calls
+  // Each call causes 2 resize events (cols-1, cols), and tmux redraws the entire screen each time
+  const lastResizeTrickTimeRef = useRef(0)
+  const RESIZE_TRICK_DEBOUNCE_MS = 500 // Minimum time between resize tricks
+
   // Write queue - buffers data during resize to prevent isWrapped buffer corruption
   // xterm.js write() is async - data is queued and parsed later, so try/catch doesn't help
   // When resize happens during queued write, buffer structure changes and parser crashes
@@ -54,10 +59,15 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
 
   // Output tracking - delay resize during active output to prevent tmux status bar corruption
   // When tmux is outputting content, resizing can corrupt scroll regions and cause the status bar to disappear
+  // NOTE: 500ms quiet period is important - Claude outputs continuously, so shorter periods cause
+  // resize during output which triggers tmux redraw storms (same line repeated many times)
   const lastOutputTimeRef = useRef(0)
-  const OUTPUT_QUIET_PERIOD = 150 // ms to wait after output before allowing resize
+  const OUTPUT_QUIET_PERIOD = 500 // ms to wait after output before allowing resize
   const resizeDeferCountRef = useRef(0) // Track deferrals to prevent infinite loop
-  const MAX_RESIZE_DEFERRALS = 5 // Max times to defer before forcing resize
+  const MAX_RESIZE_DEFERRALS = 10 // Max times to defer before forcing resize (5 seconds with 500ms period)
+
+  // Track recent writes for duplicate detection (DEBUG)
+  const recentWritesRef = useRef<{ hash: string; count: number; time: number }[]>([])
 
   // Safe write function that queues data during resize operations
   // CRITICAL: xterm.js write() is async - data gets queued internally and parsed later
@@ -65,6 +75,23 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
   // This function queues data during resize and flushes after resize completes
   const safeWrite = (data: string) => {
     if (!xtermRef.current) return
+
+    // DEBUG: Detect duplicate writes
+    const hash = data.slice(0, 100) // Use first 100 chars as fingerprint
+    const now = Date.now()
+    const recentDupe = recentWritesRef.current.find(w => w.hash === hash && now - w.time < 2000)
+    if (recentDupe) {
+      recentDupe.count++
+      if (recentDupe.count === 5) {
+        console.error(`[Terminal] ⚠️ DUPLICATE WRITE DETECTED (5x): "${hash.slice(0, 50)}..."`)
+      }
+    } else {
+      recentWritesRef.current.push({ hash, count: 1, time: now })
+      // Keep only last 20 entries
+      if (recentWritesRef.current.length > 20) {
+        recentWritesRef.current.shift()
+      }
+    }
 
     // If resize is in progress, queue the data instead of writing
     if (isResizingRef.current) {
@@ -125,6 +152,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
 
   // Resize trick to force complete redraw (used for theme/font changes and manual refresh)
   // CRITICAL: Uses resize lock and try/catch to prevent buffer corruption
+  // Also uses time-based debounce to prevent "redraw storms" from multiple rapid calls
   const triggerResizeTrick = () => {
     if (!xtermRef.current || !fitAddonRef.current) return
 
@@ -132,6 +160,36 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     if (isResizingRef.current) {
       return
     }
+
+    const now = Date.now()
+
+    // Skip if there's active output (prevents corruption during Claude output)
+    // Resize during output causes tmux to redraw while content is streaming,
+    // resulting in duplicated/interleaved lines
+    const timeSinceOutput = now - lastOutputTimeRef.current
+    if (timeSinceOutput < OUTPUT_QUIET_PERIOD) {
+      // Defer the resize trick - schedule retry after quiet period
+      if (resizeDeferCountRef.current < MAX_RESIZE_DEFERRALS) {
+        resizeDeferCountRef.current++
+        console.log(`[Terminal] ${terminalId.slice(-8)} triggerResizeTrick DEFERRED (active output, ${timeSinceOutput}ms ago, attempt ${resizeDeferCountRef.current})`)
+        setTimeout(() => triggerResizeTrick(), OUTPUT_QUIET_PERIOD)
+        return
+      } else {
+        console.log(`[Terminal] ${terminalId.slice(-8)} triggerResizeTrick FORCING (max deferrals reached)`)
+        resizeDeferCountRef.current = 0
+      }
+    } else {
+      resizeDeferCountRef.current = 0
+    }
+
+    // Debounce: skip if we ran recently (prevents redraw storms)
+    const timeSinceLast = now - lastResizeTrickTimeRef.current
+    if (timeSinceLast < RESIZE_TRICK_DEBOUNCE_MS) {
+      console.log(`[Terminal] ${terminalId.slice(-8)} triggerResizeTrick DEBOUNCED (${timeSinceLast}ms since last)`)
+      return
+    }
+    console.log(`[Terminal] ${terminalId.slice(-8)} triggerResizeTrick RUNNING (${timeSinceLast}ms since last, ${timeSinceOutput}ms since output)`)
+    lastResizeTrickTimeRef.current = now
 
     const currentCols = xtermRef.current.cols
     const currentRows = xtermRef.current.rows
@@ -503,26 +561,36 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
       } else if (message.type === 'WS_DISCONNECTED') {
         setIsConnected(false)
       } else if (message.type === 'REFRESH_TERMINALS') {
-        // Use timeout to ensure xterm is fully ready
+        // Skip entirely if there's been very recent output (indicates active Claude session)
+        // This prevents even scheduling the refresh during active streaming
+        const timeSinceOutput = Date.now() - lastOutputTimeRef.current
+        if (timeSinceOutput < 100) {
+          console.log(`[Terminal] ${terminalId.slice(-8)} skipping REFRESH_TERMINALS (output ${timeSinceOutput}ms ago)`)
+          return
+        }
+
+        // Stagger refresh per-terminal with random delay to prevent "redraw storm"
+        // When all terminals resize simultaneously, tmux sends many redraws that interleave
+        // with active Claude output, causing corruption (same line repeated many times)
+        // Random delay 50-550ms spreads out the resize events
+        const staggerDelay = 50 + Math.random() * 500
+        console.log(`[Terminal] ${terminalId.slice(-8)} received REFRESH_TERMINALS, staggering ${Math.round(staggerDelay)}ms`)
         setTimeout(() => {
           triggerResizeTrick()
-        }, 50)
+        }, staggerDelay)
       }
     })
 
-    // Post-reconnection refresh sequence (from terminal-tabs pattern)
-    // Wait for initialization guard (1000ms) + buffer before forcing redraw
-    // Uses triggerResizeTrick which has proper resize lock and try/catch protection
+    // NOTE: Removed redundant post-connection triggerResizeTrick() call
+    // The useTerminalSessions hook sends REFRESH_TERMINALS after reconnect,
+    // which triggers triggerResizeTrick() via the message handler above.
+    // Having both caused "redraw storms" - multiple rapid resizes made tmux
+    // send the same screen content many times, corrupting the display.
+    //
+    // Focus terminal after initialization completes
     setTimeout(() => {
-      if (xtermRef.current && fitAddonRef.current && !isResizingRef.current) {
-        triggerResizeTrick()
-
-        // Focus terminal after resize trick completes
-        setTimeout(() => {
-          if (xtermRef.current) {
-            xtermRef.current.focus()
-          }
-        }, 150)
+      if (xtermRef.current) {
+        xtermRef.current.focus()
       }
     }, 1200)  // Wait 1000ms (initialization guard) + 200ms buffer
 

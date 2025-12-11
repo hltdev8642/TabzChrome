@@ -279,9 +279,6 @@ wss.on('connection', (ws) => {
   // Track terminals created by this connection
   const connectionTerminals = new Set();
 
-  // Track terminals that have had pane content captured (only capture once per connection)
-  const paneCaptured = new Set();
-
   // Rate limiting for malformed messages
   const malformedMessageCount = { count: 0, lastReset: Date.now() };
   const MAX_MALFORMED_PER_MINUTE = 10;
@@ -482,26 +479,9 @@ wss.on('connection', (ws) => {
 
           await terminalRegistry.resizeTerminal(data.terminalId, data.cols, data.rows);
 
-          // For tmux sessions, send empty key on first resize to trigger redraw
-          // NOTE: Do NOT use capture-pane - it sends escape sequences that corrupt scroll regions
-          // (see LESSONS_LEARNED.md: "Tmux Status Bar Position")
-          if (!paneCaptured.has(data.terminalId)) {
-            paneCaptured.add(data.terminalId);
-            try {
-              const terminal = terminalRegistry.getTerminal(data.terminalId);
-              if (terminal?.ptyInfo?.tmuxSession) {
-                const { execSync } = require('child_process');
-                // Send empty key to trigger redraw (refresh-client needs attached client, not PTY)
-                execSync(
-                  `tmux send-keys -t "${terminal.ptyInfo.tmuxSession}" '' 2>/dev/null || true`,
-                  { encoding: 'utf8', timeout: 1000 }
-                );
-                log.debug(`[Tmux Refresh] Sent empty key for ${data.terminalId.slice(-8)}`);
-              }
-            } catch (err) {
-              log.debug(`Could not refresh tmux for ${data.terminalId.slice(-8)}:`, err.message);
-            }
-          }
+          // NOTE: Removed "send empty key on first resize" logic (was causing corruption)
+          // SIGWINCH from resize already triggers tmux redraw - send-keys was redundant
+          // and could cause issues during active output
           break;
           
         case 'detach':

@@ -140,9 +140,9 @@ export function useTerminalSessions({
           // This forces terminals to refit after backend restart
           // REFRESH_TERMINALS is broadcast to all terminal components and triggers
           // triggerResizeTrick() which properly handles resize with locks
-          // Use delays to ensure terminals have finished reconnecting first
-          setTimeout(() => sendMessage({ type: 'REFRESH_TERMINALS' }), 200)
-          setTimeout(() => sendMessage({ type: 'REFRESH_TERMINALS' }), 700)
+          // NOTE: Only send ONCE - sending multiple times caused resize oscillation and tmux
+          // redraw storms that corrupted the terminal output (same line repeated many times)
+          setTimeout(() => sendMessage({ type: 'REFRESH_TERMINALS' }), 500)
         }, 300)
 
         // Get current sessions from state (which may have been restored from Chrome storage)

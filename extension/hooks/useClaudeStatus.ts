@@ -22,6 +22,7 @@ interface TerminalInfo {
   id: string
   sessionName?: string  // tmux session name
   workingDir?: string
+  profileCommand?: string  // Profile's startup command (to filter for claude terminals)
 }
 
 // Number of consecutive "unknown" responses before removing a terminal from the map
@@ -59,8 +60,14 @@ export function useClaudeStatus(terminals: TerminalInfo[]): Map<string, ClaudeSt
     // Use the stable ref instead of the prop directly
     const currentTerminals = terminalsRef.current
 
-    // Only poll terminals that have a working directory (needed for status detection)
-    const terminalsWithDir = currentTerminals.filter(t => t.workingDir)
+    // Only poll terminals that:
+    // 1. Have a working directory (needed for status detection)
+    // 2. Have "claude" in their profile command (only Claude terminals should be polled)
+    // This prevents non-Claude terminals from picking up status from Claude terminals in same dir
+    const terminalsWithDir = currentTerminals.filter(t =>
+      t.workingDir &&
+      t.profileCommand?.toLowerCase().includes('claude')
+    )
     const terminalIds = new Set(terminalsWithDir.map(t => t.id))
 
     // Clean up miss counts for terminals that no longer exist
