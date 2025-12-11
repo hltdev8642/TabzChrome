@@ -95,13 +95,13 @@ function SidePanelTerminal() {
   })
 
   // Claude status tracking - polls for Claude Code status in each terminal
-  // Only terminals with "claude" in their profile command will be polled
+  // Only terminals with "claude" in their profile command or API command will be polled
   const claudeStatuses = useClaudeStatus(
     sessions.map(s => ({
       id: s.id,
       sessionName: s.sessionName,
       workingDir: s.workingDir,
-      profileCommand: s.profile?.command,
+      profileCommand: s.profile?.command || s.command,  // Check both profile and API command
     }))
   )
 

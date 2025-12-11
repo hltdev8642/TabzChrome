@@ -11,6 +11,7 @@ export interface TerminalSession {
   workingDir?: string   // Working directory for Claude status polling
   profile?: Profile     // Profile settings for this terminal
   assignedVoice?: string  // Auto-assigned voice for audio (when no profile override)
+  command?: string      // Startup command (for API-spawned terminals without profile)
 }
 
 interface UseTerminalSessionsParams {
@@ -274,6 +275,7 @@ export function useTerminalSessions({
             workingDir: terminal.workingDir,    // Store working directory for Claude status
             profile: effectiveTerminalProfile,  // Store profile settings (may be updated async)
             assignedVoice,  // Auto-assigned voice for audio notifications
+            command: terminal.config?.command,  // Store command for API-spawned terminals
           }]
         })
         setCurrentSession(terminal.id)
