@@ -716,12 +716,6 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
       // Skip if still hidden (0 dimensions)
       if (containerWidth <= 0 || containerHeight <= 0) return
 
-      // CRITICAL: Always refresh when tab becomes active, regardless of resize lock
-      // This ensures the terminal canvas redraws after visibility change
-      // Without this unconditional refresh, switching tabs may show blank terminal
-      // until user clicks/scrolls to trigger a redraw
-      xtermRef.current.refresh(0, xtermRef.current.rows - 1)
-
       // For tmux sessions, trigger backend refresh-client to fix scroll region corruption
       // This is separate from xterm.refresh() which only redraws the frontend canvas
       // Use tmuxSession (actual tmux session name like "ctt-bash-abc") not sessionName (display name like "Bash")
@@ -736,8 +730,15 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
       // Focus the terminal for immediate input
       xtermRef.current.focus()
 
-      // Only attempt fit if not already resizing (fit is optional, refresh is required)
-      if (!isResizingRef.current && fitAddonRef.current) {
+      // Skip all resize/refresh operations if resize is in progress
+      // CRITICAL: refresh() during active writes corrupts the buffer (isWrapped error)
+      // The resize lock protects against this - if locked, another operation will refresh when done
+      if (isResizingRef.current) {
+        return
+      }
+
+      // Attempt fit and refresh together under resize lock
+      if (fitAddonRef.current) {
         try {
           isResizingRef.current = true
           fitAddonRef.current.fit()
@@ -755,6 +756,9 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
               rows,
             })
           }
+
+          // Refresh after fit to ensure canvas redraws
+          xtermRef.current.refresh(0, xtermRef.current.rows - 1)
 
           // Release resize lock
           setTimeout(() => {
