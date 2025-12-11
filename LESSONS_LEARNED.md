@@ -1869,4 +1869,73 @@ Previously, after 10 deferrals (5 seconds of continuous output), the code would 
 
 ---
 
+### Lesson: Sidebar Resize Needs Post-Resize Cleanup (Dec 11, 2025)
+
+**Problem:** Terminal text gets corrupted when dragging Chrome sidebar to resize. Lowering font size by 1 then increasing fixes it.
+
+**What Happened:**
+1. User drags Chrome sidebar edge to resize
+2. ResizeObserver fires and calls `fitTerminal()` which sends new dimensions to tmux
+3. Tmux resizes but doesn't properly rewrap text
+4. Terminal shows corrupted/jumbled text
+5. Changing font size triggers full redraw → text fixed
+
+**Root Cause:** The ResizeObserver only called `fitTerminal()` which does `fit()` + `refresh()` + sends dimensions to PTY. This tells tmux the new size, but tmux doesn't always rewrap existing text correctly.
+
+The "resize trick" (resize cols-1, then cols) sends two SIGWINCHs that force tmux to fully redraw the screen with proper wrapping. But this was deliberately disabled for ResizeObserver because it caused problems with tmux splits.
+
+**Solution:** Add post-resize cleanup that triggers `triggerResizeTrick()` AFTER the resize settles:
+
+```typescript
+// Track dimensions to detect actual size changes
+const preResizeDims = { current: { width: 0, height: 0 } }
+const postResizeCleanupRef = { current: null }
+
+const resizeObserver = new ResizeObserver((entries) => {
+  // Clear existing timeouts
+  if (resizeObserverTimeoutRef.current) clearTimeout(resizeObserverTimeoutRef.current)
+  if (postResizeCleanupRef.current) clearTimeout(postResizeCleanupRef.current)
+
+  const entry = entries[0]
+  const newWidth = entry?.contentRect?.width ?? 0
+  const newHeight = entry?.contentRect?.height ?? 0
+
+  resizeObserverTimeoutRef.current = setTimeout(() => {
+    fitTerminal()
+
+    // Schedule post-resize cleanup AFTER resize settles
+    postResizeCleanupRef.current = setTimeout(() => {
+      const widthChange = Math.abs(newWidth - preResizeDims.current.width)
+      const heightChange = Math.abs(newHeight - preResizeDims.current.height)
+      const significantChange = widthChange > 10 || heightChange > 10
+
+      if (significantChange && newWidth > 0 && newHeight > 0) {
+        preResizeDims.current = { width: newWidth, height: newHeight }
+        triggerResizeTrick()  // Force tmux to rewrap text properly
+      }
+    }, 300)  // 300ms after fit completes
+  }, 150)  // 150ms debounce for fit
+})
+```
+
+**Why This Works:**
+- `triggerResizeTrick()` already has debouncing (500ms) and output-quiet-period checks
+- We only trigger it AFTER the resize settles (300ms after last fit)
+- We only trigger it if dimensions actually changed significantly (>10px)
+- The existing safeguards in `triggerResizeTrick()` prevent issues during active output
+
+**Why Not Always Enabled Previously:**
+The original code disabled the resize trick because it affected tmux splits (SIGWINCH goes to all panes). But the existing `triggerResizeTrick()` has evolved with proper debouncing and output detection that makes it safe to use after resize settles.
+
+**Key Insights:**
+- Tmux needs the "resize trick" (two rapid resizes) to properly rewrap text
+- Simple fit + refresh + dimension send isn't enough
+- Post-resize cleanup with delay ensures we don't fire during resize events
+- Significant-change check prevents firing on scroll/focus/minor fluctuations
+
+**Files:**
+- `extension/components/Terminal.tsx:467-527` - ResizeObserver with post-resize cleanup
+
+---
+
 **Last Updated**: December 11, 2025

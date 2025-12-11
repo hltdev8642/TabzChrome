@@ -66,6 +66,15 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
   const resizeDeferCountRef = useRef(0) // Track deferrals to prevent infinite loop
   const MAX_RESIZE_DEFERRALS = 10 // Max times to defer before forcing resize (5 seconds with 500ms period)
 
+  // Track if sidebar was resized while this terminal was inactive
+  // If true, we need to trigger resize trick when tab becomes active
+  const needsResizeTrickOnActivateRef = useRef(false)
+
+  // Track current active state via ref so ResizeObserver callback can access it
+  // (callbacks capture props at creation time, refs give us current value)
+  const isActiveRef = useRef(isActive)
+  isActiveRef.current = isActive
+
   // Safe write function that queues data during resize operations
   // CRITICAL: xterm.js write() is async - data gets queued internally and parsed later
   // If resize happens while data is queued, the parser crashes with "Cannot set isWrapped"
@@ -468,22 +477,61 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     // CRITICAL: Debounce to prevent xterm.js buffer corruption during rapid resizes
     // (e.g., moving browser to vertical monitor triggers many resize events)
     const resizeObserverTimeoutRef = { current: null as ReturnType<typeof setTimeout> | null }
-    const resizeObserver = new ResizeObserver(() => {
+    // Track dimensions before resize to detect actual size changes (not just observer noise)
+    const preResizeDims = { current: { width: 0, height: 0 } }
+    // Post-resize cleanup timeout - triggers resize trick AFTER resize settles
+    const postResizeCleanupRef = { current: null as ReturnType<typeof setTimeout> | null }
+
+    const resizeObserver = new ResizeObserver((entries) => {
       if (resizeObserverTimeoutRef.current) clearTimeout(resizeObserverTimeoutRef.current)
+      if (postResizeCleanupRef.current) clearTimeout(postResizeCleanupRef.current)
+
+      // Capture dimensions before this resize event for comparison
+      const entry = entries[0]
+      const newWidth = entry?.contentRect?.width ?? 0
+      const newHeight = entry?.contentRect?.height ?? 0
 
       resizeObserverTimeoutRef.current = setTimeout(() => {
         fitTerminal()
 
-        // DISABLED: Post-resize refresh for tmux sessions
-        // The resize trick sends SIGWINCH to tmux, which affects ALL panes in a split.
-        // This causes TUI apps (tfe, lazygit, etc.) in other panes to re-render incorrectly.
-        // Text wrapping issues are less severe than broken split rendering.
-        //
-        // Original purpose: Force tmux to rewrap text that went off-screen during sidebar resize.
-        // If text wrapping becomes a problem, consider:
-        //   1. Tmux refresh-client command via WebSocket (doesn't send SIGWINCH)
-        //   2. Only refresh after user explicitly requests it
-        //   3. Detect if splits exist and skip refresh in that case
+        // Schedule post-resize cleanup AFTER resize settles
+        // This triggers the resize trick to fix text corruption from sidebar resize
+        // The 300ms delay ensures we're past the resize events, not during them
+        // CRITICAL: Only trigger if dimensions actually changed (sidebar drag, not scroll/focus)
+        if (postResizeCleanupRef.current) clearTimeout(postResizeCleanupRef.current)
+
+        postResizeCleanupRef.current = setTimeout(() => {
+          // Skip if this is the first observation (initial render, not a resize)
+          // Just record the initial dimensions without triggering resize trick
+          if (preResizeDims.current.width === 0 && preResizeDims.current.height === 0) {
+            preResizeDims.current = { width: newWidth, height: newHeight }
+            console.log(`[Terminal] ${terminalId.slice(-8)} initial dimensions recorded: ${newWidth}x${newHeight}`)
+            return
+          }
+
+          // Check if this was a real resize (dimensions changed significantly)
+          const widthChange = Math.abs(newWidth - preResizeDims.current.width)
+          const heightChange = Math.abs(newHeight - preResizeDims.current.height)
+          const significantChange = widthChange > 10 || heightChange > 10
+
+          if (significantChange && newWidth > 0 && newHeight > 0) {
+            // Update stored dimensions
+            preResizeDims.current = { width: newWidth, height: newHeight }
+
+            // If terminal is not active, defer resize trick until activation
+            // Inactive terminals can't properly redraw, so mark for later
+            // NOTE: Use isActiveRef.current to get current value (not stale closure)
+            if (!isActiveRef.current) {
+              console.log(`[Terminal] ${terminalId.slice(-8)} sidebar resize complete (${widthChange}x${heightChange} change), DEFERRING resize trick (inactive)`)
+              needsResizeTrickOnActivateRef.current = true
+            } else {
+              console.log(`[Terminal] ${terminalId.slice(-8)} sidebar resize complete (${widthChange}x${heightChange} change), triggering resize trick`)
+              // Trigger resize trick to fix text corruption
+              // The existing debounce/output-quiet-period logic will prevent issues during active output
+              triggerResizeTrick()
+            }
+          }
+        }, 300)  // 300ms after resize settles - enough time for fitTerminal to complete
       }, 150)  // 150ms debounce - prevents buffer corruption on rapid resize
     })
 
@@ -495,11 +543,13 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     // Store refs for cleanup
     const currentResizeObserver = resizeObserver
     const currentTimeoutRef = resizeObserverTimeoutRef
+    const currentPostResizeRef = postResizeCleanupRef
 
     // Cleanup resize observer when effect re-runs (but NOT xterm - that's handled separately)
     return () => {
       currentResizeObserver.disconnect()
       if (currentTimeoutRef.current) clearTimeout(currentTimeoutRef.current)
+      if (currentPostResizeRef.current) clearTimeout(currentPostResizeRef.current)
     }
   }, [terminalId, isInitialized]) // Init on mount, re-run if terminalId changes
 
@@ -783,7 +833,14 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     if (!isActive || !isInitialized) return
     if (!xtermRef.current || !fitAddonRef.current) return
 
-    console.log(`[Terminal] ${terminalId.slice(-8)} tab activated, refreshing`)
+    // Check if we need resize trick (sidebar was resized while inactive)
+    const needsResizeTrick = needsResizeTrickOnActivateRef.current
+    if (needsResizeTrick) {
+      console.log(`[Terminal] ${terminalId.slice(-8)} tab activated, needs deferred resize trick`)
+      needsResizeTrickOnActivateRef.current = false
+    } else {
+      console.log(`[Terminal] ${terminalId.slice(-8)} tab activated, refreshing`)
+    }
 
     // Small delay to ensure visibility:visible has taken effect
     const timeoutId = setTimeout(() => {
@@ -810,6 +867,16 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
             cols,
             rows,
           })
+        }
+
+        // If sidebar was resized while inactive, trigger resize trick now
+        // This fixes text wrapping issues that couldn't be fixed while hidden
+        if (needsResizeTrick) {
+          // Small delay to let the fit/refresh complete first
+          setTimeout(() => {
+            console.log(`[Terminal] ${terminalId.slice(-8)} executing deferred resize trick`)
+            triggerResizeTrick()
+          }, 100)
         }
       } catch (error) {
         console.warn('[Terminal] Failed to refresh on tab switch:', error)
