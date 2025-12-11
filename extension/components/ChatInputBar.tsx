@@ -162,6 +162,7 @@ export function ChatInputBar({
             <div className="max-h-[200px] overflow-y-auto">
               {sessions.map((session) => {
                 const claudeStatus = claudeStatuses.get(session.id)
+                const hasClaudeRunning = !!claudeStatus
                 return (
                   <button
                     key={session.id}
@@ -180,11 +181,11 @@ export function ChatInputBar({
                     </span>
                     <span
                       className="flex items-center gap-1 truncate"
-                      title={claudeStatus ? `${session.name}\n${getFullStatusText(claudeStatus)}` : session.name}
+                      title={session.name}
                     >
-                      {claudeStatus && <span className="flex-shrink-0">🤖</span>}
+                      {hasClaudeRunning && <span className="flex-shrink-0">🤖</span>}
                       <span className="truncate">
-                        {claudeStatus ? getStatusText(claudeStatus, session.profile?.name) : session.name}
+                        {session.name}
                       </span>
                     </span>
                   </button>

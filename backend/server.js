@@ -4,6 +4,16 @@
 // Use override:true so .env takes precedence over inherited shell env vars (like from tmux)
 require('dotenv').config({ override: true });
 
+// Global error handlers to prevent crashes from unhandled rejections/exceptions
+// These are especially important for edge-tts network failures
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[Server] Unhandled Promise Rejection (caught, not crashing):', reason?.message || reason);
+});
+process.on('uncaughtException', (err) => {
+  // Only log, don't exit - allows server to keep running
+  console.error('[Server] Uncaught Exception (caught, not crashing):', err?.message || err);
+});
+
 /**
  * Tabz - Simplified Backend
  *
@@ -84,7 +94,9 @@ app.get('/api/audio/list', (req, res) => {
 // Generate audio using edge-tts (with caching)
 // POST /api/audio/generate { text: string, voice?: string, rate?: string }
 app.post('/api/audio/generate', async (req, res) => {
-  const { execSync } = require('child_process');
+  const { exec } = require('child_process');
+  const { promisify } = require('util');
+  const execAsync = promisify(exec);
   const fs = require('fs');
   const crypto = require('crypto');
 
@@ -118,14 +130,14 @@ app.post('/api/audio/generate', async (req, res) => {
     });
   }
 
-  // Generate with edge-tts
+  // Generate with edge-tts (async to not block event loop)
   try {
     const outputBase = path.join(audioDir, cacheKey);
     // Build command with rate flag
     const rateFlag = rate && rate !== '+0%' ? `-r "${rate}"` : '';
-    execSync(`edge-tts synthesize -v "${voice}" ${rateFlag} -t "${text.replace(/"/g, '\\"')}" -o "${outputBase}"`, {
-      timeout: 10000  // 10 second timeout
-    });
+    const command = `edge-tts synthesize -v "${voice}" ${rateFlag} -t "${text.replace(/"/g, '\\"')}" -o "${outputBase}"`;
+
+    await execAsync(command, { timeout: 10000 }); // 10 second timeout
 
     // edge-tts adds .mp3 extension
     if (fs.existsSync(`${outputBase}.mp3`)) {
@@ -470,20 +482,21 @@ wss.on('connection', (ws) => {
 
           await terminalRegistry.resizeTerminal(data.terminalId, data.cols, data.rows);
 
-          // For tmux sessions, send a refresh signal on first resize to trigger redraw
-          // This works better than pane capture for splits and TUI apps
+          // For tmux sessions, send empty key on first resize to trigger redraw
+          // NOTE: Do NOT use capture-pane - it sends escape sequences that corrupt scroll regions
+          // (see LESSONS_LEARNED.md: "Tmux Status Bar Position")
           if (!paneCaptured.has(data.terminalId)) {
             paneCaptured.add(data.terminalId);
             try {
               const terminal = terminalRegistry.getTerminal(data.terminalId);
               if (terminal?.ptyInfo?.tmuxSession) {
                 const { execSync } = require('child_process');
-                // Send empty key to trigger redraw (refresh-client needs client target, not session)
+                // Send empty key to trigger redraw (refresh-client needs attached client, not PTY)
                 execSync(
                   `tmux send-keys -t "${terminal.ptyInfo.tmuxSession}" '' 2>/dev/null || true`,
                   { encoding: 'utf8', timeout: 1000 }
                 );
-                log.debug(`[Tmux Refresh] Sent refresh for ${data.terminalId.slice(-8)}`);
+                log.debug(`[Tmux Refresh] Sent empty key for ${data.terminalId.slice(-8)}`);
               }
             } catch (err) {
               log.debug(`Could not refresh tmux for ${data.terminalId.slice(-8)}:`, err.message);

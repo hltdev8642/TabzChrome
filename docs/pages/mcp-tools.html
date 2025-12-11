@@ -594,9 +594,9 @@
         </div>
 
         <section style="margin-top: 3rem;">
-            <h2>Interactive Command: /ttmcp</h2>
+            <h2>Claude Skill: tabz-mcp</h2>
             <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                Type <code>/ttmcp</code> in Claude Code for a menu-driven interface to all MCP tools.
+                Install the <code>tabz-mcp</code> skill for guided browser automation. Dynamically discovers tools - never goes stale.
             </p>
             <div class="terminal-window">
                 <div class="terminal-header">
@@ -606,27 +606,25 @@
                     <span class="terminal-title">Claude Code</span>
                 </div>
                 <div class="terminal-body">
-                    <pre><code><span class="prompt">></span> /ttmcp
+                    <pre><code><span class="prompt">></span> Fill the textarea with "Generate a cute cat image"
 
-<span class="output">Select a category:</span>
-  1. Capture (screenshot, download_image)
-  2. Interaction (click, fill, execute_script)
-  3. Navigation (list_tabs, switch_tab, open_url)
-  4. Inspection (get_page_info, get_element, console_logs)
+<span class="output">I'll fill that form field for you.</span>
 
-<span class="prompt">></span> 2  <span class="comment"># Select Interaction</span>
+<span class="comment"># Claude automatically:</span>
+<span class="comment"># 1. Discovers available tools via mcp-cli</span>
+<span class="comment"># 2. Looks up schema for tabz_fill</span>
+<span class="comment"># 3. Executes with correct parameters</span>
 
-<span class="output">Select a tool:</span>
-  1. tabz_fill - Fill form field
-  2. tabz_click - Click element
-  3. tabz_execute_script - Run JavaScript
+<span class="output">✓ Filled textarea with "Generate a cute cat image"</span>
 
-<span class="prompt">></span> 1  <span class="comment"># Select fill</span>
-<span class="output">Enter selector:</span> textarea
-<span class="output">Enter value:</span> Generate a cute cat image
-<span class="output">Executing...</span> ✓ Done</code></pre>
+<span class="prompt">></span> Now click the generate button
+
+<span class="output">✓ Clicked button.generate</span></code></pre>
                 </div>
             </div>
+            <p style="color: var(--text-secondary); margin-top: 1rem;">
+                <strong>Location:</strong> <code>~/.claude/skills/tabz-mcp/</code>
+            </p>
         </section>
 
         <section>

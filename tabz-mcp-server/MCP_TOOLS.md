@@ -731,39 +731,29 @@ Confirmation of cancellation.
 - Windows node.exe can access `localhost:9222` directly (no port proxy needed)
 - Claude Code communicates with MCP server via stdio
 
-## Interactive Command Runner: `/ttmcp`
+## Claude Skill: `tabz-mcp`
 
-The `/ttmcp` slash command provides an interactive menu-driven interface to all Tabz MCP tools.
+Install the `tabz-mcp` skill for guided browser automation. The skill **dynamically discovers available tools** - never goes stale when tools are added.
 
-**Usage:**
-```bash
-/ttmcp
-```
+**Location:** `~/.claude/skills/tabz-mcp/`
 
-**Features:**
-- Interactive tool selection via `AskUserQuestion`
-- Guided parameter prompts
-- Real-time execution and results
-- Screenshot verification
-- Option to chain multiple commands
+**How it works:**
+- Dynamically lists tools via `mcp-cli tools tabz`
+- Looks up schemas via `mcp-cli info tabz/<tool>`
+- Provides workflow patterns for common tasks
+- Includes selector tips and debugging guidance
 
-**Example Workflow:**
-1. Type `/ttmcp` in Claude Code
-2. Select category: "Interaction"
-3. Select tool: "Fill Form Field"
-4. Provide selector: "textarea"
-5. Provide value: "Your text here"
-6. Claude executes and shows results
-7. Option to run another command
-
-**Location:** `.claude/commands/ttmcp.md`
+**Usage:** Just ask naturally:
+- "Take a screenshot of this page"
+- "Click the submit button"
+- "Fill the email field with test@example.com"
+- "Capture network requests while I browse"
 
 **Perfect for:**
 - First-time users exploring MCP tools
 - Complex multi-step browser automation
 - Testing and debugging MCP functionality
 - Controlling AI tools (Sora, DALL-E, etc.)
-- Quick access without remembering exact tool names
 
 ## Extension vs CDP Dependencies
 

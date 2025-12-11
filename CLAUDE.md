@@ -405,15 +405,17 @@ TabzChrome includes a **Tabz MCP Server** that enables Claude Code to programmat
 - `tabz_get_downloads` - List recent downloads with status
 - `tabz_cancel_download` - Cancel in-progress download
 
-### Interactive Command: `/ttmcp`
+### Claude Skill: `tabz-mcp`
 
-Type `/ttmcp` in Claude Code for an **interactive menu-driven interface** to all MCP tools:
+Install the `tabz-mcp` skill for guided browser automation. The skill **dynamically discovers available tools** via `mcp-cli` - never goes stale when tools are added.
 
-1. **Select category** (Navigation, Interaction, Inspection, Capture)
-2. **Select tool** (e.g., "Fill Form Field")
-3. **Provide parameters** (selector, value, etc.)
-4. **Execute and verify** (screenshot, results)
-5. **Chain commands** (run another action)
+**Location:** `~/.claude/skills/tabz-mcp/`
+
+**Features:**
+- Dynamic tool discovery (runs `mcp-cli tools tabz`)
+- Schema lookup before calls (`mcp-cli info tabz/<tool>`)
+- Common workflow patterns for multi-step tasks
+- Selector tips and debugging guidance
 
 **Perfect for:**
 - Controlling AI tools (Sora, DALL-E) - fill prompts, click generate, download results
@@ -421,12 +423,7 @@ Type `/ttmcp` in Claude Code for an **interactive menu-driven interface** to all
 - Opening GitHub PRs/issues during development
 - Browser automation without writing code
 
-**Example Workflow:**
-```
-/ttmcp → Interaction → Fill Form → textarea → "your prompt" → Execute ✅
-```
-
-See [.claude/commands/ttmcp.md](.claude/commands/ttmcp.md) for complete documentation.
+Just ask naturally: "Take a screenshot", "Click the submit button", "Fill the email field"
 
 ### Omnibox URL Navigation
 
@@ -465,7 +462,7 @@ See [OMNIBOX_FEATURES.md](OMNIBOX_FEATURES.md) for complete documentation.
 ### Tabz MCP Documentation
 
 - **[tabz-mcp-server/MCP_TOOLS.md](tabz-mcp-server/MCP_TOOLS.md)** - Complete reference for all Tabz MCP tools
-- **[.claude/commands/ttmcp.md](.claude/commands/ttmcp.md)** - Interactive Tabz MCP command runner
+- **`~/.claude/skills/tabz-mcp/`** - Claude skill for guided browser automation
 
 ### Organized Documentation (docs/ folder)
 

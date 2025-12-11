@@ -281,9 +281,11 @@ Click ⚙️ → **MCP Tools** tab to:
 - Add custom allowed domains for `tabz_open_url`
 - Apply presets (Minimal, Standard, Full)
 
-### Interactive Command: `/ttmcp`
+### Claude Skill: `tabz-mcp`
 
-Type `/ttmcp` in Claude Code for a menu-driven interface to all browser tools.
+Install the `tabz-mcp` skill for guided browser automation. The skill dynamically discovers available tools and provides workflow patterns - never goes stale when tools are added.
+
+**Location:** `~/.claude/skills/tabz-mcp/`
 
 ### Setup (WSL2)
 

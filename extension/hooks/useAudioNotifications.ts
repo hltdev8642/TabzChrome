@@ -226,6 +226,10 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
 
     try {
       // Request audio generation from backend (uses edge-tts with caching)
+      // Use AbortController for fast timeout - don't let failed requests pile up
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 second timeout
+
       const response = await fetch('http://localhost:8129/api/audio/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -233,8 +237,11 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
           text,
           voice: settings.voice,
           rate: settings.rate
-        })
+        }),
+        signal: controller.signal
       })
+      clearTimeout(timeoutId)
+
       const data = await response.json()
 
       if (data.success && data.url) {
@@ -243,7 +250,12 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
         audio.play().catch(err => console.warn('[Audio] Playback failed:', err.message))
       }
     } catch (err) {
-      console.warn('[Audio] Failed to generate/play:', err)
+      // Silently ignore aborted requests and timeouts to prevent console spam
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.debug('[Audio] Request timed out (3s)')
+      } else {
+        console.warn('[Audio] Failed to generate/play:', err)
+      }
     }
   }, [getAudioSettingsForProfile, audioSettings.toolDebounceMs])
 
