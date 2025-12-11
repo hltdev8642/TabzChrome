@@ -434,7 +434,7 @@ class PTYHandler extends EventEmitter {
       });
     };
 
-    const exitHandler = (exitCode, signal) => {
+    const exitHandler = ({ exitCode, signal }) => {
       log.info(`PTY ${name} exited: code=${exitCode}, signal=${signal}`);
       
       // Clean up handlers to prevent memory leaks
