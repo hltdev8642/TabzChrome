@@ -222,12 +222,12 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     }
   }
 
-  // Initialize xterm.js - only when terminal becomes active (visible)
-  // This prevents issues with hidden terminals having 0 dimensions
+  // Initialize xterm.js on mount (not deferred - all terminals init immediately)
+  // Using visibility:hidden preserves dimensions, so hidden terminals can still init properly
   useEffect(() => {
-    // Skip if not active, already initialized, no ref, or xterm already exists
-    console.log(`[Terminal] ${terminalId.slice(-8)} init check: isActive=${isActive}, isInitialized=${isInitialized}, hasRef=${!!terminalRef.current}, hasXterm=${!!xtermRef.current}`)
-    if (!isActive || isInitialized || !terminalRef.current || xtermRef.current) return
+    // Skip if already initialized, no ref, or xterm already exists
+    console.log(`[Terminal] ${terminalId.slice(-8)} init check: isInitialized=${isInitialized}, hasRef=${!!terminalRef.current}, hasXterm=${!!xtermRef.current}`)
+    if (isInitialized || !terminalRef.current || xtermRef.current) return
 
     console.log('[Terminal] Initializing xterm for terminal:', terminalId, '(now active)')
 
@@ -269,7 +269,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     const debouncedSendResize = () => {
       if (resizeTimeout) clearTimeout(resizeTimeout)
 
-      // Check if this is the first resize (dimensions were 0,0)
+      // Check if this is first resize (dimensions were at initial 0,0)
       const isFirstResize = prevDimensionsRef.current.cols === 0 && prevDimensionsRef.current.rows === 0
 
       // First resize uses shorter delay for fast init; subsequent resizes use longer debounce
@@ -501,7 +501,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
       currentResizeObserver.disconnect()
       if (currentTimeoutRef.current) clearTimeout(currentTimeoutRef.current)
     }
-  }, [terminalId, isActive, isInitialized]) // Re-run when isActive changes to allow deferred init
+  }, [terminalId, isInitialized]) // Init on mount, re-run if terminalId changes
 
   // Separate cleanup effect - only dispose xterm on true unmount
   useEffect(() => {
@@ -776,89 +776,48 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     }
   }, [terminalId])
 
-  // Handle tab becoming active - refresh terminal and clear stale tmux scrollback
-  // Even with visibility:hidden (which preserves dimensions), we still need to:
-  // 1. Force fit in case sidebar width changed while inactive
-  // 2. Clear stale scrollback for tmux sessions (prevents phantom lines)
-  // 3. Focus the terminal
+  // Handle tab switching - refresh terminal when it becomes visible (from Tabz pattern)
+  // Simple approach: fit, refresh, focus - no complex first-activation logic needed
+  // since all terminals are now initialized on mount
   useEffect(() => {
-    console.log(`[Terminal] ${terminalId.slice(-8)} tab activation: isActive=${isActive}, isInitialized=${isInitialized}`)
     if (!isActive || !isInitialized) return
-    if (!fitAddonRef.current || !xtermRef.current || !terminalRef.current) {
-      console.log(`[Terminal] ${terminalId.slice(-8)} missing refs: fit=${!!fitAddonRef.current}, xterm=${!!xtermRef.current}, container=${!!terminalRef.current}`)
-      return
-    }
+    if (!xtermRef.current || !fitAddonRef.current) return
 
-    // Small delay to ensure element is visible and has dimensions
+    console.log(`[Terminal] ${terminalId.slice(-8)} tab activated, refreshing`)
+
+    // Small delay to ensure visibility:visible has taken effect
     const timeoutId = setTimeout(() => {
-      if (!xtermRef.current || !terminalRef.current) return
+      try {
+        if (!xtermRef.current || !fitAddonRef.current) return
 
-      const containerWidth = terminalRef.current.offsetWidth
-      const containerHeight = terminalRef.current.offsetHeight
-      console.log(`[Terminal] ${terminalId.slice(-8)} dimensions: ${containerWidth}x${containerHeight}, resizing=${isResizingRef.current}`)
+        // Fit the terminal to container
+        fitAddonRef.current.fit()
 
-      // Skip if still hidden (0 dimensions)
-      if (containerWidth <= 0 || containerHeight <= 0) return
+        // Refresh the xterm display
+        xtermRef.current.refresh(0, xtermRef.current.rows - 1)
 
-      // For tmux sessions, trigger backend refresh-client to fix scroll region corruption
-      // This is separate from xterm.refresh() which only redraws the frontend canvas
-      // Use tmuxSession (actual tmux session name like "ctt-bash-abc") not sessionName (display name like "Bash")
-      if (tmuxSession) {
-        fetch(`http://localhost:8129/api/tmux/refresh/${encodeURIComponent(tmuxSession)}`, {
-          method: 'POST'
-        }).catch(() => {
-          // Ignore errors - session might not exist or backend might be down
-        })
-      }
+        // Restore focus
+        xtermRef.current.focus()
 
-      // Focus the terminal for immediate input
-      xtermRef.current.focus()
-
-      // Skip all resize/refresh operations if resize is in progress
-      // CRITICAL: refresh() during active writes corrupts the buffer (isWrapped error)
-      // The resize lock protects against this - if locked, another operation will refresh when done
-      if (isResizingRef.current) {
-        return
-      }
-
-      // Attempt fit and refresh together under resize lock
-      if (fitAddonRef.current) {
-        try {
-          isResizingRef.current = true
-          fitAddonRef.current.fit()
-
-          const cols = xtermRef.current.cols
-          const rows = xtermRef.current.rows
-
-          // Only send resize if dimensions actually changed
-          if (cols !== prevDimensionsRef.current.cols || rows !== prevDimensionsRef.current.rows) {
-            prevDimensionsRef.current = { cols, rows }
-            sendMessage({
-              type: 'TERMINAL_RESIZE',
-              terminalId,
-              cols,
-              rows,
-            })
-          }
-
-          // Refresh after fit to ensure canvas redraws
-          xtermRef.current.refresh(0, xtermRef.current.rows - 1)
-
-          // Release resize lock
-          setTimeout(() => {
-            isResizingRef.current = false
-            flushWriteQueue()  // Flush any data queued during resize
-          }, 50)
-        } catch (e) {
-          console.warn('[Terminal] Tab activation fit failed:', e)
-          isResizingRef.current = false
-          flushWriteQueue()  // Flush any data queued during resize
+        // Send resize to backend to trigger tmux redraw
+        const cols = xtermRef.current.cols
+        const rows = xtermRef.current.rows
+        if (cols !== prevDimensionsRef.current.cols || rows !== prevDimensionsRef.current.rows) {
+          prevDimensionsRef.current = { cols, rows }
+          sendMessage({
+            type: 'TERMINAL_RESIZE',
+            terminalId,
+            cols,
+            rows,
+          })
         }
+      } catch (error) {
+        console.warn('[Terminal] Failed to refresh on tab switch:', error)
       }
-    }, 100) // 100ms delay for visibility transition
+    }, 50)
 
     return () => clearTimeout(timeoutId)
-  }, [isActive, isInitialized, terminalId, sessionName])
+  }, [isActive, isInitialized, terminalId])
 
   // Handle paste command (from context menu)
   useEffect(() => {

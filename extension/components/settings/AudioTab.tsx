@@ -20,12 +20,17 @@ export function AudioTab({
     setAudioTestPlaying(true)
 
     try {
+      // If voice is "random", pick a random voice from the pool for testing
+      const testVoice = audioSettings.voice === 'random'
+        ? TTS_VOICES[Math.floor(Math.random() * TTS_VOICES.length)].value
+        : audioSettings.voice
+
       const response = await fetch('http://localhost:8129/api/audio/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: 'Claude ready',
-          voice: audioSettings.voice,
+          voice: testVoice,
           rate: audioSettings.rate
         })
       })

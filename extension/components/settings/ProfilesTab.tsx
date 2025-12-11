@@ -395,12 +395,19 @@ export function ProfilesTab({
     setProfileAudioTestPlaying(true)
 
     try {
+      // Determine voice: profile override > global setting
+      // If either is "random", pick a random voice from the pool
+      let testVoice = formData.audioOverrides?.voice || audioSettings.voice
+      if (testVoice === 'random') {
+        testVoice = TTS_VOICES[Math.floor(Math.random() * TTS_VOICES.length)].value
+      }
+
       const response = await fetch('http://localhost:8129/api/audio/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: 'Claude ready',
-          voice: formData.audioOverrides?.voice || audioSettings.voice,
+          voice: testVoice,
           rate: formData.audioOverrides?.rate || audioSettings.rate
         })
       })
