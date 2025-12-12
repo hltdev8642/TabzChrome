@@ -480,11 +480,19 @@ function setupGitHubFAB() {
     styleEl.remove()
   })
 
+  // Check if already starred on load and update button state
+  const isAlreadyStarred = !!document.querySelector('form[action$="/unstar"]')
+  if (isAlreadyStarred) {
+    starBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg> Starred'
+    starBtn.style.opacity = '0.6'
+    starBtn.title = 'Already starred'
+  }
+
   starBtn.addEventListener('click', () => {
-    // Find and click GitHub's native star button
-    const starForm = document.querySelector('form.unstarred button[type="submit"]') as HTMLButtonElement
-    if (starForm) {
-      starForm.click()
+    // Find GitHub's star button by form action (not by class)
+    const starFormBtn = document.querySelector('form[action$="/star"] button[type="submit"]') as HTMLButtonElement
+    if (starFormBtn) {
+      starFormBtn.click()
       // Visual feedback
       const originalText = starBtn.innerHTML
       starBtn.innerHTML = '⭐ Starred!'
@@ -493,7 +501,7 @@ function setupGitHubFAB() {
       }, 1500)
     } else {
       // Already starred or button not found - check if already starred
-      const unstarForm = document.querySelector('form.starred button[type="submit"]')
+      const unstarForm = document.querySelector('form[action$="/unstar"]')
       if (unstarForm) {
         starBtn.innerHTML = '⭐ Already!'
         setTimeout(() => {

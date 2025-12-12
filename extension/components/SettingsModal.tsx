@@ -178,7 +178,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           return {
             ...p,
             fontSize: p.fontSize ?? 16,
-            fontFamily: p.fontFamily ?? 'monospace',
+            fontFamily: p.fontFamily ?? 'JetBrains Mono NF',
             themeName: themeName ?? 'high-contrast',
             theme: undefined,
             audioOverrides,
@@ -308,7 +308,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             workingDir: p.workingDir || '',
             command: p.command || '',
             fontSize: p.fontSize ?? 16,
-            fontFamily: p.fontFamily ?? 'monospace',
+            fontFamily: p.fontFamily ?? 'JetBrains Mono NF',
             themeName: p.themeName ?? 'high-contrast',
             category: p.category,
             audioOverrides: p.audioOverrides,

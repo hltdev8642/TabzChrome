@@ -197,12 +197,13 @@ JSON.stringify(localStorage)
 
 ## tabz_download_image
 
-**Purpose:** Download an image from the browser page and save to local disk.
+**Purpose:** Download an image from the browser page and save to local disk. Works with AI-generated images from ChatGPT, Copilot, DALL-E, and similar tools.
 
 **Trigger phrases:**
 - "Download that image"
 - "Save the image"
 - "Get the picture from the page"
+- "Download the AI image"
 
 **Parameters:**
 - `selector` (optional): CSS selector for an `<img>` element or element with background-image
@@ -213,6 +214,12 @@ JSON.stringify(localStorage)
 - `success`: Whether the image was downloaded
 - `filePath`: Path to the saved image (use Read tool to view)
 
+**AI Image Support:**
+The tool automatically extracts full image URLs (including auth tokens) from AI platforms:
+- **ChatGPT**: Uses `oaiusercontent.com` CDN URLs
+- **Copilot/DALL-E**: Similar CDN-based URLs
+- Works by extracting the `src` attribute from the page, preserving auth tokens
+
 **Examples:**
 ```javascript
 // Download by selector
@@ -221,31 +228,46 @@ JSON.stringify(localStorage)
 // Download by URL
 { url: "https://example.com/image.png" }
 
-// First image on page
+// First image on page (may match avatars - use specific selectors)
 { selector: "img" }
+
+// ChatGPT AI-generated images (recommended)
+{ selector: "img[src*='oaiusercontent.com']" }
+
+// Any AI image by CDN pattern
+{ selector: "img[src*='cdn']" }
 ```
+
+**Tips for AI platforms:**
+- Use `tabz_execute_script` to inspect image elements first if unsure of selectors
+- ChatGPT library page: `img[src*='oaiusercontent.com']` targets generated images
+- Avoid `selector: "img"` alone - it often matches profile avatars first
 
 ---
 
 ## tabz_list_tabs
 
-**Purpose:** List all open browser tabs.
+**Purpose:** List all open browser tabs with **accurate active tab detection**.
 
 **Trigger phrases:**
 - "What tabs are open?"
 - "List all tabs"
 - "Show me the open tabs"
+- "Which tab am I on?"
 
 **Parameters:**
 - `response_format`: `markdown` (default) or `json`
 
 **Returns:**
 Array of tabs with:
-- `tabId`: Numeric ID for use with other tools
+- `tabId`: Chrome tab ID for use with other tools
 - `url`: Full URL of the tab
 - `title`: Page title (or custom name if set)
 - `customName`: User-assigned name (if set via `tabz_rename_tab`)
-- `active`: Whether this tab is currently focused
+- `active`: **Accurate!** Shows which tab the user actually has focused
+
+**Active Tab Detection:**
+Unlike CDP-only solutions, this tool uses the Chrome Extension API to detect the **real** focused tab. If you manually click a different tab in Chrome, Claude will know immediately.
 
 ---
 
@@ -259,14 +281,16 @@ Array of tabs with:
 - "Change to that tab"
 
 **Parameters:**
-- `tabId` (required): The numeric tab ID to switch to (from tabz_list_tabs)
+- `tabId` (required): The Chrome tab ID to switch to (from tabz_list_tabs)
 
 **Returns:**
 - `success`: Whether the switch was successful
 
 **Important:** After switching, all subsequent tool calls (screenshot, click, fill, etc.) will automatically target that tab without needing to pass `tabId`. This enables workflows like:
-1. `tabz_switch_tab(tabId: 2)`
-2. `tabz_screenshot()` ← automatically captures tab 2
+1. `tabz_switch_tab(tabId: 123456789)`
+2. `tabz_screenshot()` ← automatically captures that tab
+
+**Note:** Tab IDs are real Chrome tab IDs (not simple indices). Get them from `tabz_list_tabs`.
 
 ---
 
@@ -757,35 +781,39 @@ Install the `tabz-mcp` skill for guided browser automation. The skill **dynamica
 
 ## Extension vs CDP Dependencies
 
-Most tools work via **CDP (Chrome DevTools Protocol)** and only require Chrome launched with `--remote-debugging-port=9222`. The extension is only needed for specific features.
+Most tools can work via **CDP (Chrome DevTools Protocol)** with Chrome launched with `--remote-debugging-port=9222`. However, the extension provides better accuracy for tab management and is required for some features.
 
 | Tool | Needs Extension? | Implementation |
 |------|-----------------|----------------|
-| `tabz_list_tabs` | ❌ No | CDP (puppeteer-core) |
-| `tabz_switch_tab` | ❌ No | CDP |
-| `tabz_rename_tab` | ❌ No | CDP (in-memory storage) |
+| `tabz_list_tabs` | ⚠️ Preferred | Extension first (accurate active tab), CDP fallback |
+| `tabz_switch_tab` | ⚠️ Preferred | Extension first (real tab IDs), CDP fallback |
+| `tabz_rename_tab` | ❌ No | In-memory storage |
 | `tabz_get_page_info` | ⚠️ Fallback | CDP first, extension fallback |
 | `tabz_click` | ❌ No | CDP |
 | `tabz_fill` | ❌ No | CDP |
 | `tabz_screenshot` | ❌ No | CDP |
 | `tabz_screenshot_full` | ❌ No | CDP |
-| `tabz_download_image` | ❌ No | CDP |
+| `tabz_download_image` | ⚠️ Hybrid | Extension extracts URL, downloads via extension |
 | `tabz_get_element` | ❌ No | CDP |
 | `tabz_open_url` | ⚠️ Partial | Extension for URL allowlist |
 | `tabz_execute_script` | ⚠️ Fallback | CDP first, extension fallback |
-| `tabz_get_console_logs` | ✅ Yes | Extension captures logs |
+| `tabz_get_console_logs` | ✅ Required | Extension captures logs |
 | `tabz_enable_network_capture` | ❌ No | CDP |
 | `tabz_get_network_requests` | ❌ No | CDP |
 | `tabz_get_api_response` | ❌ No | CDP |
 | `tabz_clear_network_requests` | ❌ No | CDP |
-| `tabz_download_file` | ✅ Yes | Chrome downloads API |
-| `tabz_get_downloads` | ✅ Yes | Chrome downloads API |
-| `tabz_cancel_download` | ✅ Yes | Chrome downloads API |
+| `tabz_download_file` | ✅ Required | Chrome downloads API |
+| `tabz_get_downloads` | ✅ Required | Chrome downloads API |
+| `tabz_cancel_download` | ✅ Required | Chrome downloads API |
 
 **Summary:**
-- **CDP-only tools (15):** Work with just Chrome + `--remote-debugging-port=9222`
+- **CDP-only tools (10):** Work with just Chrome + `--remote-debugging-port=9222`
 - **Extension-required (4):** Console logs, downloads API
-- **Hybrid (3):** Try CDP first, fall back to extension
+- **Extension-preferred (2):** Tab management (accurate active tab detection)
+- **Hybrid (4):** Use both extension and CDP for best results
+
+**Why extension-preferred for tabs?**
+CDP cannot detect which tab the user has actually focused. The extension uses `chrome.tabs.query({active: true})` to get the **real** active tab, so Claude always knows what you're looking at.
 
 ## Requirements
 

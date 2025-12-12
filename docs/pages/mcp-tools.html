@@ -82,8 +82,8 @@
                     </tr>
                     <tr>
                         <td><code>tabz_list_tabs</code></td>
-                        <td>"list tabs", "what tabs", "open tabs"</td>
-                        <td>List all open browser tabs</td>
+                        <td>"list tabs", "what tabs", "which tab am I on"</td>
+                        <td>List tabs with <strong>accurate</strong> active tab detection</td>
                     </tr>
                     <tr>
                         <td><code>tabz_switch_tab</code></td>
@@ -107,8 +107,8 @@
                     </tr>
                     <tr>
                         <td><code>tabz_download_image</code></td>
-                        <td>"download image", "save image"</td>
-                        <td>Download images to disk</td>
+                        <td>"download image", "save AI image"</td>
+                        <td>Download images (works with ChatGPT/DALL-E!)</td>
                     </tr>
                     <tr>
                         <td><code>tabz_get_element</code></td>
@@ -207,22 +207,24 @@
 
         <div class="tool-card">
             <h3>tabz_download_image</h3>
-            <p class="description">Download an image from the browser page and save to local disk.</p>
+            <p class="description">Download an image from the browser page. <strong>Works with AI-generated images</strong> from ChatGPT, DALL-E, and Copilot!</p>
             <div class="triggers">
                 <h4>Trigger phrases:</h4>
                 <span class="trigger-tag">"download that image"</span>
-                <span class="trigger-tag">"save the image"</span>
+                <span class="trigger-tag">"save the AI image"</span>
                 <span class="trigger-tag">"get the picture"</span>
             </div>
             <div class="code-wrapper">
-                <div class="code-block"><code><span class="comment">// Download by selector</span>
+                <div class="code-block"><code><span class="comment">// ChatGPT AI-generated images (recommended)</span>
+{ <span class="string">"selector"</span>: <span class="string">"img[src*='oaiusercontent.com']"</span> }
+
+<span class="comment">// Download by selector</span>
 { <span class="string">"selector"</span>: <span class="string">"img.hero-image"</span> }
 
 <span class="comment">// Download by URL</span>
 { <span class="string">"url"</span>: <span class="string">"https://example.com/image.png"</span> }
 
-<span class="comment">// First image on page</span>
-{ <span class="string">"selector"</span>: <span class="string">"img"</span> }</code></div>
+<span class="comment">// Tip: Avoid "img" alone - may match avatars first</span></code></div>
             </div>
         </div>
 
@@ -312,18 +314,19 @@
 
         <div class="tool-card">
             <h3>tabz_list_tabs</h3>
-            <p class="description">List all open browser tabs with their IDs, URLs, and titles.</p>
+            <p class="description">List all open browser tabs with <strong>accurate active tab detection</strong>. Unlike CDP-only solutions, this uses the extension API to know which tab you actually have focused.</p>
             <div class="triggers">
                 <h4>Trigger phrases:</h4>
                 <span class="trigger-tag" data-terminal-command="What tabs are open in my browser?">what tabs are open</span>
                 <span class="trigger-tag" data-terminal-command="List all my browser tabs">list all tabs</span>
-                <span class="trigger-tag" data-terminal-command="Show me the tabs">show me the tabs</span>
+                <span class="trigger-tag" data-terminal-command="Which tab am I on?">which tab am I on</span>
             </div>
             <div class="code-wrapper">
                 <div class="code-block"><code><span class="comment">// List all tabs</span>
 {}
 
-<span class="comment">// Returns array with tabId, url, title, active status</span></code></div>
+<span class="comment">// Returns: tabId, url, title, active (accurate!)</span>
+<span class="comment">// Click a different tab in Chrome → Claude knows immediately</span></code></div>
             </div>
         </div>
 
@@ -636,18 +639,58 @@
             <h2>Setup Requirements</h2>
             <div class="ref-grid">
                 <div class="ref-item">
-                    <h4>Chrome Debug Mode</h4>
-                    <code>--remote-debugging-port=9222</code>
-                </div>
-                <div class="ref-item">
                     <h4>Backend Running</h4>
                     <code>cd backend && npm start</code>
+                </div>
+                <div class="ref-item">
+                    <h4>Extension Loaded</h4>
+                    <code>chrome://extensions</code>
                 </div>
                 <div class="ref-item">
                     <h4>MCP Config</h4>
                     <code>.mcp.json</code> in project root
                 </div>
             </div>
+            <h3 style="margin-top: 1.5rem;">What Requires Chrome Debug Mode?</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                Most tools work without debug mode. Only these require <code>--remote-debugging-port=9222</code>:
+            </p>
+            <table style="font-size: 0.9rem;">
+                <thead>
+                    <tr>
+                        <th>Tool</th>
+                        <th>Without Debug</th>
+                        <th>With Debug</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Tab management (list, switch, rename)</td>
+                        <td style="color: var(--green);">✓ Works</td>
+                        <td style="color: var(--green);">✓ Works</td>
+                    </tr>
+                    <tr>
+                        <td>Download tools</td>
+                        <td style="color: var(--green);">✓ Works</td>
+                        <td style="color: var(--green);">✓ Works</td>
+                    </tr>
+                    <tr>
+                        <td>Console logs</td>
+                        <td style="color: var(--green);">✓ Works</td>
+                        <td style="color: var(--green);">✓ Works</td>
+                    </tr>
+                    <tr>
+                        <td>Screenshots, clicks, fill</td>
+                        <td style="color: var(--red);">✗ Requires debug</td>
+                        <td style="color: var(--green);">✓ Works</td>
+                    </tr>
+                    <tr>
+                        <td>Network capture</td>
+                        <td style="color: var(--red);">✗ Requires debug</td>
+                        <td style="color: var(--green);">✓ Works</td>
+                    </tr>
+                </tbody>
+            </table>
         </section>
     </main>
 

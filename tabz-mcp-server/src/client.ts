@@ -504,6 +504,98 @@ export async function downloadImage(options: {
   outputPath?: string;
   tabId?: number;
 }): Promise<DownloadImageResult> {
+  let imageUrl = options.url;
+
+  // If no URL provided but selector given, try to extract URL from the page
+  if (!imageUrl && options.selector) {
+    try {
+      const extractResult = await executeScript(BACKEND_URL, {
+        code: `(() => {
+          const el = document.querySelector('${options.selector.replace(/'/g, "\\'")}');
+          if (!el) return null;
+          if (el.tagName === 'IMG') return el.src;
+          const img = el.querySelector('img');
+          return img ? img.src : null;
+        })()`,
+        tabId: options.tabId
+      });
+      if (extractResult.success && extractResult.result && typeof extractResult.result === 'string') {
+        imageUrl = extractResult.result;
+      }
+    } catch {
+      // Ignore extraction error, will try other methods
+    }
+  }
+
+  // If still no URL, try to find the largest image on the page
+  if (!imageUrl) {
+    try {
+      const extractResult = await executeScript(BACKEND_URL, {
+        code: `(() => {
+          const imgs = Array.from(document.querySelectorAll('img'));
+          const largest = imgs.reduce((best, img) => {
+            const area = img.naturalWidth * img.naturalHeight;
+            const bestArea = best ? best.naturalWidth * best.naturalHeight : 0;
+            return area > bestArea && area > 40000 ? img : best;
+          }, null);
+          return largest ? largest.src : null;
+        })()`,
+        tabId: options.tabId
+      });
+      if (extractResult.success && extractResult.result && typeof extractResult.result === 'string') {
+        imageUrl = extractResult.result;
+      }
+    } catch {
+      // Ignore extraction error
+    }
+  }
+
+  // If we have a regular HTTPS URL (not blob), use direct download
+  if (imageUrl && imageUrl.startsWith('https://') && !imageUrl.startsWith('blob:')) {
+    const filename = options.outputPath?.split(/[/\\]/).pop() ||
+      `downloaded-image-${Date.now()}.png`;
+
+    const downloadResult = await downloadFile({
+      url: imageUrl,
+      filename
+    });
+
+    if (downloadResult.success && downloadResult.wslPath) {
+      return {
+        success: true,
+        filePath: downloadResult.wslPath
+      };
+    }
+  }
+
+  // For blob URLs or if download failed, try extension-based canvas capture
+  const captureResult = await captureImage({
+    selector: options.selector,
+    tabId: options.tabId,
+    outputPath: options.outputPath
+  });
+
+  if (captureResult.success && captureResult.filePath) {
+    return {
+      success: true,
+      filePath: captureResult.filePath
+    };
+  }
+
+  // Return the best error message
+  return {
+    success: false,
+    error: captureResult.error || 'Failed to download image. The image may be cross-origin or inaccessible.'
+  };
+}
+
+// Legacy CDP-based downloadImage (kept for reference, no longer used)
+async function downloadImageCDP(options: {
+  selector?: string;
+  url?: string;
+  outputPath?: string;
+  tabId?: number;
+}): Promise<DownloadImageResult> {
   try {
     const page = await getPageByTabId(options.tabId);
 
@@ -537,26 +629,74 @@ export async function downloadImage(options: {
       imageUrl = extractedUrl;
     }
 
-    if (!imageUrl) {
+    if (!imageUrl && !options.selector) {
       return { success: false, error: 'Either selector or url parameter is required' };
     }
 
-    // Fetch the image
-    const response = await page.evaluate(async (url) => {
-      try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const blob = await res.blob();
-        const reader = new FileReader();
-        return new Promise<string>((resolve, reject) => {
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-      } catch (e) {
-        throw e;
-      }
-    }, imageUrl);
+    // For blob URLs or when we have a selector, use canvas capture instead of fetch
+    // This works for AI-generated images (ChatGPT, Copilot, DALL-E, etc.) which use blob URLs
+    const isBlobUrl = imageUrl?.startsWith('blob:');
+
+    let response: string;
+
+    if (isBlobUrl || options.selector) {
+      // Canvas capture approach - works for blob URLs and any visible image
+      const selector = options.selector || 'img';
+      response = await page.evaluate(async (sel, targetUrl) => {
+        // Find the image element
+        let imgEl: HTMLImageElement | null = null;
+
+        if (targetUrl) {
+          // Find img with matching src (for blob URLs)
+          imgEl = document.querySelector(`img[src="${targetUrl}"]`) as HTMLImageElement;
+        }
+        if (!imgEl && sel) {
+          const el = document.querySelector(sel);
+          if (el?.tagName === 'IMG') {
+            imgEl = el as HTMLImageElement;
+          }
+        }
+
+        if (!imgEl) {
+          throw new Error('Could not find image element');
+        }
+
+        // Wait for image to load if needed
+        if (!imgEl.complete) {
+          await new Promise((resolve, reject) => {
+            imgEl!.onload = resolve;
+            imgEl!.onerror = reject;
+            setTimeout(reject, 5000); // 5s timeout
+          });
+        }
+
+        // Draw to canvas and export
+        const canvas = document.createElement('canvas');
+        canvas.width = imgEl.naturalWidth || imgEl.width;
+        canvas.height = imgEl.naturalHeight || imgEl.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Could not get canvas context');
+        ctx.drawImage(imgEl, 0, 0);
+        return canvas.toDataURL('image/png');
+      }, selector, imageUrl);
+    } else {
+      // Standard fetch approach for regular URLs
+      response = await page.evaluate(async (url) => {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const blob = await res.blob();
+          const reader = new FileReader();
+          return new Promise<string>((resolve, reject) => {
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        } catch (e) {
+          throw e;
+        }
+      }, imageUrl!);
+    }
 
     // Clean up old images before saving new one
     await cleanupScreenshots();
@@ -568,8 +708,15 @@ export async function downloadImage(options: {
     }
 
     // Extract extension from URL or default to png
-    const urlPath = new URL(imageUrl).pathname;
-    const ext = path.extname(urlPath) || '.png';
+    let ext = '.png';
+    if (imageUrl && !isBlobUrl) {
+      try {
+        const urlPath = new URL(imageUrl).pathname;
+        ext = path.extname(urlPath) || '.png';
+      } catch {
+        // Invalid URL, use default extension
+      }
+    }
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `image-${timestamp}${ext}`;
     const outputPath = options.outputPath || path.join(defaultDir, filename);
@@ -642,15 +789,42 @@ export async function renameTab(tabId: number, name: string): Promise<{ success:
 }
 
 /**
- * List all open browser tabs via CDP
- * Note: tabId is the index in the filtered (non-chrome) pages array.
- * Use this tabId with other functions like executeScript, clickElement, etc.
+ * List all open browser tabs via Extension API (accurate active state)
+ * Falls back to CDP if extension is not available.
+ *
+ * Note: Extension API provides REAL Chrome tab IDs and accurate active state.
+ * CDP can't detect which tab the user has focused.
  */
 export async function listTabs(): Promise<{ tabs: TabInfo[]; error?: string }> {
+  // Try extension API first (accurate active state)
+  try {
+    const response = await axios.get(`${BACKEND_URL}/api/browser/tabs`, { timeout: 5000 });
+    if (response.data.success && response.data.tabs) {
+      const tabs: TabInfo[] = response.data.tabs.map((tab: any) => ({
+        tabId: tab.tabId,  // Real Chrome tab ID
+        url: tab.url,
+        title: tab.title,
+        customName: customTabNames.get(tab.url),
+        active: tab.active  // Accurate! Extension knows the real focused tab
+      }));
+
+      // Update currentTabId to the actually active tab
+      const activeTab = tabs.find(t => t.active);
+      if (activeTab) {
+        currentTabId = activeTab.tabId;
+      }
+
+      return { tabs };
+    }
+  } catch (error) {
+    // Extension API failed, try CDP fallback
+  }
+
+  // Fallback to CDP (no accurate active state)
   try {
     const pages = await getNonChromePages();
     if (!pages) {
-      return { tabs: [], error: 'CDP not available. Make sure Chrome is running with --remote-debugging-port=9222' };
+      return { tabs: [], error: 'Neither extension nor CDP available. Make sure Chrome extension is installed or Chrome is running with --remote-debugging-port=9222' };
     }
 
     const tabs: TabInfo[] = [];
@@ -661,11 +835,11 @@ export async function listTabs(): Promise<{ tabs: TabInfo[]; error?: string }> {
       const customName = customTabNames.get(url);
 
       tabs.push({
-        tabId: i + 1, // 1-based for user clarity (Tab 1, Tab 2, etc.)
+        tabId: i + 1, // CDP uses 1-based array index (less reliable)
         url: url,
         title: await page.title(),
         customName: customName,
-        active: false // CDP can't reliably detect active tab - removed misleading marker
+        active: i + 1 === currentTabId // Best guess based on last switch
       });
     }
 
@@ -676,29 +850,61 @@ export async function listTabs(): Promise<{ tabs: TabInfo[]; error?: string }> {
 }
 
 /**
- * Switch to a specific tab via CDP
- * Also updates currentTabId so subsequent operations target this tab
+ * Switch to a specific tab via Extension API
+ * Falls back to CDP if extension is not available.
+ * Also updates currentTabId so subsequent operations target this tab.
  */
 export async function switchTab(tabId: number): Promise<{ success: boolean; error?: string }> {
+  // Try extension API first (uses real Chrome tab IDs)
+  try {
+    const response = await axios.post(`${BACKEND_URL}/api/browser/switch-tab`, { tabId }, { timeout: 5000 });
+    if (response.data.success) {
+      currentTabId = tabId;
+      return { success: true };
+    }
+    if (response.data.error) {
+      return { success: false, error: response.data.error };
+    }
+  } catch (error) {
+    // Extension API failed, try CDP fallback
+  }
+
+  // Fallback to CDP (uses array indices)
   try {
     const pages = await getNonChromePages();
     if (!pages) {
-      return { success: false, error: 'CDP not available. Make sure Chrome is running with --remote-debugging-port=9222' };
+      return { success: false, error: 'Neither extension nor CDP available' };
     }
 
-    // Tab IDs are 1-based for user clarity
+    // For CDP fallback, tabId is 1-based array index
     if (tabId < 1 || tabId > pages.length) {
       return { success: false, error: `Invalid tab ID: ${tabId}. Available tabs: 1-${pages.length}` };
     }
 
-    await pages[tabId - 1].bringToFront(); // Convert to 0-based index
-
-    // Track current tab for subsequent operations (screenshot, click, etc.)
+    await pages[tabId - 1].bringToFront();
     currentTabId = tabId;
 
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
+ * Get the currently active tab via Extension API
+ * This is the REAL focused tab, not just what Claude last switched to.
+ */
+export async function getActiveTab(): Promise<{ tab?: { tabId: number; url: string; title: string }; error?: string }> {
+  try {
+    const response = await axios.get(`${BACKEND_URL}/api/browser/active-tab`, { timeout: 5000 });
+    if (response.data.success && response.data.tab) {
+      // Update currentTabId to match reality
+      currentTabId = response.data.tab.tabId;
+      return { tab: response.data.tab };
+    }
+    return { error: response.data.error || 'Failed to get active tab' };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -1116,6 +1322,41 @@ export async function cancelDownload(downloadId: number): Promise<CancelDownload
     return response.data;
   } catch (error) {
     return { success: false, error: handleApiError(error, "Failed to cancel download").message };
+  }
+}
+
+/**
+ * Capture an image from the page via canvas (extension-based, no CDP required)
+ * Works for blob URLs and AI-generated images (ChatGPT, Copilot, DALL-E, etc.)
+ */
+export interface CaptureImageResult {
+  success: boolean;
+  filePath?: string;
+  windowsPath?: string;
+  wslPath?: string;
+  width?: number;
+  height?: number;
+  error?: string;
+}
+
+export async function captureImage(options: {
+  selector?: string;
+  tabId?: number;
+  outputPath?: string;
+}): Promise<CaptureImageResult> {
+  try {
+    const response = await axios.post<CaptureImageResult>(
+      `${BACKEND_URL}/api/browser/capture-image`,
+      {
+        selector: options.selector,
+        tabId: options.tabId,
+        outputPath: options.outputPath
+      },
+      { timeout: 35000 } // 35s timeout (backend has 30s)
+    );
+    return response.data;
+  } catch (error) {
+    return { success: false, error: handleApiError(error, "Failed to capture image").message };
   }
 }
 

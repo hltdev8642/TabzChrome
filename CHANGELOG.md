@@ -13,6 +13,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.7.3] - 2025-12-12
+
+### ✨ Enhancements
+
+#### AI Image Download Support
+- **`tabz_download_image` now works with ChatGPT/Copilot** - Automatically extracts full CDN URLs with auth tokens
+- **URL extraction from page** - Uses `tabz_execute_script` to get the actual `src` attribute (not just selector matching)
+- **Direct download for HTTPS URLs** - Routes through `downloadFile` for reliable downloads
+- **Extension-based capture fallback** - Added `browser-capture-image` handler for future blob URL support
+
+**Recommended selectors for AI platforms:**
+- ChatGPT: `img[src*='oaiusercontent.com']`
+- General: `img[src*='cdn']`
+
+Files changed:
+- `extension/background/background.ts` - Added `handleBrowserCaptureImage()` handler
+- `backend/routes/browser.js` - Added `/api/browser/capture-image` route
+- `backend/server.js` - Added `browser-capture-image-result` WebSocket handler
+- `tabz-mcp-server/src/client.ts` - Rewrote `downloadImage()` to extract URLs and use direct download
+- `tabz-mcp-server/MCP_TOOLS.md` - Updated documentation with AI image examples
+
+### 🐛 Bug Fixes
+
+#### GitHub FAB Star Button
+- **Fixed Star button selector** - Changed from `form.unstarred` to `form[action$="/star"]`
+- **Added "already starred" detection** - FAB now shows feedback when repo is already starred
+
+#### UI Polish
+- **Default font changed to JetBrains Mono NF** - Better ligatures and icon support
+- **Suppressed sidePanel.open() error logs** - Cleaner console output
+
+---
+
 ## [2.7.2] - 2025-12-11
 
 ### 🐛 Bug Fixes

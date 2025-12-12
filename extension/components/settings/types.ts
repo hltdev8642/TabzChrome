@@ -93,7 +93,7 @@ export const DEFAULT_PROFILE: Profile = {
   workingDir: '',  // Empty = inherit from header
   command: '',
   fontSize: 16,
-  fontFamily: 'monospace',
+  fontFamily: 'JetBrains Mono NF',
   themeName: 'high-contrast',
 }
 

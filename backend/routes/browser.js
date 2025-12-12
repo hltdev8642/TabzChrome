@@ -391,6 +391,265 @@ router.post('/cancel-download', async (req, res) => {
   }
 });
 
+// POST /api/browser/capture-image - Capture image via canvas (works for blob URLs)
+// This is the preferred method for AI-generated images (ChatGPT, Copilot, DALL-E, etc.)
+router.post('/capture-image', async (req, res) => {
+  const { selector, tabId, outputPath } = req.body;
+
+  log.debug('POST /capture-image', { selector, tabId, outputPath });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available - backend not fully initialized'
+    });
+  }
+
+  try {
+    const requestId = `browser-${++requestIdCounter}`;
+
+    // Create promise that will be resolved by WebSocket response
+    const resultPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.delete(requestId);
+        reject(new Error('Image capture timed out'));
+      }, 30000); // 30 second timeout
+
+      pendingRequests.set(requestId, {
+        resolve: (data) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          resolve(data);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          reject(error);
+        }
+      });
+    });
+
+    // Send request to extension via WebSocket
+    broadcast({
+      type: 'browser-capture-image',
+      requestId,
+      selector,
+      tabId,
+      outputPath
+    });
+
+    const result = await resultPromise;
+    res.json(result);
+  } catch (error) {
+    log.error('capture-image error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// Tab Management Routes (Extension-based)
+// ============================================
+
+// GET /api/browser/tabs - List all tabs with accurate active state
+router.get('/tabs', async (req, res) => {
+  log.debug('GET /tabs');
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const requestId = `browser-${++requestIdCounter}`;
+
+    const resultPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.delete(requestId);
+        reject(new Error('Request timed out'));
+      }, 10000);
+
+      pendingRequests.set(requestId, {
+        resolve: (data) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          resolve(data);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          reject(error);
+        }
+      });
+    });
+
+    broadcast({
+      type: 'browser-list-tabs',
+      requestId
+    });
+
+    const result = await resultPromise;
+    res.json(result);
+  } catch (error) {
+    log.error('list-tabs error:', error);
+    res.json({ success: false, tabs: [], error: error.message });
+  }
+});
+
+// POST /api/browser/switch-tab - Switch to a specific tab
+router.post('/switch-tab', async (req, res) => {
+  const { tabId } = req.body;
+
+  if (tabId === undefined) {
+    return res.status(400).json({ success: false, error: 'tabId is required' });
+  }
+
+  log.debug('POST /switch-tab', { tabId });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const requestId = `browser-${++requestIdCounter}`;
+
+    const resultPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.delete(requestId);
+        reject(new Error('Request timed out'));
+      }, 10000);
+
+      pendingRequests.set(requestId, {
+        resolve: (data) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          resolve(data);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          reject(error);
+        }
+      });
+    });
+
+    broadcast({
+      type: 'browser-switch-tab',
+      requestId,
+      tabId
+    });
+
+    const result = await resultPromise;
+    res.json(result);
+  } catch (error) {
+    log.error('switch-tab error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/browser/active-tab - Get the currently active tab
+router.get('/active-tab', async (req, res) => {
+  log.debug('GET /active-tab');
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const requestId = `browser-${++requestIdCounter}`;
+
+    const resultPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.delete(requestId);
+        reject(new Error('Request timed out'));
+      }, 10000);
+
+      pendingRequests.set(requestId, {
+        resolve: (data) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          resolve(data);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          reject(error);
+        }
+      });
+    });
+
+    broadcast({
+      type: 'browser-get-active-tab',
+      requestId
+    });
+
+    const result = await resultPromise;
+    res.json(result);
+  } catch (error) {
+    log.error('get-active-tab error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/browser/profiles - Get all terminal profiles from Chrome storage
+router.get('/profiles', async (req, res) => {
+  log.debug('GET /profiles');
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const requestId = `browser-${++requestIdCounter}`;
+
+    const resultPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.delete(requestId);
+        reject(new Error('Request timed out'));
+      }, 10000);
+
+      pendingRequests.set(requestId, {
+        resolve: (data) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          resolve(data);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          reject(error);
+        }
+      });
+    });
+
+    broadcast({
+      type: 'browser-get-profiles',
+      requestId
+    });
+
+    const result = await resultPromise;
+    res.json(result);
+  } catch (error) {
+    log.error('get-profiles error:', error);
+    res.json({ success: false, profiles: [], error: error.message });
+  }
+});
+
 module.exports = router;
 module.exports.addConsoleLog = addConsoleLog;
 module.exports.getConsoleLogs = getConsoleLogs;

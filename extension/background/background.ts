@@ -233,6 +233,164 @@ async function handleBrowserGetPageInfo(message: { requestId: string; tabId?: nu
 }
 
 // ============================================
+// BROWSER MCP - Tab Management Handlers
+// ============================================
+
+/**
+ * List all browser tabs with accurate active state
+ * Unlike CDP, extension API knows the REAL focused tab
+ */
+async function handleBrowserListTabs(message: { requestId: string }) {
+  try {
+    // Get all tabs in the current window
+    const allTabs = await chrome.tabs.query({ currentWindow: true })
+
+    // Filter out chrome:// and extension pages
+    const tabs = allTabs.filter(tab =>
+      tab.url &&
+      !tab.url.startsWith('chrome://') &&
+      !tab.url.startsWith('chrome-extension://')
+    )
+
+    const tabList = tabs.map((tab, index) => ({
+      tabId: tab.id || -1,
+      index: index + 1, // 1-based for user display
+      url: tab.url || '',
+      title: tab.title || '',
+      active: tab.active,
+      favIconUrl: tab.favIconUrl
+    }))
+
+    sendToWebSocket({
+      type: 'browser-list-tabs-result',
+      requestId: message.requestId,
+      tabs: tabList,
+      success: true
+    })
+  } catch (err) {
+    sendToWebSocket({
+      type: 'browser-list-tabs-result',
+      requestId: message.requestId,
+      tabs: [],
+      success: false,
+      error: (err as Error).message
+    })
+  }
+}
+
+/**
+ * Switch to a specific tab by Chrome tab ID
+ */
+async function handleBrowserSwitchTab(message: { requestId: string; tabId: number }) {
+  try {
+    await chrome.tabs.update(message.tabId, { active: true })
+
+    // Also focus the window containing this tab
+    const tab = await chrome.tabs.get(message.tabId)
+    if (tab.windowId) {
+      await chrome.windows.update(tab.windowId, { focused: true })
+    }
+
+    sendToWebSocket({
+      type: 'browser-switch-tab-result',
+      requestId: message.requestId,
+      success: true,
+      tabId: message.tabId
+    })
+  } catch (err) {
+    sendToWebSocket({
+      type: 'browser-switch-tab-result',
+      requestId: message.requestId,
+      success: false,
+      error: (err as Error).message
+    })
+  }
+}
+
+/**
+ * Get the currently active tab
+ */
+async function handleBrowserGetActiveTab(message: { requestId: string }) {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+
+    if (tab) {
+      sendToWebSocket({
+        type: 'browser-get-active-tab-result',
+        requestId: message.requestId,
+        success: true,
+        tab: {
+          tabId: tab.id || -1,
+          url: tab.url || '',
+          title: tab.title || '',
+          favIconUrl: tab.favIconUrl
+        }
+      })
+    } else {
+      sendToWebSocket({
+        type: 'browser-get-active-tab-result',
+        requestId: message.requestId,
+        success: false,
+        error: 'No active tab found'
+      })
+    }
+  } catch (err) {
+    sendToWebSocket({
+      type: 'browser-get-active-tab-result',
+      requestId: message.requestId,
+      success: false,
+      error: (err as Error).message
+    })
+  }
+}
+
+// ============================================
+// BROWSER MCP - Profile Handler
+// ============================================
+
+/**
+ * Get all profiles from Chrome storage
+ * Allows Claude to see available terminal profiles for spawning
+ */
+async function handleBrowserGetProfiles(message: { requestId: string }) {
+  try {
+    const result = await chrome.storage.local.get(['profiles', 'defaultProfile', 'globalWorkingDir'])
+    const profiles = (result.profiles || []) as Array<{
+      id: string
+      name: string
+      workingDir?: string
+      command?: string
+      category?: string
+    }>
+    const defaultProfileId = result.defaultProfile as string | undefined
+    const globalWorkingDir = (result.globalWorkingDir as string) || '~'
+
+    sendToWebSocket({
+      type: 'browser-profiles-result',
+      requestId: message.requestId,
+      success: true,
+      profiles: profiles.map(p => ({
+        id: p.id,
+        name: p.name,
+        workingDir: p.workingDir || '',
+        command: p.command || '',
+        category: p.category || ''
+      })),
+      defaultProfileId,
+      globalWorkingDir
+    })
+  } catch (err) {
+    sendToWebSocket({
+      type: 'browser-profiles-result',
+      requestId: message.requestId,
+      success: false,
+      profiles: [],
+      error: (err as Error).message
+    })
+  }
+}
+
+// ============================================
 // BROWSER MCP - Download Handlers
 // ============================================
 
@@ -432,6 +590,200 @@ async function handleBrowserCancelDownload(message: {
   }
 }
 
+// Handle capture image request from backend (MCP server)
+// Uses canvas capture - works for blob URLs (AI-generated images) without CDP
+async function handleBrowserCaptureImage(message: {
+  requestId: string
+  selector?: string
+  tabId?: number
+  outputPath?: string
+}) {
+  try {
+    // Get target tab
+    const tabs = message.tabId
+      ? [{ id: message.tabId }]
+      : await chrome.tabs.query({ active: true, currentWindow: true })
+
+    const targetTab = tabs[0]
+    if (!targetTab?.id) {
+      throw new Error('No active tab found')
+    }
+
+    // Execute canvas capture in the page context
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: targetTab.id },
+      func: (selector: string) => {
+        // Find the image element
+        let imgEl: HTMLImageElement | null = null
+
+        if (selector) {
+          const el = document.querySelector(selector)
+          if (el?.tagName === 'IMG') {
+            imgEl = el as HTMLImageElement
+          } else if (el) {
+            // Try to find an img inside the selected element
+            imgEl = el.querySelector('img')
+          }
+        }
+
+        // Fallback: find first significant image on page
+        if (!imgEl) {
+          const imgs = Array.from(document.querySelectorAll('img'))
+          // Find largest image (likely the main content)
+          imgEl = imgs.reduce((best, img) => {
+            const area = img.naturalWidth * img.naturalHeight
+            const bestArea = best ? best.naturalWidth * best.naturalHeight : 0
+            return area > bestArea ? img : best
+          }, null as HTMLImageElement | null)
+        }
+
+        if (!imgEl) {
+          return { error: 'No image found on page' }
+        }
+
+        // Check if image is loaded
+        if (!imgEl.complete || imgEl.naturalWidth === 0) {
+          return { error: 'Image not fully loaded' }
+        }
+
+        // Capture via canvas
+        try {
+          const canvas = document.createElement('canvas')
+          canvas.width = imgEl.naturalWidth || imgEl.width
+          canvas.height = imgEl.naturalHeight || imgEl.height
+          const ctx = canvas.getContext('2d')
+          if (!ctx) {
+            return { error: 'Could not create canvas context' }
+          }
+          ctx.drawImage(imgEl, 0, 0)
+
+          // Export as PNG data URL
+          const dataUrl = canvas.toDataURL('image/png')
+          return {
+            dataUrl,
+            width: canvas.width,
+            height: canvas.height,
+            src: imgEl.src.substring(0, 200) // Truncate for logging
+          }
+        } catch (e) {
+          // Tainted canvas (cross-origin image)
+          return { error: `Canvas capture failed: ${(e as Error).message}. Image may be cross-origin.` }
+        }
+      },
+      args: [message.selector || '']
+    })
+
+    const result = results[0]?.result as {
+      dataUrl?: string
+      width?: number
+      height?: number
+      src?: string
+      error?: string
+    }
+
+    if (result?.error) {
+      throw new Error(result.error)
+    }
+
+    if (!result?.dataUrl) {
+      throw new Error('No image data captured')
+    }
+
+    // Convert data URL to blob and download
+    const base64Data = result.dataUrl.replace(/^data:image\/\w+;base64,/, '')
+    const byteCharacters = atob(base64Data)
+    const byteNumbers = new Array(byteCharacters.length)
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i)
+    }
+    const byteArray = new Uint8Array(byteNumbers)
+    const blob = new Blob([byteArray], { type: 'image/png' })
+    const blobUrl = URL.createObjectURL(blob)
+
+    // Generate filename
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const filename = message.outputPath
+      ? message.outputPath.split(/[/\\]/).pop() || `captured-image-${timestamp}.png`
+      : `captured-image-${timestamp}.png`
+
+    // Download the blob
+    const downloadId = await new Promise<number>((resolve, reject) => {
+      chrome.downloads.download({
+        url: blobUrl,
+        filename: filename,
+        conflictAction: 'uniquify'
+      }, (id) => {
+        URL.revokeObjectURL(blobUrl) // Clean up blob URL
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message))
+        } else if (id === undefined) {
+          reject(new Error('Download failed to start'))
+        } else {
+          resolve(id)
+        }
+      })
+    })
+
+    // Wait for download to complete
+    const downloadResult = await new Promise<{
+      success: boolean
+      filePath?: string
+      windowsPath?: string
+      wslPath?: string
+      width?: number
+      height?: number
+      error?: string
+    }>((resolve) => {
+      const timeout = setTimeout(() => {
+        resolve({ success: false, error: 'Download timed out' })
+      }, 10000)
+
+      const checkDownload = () => {
+        chrome.downloads.search({ id: downloadId }, (results) => {
+          if (results.length === 0) {
+            clearTimeout(timeout)
+            resolve({ success: false, error: 'Download not found' })
+            return
+          }
+
+          const download = results[0]
+          if (download.state === 'complete') {
+            clearTimeout(timeout)
+            const windowsPath = download.filename
+            resolve({
+              success: true,
+              filePath: windowsToWslPath(windowsPath),
+              windowsPath: windowsPath,
+              wslPath: windowsToWslPath(windowsPath),
+              width: result.width,
+              height: result.height
+            })
+          } else if (download.state === 'interrupted') {
+            clearTimeout(timeout)
+            resolve({ success: false, error: download.error || 'Download interrupted' })
+          } else {
+            setTimeout(checkDownload, 200)
+          }
+        })
+      }
+      setTimeout(checkDownload, 100)
+    })
+
+    sendToWebSocket({
+      type: 'browser-capture-image-result',
+      requestId: message.requestId,
+      ...downloadResult
+    })
+  } catch (err) {
+    sendToWebSocket({
+      type: 'browser-capture-image-result',
+      requestId: message.requestId,
+      success: false,
+      error: (err as Error).message
+    })
+  }
+}
+
 // Initialize background service worker
 console.log('Terminal Tabs background service worker starting...')
 
@@ -543,6 +895,26 @@ function connectWebSocket() {
         handleBrowserGetPageInfo(message)
       }
       // ============================================
+      // BROWSER MCP - Tab management handlers
+      // ============================================
+      else if (message.type === 'browser-list-tabs') {
+        // List all tabs with accurate active state
+        console.log('📑 Browser MCP: list-tabs request', message.requestId)
+        handleBrowserListTabs(message)
+      } else if (message.type === 'browser-switch-tab') {
+        // Switch to a specific tab
+        console.log('📑 Browser MCP: switch-tab request', message.requestId, message.tabId)
+        handleBrowserSwitchTab(message)
+      } else if (message.type === 'browser-get-active-tab') {
+        // Get the currently active tab
+        console.log('📑 Browser MCP: get-active-tab request', message.requestId)
+        handleBrowserGetActiveTab(message)
+      } else if (message.type === 'browser-get-profiles') {
+        // Get all terminal profiles
+        console.log('📋 Browser MCP: get-profiles request', message.requestId)
+        handleBrowserGetProfiles(message)
+      }
+      // ============================================
       // BROWSER MCP - Download handlers
       // ============================================
       else if (message.type === 'browser-download-file') {
@@ -557,6 +929,10 @@ function connectWebSocket() {
         // Cancel download (request from MCP server via backend)
         console.log('📥 Browser MCP: cancel-download request', message.requestId, message.downloadId)
         handleBrowserCancelDownload(message)
+      } else if (message.type === 'browser-capture-image') {
+        // Capture image via canvas (works for blob URLs / AI-generated images)
+        console.log('📸 Browser MCP: capture-image request', message.requestId, message.selector)
+        handleBrowserCaptureImage(message)
       } else {
         // Broadcast other messages as WS_MESSAGE
         const clientMessage: ExtensionMessage = {
@@ -773,20 +1149,34 @@ chrome.omnibox.onInputChanged.addListener(async (text, suggest) => {
     })
   }
 
-  // Profile suggestions
-  if (lowerText.startsWith('profile:') || lowerText === 'p' || lowerText === 'pr') {
-    try {
-      const result = await chrome.storage.local.get(['profiles'])
-      const profiles = (result.profiles || []) as Array<{ id: string; name: string; workingDir?: string }>
-      for (const profile of profiles) {
-        suggestions.push({
-          content: `profile:${profile.id}`,
-          description: `<match>Profile:</match> ${profile.name} <dim>(${profile.workingDir || '~'})</dim>`
-        })
-      }
-    } catch (err) {
-      console.error('Failed to get profiles for omnibox:', err)
+  // Profile suggestions - show when typing "p", "pr", "profile:", or any profile name
+  try {
+    const result = await chrome.storage.local.get(['profiles', 'globalWorkingDir'])
+    const profiles = (result.profiles || []) as Array<{ id: string; name: string; workingDir?: string }>
+    const globalWorkingDir = (result.globalWorkingDir as string) || '~'
+
+    // Extract search term: either after "profile:" or the raw input
+    const profileSearch = lowerText.startsWith('profile:')
+      ? lowerText.substring(8).trim()
+      : lowerText
+
+    // Filter profiles by name match (or show all if just "p"/"pr"/"profile:")
+    const showAll = lowerText === 'p' || lowerText === 'pr' || lowerText === 'profile:'
+    const matchingProfiles = profiles.filter(profile =>
+      showAll || profile.name.toLowerCase().includes(profileSearch)
+    )
+
+    for (const profile of matchingProfiles) {
+      const displayDir = profile.workingDir || globalWorkingDir
+      // Escape XML special chars for omnibox description
+      const escapeXml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      suggestions.push({
+        content: `profile:${profile.id}`,
+        description: `<match>Profile:</match> ${escapeXml(profile.name)} <dim>(${escapeXml(displayDir)})</dim>`
+      })
     }
+  } catch (err) {
+    console.error('Failed to get profiles for omnibox:', err)
   }
 
   // Built-in commands
@@ -955,8 +1345,8 @@ chrome.runtime.onMessage.addListener(async (message: ExtensionMessage, sender, s
         } else {
           console.error('[Background] No normal browser window found')
         }
-      } catch (err) {
-        console.error('[Background] Failed to open side panel:', err)
+      } catch {
+        // Silently ignore - user gesture may not be available
       }
 
       sendToWebSocket({
@@ -1000,8 +1390,8 @@ chrome.runtime.onMessage.addListener(async (message: ExtensionMessage, sender, s
         if (targetWindow?.id) {
           await chrome.sidePanel.open({ windowId: targetWindow.id })
         }
-      } catch (err) {
-        console.error('[Background] Failed to open side panel:', err)
+      } catch {
+        // Silently ignore - user gesture may not be available
       }
       // Broadcast to sidepanel after brief delay for sidebar to open
       setTimeout(() => {
@@ -1228,8 +1618,8 @@ chrome.runtime.onMessageExternal.addListener(async (message, sender, sendRespons
         if (targetWindow?.id) {
           await chrome.sidePanel.open({ windowId: targetWindow.id })
         }
-      } catch (err) {
-        console.error('[Background] Failed to open side panel:', err)
+      } catch {
+        // Silently ignore - user gesture may not be available
       }
 
       // Spawn terminal with command
@@ -1463,9 +1853,8 @@ chrome.action.onClicked.addListener(async (tab) => {
   if (tab.windowId) {
     try {
       await chrome.sidePanel.open({ windowId: tab.windowId })
-      console.log('[Background] Opened sidebar via icon click')
-    } catch (err) {
-      console.error('[Background] Failed to open sidebar:', err)
+    } catch {
+      // Silently ignore - may fail if sidebar already open
     }
   }
 })

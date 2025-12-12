@@ -2,7 +2,7 @@
 
 **Full Linux terminals in your Chrome sidebar**
 
-![Version](https://img.shields.io/badge/version-2.7.0-blue)
+![Version](https://img.shields.io/badge/version-2.7.3-blue)
 ![Chrome](https://img.shields.io/badge/chrome-manifest%20v3-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -305,12 +305,12 @@ Tabz includes an **MCP server** with 20 tools that let Claude Code control your 
 | `tabz_fill` | Type into input fields |
 | `tabz_execute_script` | Run JavaScript |
 | `tabz_get_console_logs` | View browser console |
-| `tabz_list_tabs` | List open tabs |
+| `tabz_list_tabs` | List open tabs (accurate active tab detection) |
 | `tabz_switch_tab` | Switch to a tab |
 | `tabz_rename_tab` | Assign custom names to tabs |
 | `tabz_open_url` | Navigate to allowed domains |
 | `tabz_get_page_info` | Get current URL/title |
-| `tabz_download_image` | Download images to disk |
+| `tabz_download_image` | Download images to disk (works with AI-generated images!) |
 | `tabz_get_element` | Inspect element HTML/CSS |
 | `tabz_enable_network_capture` | Start capturing network requests |
 | `tabz_get_network_requests` | List captured XHR/fetch requests |
@@ -345,10 +345,13 @@ Install the `tabz-mcp` skill for guided browser automation. The skill dynamicall
 | Terminal sidebar | No |
 | Profiles, audio, themes | No |
 | Ghost badge, session persistence | No |
-| **MCP tools** (screenshots, clicks, fill) | **Yes** |
-| **Network capture** | **Yes** |
+| Tab management (`list_tabs`, `switch_tab`) | No (extension-based) |
+| Downloads (`download_file`, `download_image`) | No (extension-based) |
+| Console logs | No (extension-based) |
+| **Screenshots, clicks, fill** | **Yes** (CDP) |
+| **Network capture** | **Yes** (CDP) |
 
-If you only use Tabz for terminals, you don't need remote debugging. For MCP browser automation, see setup below.
+Many MCP tools now work without remote debugging! Tab management uses the extension API for accurate active tab detection (Claude knows which tab you're actually looking at). Only advanced features like screenshots and network capture require CDP.
 
 ### MCP Setup (WSL2)
 

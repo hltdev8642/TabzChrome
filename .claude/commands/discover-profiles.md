@@ -4,11 +4,19 @@ Scan the user's system for installed CLI tools and help them create TabzChrome p
 
 ## Instructions
 
-1. **Ask if they want to export existing profiles first.** This helps avoid duplicates:
-   - Tell user: "Would you like me to check your existing profiles? If so, click **Export** in Settings (⚙️) → Profiles tab"
-   - If they export, use `tabz_get_downloads` to find the downloaded `tabz-profiles.json`
-   - Read the file using the `wslPath` from the download info
-   - Note which tools already have profiles to avoid duplicates
+1. **Check existing profiles first** to avoid duplicates. Use the profiles API:
+
+```bash
+# Get all profiles from TabzChrome (requires backend running)
+curl -s http://localhost:8129/api/browser/profiles | jq
+```
+
+This returns:
+- `profiles[]` - Array of all configured profiles
+- `defaultProfileId` - Which profile spawns on "+"
+- `globalWorkingDir` - The header working directory
+
+Note which tools already have profiles (match by `command` field) to avoid duplicates.
 
 2. Open the awesome-tuis reference page so users can discover new tools:
 
@@ -67,17 +75,23 @@ Tell the user: "I've saved the profiles to your Downloads folder. In TabzChrome,
 
 ## Reading Existing Profiles
 
-When user exports their profiles, find and read them:
+**Preferred method** - Use the profiles API (no export needed):
 
 ```bash
-# Find recent profile export
-mcp-cli call tabz/tabz_get_downloads '{"limit": 5, "state": "complete", "response_format": "json"}'
-
-# Look for tabz-profiles*.json in the results
-# Read using the wslPath field (for WSL) or filename (for native)
+# Get all profiles directly from Chrome storage
+curl -s http://localhost:8129/api/browser/profiles | jq '.profiles[] | {name, command}'
 ```
 
-Then parse the JSON to see which commands are already configured. Match by the `command` field.
+**Fallback** - If backend is not running, ask user to export:
+
+1. Tell user: "Click **Export** in Settings (⚙️) → Profiles tab"
+2. Find the downloaded file:
+   ```bash
+   mcp-cli call tabz/tabz_get_downloads '{"limit": 5, "state": "complete"}'
+   ```
+3. Read using the `wslPath` field from download info
+
+Match existing profiles by the `command` field to avoid duplicates.
 
 ## Profile Schema
 

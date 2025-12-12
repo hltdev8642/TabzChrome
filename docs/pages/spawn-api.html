@@ -77,6 +77,86 @@
         </section>
 
         <section>
+            <h2>GET /api/browser/profiles</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                Get all terminal profiles from Chrome storage. Useful for automation and discovering available profiles.
+            </p>
+            <div class="terminal-window">
+                <div class="terminal-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span class="terminal-title">curl example</span>
+                </div>
+                <div class="terminal-body">
+                    <pre><code><span class="prompt">$</span> curl http://localhost:8129/api/browser/profiles</code></pre>
+                </div>
+            </div>
+            <h3 style="margin-top: 1.5rem;">Response</h3>
+            <div class="code-block">
+                <code>{
+  <span class="string">"success"</span>: <span class="keyword">true</span>,
+  <span class="string">"profiles"</span>: [
+    {
+      <span class="string">"id"</span>: <span class="string">"claude-code-12345"</span>,
+      <span class="string">"name"</span>: <span class="string">"Claude Code"</span>,
+      <span class="string">"category"</span>: <span class="string">"AI Assistants"</span>,
+      <span class="string">"command"</span>: <span class="string">"claude --dangerously-skip-permissions"</span>,
+      <span class="string">"workingDir"</span>: <span class="string">""</span>,
+      <span class="string">"fontSize"</span>: <span class="number">16</span>,
+      <span class="string">"fontFamily"</span>: <span class="string">"JetBrains Mono"</span>,
+      <span class="string">"themeName"</span>: <span class="string">"high-contrast"</span>
+    },
+    <span class="comment">// ... more profiles</span>
+  ],
+  <span class="string">"defaultProfileId"</span>: <span class="string">"claude-code-12345"</span>,
+  <span class="string">"globalWorkingDir"</span>: <span class="string">"~/projects"</span>
+}</code>
+            </div>
+            <p style="color: var(--text-secondary); margin-top: 1rem;">
+                <strong>Note:</strong> Profiles with empty <code>workingDir</code> inherit from <code>globalWorkingDir</code>.
+            </p>
+        </section>
+
+        <section>
+            <h2>GET /api/browser/tabs</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                List all open browser tabs with accurate active tab detection. Uses extension API for real-time accuracy.
+            </p>
+            <div class="terminal-window">
+                <div class="terminal-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span class="terminal-title">curl example</span>
+                </div>
+                <div class="terminal-body">
+                    <pre><code><span class="prompt">$</span> curl http://localhost:8129/api/browser/tabs</code></pre>
+                </div>
+            </div>
+            <h3 style="margin-top: 1.5rem;">Response</h3>
+            <div class="code-block">
+                <code>{
+  <span class="string">"success"</span>: <span class="keyword">true</span>,
+  <span class="string">"tabs"</span>: [
+    {
+      <span class="string">"id"</span>: <span class="number">1762556520</span>,
+      <span class="string">"title"</span>: <span class="string">"GitHub - TabzChrome"</span>,
+      <span class="string">"url"</span>: <span class="string">"https://github.com/GGPrompts/TabzChrome"</span>,
+      <span class="string">"active"</span>: <span class="keyword">true</span>,
+      <span class="string">"windowId"</span>: <span class="number">1</span>
+    },
+    <span class="comment">// ... more tabs</span>
+  ],
+  <span class="string">"activeTabId"</span>: <span class="number">1762556520</span>
+}</code>
+            </div>
+            <p style="color: var(--text-secondary); margin-top: 1rem;">
+                <strong>Note:</strong> Tab IDs are real Chrome tab IDs (large integers), not simple indices. The <code>active</code> field and <code>activeTabId</code> accurately reflect which tab the user has focused.
+            </p>
+        </section>
+
+        <section>
             <h2>Basic Examples</h2>
             <div class="terminal-window">
                 <div class="terminal-header">

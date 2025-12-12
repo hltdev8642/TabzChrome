@@ -698,6 +698,52 @@ wss.on('connection', (ws) => {
           }
           break;
 
+        case 'browser-list-tabs-result':
+          // Receive tab list from Chrome extension
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              tabs: data.tabs,
+              error: data.error
+            });
+          }
+          break;
+
+        case 'browser-switch-tab-result':
+          // Receive switch tab result from Chrome extension
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              tabId: data.tabId,
+              error: data.error
+            });
+          }
+          break;
+
+        case 'browser-get-active-tab-result':
+          // Receive active tab info from Chrome extension
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              tab: data.tab,
+              error: data.error
+            });
+          }
+          break;
+
+        case 'browser-profiles-result':
+          // Receive profiles from Chrome extension
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              profiles: data.profiles,
+              defaultProfileId: data.defaultProfileId,
+              globalWorkingDir: data.globalWorkingDir,
+              error: data.error
+            });
+          }
+          break;
+
         case 'browser-download-result':
           // Receive download result from Chrome extension
           if (data.requestId) {
@@ -728,6 +774,21 @@ wss.on('connection', (ws) => {
           if (data.requestId) {
             browserRouter.resolvePendingRequest(data.requestId, {
               success: data.success,
+              error: data.error
+            });
+          }
+          break;
+
+        case 'browser-capture-image-result':
+          // Receive image capture result from Chrome extension
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              filePath: data.filePath,
+              windowsPath: data.windowsPath,
+              wslPath: data.wslPath,
+              width: data.width,
+              height: data.height,
               error: data.error
             });
           }
