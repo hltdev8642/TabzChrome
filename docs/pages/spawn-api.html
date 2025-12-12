@@ -247,6 +247,61 @@
             </div>
         </section>
 
+        <!-- TUI Tools Launcher -->
+        <section>
+            <h2>TUI Tools Quick Launcher</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                Launch popular TUI tools in TabzChrome with one click. Tools inherit the working directory from above.
+            </p>
+
+            <div class="demo-section">
+                <div class="tui-launcher-grid">
+                    <button class="tui-launcher-btn" onclick="spawnTuiTool('TFE', 'tfe')" data-featured="true">
+                        <span class="tui-icon">🗂️</span>
+                        <span class="tui-name">TFE</span>
+                        <span class="tui-desc">File Explorer + AI Prompts (F11)</span>
+                    </button>
+                    <button class="tui-launcher-btn" onclick="spawnTuiTool('lazygit', 'lazygit')">
+                        <span class="tui-icon">🦥</span>
+                        <span class="tui-name">lazygit</span>
+                        <span class="tui-desc">Git UI</span>
+                    </button>
+                    <button class="tui-launcher-btn" onclick="spawnTuiTool('yazi', 'yazi')">
+                        <span class="tui-icon">🦬</span>
+                        <span class="tui-name">yazi</span>
+                        <span class="tui-desc">File Manager</span>
+                    </button>
+                    <button class="tui-launcher-btn" onclick="spawnTuiTool('btop', 'btop')">
+                        <span class="tui-icon">📊</span>
+                        <span class="tui-name">btop</span>
+                        <span class="tui-desc">System Monitor</span>
+                    </button>
+                    <button class="tui-launcher-btn" onclick="spawnTuiTool('htop', 'htop')">
+                        <span class="tui-icon">🔝</span>
+                        <span class="tui-name">htop</span>
+                        <span class="tui-desc">Process Viewer</span>
+                    </button>
+                    <button class="tui-launcher-btn" onclick="spawnTuiTool('lazydocker', 'lazydocker')">
+                        <span class="tui-icon">🐳</span>
+                        <span class="tui-name">lazydocker</span>
+                        <span class="tui-desc">Docker UI</span>
+                    </button>
+                    <button class="tui-launcher-btn" onclick="spawnTuiTool('k9s', 'k9s')">
+                        <span class="tui-icon">☸️</span>
+                        <span class="tui-name">k9s</span>
+                        <span class="tui-desc">Kubernetes UI</span>
+                    </button>
+                    <button class="tui-launcher-btn" onclick="spawnTuiTool('nvim', 'nvim')">
+                        <span class="tui-icon">🌙</span>
+                        <span class="tui-name">nvim</span>
+                        <span class="tui-desc">Neovim Editor</span>
+                    </button>
+                </div>
+
+                <div id="tuiSpawnResult" style="margin-top: 1rem; display: none;"></div>
+            </div>
+        </section>
+
         <section>
             <h2>Response Format</h2>
             <div class="code-block">
@@ -447,6 +502,34 @@ spawnTerminal(
 
         // Initial render
         updatePreview();
+
+        // TUI Tools launcher
+        async function spawnTuiTool(name, command) {
+            const workingDir = document.getElementById('workingDir').value || '~/projects';
+            const resultDiv = document.getElementById('tuiSpawnResult');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = `<span style="color: var(--yellow);">Launching ${name}...</span>`;
+
+            try {
+                const response = await fetch('http://localhost:8129/api/spawn', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, workingDir, command })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.innerHTML = `<span style="color: var(--green);">✓ ${name} launched!</span><br>
+                        <span style="color: var(--text-muted);">ID: ${data.terminal?.id || 'N/A'}</span>`;
+                } else {
+                    resultDiv.innerHTML = `<span style="color: var(--red);">✗ Failed: ${data.error || 'Unknown error'}</span>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<span style="color: var(--red);">✗ Error: ${err.message}</span><br>
+                    <span style="color: var(--text-muted);">Is the backend running on localhost:8129?</span>`;
+            }
+        }
     </script>
 </body>
 </html>

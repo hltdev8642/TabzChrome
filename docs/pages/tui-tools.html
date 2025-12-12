@@ -95,6 +95,24 @@
         </div>
 
         <div class="tui-grid">
+            <!-- TFE - Featured (from GGPrompts) -->
+            <div class="tui-card featured">
+                <div class="icon">🗂️</div>
+                <div class="info">
+                    <h3><a href="https://github.com/GGPrompts/TFE" target="_blank">TFE</a> <span class="badge-featured">GGPrompts</span></h3>
+                    <p>Dual-pane file explorer built with Go + Bubbletea. <strong>AI Prompts Library (F11)</strong> with fillable templates! Git workspace management, fuzzy search, tree view, syntax highlighting.</p>
+                    <div class="install">
+                        <code data-terminal-command="go install github.com/GGPrompts/TFE@latest">go install github.com/GGPrompts/TFE@latest</code>
+                        <code data-terminal-command="tfe">tfe</code>
+                    </div>
+                    <div class="feature-highlight">
+                        <span class="feature-tag">🤖 AI Prompts</span>
+                        <span class="feature-tag">📋 Templates</span>
+                        <span class="feature-tag">📱 Termux</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="tui-card">
                 <div class="icon">🦬</div>
                 <div class="info">
@@ -369,6 +387,11 @@
   Command: yazi
   Working Dir: <span class="comment">(empty - inherits header)</span>
 
+<span class="output">Profile: TFE</span>
+  Command: tfe
+  Working Dir: <span class="comment">(empty - inherits header)</span>
+  <span class="comment"># Pro tip: Press F11 for AI Prompts Library!</span>
+
 <span class="output">Profile: k9s</span>
   Command: k9s
   Working Dir: <span class="comment">(empty)</span>
@@ -390,6 +413,9 @@
                 <div class="terminal-body">
                     <pre><code><span class="prompt">$</span> brew install lazygit btop yazi fzf glow dust
 
+<span class="comment"># TFE - Terminal File Explorer with AI Prompts (F11)</span>
+<span class="prompt">$</span> go install github.com/GGPrompts/TFE@latest
+
 <span class="comment"># Optional extras</span>
 <span class="prompt">$</span> brew install lazydocker k9s neovim helix</code></pre>
                 </div>
@@ -408,6 +434,9 @@
 <span class="comment"># For Rust tools, use cargo</span>
 <span class="prompt">$</span> cargo install yazi-fm du-dust broot gitui
 
+<span class="comment"># TFE - Terminal File Explorer with AI Prompts (F11)</span>
+<span class="prompt">$</span> go install github.com/GGPrompts/TFE@latest
+
 <span class="comment"># lazygit needs special repo</span>
 <span class="prompt">$</span> LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": "v\K[^"]*')
 <span class="prompt">$</span> curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
@@ -415,6 +444,49 @@
 <span class="prompt">$</span> sudo install lazygit /usr/local/bin</code></pre>
                 </div>
             </div>
+        </section>
+
+        <!-- TFE + TabzChrome Integration Ideas -->
+        <section style="margin-top: 3rem;">
+            <h2>TFE + TabzChrome Integration</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                TFE and TabzChrome are both from <a href="https://github.com/GGPrompts" target="_blank" style="color: var(--accent);">GGPrompts</a>.
+                Here are some integration possibilities:
+            </p>
+
+            <div class="cards" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+                <div class="card" style="cursor: default;">
+                    <div class="card-icon">🚀</div>
+                    <h3>Spawn via API</h3>
+                    <p>TFE could spawn terminals via TabzChrome's <code>/api/spawn</code> endpoint to run commands in browser sidebar.</p>
+                </div>
+
+                <div class="card" style="cursor: default;">
+                    <div class="card-icon">📝</div>
+                    <h3>AI Prompts Sync</h3>
+                    <p>TFE's AI Prompts Library (F11) could sync with GGPrompts for shared prompt templates across tools.</p>
+                </div>
+
+                <div class="card" style="cursor: default;">
+                    <div class="card-icon">🔗</div>
+                    <h3>File → Terminal</h3>
+                    <p>Select files in TFE, send paths to TabzChrome terminal for bulk operations or Claude Code analysis.</p>
+                </div>
+
+                <div class="card" style="cursor: default;">
+                    <div class="card-icon">🤖</div>
+                    <h3>Claude Code Bridge</h3>
+                    <p>TFE prompts could target Claude Code sessions running in TabzChrome sidebar for AI-powered file operations.</p>
+                </div>
+            </div>
+
+            <!-- TODO: Implement these integrations -->
+            <!-- Ideas for future development:
+                 1. TFE keybind to POST to localhost:8129/api/spawn with selected file's directory
+                 2. TFE prompt templates stored in shared GGPrompts format
+                 3. TabzChrome context menu "Open in TFE" for current terminal's working directory
+                 4. Bidirectional file path sharing between TFE and TabzChrome terminals
+            -->
         </section>
     </main>
 

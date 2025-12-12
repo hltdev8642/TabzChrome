@@ -733,6 +733,108 @@ td code {
     width: fit-content;
 }
 
+/* Featured TUI Card */
+.tui-card.featured {
+    border-color: var(--accent);
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(88, 166, 255, 0.05) 100%);
+    position: relative;
+}
+
+.tui-card.featured::before {
+    content: "Featured";
+    position: absolute;
+    top: -10px;
+    right: 12px;
+    background: var(--accent);
+    color: var(--bg-primary);
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-featured {
+    background: var(--green);
+    color: var(--bg-primary);
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.15rem 0.4rem;
+    border-radius: 3px;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.feature-highlight {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+}
+
+.feature-tag {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+}
+
+/* TUI Tools Launcher Grid */
+.tui-launcher-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+}
+
+.tui-launcher-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 1rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.tui-launcher-btn:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    background: var(--bg-secondary);
+}
+
+.tui-launcher-btn[data-featured="true"] {
+    border-color: var(--accent);
+    background: linear-gradient(135deg, var(--bg-tertiary) 0%, rgba(88, 166, 255, 0.1) 100%);
+}
+
+.tui-launcher-btn[data-featured="true"]:hover {
+    border-color: var(--green);
+}
+
+.tui-icon {
+    font-size: 1.75rem;
+}
+
+.tui-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.tui-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
 .tui-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));

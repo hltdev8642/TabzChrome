@@ -98,6 +98,14 @@ app.use('/audio', express.static('/tmp/claude-audio-cache', {
   }
 }));
 
+// Serve static files from public directory (launcher, etc.)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// AI Terminal Launcher page
+app.get('/launcher', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'launcher.html'));
+});
+
 // List available cached audio files (for testing)
 app.get('/api/audio/list', (req, res) => {
   const fs = require('fs');

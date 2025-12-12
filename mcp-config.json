@@ -11,8 +11,17 @@
     "tabz_open_url",
     "tabz_get_console_logs",
     "tabz_enable_network_capture",
-    "tabz_get_network_requests"
+    "tabz_get_network_requests",
+    "tabz_download_image",
+    "tabz_get_element",
+    "tabz_execute_script",
+    "tabz_get_api_response",
+    "tabz_clear_network_requests",
+    "tabz_download_file",
+    "tabz_get_downloads",
+    "tabz_cancel_download"
   ],
-  "allowAllUrls": false,
-  "customDomains": ""
+  "allowAllUrls": true,
+  "customDomains": "",
+  "updatedAt": "2025-12-11T21:00:35.780Z"
 }
