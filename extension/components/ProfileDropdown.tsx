@@ -149,11 +149,11 @@ export function ProfileDropdown({
                       <span className="text-[9px] bg-[#00ff88]/20 text-[#00ff88] px-1.5 py-0.5 rounded">Default</span>
                     )}
                     {truncatedDir && (
-                      <span className="text-gray-500 font-normal text-[10px]">{truncatedDir}</span>
+                      <span className="text-gray-400 font-normal text-[10px]">{truncatedDir}</span>
                     )}
                   </div>
                   {profile.command && (
-                    <div className="text-gray-500 mt-0.5 truncate font-mono">▶ {profile.command}</div>
+                    <div className="text-[#00ff88]/70 mt-0.5 truncate font-mono">▶ {profile.command}</div>
                   )}
                 </button>
               )

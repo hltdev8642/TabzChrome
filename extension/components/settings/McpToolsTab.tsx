@@ -62,7 +62,7 @@ export function McpToolsTab({
           Control which MCP tools are available to Claude Code.
           Fewer tools = less context usage = faster responses.
         </p>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-gray-400 mt-1">
           <a
             href="https://gist.github.com/GGPrompts/50e82596b345557656df2fc8d2d54e2c"
             target="_blank"
@@ -106,7 +106,7 @@ export function McpToolsTab({
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Core Tools</span>
-              <span className="text-xs text-gray-600">(always enabled)</span>
+              <span className="text-xs text-gray-400">(always enabled)</span>
             </div>
             <div className="space-y-1">
               {MCP_TOOLS.filter(t => t.locked).map((tool) => (
@@ -122,8 +122,8 @@ export function McpToolsTab({
                   />
                   <div className="flex-1 min-w-0 flex items-center gap-2">
                     <span className="font-medium text-white text-sm">{tool.name}</span>
-                    <span className="text-xs text-gray-500 truncate">{tool.desc}</span>
-                    <span className="text-xs text-gray-600 ml-auto flex-shrink-0">
+                    <span className="text-xs text-gray-400 truncate">{tool.desc}</span>
+                    <span className="text-xs text-gray-500 ml-auto flex-shrink-0">
                       {tool.tokens.toLocaleString()} tok
                     </span>
                   </div>
@@ -165,7 +165,7 @@ export function McpToolsTab({
                         className="flex-1 min-w-0 flex items-center gap-2 cursor-pointer"
                       >
                         <span className="font-medium text-white text-sm">{tool.name}</span>
-                        <span className="text-xs text-gray-500 truncate">{tool.desc}</span>
+                        <span className="text-xs text-gray-400 truncate">{tool.desc}</span>
                       </label>
                       {isOpenUrl && (
                         <button
@@ -231,7 +231,7 @@ export function McpToolsTab({
                             rows={3}
                             className="w-full px-2 py-1.5 bg-black/50 border border-gray-700 rounded text-white text-xs font-mono focus:border-[#00ff88] focus:outline-none resize-none"
                           />
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-gray-400 mt-1">
                             Added to built-in domains (GitHub, localhost, Vercel, etc.)
                           </p>
                         </div>

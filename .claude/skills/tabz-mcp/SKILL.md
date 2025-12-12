@@ -69,18 +69,33 @@ mcp-cli call tabz/tabz_fill '{"selector": "#email", "value": "test@example.com"}
 
 **Switch to a specific tab:**
 ```bash
-# First list tabs to find the ID
+# First list tabs to find the ID (returns Chrome tab IDs like 1762556601)
 mcp-cli call tabz/tabz_list_tabs '{}'
-# Then switch
-mcp-cli call tabz/tabz_switch_tab '{"tabId": 123}'
+# Then switch using the actual tabId from the list
+mcp-cli call tabz/tabz_switch_tab '{"tabId": 1762556601}'
+```
+
+**Download AI-generated image (ChatGPT/Copilot):**
+```bash
+# Use specific selector to avoid matching avatars
+mcp-cli call tabz/tabz_download_image '{"selector": "img[src*=\"oaiusercontent.com\"]"}'
+```
+
+**Download full-res from expanded modal:**
+```bash
+# When user clicks image to expand, find modal image URL then download
+mcp-cli call tabz/tabz_execute_script '{"code": "document.querySelector(\"[role=dialog] img\").src"}'
+mcp-cli call tabz/tabz_download_file '{"url": "<url-from-above>"}'
 ```
 
 ## Important Notes
 
-1. **Tab targeting**: After `tabz_switch_tab`, all subsequent tools auto-target that tab
-2. **Network capture**: Must call `tabz_enable_network_capture` BEFORE the page makes requests
-3. **Selectors**: Use CSS selectors - `#id`, `.class`, `button`, `input[type="text"]`
-4. **Screenshots**: Return file paths - use Read tool to display images to user
+1. **Active tab detection**: `tabz_list_tabs` uses Chrome Extension API - the `active: true` field shows the user's ACTUAL focused tab (not a guess)
+2. **Tab IDs**: Chrome tab IDs are large numbers (e.g., `1762556601`), not simple indices like `1, 2, 3`
+3. **Tab targeting**: After `tabz_switch_tab`, all subsequent tools auto-target that tab
+4. **Network capture**: Must call `tabz_enable_network_capture` BEFORE the page makes requests
+5. **Selectors**: Use CSS selectors - `#id`, `.class`, `button`, `input[type="text"]`
+6. **Screenshots**: Return file paths - use Read tool to display images to user
 
 ## Resources
 

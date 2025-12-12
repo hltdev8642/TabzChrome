@@ -7,11 +7,13 @@ Common multi-step workflows for browser automation tasks.
 When user wants to capture a tab that isn't currently active:
 
 ```bash
-# 1. List all tabs to find the target
+# 1. List all tabs to find the target (returns Chrome tab IDs like 1762556601)
 mcp-cli call tabz/tabz_list_tabs '{}'
+# Look for "active: true" to see which tab user has focused
+# Use the tabId (large number) for the tab you want
 
-# 2. Switch to the target tab (use tabId from step 1)
-mcp-cli call tabz/tabz_switch_tab '{"tabId": 123}'
+# 2. Switch to the target tab (use actual tabId from step 1)
+mcp-cli call tabz/tabz_switch_tab '{"tabId": 1762556601}'
 
 # 3. Take the screenshot
 mcp-cli call tabz/tabz_screenshot '{}'
@@ -103,6 +105,69 @@ mcp-cli call tabz/tabz_click '{"selector": "button.generate"}'
 mcp-cli call tabz/tabz_download_image '{"selector": "img.result"}'
 ```
 
+## Download AI Images from ChatGPT/Copilot
+
+AI image platforms use CDN URLs with auth tokens. The tool extracts full URLs automatically.
+
+### Quick Download (Thumbnail Grid)
+
+```bash
+# ChatGPT images (library or chat)
+mcp-cli call tabz/tabz_download_image '{"selector": "img[src*=\"oaiusercontent.com\"]"}'
+
+# Generic CDN images
+mcp-cli call tabz/tabz_download_image '{"selector": "img[src*=\"cdn\"]"}'
+```
+
+**Caveat:** `selector: "img"` alone often matches profile avatars first. Use specific selectors.
+
+### Full-Resolution from Expanded View
+
+When user clicks an image to expand it (modal view), the full-res version becomes available:
+
+```bash
+# Step 1: User clicks image to open modal/expanded view
+
+# Step 2: Find the modal image with execute_script
+mcp-cli call tabz/tabz_execute_script - <<'EOF'
+{"code": "const img = document.querySelector('[role=\"dialog\"] img[src*=\"oaiusercontent\"]'); img ? {src: img.src, w: img.naturalWidth, h: img.naturalHeight} : null"}
+EOF
+
+# Step 3: Download using the extracted URL
+mcp-cli call tabz/tabz_download_file '{"url": "<url-from-step-2>", "filename": "my-image.png"}'
+```
+
+### Find Largest Image on Page
+
+When multiple images exist, find the highest resolution:
+
+```bash
+mcp-cli call tabz/tabz_execute_script - <<'EOF'
+{"code": "const imgs = Array.from(document.querySelectorAll('img[src*=\"oaiusercontent\"]')).map(i => ({src: i.src, w: i.naturalWidth, h: i.naturalHeight})).filter(i => i.w > 500).sort((a,b) => b.w - a.w); imgs[0]"}
+EOF
+```
+
+### Platform-Specific Selectors
+
+| Platform | Selector | Notes |
+|----------|----------|-------|
+| ChatGPT | `img[src*="oaiusercontent.com"]` | Both library and chat |
+| ChatGPT Modal | `[role="dialog"] img[src*="oaiusercontent"]` | Expanded full-res view |
+| Copilot/DALL-E | `img[src*="bing.com"]` | May vary |
+| Generic CDN | `img[src*="cdn"]` | Fallback pattern |
+
+### Workflow: Download All Images from ChatGPT Library
+
+```bash
+# 1. Get all image URLs
+mcp-cli call tabz/tabz_execute_script - <<'EOF'
+{"code": "Array.from(document.querySelectorAll('img[src*=\"oaiusercontent\"]')).filter(i => i.naturalWidth > 200).map(i => i.src)"}
+EOF
+
+# 2. Download each URL using tabz_download_file
+# (iterate through returned URLs)
+```
+
 ## Monitor Long-Running Downloads
 
 Track download progress:
@@ -123,12 +188,12 @@ mcp-cli call tabz/tabz_cancel_download '{"downloadId": 12345}'
 When working with multiple similar tabs:
 
 ```bash
-# 1. List tabs
+# 1. List tabs (get actual Chrome tab IDs)
 mcp-cli call tabz/tabz_list_tabs '{}'
 
-# 2. Rename for clarity (persists by URL)
-mcp-cli call tabz/tabz_rename_tab '{"tabId": 123, "name": "Prod Dashboard"}'
-mcp-cli call tabz/tabz_rename_tab '{"tabId": 456, "name": "Staging Dashboard"}'
+# 2. Rename for clarity using actual tabIds (persists by URL)
+mcp-cli call tabz/tabz_rename_tab '{"tabId": 1762556600, "name": "Prod Dashboard"}'
+mcp-cli call tabz/tabz_rename_tab '{"tabId": 1762556601, "name": "Staging Dashboard"}'
 
 # 3. Now list shows custom names
 mcp-cli call tabz/tabz_list_tabs '{}'
@@ -153,3 +218,27 @@ Common CSS selector patterns:
 1. Use `tabz_get_element` with a broad selector to inspect structure
 2. Right-click in Chrome DevTools > Copy > Copy selector
 3. Use `tabz_execute_script` to query: `document.querySelectorAll('.my-class').length`
+
+## Demo/Presentation Helpers
+
+### Smooth Auto-Scroll (for recordings)
+
+Scroll the entire page smoothly over a set duration - great for demo videos:
+
+```bash
+# Scroll entire page over 8 seconds
+mcp-cli call tabz/tabz_execute_script '{"script": "(async () => { const h = document.body.scrollHeight; const d = 8000; const s = performance.now(); const f = () => { const p = Math.min((performance.now() - s) / d, 1); window.scrollTo(0, h * p); if (p < 1) requestAnimationFrame(f); }; f(); })()"}'
+
+# Faster scroll (4 seconds)
+mcp-cli call tabz/tabz_execute_script '{"script": "(async () => { const h = document.body.scrollHeight; const d = 4000; const s = performance.now(); const f = () => { const p = Math.min((performance.now() - s) / d, 1); window.scrollTo(0, h * p); if (p < 1) requestAnimationFrame(f); }; f(); })()"}'
+
+# Scroll back to top
+mcp-cli call tabz/tabz_execute_script '{"script": "window.scrollTo({top: 0, behavior: \"smooth\"})"}'
+```
+
+### Scroll to Specific Section
+
+```bash
+# Scroll to element smoothly
+mcp-cli call tabz/tabz_execute_script '{"script": "document.querySelector(\"#features\").scrollIntoView({behavior: \"smooth\"})"}'
+```

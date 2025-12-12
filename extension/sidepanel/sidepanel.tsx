@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import ReactDOM from 'react-dom/client'
-import { Terminal as TerminalIcon, Settings, Plus, X, ChevronDown, Moon, Sun, Keyboard, Volume2, VolumeX } from 'lucide-react'
+import { Terminal as TerminalIcon, Settings, Plus, X, ChevronDown, Moon, Sun, Keyboard, Volume2, VolumeX, RefreshCw } from 'lucide-react'
 import { Badge } from '../components/ui/badge'
 import { Terminal } from '../components/Terminal'
 import { SettingsModal, type Profile } from '../components/SettingsModal'
@@ -11,7 +11,7 @@ import { WorkingDirDropdown } from '../components/WorkingDirDropdown'
 import { ChatInputBar } from '../components/ChatInputBar'
 import { connectToBackground, sendMessage } from '../shared/messaging'
 import { setupConsoleForwarding } from '../shared/consoleForwarder'
-import { useClaudeStatus, getStatusEmoji, getStatusText, getFullStatusText, getRobotEmojis } from '../hooks/useClaudeStatus'
+import { useClaudeStatus, getStatusEmoji, getStatusText, getFullStatusText, getRobotEmojis, getContextPercent, getContextColor } from '../hooks/useClaudeStatus'
 import { useCommandHistory } from '../hooks/useCommandHistory'
 import { useOrphanedSessions } from '../hooks/useOrphanedSessions'
 import { useWorkingDirectory } from '../hooks/useWorkingDirectory'
@@ -621,6 +621,15 @@ function SidePanelTerminal() {
             {audioGlobalMute ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
 
+          {/* Refresh Sidebar Button */}
+          <button
+            onClick={() => window.location.reload()}
+            className="p-1.5 hover:bg-[#00ff88]/10 rounded-md transition-colors text-gray-400 hover:text-[#00ff88]"
+            title="Refresh sidebar"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
+
           {/* Settings Button */}
           <button
             onClick={() => setIsSettingsOpen(true)}
@@ -700,6 +709,15 @@ function SidePanelTerminal() {
                           : session.name
                         }
                       </span>
+                      {/* Context window usage percentage for Claude tabs */}
+                      {claudeStatuses.has(session.id) && getContextPercent(claudeStatuses.get(session.id)) !== null && (
+                        <span
+                          className={`flex-shrink-0 text-xs font-medium ${getContextColor(claudeStatuses.get(session.id))}`}
+                          title={`Context: ${getContextPercent(claudeStatuses.get(session.id))}%`}
+                        >
+                          {getContextPercent(claudeStatuses.get(session.id))}%
+                        </span>
+                      )}
                     </span>
                     <button
                       onClick={(e) => handleCloseTab(e, session.id)}

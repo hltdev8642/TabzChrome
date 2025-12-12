@@ -23,7 +23,7 @@ const SwitchTabSchema = z.object({
   tabId: z.number()
     .int()
     .min(1)
-    .describe("The tab ID to switch to (1-based). Get available IDs from tabz_list_tabs.")
+    .describe("The Chrome tab ID to switch to. Get IDs from tabz_list_tabs (e.g., 1762556601).")
 }).strict();
 
 type SwitchTabInput = z.infer<typeof SwitchTabSchema>;
@@ -33,7 +33,7 @@ const RenameTabSchema = z.object({
   tabId: z.number()
     .int()
     .min(1)
-    .describe("The tab ID to rename (1-based). Get available IDs from tabz_list_tabs."),
+    .describe("The Chrome tab ID to rename. Get IDs from tabz_list_tabs (e.g., 1762556601)."),
   name: z.string()
     .describe("The custom name to assign to this tab. Empty string clears the custom name.")
 }).strict();
@@ -47,37 +47,41 @@ export function registerTabTools(server: McpServer): void {
   // List tabs tool
   server.tool(
     "tabz_list_tabs",
-    `List all open browser tabs.
+    `List all open browser tabs with ACCURATE active tab detection.
 
 Returns information about all non-chrome:// tabs currently open in the browser.
-Use this to discover available tabs before switching or targeting specific tabs.
+Uses Chrome Extension API to detect which tab the user actually has focused.
 
 Args:
   - response_format: 'markdown' (default) or 'json'
 
-Returns:
-  Array of tabs with:
-  - tabId: Numeric ID (1-based) for use with other tools
-  - url: Full URL of the tab
-  - title: Page title
-  - customName: User-assigned name (if set)
-  - claudeCurrentTabId: Which tab Claude is currently targeting (for screenshots, clicks, etc.)
+Returns (JSON format):
+  {
+    "total": 3,
+    "claudeCurrentTabId": 1762556601,
+    "tabs": [
+      { "tabId": 1762556600, "url": "...", "title": "...", "active": false },
+      { "tabId": 1762556601, "url": "...", "title": "...", "active": true }
+    ]
+  }
 
-The output shows which tab Claude is currently targeting with "← CURRENT" marker.
-This helps verify which tab operations will affect.
+Key fields:
+  - tabId: Chrome's internal tab ID (large number like 1762556601)
+  - active: TRUE on whichever tab the USER has focused in Chrome right now
+  - claudeCurrentTabId: Which tab Claude will target for operations
+
+The "active" field shows the user's ACTUAL focused tab. After calling this tool,
+Claude's target is synced to match the user's active tab.
 
 Examples:
   - List all tabs: (no args needed)
   - Get JSON format: response_format="json"
 
 Use tabz_switch_tab with the tabId to switch to a specific tab.
-Tab IDs start at 1 (not 0) for clarity.
-
-IMPORTANT: Tab IDs can shift if tabs are closed! Use tabz_rename_tab to assign
-stable custom names before working with multiple tabs.
+Use tabz_rename_tab to assign stable custom names for easier identification.
 
 Error Handling:
-  - "CDP not available": Chrome not running with --remote-debugging-port=9222
+  - "Extension not available": Backend/WebSocket not connected - uses CDP fallback
   - Empty list: No web pages open (only chrome:// pages)`,
     ListTabsSchema.shape,
     async (params: ListTabsInput) => {
@@ -156,29 +160,27 @@ Only chrome:// or extension pages are present.`;
 Brings the specified tab to the front/focus and sets it as Claude's current target
 for subsequent operations (screenshots, clicks, fills, etc.).
 
-Use tabz_list_tabs first to get available tab IDs. The "← CURRENT" marker shows
-which tab Claude is currently targeting.
+Use tabz_list_tabs first to get available tab IDs.
 
 Args:
-  - tabId (required): The numeric tab ID to switch to (1-based)
+  - tabId (required): Chrome tab ID from tabz_list_tabs (e.g., 1762556601)
 
 Returns:
   - success: Whether the switch was successful
   - error: Error message if failed
 
 Examples:
-  - Switch to first tab: tabId=1
-  - Switch to third tab: tabId=3
+  - Switch to tab: tabId=1762556601 (use actual ID from tabz_list_tabs)
 
 After switching, use tabz_get_page_info to confirm the current page.
 
 BEST PRACTICE: Before switching between multiple tabs, use tabz_rename_tab to
 assign custom names (e.g., "GitHub PR", "Dev Server", "Docs"). Custom names are
-stored by URL and won't be affected if tab order changes.
+stored by URL and persist even if tab IDs change.
 
 Error Handling:
   - "Invalid tab ID": tabId doesn't exist (use tabz_list_tabs to see valid IDs)
-  - "CDP not available": Chrome not running with --remote-debugging-port=9222`,
+  - "Extension not available": Uses CDP fallback (less reliable)`,
     SwitchTabSchema.shape,
     async (params: SwitchTabInput) => {
       try {
@@ -232,7 +234,7 @@ RECOMMENDED: When working with multiple tabs, rename them first! This provides:
 3. Better communication with the user about which tab you're working on
 
 Args:
-  - tabId (required): The tab ID to rename (1-based, from tabz_list_tabs)
+  - tabId (required): Chrome tab ID from tabz_list_tabs (e.g., 1762556601)
   - name (required): Custom name for the tab. Empty string clears the custom name.
 
 Returns:
@@ -240,16 +242,14 @@ Returns:
   - error: Error message if failed
 
 Examples:
-  - Name a tab: tabId=1, name="GitHub PR"
-  - Name dev server: tabId=2, name="Dev Server (localhost:3000)"
-  - Name AI tool: tabId=3, name="ChatGPT"
-  - Clear custom name: tabId=1, name=""
+  - Name a tab: tabId=1762556601, name="GitHub PR"
+  - Name dev server: tabId=1762556602, name="Dev Server (localhost:3000)"
+  - Clear custom name: tabId=1762556601, name=""
 
 After renaming, use tabz_list_tabs to see the updated names.
 
 Error Handling:
-  - "Invalid tab ID": tabId doesn't exist
-  - "CDP not available": Chrome not running with --remote-debugging-port=9222`,
+  - "Invalid tab ID": tabId doesn't exist (use tabz_list_tabs to see valid IDs)`,
     RenameTabSchema.shape,
     async (params: RenameTabInput) => {
       try {

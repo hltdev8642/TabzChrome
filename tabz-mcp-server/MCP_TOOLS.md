@@ -258,16 +258,44 @@ The tool automatically extracts full image URLs (including auth tokens) from AI 
 **Parameters:**
 - `response_format`: `markdown` (default) or `json`
 
-**Returns:**
-Array of tabs with:
-- `tabId`: Chrome tab ID for use with other tools
-- `url`: Full URL of the tab
-- `title`: Page title (or custom name if set)
+**Returns (JSON format):**
+```json
+{
+  "total": 3,
+  "claudeCurrentTabId": 1762556601,
+  "tabs": [
+    {
+      "tabId": 1762556600,
+      "url": "https://github.com/...",
+      "title": "GitHub - ...",
+      "active": false
+    },
+    {
+      "tabId": 1762556601,
+      "url": "https://example.com",
+      "title": "Example",
+      "active": true    // ← USER'S ACTUAL FOCUSED TAB
+    }
+  ]
+}
+```
+
+**Key fields:**
+- `tabId`: Chrome's internal tab ID (large number like `1762556601`) - use this for `tabz_switch_tab`
+- `active`: **THE USER'S ACTUAL FOCUSED TAB** - true on whichever tab they have selected in Chrome
+- `claudeCurrentTabId`: Which tab Claude is currently targeting for operations (screenshots, clicks, etc.)
 - `customName`: User-assigned name (if set via `tabz_rename_tab`)
-- `active`: **Accurate!** Shows which tab the user actually has focused
+
+**Understanding the two "active" concepts:**
+1. `active: true` = The tab the USER has focused in Chrome right now
+2. `claudeCurrentTabId` = The tab CLAUDE will target for operations
+
+These are synced automatically: when you call `tabz_list_tabs`, Claude's target is updated to match the user's active tab.
 
 **Active Tab Detection:**
 Unlike CDP-only solutions, this tool uses the Chrome Extension API to detect the **real** focused tab. If you manually click a different tab in Chrome, Claude will know immediately.
+
+**Markdown output shows:** `← CURRENT` marker indicates Claude's target tab (which matches user's active tab after listing).
 
 ---
 
@@ -716,36 +744,35 @@ Confirmation of cancellation.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         EXTENSION-BASED TOOLS                        │
-│         (tabz_get_page_info, tabz_get_console_logs,           │
-│                      tabz_execute_script)                         │
+│                   EXTENSION-BASED TOOLS (Preferred)                  │
+│   tabz_list_tabs, tabz_switch_tab - ACCURATE active tab detection    │
+│   tabz_get_console_logs, tabz_download_file, tabz_get_downloads      │
+│   tabz_cancel_download, tabz_download_image (hybrid)                 │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  Chrome Browser (Windows)                                            │
-│         ↓ console.log, etc.                                          │
-│  Content Script → Background Worker → WebSocket → Backend (WSL:8129) │
-│                                                          ↓           │
-│                                              Tabz MCP Server      │
-│                                              (Windows node.exe)      │
-│                                                          ↓           │
-│                                                    Claude Code       │
+│         ↓ chrome.tabs API (knows REAL focused tab)                   │
+│  Background Worker → WebSocket → Backend (WSL:8129)                  │
+│                                          ↓                           │
+│                              Tabz MCP Server (Windows node.exe)      │
+│                                          ↓                           │
+│                                    Claude Code (WSL2)                │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────┐
-│                           CDP-BASED TOOLS                            │
-│  (tabz_screenshot, tabz_screenshot_full, tabz_click, tabz_fill, │
-│   tabz_*_tab, tabz_download_image, tabz_get_element, tabz_*_network) │
+│                      CDP-BASED TOOLS (Fallback)                      │
+│  tabz_screenshot, tabz_screenshot_full, tabz_click, tabz_fill,       │
+│  tabz_get_element, tabz_enable_network_capture, tabz_get_page_info   │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
-│  WINDOWS:                                                            │
-│  Chrome (127.0.0.1:9222) ◀─── Tabz MCP Server                    │
-│         ↑                      (Windows node.exe)                    │
-│     CDP / WebSocket                   ↑                              │
-│     (localhost only)                  │ stdio                        │
-│                                       ↓                              │
+│  Chrome (127.0.0.1:9222) ◀─── Tabz MCP Server (Windows node.exe)     │
+│         ↑                              ↑                             │
+│     CDP / WebSocket                    │ stdio                       │
+│     (localhost only)                   ↓                             │
 │                              Claude Code (WSL2)                      │
 │                                                                      │
+│  ⚠️ CDP cannot detect which tab user has focused - only extension can │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 

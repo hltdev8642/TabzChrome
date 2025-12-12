@@ -1030,6 +1030,20 @@ router.get('/claude-status', asyncHandler(async (req, res) => {
 
     // Return best match or unknown if no match found
     if (bestMatch) {
+      // Try to merge context window data from statusline
+      if (bestMatch.sessionId) {
+        try {
+          const contextFile = path.join(stateDir, `${bestMatch.sessionId}-context.json`);
+          if (fs.existsSync(contextFile)) {
+            const contextData = JSON.parse(fs.readFileSync(contextFile, 'utf-8'));
+            if (contextData.context_window) {
+              bestMatch.context_window = contextData.context_window;
+            }
+          }
+        } catch (err) {
+          // Context file not found or invalid - that's okay, statusline may not have run yet
+        }
+      }
       res.json(bestMatch);
     } else {
       res.json({
@@ -1172,15 +1186,41 @@ router.post('/claude-status/cleanup', asyncHandler(async (req, res) => {
       }
     }
 
-    const totalRemoved = removed + debugRemoved;
-    const message = debugRemoved > 0
-      ? `Cleaned up ${removed} state file(s) and ${debugRemoved} debug file(s)`
-      : `Cleaned up ${removed} stale state file(s)`;
+    // Clean up context files (from statusline script)
+    // Delete if: parent state file doesn't exist OR older than 1 hour
+    let contextRemoved = 0;
+    const oneHourMs = 60 * 60 * 1000;
+    const contextFiles = files.filter(f => f.endsWith('-context.json'));
+
+    for (const file of contextFiles) {
+      try {
+        const filePath = path.join(stateDir, file);
+        const stats = fs.statSync(filePath);
+        const fileAge = now - stats.mtimeMs;
+
+        // Extract session ID from filename (e.g., "_30-context.json" -> "_30")
+        const sessionId = file.replace('-context.json', '');
+        const parentStateFile = path.join(stateDir, `${sessionId}.json`);
+
+        // Delete if parent state file doesn't exist or context file is stale
+        if (!fs.existsSync(parentStateFile) || fileAge > oneHourMs) {
+          fs.unlinkSync(filePath);
+          contextRemoved++;
+          console.log(`[API] Deleted context file ${file} (${!fs.existsSync(parentStateFile) ? 'orphaned' : 'stale'})`);
+        }
+      } catch (err) {
+        console.warn(`[API] Error processing context file ${file}:`, err.message);
+      }
+    }
+
+    const totalRemoved = removed + debugRemoved + contextRemoved;
+    const message = `Cleaned up ${removed} state, ${contextRemoved} context, ${debugRemoved} debug file(s)`;
 
     res.json({
       success: true,
       removed: totalRemoved,
       stateFilesRemoved: removed,
+      contextFilesRemoved: contextRemoved,
       debugFilesRemoved: debugRemoved,
       message
     });

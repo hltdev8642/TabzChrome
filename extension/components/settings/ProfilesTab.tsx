@@ -451,7 +451,7 @@ export function ProfilesTab({
               className="w-full px-3 py-2 bg-black/50 border border-gray-700 rounded text-white text-sm focus:border-[#00ff88] focus:outline-none"
             />
             {formData.name && (
-              <p className="text-xs text-gray-500 mt-1">ID: {formData.id}</p>
+              <p className="text-xs text-gray-400 mt-1">ID: {formData.id}</p>
             )}
           </div>
 
@@ -465,7 +465,7 @@ export function ProfilesTab({
               placeholder="Leave empty to use header directory"
               className="w-full px-3 py-2 bg-black/50 border border-gray-700 rounded text-white text-sm font-mono focus:border-[#00ff88] focus:outline-none"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-400 mt-1">
               Leave empty to inherit from the working directory in the header
             </p>
           </div>
@@ -480,7 +480,7 @@ export function ProfilesTab({
               placeholder="e.g., npm run dev, htop, vim ."
               className="w-full px-3 py-2 bg-black/50 border border-gray-700 rounded text-white text-sm font-mono focus:border-[#00ff88] focus:outline-none"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-400 mt-1">
               Command to run when terminal spawns
             </p>
           </div>
@@ -513,7 +513,7 @@ export function ProfilesTab({
                 </button>
               )}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-400 mt-1">
               Group profiles together and color-code terminal tabs
             </p>
           </div>
@@ -607,14 +607,14 @@ export function ProfilesTab({
                         {theme.name}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1 truncate">
+                    <p className="text-xs text-gray-400 mt-1 truncate">
                       {theme.description}
                     </p>
                   </button>
                 )
               })}
             </div>
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-gray-400 mt-2">
               Use the header toggle to switch between dark/light mode
             </p>
           </div>
@@ -668,7 +668,7 @@ export function ProfilesTab({
                     <option value="enabled">Enabled (always on, respects mute)</option>
                     <option value="disabled">Disabled (never plays audio)</option>
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-400 mt-1">
                     {formData.audioOverrides?.mode === 'disabled'
                       ? 'Audio will never play for this profile'
                       : formData.audioOverrides?.mode === 'enabled'
@@ -843,7 +843,7 @@ export function ProfilesTab({
             </option>
           ))}
         </select>
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs text-gray-400 mt-2">
           Used when clicking the "+" button in tab bar
         </p>
       </div>
@@ -1052,9 +1052,9 @@ export function ProfilesTab({
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">{profile.workingDir || '(inherit from header)'}</div>
+                        <div className="text-xs text-gray-400 mt-1">{profile.workingDir || '(inherit from header)'}</div>
                         {profile.command && (
-                          <div className="text-xs text-gray-500 mt-1 font-mono">{profile.command}</div>
+                          <div className="text-xs text-[#00ff88]/70 mt-1 font-mono">{profile.command}</div>
                         )}
                         <div className="flex gap-3 mt-2 text-xs text-gray-400">
                           <span>Font: {profile.fontSize}px {profile.fontFamily.split(',')[0].replace(/'/g, '')}</span>

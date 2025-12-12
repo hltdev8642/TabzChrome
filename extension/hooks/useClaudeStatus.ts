@@ -6,6 +6,13 @@ export interface ClaudeStatus {
   last_updated?: string
   tmuxPane?: string  // Pane ID (e.g., '%42') for targeted send to Claude in split layouts
   subagent_count?: number  // Number of active subagents (for 🤖🤖🤖 display)
+  context_window?: {
+    total_input_tokens: number
+    total_output_tokens: number
+    context_window_size: number
+    total_tokens: number
+    usage_percent: number
+  }
   details?: {
     args?: {
       file_path?: string
@@ -112,6 +119,7 @@ export function useClaudeStatus(terminals: TerminalInfo[]): Map<string, ClaudeSt
                   last_updated: result.last_updated,
                   tmuxPane: result.tmuxPane,
                   subagent_count: result.subagent_count || 0,
+                  context_window: result.context_window,
                   details: result.details,
                 } as ClaudeStatus,
                 success: true,
@@ -260,11 +268,11 @@ export function getStatusText(status: ClaudeStatus | undefined, profileName?: st
           const parts = args.file_path.split('/')
           detail = `: ${parts[parts.length - 1]}`
         } else if (args.description) {
-          const desc = args.description
-          detail = `: ${desc.length > 20 ? desc.substring(0, 20) + '…' : desc}`
+          // Let CSS truncate - tabs can be up to 320px wide
+          detail = `: ${args.description}`
         } else if (args.command) {
-          const cmd = args.command
-          detail = `: ${cmd.length > 20 ? cmd.substring(0, 20) + '…' : cmd}`
+          // Let CSS truncate - tabs can be up to 320px wide
+          detail = `: ${args.command}`
         }
         const emoji = getToolEmoji(status.current_tool)
         return `${emoji} ${status.current_tool}${detail}`
@@ -273,6 +281,7 @@ export function getStatusText(status: ClaudeStatus | undefined, profileName?: st
     }
     case 'tool_use': {
       // Extract detail from args for more informative display
+      // Let CSS truncate - tabs can be up to 320px wide
       let detail = ''
       if (status.details?.args) {
         const args = status.details.args
@@ -281,17 +290,11 @@ export function getStatusText(status: ClaudeStatus | undefined, profileName?: st
           const parts = args.file_path.split('/')
           detail = `: ${parts[parts.length - 1]}`
         } else if (args.description) {
-          // Show task description for Task/Bash (truncate)
-          const desc = args.description
-          detail = `: ${desc.length > 20 ? desc.substring(0, 20) + '…' : desc}`
+          detail = `: ${args.description}`
         } else if (args.command) {
-          // Show truncated command for Bash
-          const cmd = args.command
-          detail = `: ${cmd.length > 20 ? cmd.substring(0, 20) + '…' : cmd}`
+          detail = `: ${args.command}`
         } else if (args.pattern) {
-          // Show search pattern for Grep/Glob
-          const pattern = args.pattern
-          detail = `: ${pattern.length > 15 ? pattern.substring(0, 15) + '…' : pattern}`
+          detail = `: ${args.pattern}`
         }
       }
       const emoji = getToolEmoji(status.current_tool)
@@ -356,4 +359,44 @@ export function getFullStatusText(status: ClaudeStatus | undefined): string {
     default:
       return ''
   }
+}
+
+/**
+ * Get context window usage percentage
+ * Returns null if context data is not available
+ */
+export function getContextPercent(status: ClaudeStatus | undefined): number | null {
+  if (!status?.context_window) return null
+  return status.context_window.usage_percent
+}
+
+/**
+ * Get formatted context display string
+ * Returns "45K/200K" format for compact display
+ */
+export function getContextDisplay(status: ClaudeStatus | undefined): string {
+  if (!status?.context_window) return ''
+
+  const formatTokens = (num: number): string => {
+    if (num >= 1000) {
+      return `${Math.round(num / 1000)}K`
+    }
+    return String(num)
+  }
+
+  const { total_tokens, context_window_size, usage_percent } = status.context_window
+  return `${formatTokens(total_tokens)}/${formatTokens(context_window_size)} (${usage_percent}%)`
+}
+
+/**
+ * Get color class for context usage
+ * Returns tailwind color classes based on percentage thresholds
+ */
+export function getContextColor(status: ClaudeStatus | undefined): string {
+  const percent = getContextPercent(status)
+  if (percent === null) return ''
+
+  if (percent >= 90) return 'text-red-400'
+  if (percent >= 75) return 'text-yellow-400'
+  return 'text-green-400'
 }

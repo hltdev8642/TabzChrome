@@ -65,7 +65,7 @@ export function AudioTab({
         <div className="flex items-center justify-between">
           <div>
             <h4 className="text-sm font-medium text-white">Enable Audio Notifications</h4>
-            <p className="text-xs text-gray-500 mt-1">Master switch for all audio alerts</p>
+            <p className="text-xs text-gray-400 mt-1">Master switch for all audio alerts</p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input
@@ -99,7 +99,7 @@ export function AudioTab({
               ))}
             </select>
             {audioSettings.voice === 'random' && (
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 Each terminal gets a unique voice. Helps distinguish multiple Claude sessions.
               </p>
             )}
@@ -122,7 +122,7 @@ export function AudioTab({
               }}
               className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[#00ff88]"
             />
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
+            <div className="flex justify-between text-xs text-gray-400 mt-1">
               <span>-50% (slower)</span>
               <span>0%</span>
               <span>+100% (faster)</span>
@@ -155,7 +155,7 @@ export function AudioTab({
           <div className="flex items-center justify-between p-3">
             <div>
               <span className="text-sm text-white">Ready notification</span>
-              <p className="text-xs text-gray-500">When Claude finishes and awaits input</p>
+              <p className="text-xs text-gray-400">When Claude finishes and awaits input</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -172,7 +172,7 @@ export function AudioTab({
           <div className="flex items-center justify-between p-3">
             <div>
               <span className="text-sm text-white">Session start</span>
-              <p className="text-xs text-gray-500">When a new Claude session begins</p>
+              <p className="text-xs text-gray-400">When a new Claude session begins</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -189,7 +189,7 @@ export function AudioTab({
           <div className="flex items-center justify-between p-3">
             <div>
               <span className="text-sm text-white">Tool announcements</span>
-              <p className="text-xs text-gray-500">"Reading", "Editing", "Searching"...</p>
+              <p className="text-xs text-gray-400">"Reading", "Editing", "Searching"...</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -207,7 +207,7 @@ export function AudioTab({
             <div className="flex items-center justify-between p-3 pl-8 bg-black/20">
               <div>
                 <span className="text-sm text-white">Include file names</span>
-                <p className="text-xs text-gray-500">"Reading settings.tsx", "Editing api.js"...</p>
+                <p className="text-xs text-gray-400">"Reading settings.tsx", "Editing api.js"...</p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -225,7 +225,7 @@ export function AudioTab({
           <div className="flex items-center justify-between p-3">
             <div>
               <span className="text-sm text-white">Subagent activity</span>
-              <p className="text-xs text-gray-500">"Spawning agent", agent count changes</p>
+              <p className="text-xs text-gray-400">"Spawning agent", agent count changes</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -254,7 +254,7 @@ export function AudioTab({
               onChange={(e) => updateAudioSettings({ toolDebounceMs: parseInt(e.target.value) })}
               className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[#00ff88]"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-400 mt-1">
               Minimum time between tool announcements (prevents spam)
             </p>
           </div>
@@ -274,7 +274,7 @@ export function AudioTab({
       </div>
 
       {/* Info */}
-      <div className="text-xs text-gray-500 mt-4 p-3 bg-gray-900/50 rounded-lg">
+      <div className="text-xs text-gray-400 mt-4 p-3 bg-gray-900/50 rounded-lg">
         <p><strong>Note:</strong> Audio uses edge-tts neural voices. First playback may have a brief delay while audio is generated - subsequent plays are instant (cached).</p>
       </div>
     </>
