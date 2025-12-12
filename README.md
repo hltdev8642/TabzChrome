@@ -37,6 +37,25 @@ Browse the web with your terminals always visible - no window juggling, no Alt+T
 - **Tabz MCP tools** - Let Claude Code control your browser (screenshots, clicks, form filling)
 - **Keyboard shortcuts** - Quick access to paste text, send to chat, spawn terminals
 
+### Claude Code Integration
+
+TabzChrome is designed to work seamlessly with Claude Code:
+
+**🚀 Quick Setup - `/discover-profiles` command**
+- Scans your system for installed CLI tools (claude, lazygit, htop, nvim, etc.)
+- Opens curated lists ([awesome-tuis](https://github.com/rothgar/awesome-tuis), [modern-unix](https://github.com/ibraheemdev/modern-unix)) to discover new tools
+- Generates ready-to-import profiles with sensible defaults
+
+**⚡ 0-Token Experimental Mode** - Eliminate MCP tool definition costs!
+
+![MCP settings with 0-token experimental mode](docs/screenshots/mcp-settings.png)
+
+Enable in Settings → MCP Tools to remove all 20 tool definitions from your context window. Claude fetches tool schemas on-demand from GitHub instead.
+
+**🎭 Power Features:**
+- `conductor` agent - Spawn multiple Claude sessions, delegate tasks, coordinate parallel work
+- `tabz-mcp` skill - Guided browser automation with dynamic tool discovery
+
 ---
 
 ## Quick Start
