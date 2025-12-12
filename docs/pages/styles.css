@@ -536,6 +536,11 @@ kbd {
     cursor: default;
 }
 
+.fab-star {
+    background: linear-gradient(135deg, #b08800, #d4a017);
+    color: #fff;
+}
+
 .fab-clone {
     background: linear-gradient(135deg, #238636, #2ea043);
     color: #fff;

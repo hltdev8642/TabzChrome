@@ -264,6 +264,7 @@ When browsing GitHub repository pages, a floating action button appears in the b
 
 | Button | Action |
 |--------|--------|
+| **Star** | Clicks GitHub's native star button (shows "Already!" if starred) |
 | **Clone** | Queues `git clone <url> && cd <repo>` to the sidebar chat bar |
 | **Fork** | Opens the repository's fork page in a new tab |
 

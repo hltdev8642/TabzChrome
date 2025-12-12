@@ -320,6 +320,12 @@ function setupGitHubFAB() {
       <button class="tabz-fab-close" title="Dismiss">×</button>
       <div class="tabz-fab-repo">${repo.repo}</div>
       <div class="tabz-fab-actions">
+        <button class="tabz-fab-btn tabz-fab-star" title="Star repository">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/>
+          </svg>
+          Star
+        </button>
         <button class="tabz-fab-btn tabz-fab-clone" title="Clone to terminal">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
             <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z"/>
@@ -426,6 +432,16 @@ function setupGitHubFAB() {
       transform: translateY(-1px);
     }
 
+    .tabz-fab-star {
+      background: linear-gradient(135deg, #b08800, #d4a017);
+      color: #fff;
+    }
+
+    .tabz-fab-star:hover {
+      background: linear-gradient(135deg, #d4a017, #e6b800);
+      transform: translateY(-1px);
+    }
+
     .tabz-fab-fork {
       background: rgba(255, 255, 255, 0.1);
       color: #fff;
@@ -454,6 +470,7 @@ function setupGitHubFAB() {
 
   // Wire up event handlers
   const closeBtn = fab.querySelector('.tabz-fab-close') as HTMLButtonElement
+  const starBtn = fab.querySelector('.tabz-fab-star') as HTMLButtonElement
   const cloneBtn = fab.querySelector('.tabz-fab-clone') as HTMLButtonElement
   const forkBtn = fab.querySelector('.tabz-fab-fork') as HTMLButtonElement
 
@@ -461,6 +478,29 @@ function setupGitHubFAB() {
     dismissedRepos.add(repo.fullName)
     fab.remove()
     styleEl.remove()
+  })
+
+  starBtn.addEventListener('click', () => {
+    // Find and click GitHub's native star button
+    const starForm = document.querySelector('form.unstarred button[type="submit"]') as HTMLButtonElement
+    if (starForm) {
+      starForm.click()
+      // Visual feedback
+      const originalText = starBtn.innerHTML
+      starBtn.innerHTML = '⭐ Starred!'
+      setTimeout(() => {
+        starBtn.innerHTML = originalText
+      }, 1500)
+    } else {
+      // Already starred or button not found - check if already starred
+      const unstarForm = document.querySelector('form.starred button[type="submit"]')
+      if (unstarForm) {
+        starBtn.innerHTML = '⭐ Already!'
+        setTimeout(() => {
+          starBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg> Star'
+        }, 1500)
+      }
+    }
   })
 
   cloneBtn.addEventListener('click', () => {

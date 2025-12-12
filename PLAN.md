@@ -224,7 +224,7 @@ Shows 👻 badge with count of orphaned tmux sessions. Click for reattach/kill o
 ---
 
 ### GitHub FAB Enhancements
-- **Star Button** - Add ⭐ Star button to GitHub FAB (click via MCP `tabz_click` on `.starred button` or similar)
+- ~~**Star Button** - Add ⭐ Star button to GitHub FAB~~ ✅ Done (clicks native star button)
 - **Fork + Clone Combo** - Fork first, then clone user's fork (proper OSS contribution flow)
 
 ### Other Future Features
