@@ -266,18 +266,9 @@ class PTYHandler extends EventEmitter {
           conptyInheritCursor: false
         });
 
-        // Exit copy-mode if accidentally triggered during reconnection using tmux API
-        // (Mouse wheel events can trigger copy-mode on attach)
-        if (isReconnection) {
-          setTimeout(() => {
-            try {
-              execSync(`tmux send-keys -t "${sessionName}" -X cancel 2>/dev/null || true`);
-              log.debug(`Sent copy-mode cancel to ${sessionName}`);
-            } catch (err) {
-              log.debug('Failed to cancel copy-mode on reconnection:', err.message);
-            }
-          }, 150);
-        }
+        // Note: Previously had copy-mode exit code here using send-keys, but it was
+        // potentially causing issues. Removed - if copy-mode triggers on reconnect,
+        // user can press 'q' to exit. Root cause should be investigated instead.
       } else {
         // Standard non-tmux spawning (existing behavior)
         const shellCommand = this.getShellCommand(terminalType);
