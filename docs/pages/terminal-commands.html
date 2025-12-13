@@ -339,37 +339,37 @@ queueToTabz(filledPrompt);</code>
             <h2>Architecture</h2>
             <div class="code-block">
                 <code>┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Web Page      │     │    CLI/Script   │     │   Prompt App    │
-│ data-terminal-  │     │   (websocat)    │     │  (templates)    │
-│    command      │     │                 │     │                 │
+│    Web Page     │     │   CLI/Script    │     │   Prompt App    │
+│ data-terminal-  │     │   (websocat)    │     │   (templates)   │
+│     command     │     │                 │     │                 │
 └────────┬────────┘     └────────┬────────┘     └────────┬────────┘
          │                       │                       │
          │ content script        │ WebSocket             │ WebSocket
          │ click handler         │                       │
          ▼                       ▼                       ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    TabzChrome Backend                           │
-│                    ws://localhost:8129                          │
-│                                                                 │
-│  case 'QUEUE_COMMAND':                                          │
-│    broadcast({ type: 'QUEUE_COMMAND', command: data.command }); │
-└────────────────────────────────┬────────────────────────────────┘
-                                 │ broadcast to extension
-                                 ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                Chrome Extension (background.ts)                 │
-│                                                                 │
-│  → Opens sidebar if closed                                      │
-│  → Forwards QUEUE_COMMAND to sidepanel                          │
-└────────────────────────────────┬────────────────────────────────┘
-                                 │
-                                 ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Sidepanel (React)                            │
-│                                                                 │
-│  → Populates chat input with command                            │
-│  → User picks terminal tab and sends                            │
-└─────────────────────────────────────────────────────────────────┘</code>
+┌───────────────────────────────────────────────────────────────────┐
+│                       TabzChrome Backend                          │
+│                       ws://localhost:8129                         │
+│                                                                   │
+│  case 'QUEUE_COMMAND':                                            │
+│    broadcast({ type: 'QUEUE_COMMAND', command: data.command });   │
+└─────────────────────────────────┬─────────────────────────────────┘
+                                  │ broadcast to extension
+                                  ▼
+┌───────────────────────────────────────────────────────────────────┐
+│                 Chrome Extension (background.ts)                  │
+│                                                                   │
+│  → Opens sidebar if closed                                        │
+│  → Forwards QUEUE_COMMAND to sidepanel                            │
+└─────────────────────────────────┬─────────────────────────────────┘
+                                  │
+                                  ▼
+┌───────────────────────────────────────────────────────────────────┐
+│                        Sidepanel (React)                          │
+│                                                                   │
+│  → Populates chat input with command                              │
+│  → User picks terminal tab and sends                              │
+└───────────────────────────────────────────────────────────────────┘</code>
             </div>
         </section>
 
