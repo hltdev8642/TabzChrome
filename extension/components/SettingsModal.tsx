@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { X, Terminal as TerminalIcon, Wrench, Volume2 } from 'lucide-react'
+import { X, Terminal as TerminalIcon, Wrench, Volume2, Key, Copy, Check } from 'lucide-react'
 import {
   Profile,
   CategorySettings,
@@ -91,6 +91,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   // Audio settings state
   const [audioSettings, setAudioSettings] = useState<AudioSettings>(DEFAULT_AUDIO_SETTINGS)
+
+  // Security token state
+  const [showTokenHelp, setShowTokenHelp] = useState(false)
+  const [tokenCopied, setTokenCopied] = useState(false)
 
   // Reset form state when modal opens
   useEffect(() => {
@@ -410,6 +414,31 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setImportWarnings([])
   }
 
+  // Toggle security token help panel
+  const handleShowTokenHelp = () => {
+    setShowTokenHelp(!showTokenHelp)
+  }
+
+  // Copy token to clipboard
+  const handleCopyToken = async () => {
+    try {
+      const res = await fetch('http://localhost:8129/api/auth/token')
+      const data = await res.json()
+      if (data.token) {
+        await navigator.clipboard.writeText(data.token)
+        setTokenCopied(true)
+        setTimeout(() => setTokenCopied(false), 2000)
+      }
+    } catch (err) {
+      console.error('[Settings] Failed to copy token:', err)
+    }
+  }
+
+  // Copy command to clipboard
+  const handleCopyCommand = async (command: string) => {
+    await navigator.clipboard.writeText(command)
+  }
+
   if (!isOpen) return null
 
   return (
@@ -441,14 +470,76 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <div className="flex items-center gap-2">
             <h2 id="settings-modal-title" className="text-xl font-semibold text-white">Settings</h2>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-white/10 rounded transition-colors text-gray-400 hover:text-white"
-            aria-label="Close settings"
-          >
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Security Token Help Button */}
+            <button
+              onClick={handleShowTokenHelp}
+              className={`
+                flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-all
+                ${showTokenHelp
+                  ? 'bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88]/30'
+                  : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 hover:border-gray-600'
+                }
+              `}
+              title="Get security token for external launchers"
+            >
+              <Key className="h-3.5 w-3.5" />
+              API Token
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1 hover:bg-white/10 rounded transition-colors text-gray-400 hover:text-white"
+              aria-label="Close settings"
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
         </div>
+
+        {/* Security Token Help Panel */}
+        {showTokenHelp && (
+          <div className="px-6 py-4 bg-[#0a0a0a] border-b border-gray-800">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-[#00ff88]/10 text-[#00ff88]">
+                <Key className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-medium text-white mb-1">Security Token</h3>
+                <p className="text-xs text-gray-400 mb-3">
+                  Copy this token to authorize external launchers (like GitHub Pages) to spawn terminals.
+                </p>
+                <button
+                  onClick={handleCopyToken}
+                  className={`
+                    flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition-all
+                    ${tokenCopied
+                      ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                      : 'bg-[#00ff88] hover:bg-[#00c8ff] text-black'
+                    }
+                  `}
+                >
+                  {tokenCopied ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Copied to clipboard!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" />
+                      Copy Token
+                    </>
+                  )}
+                </button>
+              </div>
+              <button
+                onClick={() => setShowTokenHelp(false)}
+                className="p-1 hover:bg-white/10 rounded text-gray-500 hover:text-white transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Tab Navigation */}
         <div className="flex border-b border-gray-800 px-6" role="tablist" aria-label="Settings sections">

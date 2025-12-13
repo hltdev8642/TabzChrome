@@ -133,14 +133,10 @@ app.use('/api', apiRouter);
 app.use('/api/files', filesRouter);
 app.use('/api/browser', browserRouter);
 
-// Auth token endpoint - Chrome extension fetches this to connect to WebSocket
-// Only accessible from localhost (CORS and network isolation)
+// Auth token endpoint - needed for WebSocket auth (dashboard, extension)
+// Note: External launchers (GitHub Pages) should use manual token input, not auto-fetch
+// The UX improvement is that users consciously paste their token to authorize a site
 app.get('/api/auth/token', (req, res) => {
-  // Additional security: only respond to requests from localhost
-  const remoteAddr = req.ip || req.connection.remoteAddress;
-  if (!remoteAddr || (!remoteAddr.includes('127.0.0.1') && !remoteAddr.includes('::1') && remoteAddr !== '::ffff:127.0.0.1')) {
-    return res.status(403).json({ error: 'Forbidden - localhost only' });
-  }
   res.json({ token: WS_AUTH_TOKEN });
 });
 

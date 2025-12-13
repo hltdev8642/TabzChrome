@@ -263,6 +263,20 @@
             </p>
 
             <div class="demo-section">
+                <h3>Security Token</h3>
+                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.75rem;">
+                    Required for the Spawn button. Get your token from Tabz Settings → API Token, or run: <code>cat /tmp/tabz-auth-token</code>
+                </p>
+                <div class="demo-controls" style="margin-bottom: 1.5rem;">
+                    <label style="flex: 1;">
+                        Security Token
+                        <input type="password" id="authToken" placeholder="Paste your token here..." style="font-family: monospace;">
+                    </label>
+                    <button onclick="toggleTokenVisibility()" style="background: var(--surface); padding: 0.5rem 1rem; align-self: flex-end;">
+                        👁️ Show
+                    </button>
+                </div>
+
                 <h3>Configure Your Command</h3>
                 <div class="demo-controls">
                     <label>
@@ -453,21 +467,20 @@ tabz-claude() {
         <section>
             <h2>JavaScript / Web Page Integration</h2>
             <div class="code-block">
-                <code><span class="comment">// Get auth token (works from localhost only)</span>
-<span class="keyword">async function</span> <span class="function">getAuthToken</span>() {
-  <span class="keyword">const</span> res = <span class="keyword">await</span> fetch(<span class="string">'http://localhost:8129/api/auth/token'</span>);
-  <span class="keyword">const</span> data = <span class="keyword">await</span> res.json();
-  <span class="keyword">return</span> data.token;
-}
+                <code><span class="comment">// Token must be provided by the user (from Tabz Settings → API Token)</span>
+<span class="comment">// Store in localStorage for persistence</span>
+<span class="keyword">const</span> AUTH_TOKEN = localStorage.getItem(<span class="string">'tabz-auth-token'</span>);
 
 <span class="comment">// Spawn terminal from web page</span>
 <span class="keyword">async function</span> <span class="function">spawnTerminal</span>(name, workingDir, command) {
-  <span class="keyword">const</span> token = <span class="keyword">await</span> getAuthToken();
+  <span class="keyword">if</span> (!AUTH_TOKEN) {
+    <span class="keyword">throw new</span> Error(<span class="string">'Token required - get from Tabz Settings'</span>);
+  }
   <span class="keyword">const</span> response = <span class="keyword">await</span> fetch(<span class="string">'http://localhost:8129/api/spawn'</span>, {
     method: <span class="string">'POST'</span>,
     headers: {
       <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>,
-      <span class="string">'X-Auth-Token'</span>: token
+      <span class="string">'X-Auth-Token'</span>: AUTH_TOKEN
     },
     body: JSON.stringify({ name, workingDir, command })
   });
@@ -500,6 +513,31 @@ spawnTerminal(
     </footer>
 
     <script>
+        // Token management - stored in localStorage
+        function getStoredToken() {
+            return localStorage.getItem('tabz-auth-token') || '';
+        }
+
+        function saveToken(token) {
+            if (token) {
+                localStorage.setItem('tabz-auth-token', token);
+            } else {
+                localStorage.removeItem('tabz-auth-token');
+            }
+        }
+
+        function toggleTokenVisibility() {
+            const input = document.getElementById('authToken');
+            const btn = event.target;
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = '🙈 Hide';
+            } else {
+                input.type = 'password';
+                btn.textContent = '👁️ Show';
+            }
+        }
+
         function buildCommand() {
             const parts = ['claude'];
             const agent = document.getElementById('agent').value;
@@ -553,38 +591,40 @@ curl -X POST http://localhost:8129/api/spawn \\
             document.getElementById('curlPreview').textContent = buildCurl();
         }
 
-        // Cache auth token
-        let authToken = null;
-        async function getAuthToken() {
-            if (authToken) return authToken;
-            try {
-                const res = await fetch('http://localhost:8129/api/auth/token');
-                const data = await res.json();
-                authToken = data.token;
-                return authToken;
-            } catch (err) {
-                console.error('Failed to get auth token:', err);
-                return null;
+        // Get token from input field (with localStorage persistence)
+        function getAuthToken() {
+            const inputToken = document.getElementById('authToken').value.trim();
+            if (inputToken) {
+                saveToken(inputToken);
+                return inputToken;
             }
+            return getStoredToken();
         }
 
         async function spawnTerminal() {
             const workingDir = document.getElementById('workingDir').value || '~/projects';
             const name = buildName();
             const command = buildCommand();
+            const token = getAuthToken();
 
             const resultDiv = document.getElementById('spawnResult');
             resultDiv.style.display = 'block';
+
+            if (!token) {
+                resultDiv.innerHTML = `<span style="color: var(--red);">✗ Security token required</span><br>
+                    <span style="color: var(--text-muted);">Get your token from Tabz Settings → API Token</span>`;
+                return;
+            }
+
             resultDiv.innerHTML = '<span style="color: var(--yellow);">Spawning terminal...</span>';
 
             try {
-                const token = await getAuthToken();
-                const headers = { 'Content-Type': 'application/json' };
-                if (token) headers['X-Auth-Token'] = token;
-
                 const response = await fetch('http://localhost:8129/api/spawn', {
                     method: 'POST',
-                    headers,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Auth-Token': token
+                    },
                     body: JSON.stringify({ name, workingDir, command })
                 });
 
@@ -593,6 +633,9 @@ curl -X POST http://localhost:8129/api/spawn \\
                 if (data.success) {
                     resultDiv.innerHTML = `<span style="color: var(--green);">✓ Terminal spawned!</span><br>
                         <span style="color: var(--text-muted);">ID: ${data.terminal?.id || 'N/A'}</span>`;
+                } else if (data.error === 'Unauthorized - valid token required') {
+                    resultDiv.innerHTML = `<span style="color: var(--red);">✗ Invalid token</span><br>
+                        <span style="color: var(--text-muted);">Check your token and try again</span>`;
                 } else {
                     resultDiv.innerHTML = `<span style="color: var(--red);">✗ Failed: ${data.error || 'Unknown error'}</span>`;
                 }
@@ -611,30 +654,28 @@ curl -X POST http://localhost:8129/api/spawn \\
             });
         }
 
-        // Attach listeners
-        document.querySelectorAll('select, input').forEach(el => {
-            el.addEventListener('change', updatePreview);
-            el.addEventListener('input', updatePreview);
-        });
-
-        // Initial render
-        updatePreview();
-
         // TUI Tools launcher
         async function spawnTuiTool(name, command) {
             const workingDir = document.getElementById('workingDir').value || '~/projects';
+            const token = getAuthToken();
             const resultDiv = document.getElementById('tuiSpawnResult');
             resultDiv.style.display = 'block';
+
+            if (!token) {
+                resultDiv.innerHTML = `<span style="color: var(--red);">✗ Security token required</span><br>
+                    <span style="color: var(--text-muted);">Enter your token above to use Spawn buttons</span>`;
+                return;
+            }
+
             resultDiv.innerHTML = `<span style="color: var(--yellow);">Launching ${name}...</span>`;
 
             try {
-                const token = await getAuthToken();
-                const headers = { 'Content-Type': 'application/json' };
-                if (token) headers['X-Auth-Token'] = token;
-
                 const response = await fetch('http://localhost:8129/api/spawn', {
                     method: 'POST',
-                    headers,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Auth-Token': token
+                    },
                     body: JSON.stringify({ name, workingDir, command })
                 });
 
@@ -643,6 +684,9 @@ curl -X POST http://localhost:8129/api/spawn \\
                 if (data.success) {
                     resultDiv.innerHTML = `<span style="color: var(--green);">✓ ${name} launched!</span><br>
                         <span style="color: var(--text-muted);">ID: ${data.terminal?.id || 'N/A'}</span>`;
+                } else if (data.error === 'Unauthorized - valid token required') {
+                    resultDiv.innerHTML = `<span style="color: var(--red);">✗ Invalid token</span><br>
+                        <span style="color: var(--text-muted);">Check your token and try again</span>`;
                 } else {
                     resultDiv.innerHTML = `<span style="color: var(--red);">✗ Failed: ${data.error || 'Unknown error'}</span>`;
                 }
@@ -651,6 +695,29 @@ curl -X POST http://localhost:8129/api/spawn \\
                     <span style="color: var(--text-muted);">Is the backend running on localhost:8129?</span>`;
             }
         }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Load saved token
+            const savedToken = getStoredToken();
+            if (savedToken) {
+                document.getElementById('authToken').value = savedToken;
+            }
+
+            // Attach listeners
+            document.querySelectorAll('select, input').forEach(el => {
+                el.addEventListener('change', updatePreview);
+                el.addEventListener('input', updatePreview);
+            });
+
+            // Save token when changed
+            document.getElementById('authToken').addEventListener('input', (e) => {
+                saveToken(e.target.value.trim());
+            });
+
+            // Initial render
+            updatePreview();
+        });
     </script>
 </body>
 </html>
