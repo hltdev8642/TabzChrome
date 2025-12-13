@@ -480,35 +480,28 @@ function setupGitHubFAB() {
     styleEl.remove()
   })
 
-  // Check if already starred on load and update button state
-  // Use repo-specific selector to avoid matching forms from previous page (SPA navigation)
-  const isAlreadyStarred = !!document.querySelector(`form[action="/${repo.fullName}/unstar"]`)
-  if (isAlreadyStarred) {
-    starBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg> Starred'
-    starBtn.style.opacity = '0.6'
-    starBtn.title = 'Already starred'
-  }
-
   starBtn.addEventListener('click', () => {
-    // Find GitHub's star button by repo-specific form action
-    const starFormBtn = document.querySelector(`form[action="/${repo.fullName}/star"] button[type="submit"]`) as HTMLButtonElement
-    if (starFormBtn) {
-      starFormBtn.click()
-      // Visual feedback
-      const originalText = starBtn.innerHTML
+    // Find GitHub's star/unstar buttons - both exist, check which is visible
+    const starForm = document.querySelector(`form[action="/${repo.fullName}/star"]`) as HTMLFormElement | null
+    const unstarForm = document.querySelector(`form[action="/${repo.fullName}/unstar"]`) as HTMLFormElement | null
+    const starParent = starForm?.closest('.unstarred') as HTMLElement | null
+    const unstarParent = unstarForm?.closest('.starred') as HTMLElement | null
+
+    const starVisible = starParent && getComputedStyle(starParent).display !== 'none'
+    const unstarVisible = unstarParent && getComputedStyle(unstarParent).display !== 'none'
+
+    if (starVisible) {
+      // Not starred - click to star
+      const btn = starForm?.querySelector('button[type="submit"]') as HTMLButtonElement
+      btn?.click()
       starBtn.innerHTML = '⭐ Starred!'
-      setTimeout(() => {
-        starBtn.innerHTML = originalText
-      }, 1500)
-    } else {
-      // Already starred or button not found - check if already starred
-      const unstarForm = document.querySelector(`form[action="/${repo.fullName}/unstar"]`)
-      if (unstarForm) {
-        starBtn.innerHTML = '⭐ Already!'
-        setTimeout(() => {
-          starBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg> Star'
-        }, 1500)
-      }
+      setTimeout(() => { starBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg> Star' }, 1500)
+    } else if (unstarVisible) {
+      // Already starred - click to unstar
+      const btn = unstarForm?.querySelector('button[type="submit"]') as HTMLButtonElement
+      btn?.click()
+      starBtn.innerHTML = '⭐ Unstarred!'
+      setTimeout(() => { starBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg> Star' }, 1500)
     }
   })
 
