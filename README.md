@@ -101,7 +101,7 @@ npm start  # Runs on port 8129
 ### Open Sidebar
 
 - **Click extension icon** in toolbar
-- **Ctrl+Shift+9** keyboard shortcut
+- **Keyboard shortcut** (set your own at `chrome://extensions/shortcuts`)
 - **Right-click page** → "Toggle Terminal Sidebar"
 
 ---
@@ -446,11 +446,24 @@ Default: `8129` (configured in `backend/.env`)
 
 ### Keyboard Shortcuts
 
+![Keyboard shortcuts configuration in Chrome](docs/screenshots/keyboard-shortcuts.png)
+
+**Default shortcuts (set in Chrome):**
+
 | Shortcut | Action |
 |----------|--------|
-| Ctrl+Shift+9 | Open sidebar |
-| Ctrl+Shift+C | Copy (in terminal) |
-| Ctrl+Shift+V | Paste (in terminal) |
+| Alt+T | New terminal tab (default profile) |
+| Alt+W | Close current terminal tab |
+| Alt+Shift+C | Paste selected text to terminal |
+| Alt+Shift+V | Send selected text to chat |
+| Alt+1-4 | Switch to terminal tab 1-4 |
+
+**In-terminal shortcuts (always available):**
+
+| Shortcut | Action |
+|----------|--------|
+| Ctrl+Shift+C | Copy selected text |
+| Ctrl+Shift+V | Paste from clipboard |
 
 Customize at `chrome://extensions/shortcuts`
 
