@@ -56,6 +56,14 @@ export function useWorkingDirectory(): UseWorkingDirectoryReturn {
       if (isMountedRef.current) {
         setGlobalWorkingDir(localDir)
         setRecentDirs(localRecent)
+
+        // Push merged data back to backend (keeps dashboard in sync)
+        // This ensures Chrome storage dirs get synced to backend
+        fetch(`${BACKEND_URL}/api/settings/working-dir`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ globalWorkingDir: localDir, recentDirs: localRecent })
+        }).catch(() => { /* ignore API errors */ })
       }
 
       // Allow syncing after initial load
