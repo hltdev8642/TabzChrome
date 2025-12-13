@@ -26,6 +26,13 @@ ls ~/.claude/agents/*.md 2>/dev/null | xargs -I {} basename {} .md
 ls .claude/agents/*.md 2>/dev/null | xargs -I {} basename {} .md
 ```
 
+**Get user's terminal profiles** (from Chrome extension):
+```bash
+curl -s http://localhost:8129/api/browser/profiles | jq '.profiles[] | {name, category, command, workingDir}'
+```
+
+This returns profiles the user has configured in TabzChrome settings - useful for spawning terminals with their preferred configurations (fonts, themes, startup commands).
+
 **Spawn a new Claude session** (appears in TabzChrome sidebar):
 ```bash
 TOKEN=$(cat /tmp/tabz-auth-token)
