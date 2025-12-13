@@ -236,7 +236,7 @@ The chat input bar includes command history:
 
 Access a web-based dashboard at `http://localhost:8129` for terminal management:
 
-![Dashboard button in sidebar header](docs/screenshots/dashboard-button.png)
+<img src="docs/screenshots/dashboard-button.svg" alt="Dashboard icon" width="24" height="24" /> Click this icon in the sidebar header to open the dashboard.
 
 **Pages:**
 | Page | URL | Features |
@@ -250,8 +250,6 @@ Access a web-based dashboard at `http://localhost:8129` for terminal management:
 - **Real-time stats** - Active terminals, backend uptime, memory usage
 - **Orphan cleanup** - Find and kill detached tmux sessions
 - **Quick spawn** - Launch new terminals directly from the dashboard
-
-Click the grid icon (📊) in the sidebar header to open the dashboard in a new tab.
 
 ### Custom Terminal Triggers
 
