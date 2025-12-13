@@ -47,11 +47,11 @@ TabzChrome is designed to work seamlessly with Claude Code:
 - Opens curated lists ([awesome-tuis](https://github.com/rothgar/awesome-tuis), [modern-unix](https://github.com/ibraheemdev/modern-unix)) to discover new tools
 - Generates ready-to-import profiles with sensible defaults
 
-**⚡ 0-Token Experimental Mode** - Eliminate MCP tool definition costs!
+**⚡ 0 Token Cost Up Front** - MCP tools with no context overhead!
 
-![MCP settings with 0-token experimental mode](docs/screenshots/mcp-settings.png)
+![MCP settings](docs/screenshots/mcp-settings.png)
 
-Enable in Settings → MCP Tools to remove all 20 tool definitions from your context window. Claude fetches tool schemas on-demand from GitHub instead.
+Using Anthropic's experimental dynamic tool loading, Claude fetches tool schemas on-demand instead of loading all 20 definitions into context. Enable with the `--dynamic-tool-discovery` flag when adding the MCP server.
 
 **🎭 Power Features:**
 - `conductor` agent - Spawn multiple Claude sessions, delegate tasks, coordinate parallel work
@@ -102,7 +102,9 @@ npm start  # Runs on port 8129
 
 - **Click extension icon** in toolbar
 - **Keyboard shortcut** (set your own at `chrome://extensions/shortcuts`)
-- **Right-click page** → "Toggle Terminal Sidebar"
+- **Right-click page** → "Open Terminal Sidebar"
+
+> **Note:** Chrome doesn't allow extensions to close sidebars programmatically (requires user gesture), so the menu always says "Open" rather than "Toggle". Close via Chrome's built-in panel menu (⋮).
 
 ---
 
@@ -198,7 +200,7 @@ Terminal tabs show live Claude Code status with emoji indicators:
 | 🤖⏳ | Claude is thinking |
 | 🤖🔧 | Claude is using a tool |
 
-**File type badges** - When Claude works on files, tabs show the actual file type (e.g., `.tsx`, `.py`, `.md`) so you can see what's being edited at a glance.
+**Detailed status on tabs** - Tabs show exactly what Claude is doing: "editing page.tsx", "reading utils.py", "running npm test". See the actual file names and actions at a glance.
 
 **Subagent indicators** - When Claude spawns subagents, multiple robot emojis appear (🤖🤖) to show parallel work happening.
 
@@ -279,7 +281,7 @@ Right-click anywhere on a webpage to access terminal actions:
 
 | Action | When Available | Destination |
 |--------|----------------|-------------|
-| **Open Terminal Sidebar** | Always | Opens or focuses the Tabz sidebar (close via Chrome's built-in panel menu) |
+| **Open Terminal Sidebar** | Always | Opens or focuses the sidebar (always says "Open" since Chrome can't close sidebars programmatically) |
 | **Send to Tabz** | Text selected | **Chat input bar** - review/edit, then pick terminal |
 | **Paste to Terminal** | Text selected | **Active terminal** - at cursor position, like typing |
 | **Read Aloud** | Text selected | **TTS playback** - speaks the selected text through the sidebar |
@@ -358,13 +360,14 @@ Tabz includes an **MCP server** with 20 tools that let Claude Code control your 
 
 Click ⚙️ → **MCP Tools** tab to configure which tools Claude can use:
 
-![MCP Tools settings tab with tool toggles, token estimates, and 0-token experimental mode](docs/screenshots/mcp-settings.png)
+![MCP Tools settings tab with tool toggles and token estimates](docs/screenshots/mcp-settings.png)
 
 - Toggle individual tools on/off
 - See token usage estimates per tool
 - Add custom allowed domains for `tabz_open_url`
 - Apply presets (Minimal, Standard, Full)
-- **0-Token Mode** (experimental) - Removes tool definitions from context, uses GitHub-hosted descriptions
+
+> **Tip:** Use `--dynamic-tool-discovery` flag when adding the MCP server to load tool schemas on-demand (0 tokens up front).
 
 ### Claude Skill: `tabz-mcp`
 
