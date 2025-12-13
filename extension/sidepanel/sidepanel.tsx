@@ -56,6 +56,27 @@ function SidePanelTerminal() {
   const [showDirDropdown, setShowDirDropdown] = useState(false)
   const [customDirInput, setCustomDirInput] = useState('')
   const [isDark, setIsDark] = useState(true)  // Global dark/light mode toggle
+  const audioUnlockedRef = useRef(false)  // Track if audio has been unlocked by user interaction
+
+  // Unlock audio on first user interaction (Chrome autoplay policy workaround)
+  useEffect(() => {
+    const unlockAudio = () => {
+      if (audioUnlockedRef.current) return
+      audioUnlockedRef.current = true
+      // Create and play a silent audio to unlock playback
+      const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA')
+      silentAudio.volume = 0
+      silentAudio.play().catch(() => {})  // Ignore errors
+      document.removeEventListener('click', unlockAudio)
+      document.removeEventListener('keydown', unlockAudio)
+    }
+    document.addEventListener('click', unlockAudio)
+    document.addEventListener('keydown', unlockAudio)
+    return () => {
+      document.removeEventListener('click', unlockAudio)
+      document.removeEventListener('keydown', unlockAudio)
+    }
+  }, [])
 
   // Command history hook
   const commandHistoryHook = useCommandHistory()

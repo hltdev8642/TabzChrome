@@ -282,8 +282,11 @@ Right-click anywhere on a webpage to access terminal actions:
 | **Open Terminal Sidebar** | Always | Opens or focuses the Tabz sidebar (close via Chrome's built-in panel menu) |
 | **Send to Tabz** | Text selected | **Chat input bar** - review/edit, then pick terminal |
 | **Paste to Terminal** | Text selected | **Active terminal** - at cursor position, like typing |
+| **Read Aloud** | Text selected | **TTS playback** - speaks the selected text through the sidebar |
 
-Neither option auto-executes - press Enter to run the command. "Send to Tabz" lets you choose which terminal; "Paste to Terminal" goes to whichever tab is currently active.
+Neither "Send to Tabz" nor "Paste to Terminal" auto-executes - press Enter to run the command. "Send to Tabz" lets you choose which terminal; "Paste to Terminal" goes to whichever tab is currently active.
+
+**Read Aloud** uses your configured audio settings (Settings → Audio tab) including voice, rate, and volume. If you have "Random" voice selected, each read-aloud will use a different voice.
 
 > **Note:** When spawning new terminals via profiles or the [Spawn API](#spawn-terminal-via-api), the startup command **does** auto-execute after the shell is ready.
 
@@ -567,6 +570,7 @@ npm test
 | GET | `/api/tmux/sessions` | List sessions |
 | GET | `/api/settings/working-dir` | Get working directory settings |
 | POST | `/api/settings/working-dir` | Update working directory settings |
+| POST | `/api/audio/speak` | Generate TTS and broadcast to sidebar for playback |
 
 **Health Endpoint Response:**
 ```json
@@ -597,6 +601,30 @@ curl -X POST http://localhost:8129/api/spawn \
     "command": "lazygit"
   }'
 ```
+
+### Text-to-Speech via API
+
+Generate audio and play it through the sidebar. Useful for slash commands and automation.
+
+```bash
+curl -X POST http://localhost:8129/api/audio/speak \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Hello, this is a test",
+    "voice": "en-US-AndrewMultilingualNeural",
+    "rate": "+20%",
+    "volume": 0.8
+  }'
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `text` | string | *required* | Text to speak |
+| `voice` | string | `en-US-AndrewMultilingualNeural` | Edge TTS voice name |
+| `rate` | string | `+0%` | Speech rate (`-50%` to `+100%`) |
+| `volume` | number | `0.7` | Playback volume (0-1) |
+
+Audio is generated via `edge-tts`, cached, and broadcast to connected sidebars via WebSocket.
 
 ---
 

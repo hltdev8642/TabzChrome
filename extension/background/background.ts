@@ -1890,6 +1890,17 @@ function setupContextMenus() {
       }
     })
 
+    // Context menu for selected text - read aloud using TTS
+    chrome.contextMenus.create({
+      id: 'read-aloud',
+      title: 'Read "%s" Aloud',
+      contexts: ['selection'],
+    }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('Error creating read-aloud menu:', chrome.runtime.lastError)
+      }
+    })
+
     console.log('✅ Context menus setup complete')
   })
 }
@@ -1997,6 +2008,46 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         // Sidebar may already be open but not connected yet, or gesture context lost
         console.debug('[Background] Could not open sidebar:', err)
       }
+    }
+  }
+
+  if (menuId === 'read-aloud' && info.selectionText) {
+    // Read selected text aloud using TTS
+    const selectedText = info.selectionText
+    console.log('🔊 Reading aloud:', selectedText.substring(0, 50) + '...')
+
+    try {
+      // Load audio settings from Chrome storage
+      const result = await chrome.storage.local.get(['audioSettings'])
+      const audioSettings = (result.audioSettings || {}) as { voice?: string; rate?: string; volume?: number }
+
+      // Handle random voice selection
+      const TTS_VOICE_VALUES = [
+        'en-US-AndrewMultilingualNeural', 'en-US-EmmaMultilingualNeural', 'en-US-BrianMultilingualNeural',
+        'en-US-AriaNeural', 'en-US-GuyNeural', 'en-US-JennyNeural',
+        'en-GB-SoniaNeural', 'en-GB-RyanNeural', 'en-AU-NatashaNeural', 'en-AU-WilliamNeural'
+      ]
+      let voice = audioSettings.voice || 'en-US-AndrewMultilingualNeural'
+      if (voice === 'random') {
+        voice = TTS_VOICE_VALUES[Math.floor(Math.random() * TTS_VOICE_VALUES.length)]
+      }
+
+      const response = await fetch('http://localhost:8129/api/audio/speak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: selectedText,
+          voice,
+          rate: audioSettings.rate || '+0%',
+          volume: audioSettings.volume ?? 0.7
+        })
+      })
+      const data = await response.json()
+      if (!data.success) {
+        console.error('TTS failed:', data.error)
+      }
+    } catch (err) {
+      console.error('Failed to call TTS endpoint:', err)
     }
   }
 })

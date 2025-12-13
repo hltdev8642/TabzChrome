@@ -274,6 +274,10 @@ app.post('/api/audio/generate', audioRateLimiter, async (req, res) => {
 // POST /api/audio/speak - Generate audio AND broadcast to extension to play it
 // This allows CLI/slash commands to trigger audio playback through the browser
 app.post('/api/audio/speak', async (req, res) => {
+  const { execFile } = require('child_process');
+  const { promisify } = require('util');
+  const execFileAsync = promisify(execFile);
+
   const {
     text,
     voice = 'en-US-AndrewMultilingualNeural',
