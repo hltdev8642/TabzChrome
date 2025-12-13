@@ -273,6 +273,11 @@ class PTYHandler extends EventEmitter {
               env: enhancedEnv
             });
 
+            // CRITICAL: Ensure xterm.js config is applied even if tmux server was started elsewhere
+            // The -f flag only works on server startup, not when joining existing server
+            // This prevents corruption when Windows Terminal starts tmux first with different settings
+            execSync(`tmux source-file "${this.tmuxConfigPath}"`);
+
             // CRITICAL: Ensure remain-on-exit is off for this session
             // This allows tabs to auto-close when you type 'exit' or Ctrl+D
             execSync(`tmux set-option -t "${sessionName}" remain-on-exit off`);

@@ -213,6 +213,10 @@ function SidePanelTerminal() {
         setWsConnected(false)
       } else if (message.type === 'WS_MESSAGE') {
         handleWebSocketMessage(message.data)
+        // Refresh orphaned sessions immediately on terminal changes
+        if (message.data?.type === 'terminal-spawned' || message.data?.type === 'terminal-closed') {
+          refreshOrphaned()
+        }
       } else if (message.type === 'TERMINAL_OUTPUT') {
         // Terminal component will handle this
       } else if (message.type === 'PASTE_COMMAND') {
@@ -482,13 +486,14 @@ function SidePanelTerminal() {
 
       const data = await response.json()
       if (data.success) {
-        // UI will update via WebSocket broadcast (terminal-closed event)
-        // But also update local state immediately for responsiveness
+        // Update local state immediately for responsiveness
         setSessions(prev => prev.filter(s => s.id !== terminal.id))
         if (currentSession === terminal.id) {
           const remaining = sessions.filter(s => s.id !== terminal.id)
           setCurrentSession(remaining[0]?.id || null)
         }
+        // Refresh orphaned sessions so ghost badge appears immediately
+        refreshOrphaned()
       } else {
         console.error('[handleDetachSession] Failed to detach:', data.error)
       }

@@ -19,11 +19,22 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ### Fixed
 
+#### Terminal Corruption During Refresh While Working
+- **Fixed scroll region corruption when refreshing sidebar while Claude is working** - Updated `.tmux-terminal-tabs.conf` to match Windows Terminal settings:
+  - Changed `default-terminal` from `screen-256color-bce` to `tmux-256color`
+  - Added `setw -g xterm-keys on` for proper key handling
+  - Removed `window-size smallest` (now uses default `latest`)
+- **Root cause**: The previous terminal type and window-size settings caused scroll region miscalculations when xterm.js reconnected during active Claude output with dynamic statusline
+
+#### Ghost Badge Instant Updates
+- **Ghost badge now updates immediately** on terminal spawn/close/detach instead of waiting for 30-second poll
+- Added `refreshOrphaned()` call in WebSocket message handler for `terminal-spawned` and `terminal-closed` events
+- Added direct refresh after detach action in context menu
+
 #### Tmux Config Consistency
 - **dev.sh now loads xterm.js-optimized tmux config** - Added `-f` flag and `source-file` command to ensure `.tmux-terminal-tabs.conf` is always applied, even if tmux server was started from Windows Terminal with different settings
+- **pty-handler.js now forces config reload** - Added `tmux source-file` after session creation to ensure xterm.js settings apply even when tmux server was started elsewhere
 - **Fixed "can't find window: 0" error** - Removed hardcoded `:0` window index in `tmux-session-manager.js` that failed when `base-index 1` is set; now uses session name without window index (works with any base-index)
-
-These fixes prevent terminal rendering issues (emoji width mismatches, display corruption) that occurred when the tmux server was started with Windows Terminal's config but TabzChrome expected xterm.js settings.
 
 ---
 
