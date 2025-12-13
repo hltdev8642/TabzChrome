@@ -2,19 +2,35 @@
 
 This directory contains project documentation organized by category.
 
-**Last Updated**: December 7, 2025
+**Last Updated**: December 13, 2025
 
 ---
 
 ## Directory Structure
 
-### `/bugs/` - Bug Investigation & Debugging
+### `/lessons-learned/` - Bug Insights & Best Practices
+Debugging lessons, gotchas, and best practices organized by topic.
+
+- **[README.md](lessons-learned/README.md)** - Index and contribution guidelines
+- **[terminal-rendering.md](lessons-learned/terminal-rendering.md)** - xterm.js, resize coordination, tmux
+- **[chrome-extension.md](lessons-learned/chrome-extension.md)** - Storage, reconnection, audio
+- **[react-patterns.md](lessons-learned/react-patterns.md)** - Hooks, performance, state
+- **[architecture.md](lessons-learned/architecture.md)** - Multi-window, splits, WebSocket
+- **[debugging.md](lessons-learned/debugging.md)** - Dev environment, troubleshooting
+
+**Use Case**: Reference when debugging issues or learning patterns.
+
+**Related**: The `skills/xterm-js/` skill contains generalized patterns extracted from these lessons.
+
+---
+
+### `/bugs/` - Active Bug Investigation
 Active debugging notes and investigation logs.
 
 - **CONNECTION_DEBUG.md** - WebSocket connection debugging notes
 - **SESSION_DEBUG.md** - Session debugging notes
 
-**Use Case**: Reference when debugging similar issues.
+**Use Case**: Reference when debugging active issues.
 
 ---
 
@@ -75,8 +91,9 @@ Essential documentation in the project root:
 ## Quick Navigation
 
 ### For Debugging:
-1. Check **[/LESSONS_LEARNED.md](../LESSONS_LEARNED.md)**
-2. Search **[bugs/](bugs/)** directory
+1. Check **[lessons-learned/](lessons-learned/)** by topic
+2. Search **[bugs/](bugs/)** for active investigations
+3. See **[skills/xterm-js/](../skills/xterm-js/)** for generalized patterns
 
 ### For Planning Features:
 1. Review **[planning/](planning/)**
@@ -91,7 +108,7 @@ Essential documentation in the project root:
 
 **After Completing Work:**
 1. **[/CHANGELOG.md](../CHANGELOG.md)** - Add version entry
-2. **[/LESSONS_LEARNED.md](../LESSONS_LEARNED.md)** - Capture insights
+2. **[lessons-learned/](lessons-learned/)** - Add to appropriate topic file
 3. **[/CLAUDE.md](../CLAUDE.md)** - Update for architecture changes
 
 **When Planning:**
