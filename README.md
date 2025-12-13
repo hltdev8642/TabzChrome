@@ -198,6 +198,10 @@ Terminal tabs show live Claude Code status with emoji indicators:
 | 🤖⏳ | Claude is thinking |
 | 🤖🔧 | Claude is using a tool |
 
+**File type badges** - When Claude works on files, tabs show the actual file type (e.g., `.tsx`, `.py`, `.md`) so you can see what's being edited at a glance.
+
+**Subagent indicators** - When Claude spawns subagents, multiple robot emojis appear (🤖🤖) to show parallel work happening.
+
 **Setup required** - See [claude-hooks/README.md](claude-hooks/README.md) for installation.
 
 ### Claude Code Audio Announcements
@@ -257,10 +261,15 @@ Add `data-terminal-command` to any HTML element to create clickable command butt
 
 ```html
 <button data-terminal-command="npm run dev">Start Dev</button>
-<div data-terminal-command="lazygit">Open Lazygit</div>
+<a href="#" data-terminal-command="git status">Check Git</a>
+<code data-terminal-command="npm install express">npm install express</code>
 ```
 
-Clicking the element queues the command to the sidebar chat input bar. Press Enter or click Send to execute.
+**Behavior:**
+- Click opens the sidebar and sends command to the **chat input bar**
+- User selects which terminal tab receives the command
+- Visual feedback: element shows "✓ Queued!" briefly
+- Works on dynamically added elements (MutationObserver)
 
 ### Context Menu Actions
 
@@ -268,13 +277,15 @@ Right-click anywhere on a webpage to access terminal actions:
 
 ![Context menu showing "Send to Tabz" and "Paste to Terminal" options](docs/screenshots/context-menu.png)
 
-| Action | When Available | What It Does |
-|--------|----------------|--------------|
-| **Toggle Terminal Sidebar** | Always | Opens or focuses the Tabz sidebar |
-| **Paste to Terminal** | Text selected | Pastes selection to active terminal at cursor position |
-| **Send to Tabz** | Text selected | Sends selection to the sidebar chat input bar |
+| Action | When Available | Destination |
+|--------|----------------|-------------|
+| **Open Terminal Sidebar** | Always | Opens or focuses the Tabz sidebar (close via Chrome's built-in panel menu) |
+| **Send to Tabz** | Text selected | **Chat input bar** - review/edit, then pick terminal |
+| **Paste to Terminal** | Text selected | **Active terminal** - at cursor position, like typing |
 
-**Paste to Terminal** works with tmux - text goes to the focused pane without auto-executing.
+Neither option auto-executes - press Enter to run the command. "Send to Tabz" lets you choose which terminal; "Paste to Terminal" goes to whichever tab is currently active.
+
+> **Note:** When spawning new terminals via profiles or the [Spawn API](#spawn-terminal-via-api), the startup command **does** auto-execute after the shell is ready.
 
 ### GitHub Repository Quick Actions
 
@@ -424,16 +435,22 @@ Tmux Sessions (source of truth)
 
 ```
 TabzChrome/
-├── extension/           # Chrome extension source
-│   ├── sidepanel/       # Main sidebar UI
-│   ├── components/      # Terminal.tsx, SettingsModal.tsx
-│   ├── background/      # Service worker (WebSocket)
+├── extension/              # Chrome extension source
+│   ├── sidepanel/          # Main sidebar UI (sidepanel.tsx)
+│   ├── components/         # React components (Terminal, Settings, Dropdowns)
+│   ├── hooks/              # React hooks (useProfiles, useTerminalSessions, etc.)
+│   ├── background/         # Service worker (WebSocket relay)
+│   ├── content/            # Content script (data-terminal-command triggers)
+│   ├── shared/             # Messaging and storage helpers
 │   └── manifest.json
-├── backend/             # Node.js server
-│   ├── server.js        # Express + WebSocket
-│   └── modules/         # PTY, terminal registry
-├── tabz-mcp-server/  # MCP server for Claude Code
-└── dist-extension/      # Built extension (load this)
+├── backend/                # Node.js server
+│   ├── server.js           # Express + WebSocket (port 8129)
+│   ├── modules/            # PTY handler, terminal registry, tmux manager
+│   ├── routes/             # API routes (spawn, browser, files)
+│   └── public/             # Dashboard web UI
+├── tabz-mcp-server/        # MCP server for Claude Code browser control
+├── claude-hooks/           # Claude Code status detection hooks
+└── dist-extension/         # Built extension (load this in Chrome)
 ```
 
 ---

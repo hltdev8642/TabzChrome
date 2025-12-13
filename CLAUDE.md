@@ -21,9 +21,21 @@ extension/
 │   └── sidepanel.tsx           # Main sidebar UI - Windows Terminal style
 ├── components/
 │   ├── Terminal.tsx            # xterm.js terminal component
-│   └── SettingsModal.tsx       # Profiles management (add/edit/delete)
+│   ├── SettingsModal.tsx       # Profiles management (add/edit/delete)
+│   ├── ChatInputBar.tsx        # Chat input below terminal
+│   ├── ProfileDropdown.tsx     # Profile selector in tab bar
+│   ├── WorkingDirDropdown.tsx  # Global working directory selector
+│   └── GhostBadgeDropdown.tsx  # Orphaned session management
+├── hooks/
+│   ├── useProfiles.ts          # Profile CRUD and persistence
+│   ├── useTerminalSessions.ts  # Session lifecycle management
+│   ├── useClaudeStatus.ts      # Claude Code status detection
+│   ├── useWorkingDirectory.ts  # Directory inheritance logic
+│   └── ...                     # 10 hooks total
 ├── background/
 │   └── background.ts           # Service worker (WebSocket + shortcuts)
+├── content/
+│   └── content.ts              # Web page triggers (data-terminal-command)
 ├── shared/
 │   ├── messaging.ts            # Extension messaging helpers
 │   └── storage.ts              # Chrome storage helpers
@@ -38,9 +50,14 @@ backend/
 ├── modules/
 │   ├── terminal-registry.js    # Terminal state management
 │   ├── pty-handler.js          # PTY process spawning
-│   └── unified-spawn.js        # Simplified: spawns bash only
-└── routes/
-    └── api.js                  # REST API endpoints
+│   ├── unified-spawn.js        # Bash spawning with tmux
+│   ├── tmux-session-manager.js # Tmux session operations
+│   └── logger.js               # Logging utility
+├── routes/
+│   ├── api.js                  # Terminal REST API endpoints
+│   ├── browser.js              # MCP browser control routes
+│   └── files.js                # File operations routes
+└── public/                     # Dashboard web UI (localhost:8129)
 ```
 
 ### Terminal ID Prefixing (`ctt-`)
