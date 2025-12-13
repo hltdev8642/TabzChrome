@@ -82,7 +82,7 @@ npm install
 cd backend && npm install && cd ..
 
 # Build extension
-npm run build:extension
+npm run build
 ```
 
 ### Load in Chrome
@@ -448,15 +448,17 @@ Default: `8129` (configured in `backend/.env`)
 
 ![Keyboard shortcuts configuration in Chrome](docs/screenshots/keyboard-shortcuts.png)
 
-**Default shortcuts (set in Chrome):**
+**Extension shortcuts (set in Chrome):**
 
 | Shortcut | Action |
 |----------|--------|
 | Alt+T | New terminal tab (default profile) |
 | Alt+W | Close current terminal tab |
-| Alt+Shift+C | Paste selected text to terminal |
-| Alt+Shift+V | Send selected text to chat |
-| Alt+1-4 | Switch to terminal tab 1-4 |
+| Alt+V | Paste selected text to terminal |
+| Alt+C | Send selected text to chat |
+
+> **Note:** Alt+1-9 for tab switching has no default - set manually if desired.
+> Customize all shortcuts at `chrome://extensions/shortcuts`
 
 **In-terminal shortcuts (always available):**
 
@@ -465,7 +467,16 @@ Default: `8129` (configured in `backend/.env`)
 | Ctrl+Shift+C | Copy selected text |
 | Ctrl+Shift+V | Paste from clipboard |
 
-Customize at `chrome://extensions/shortcuts`
+**Tmux shortcuts (all terminals use tmux):**
+
+| Shortcut | Action |
+|----------|--------|
+| Ctrl+B, d | Detach session (keeps running in background) |
+| Ctrl+B, [ | Enter scroll/copy mode (q to exit) |
+| Ctrl+B, ] | Paste from tmux buffer |
+
+> **Tip:** If your terminal seems "stuck" after pressing Ctrl+B, press Escape to cancel.
+> See [tmux cheatsheet](https://tmuxcheatsheet.com/) for more commands.
 
 ---
 
@@ -517,10 +528,10 @@ tmux kill-server        # Reset if corrupted
 
 ```bash
 # Build extension
-npm run build:extension
+npm run build
 
 # Build + copy to Windows Desktop (WSL2)
-npm run build:extension && rsync -av --delete dist-extension/ /mnt/c/Users/$USER/Desktop/TabzChrome/dist-extension/
+npm run build && rsync -av --delete dist-extension/ /mnt/c/Users/$USER/Desktop/TabzChrome/dist-extension/
 
 # Run tests
 npm test
