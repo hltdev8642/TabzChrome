@@ -136,9 +136,9 @@ class TmuxSessionManager {
    */
   async enrichSessionMetadata(session) {
     try {
-      // Get pane information for first window
+      // Get pane information (use session name without window index - works with any base-index)
       const paneInfo = execSync(
-        `tmux list-panes -t "${session.name}:0" -F "#{pane_id}|#{pane_current_path}|#{pane_current_command}"`,
+        `tmux list-panes -t "${session.name}" -F "#{pane_id}|#{pane_current_path}|#{pane_current_command}"`,
         { encoding: 'utf8' }
       ).trim().split('\n')[0]; // Get first pane
 

@@ -15,6 +15,18 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+#### Tmux Config Consistency
+- **dev.sh now loads xterm.js-optimized tmux config** - Added `-f` flag and `source-file` command to ensure `.tmux-terminal-tabs.conf` is always applied, even if tmux server was started from Windows Terminal with different settings
+- **Fixed "can't find window: 0" error** - Removed hardcoded `:0` window index in `tmux-session-manager.js` that failed when `base-index 1` is set; now uses session name without window index (works with any base-index)
+
+These fixes prevent terminal rendering issues (emoji width mismatches, display corruption) that occurred when the tmux server was started with Windows Terminal's config but TabzChrome expected xterm.js settings.
+
+---
+
 ## [2.7.4] - 2025-12-12
 
 ### Security Fixes (Pre-Release Audit)

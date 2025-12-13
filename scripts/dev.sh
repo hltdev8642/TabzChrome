@@ -76,6 +76,9 @@ if ! command -v tmux &> /dev/null; then
     exit 1
 fi
 
+# Tmux config optimized for xterm.js (used by TabzChrome extension)
+TMUX_CONFIG="$SCRIPT_DIR/../.tmux-terminal-tabs.conf"
+
 # Kill existing session if it exists
 if tmux has-session -t $SESSION_NAME 2>/dev/null; then
     echo -e "${YELLOW}⚠️  Existing session found. Killing it...${NC}"
@@ -93,7 +96,13 @@ echo -e "${GREEN}🚀 Creating tmux session: $SESSION_NAME${NC}"
 echo ""
 
 # Create new tmux session with backend in first window
-tmux new-session -d -s $SESSION_NAME -n backend -c "$BACKEND_DIR"
+# Uses xterm.js-optimized config so TabzChrome terminals get consistent settings
+tmux -f "$TMUX_CONFIG" new-session -d -s $SESSION_NAME -n backend -c "$BACKEND_DIR"
+
+# Ensure config is applied even if tmux server was already running
+# (tmux -f only applies on server startup, not when joining existing server)
+tmux source-file "$TMUX_CONFIG"
+
 tmux send-keys -t $SESSION_NAME:backend "npm start" C-m
 
 # Create logs window if enabled
