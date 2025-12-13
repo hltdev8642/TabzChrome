@@ -277,6 +277,27 @@ curl -X POST http://localhost:8129/api/spawn \
   -d '{"name": "Claude Worker", "workingDir": "~/projects/myapp", "command": "claude --dangerously-skip-permissions"}'
 ```
 
+### Authentication Token
+
+The spawn API requires an auth token to prevent malicious websites from executing arbitrary commands.
+
+**Token Location:** `/tmp/tabz-auth-token` (auto-generated on backend startup, mode 0600)
+
+**How to get the token:**
+
+| Context | Method |
+|---------|--------|
+| **CLI / Conductor** | `TOKEN=$(cat /tmp/tabz-auth-token)` |
+| **Extension Settings** | Click "API Token" → "Copy Token" button |
+| **GitHub Pages launcher** | Paste token into input field (stored in localStorage) |
+| **WebSocket connections** | `GET /api/auth/token` (localhost only) |
+
+**Security Model:**
+- CLI/Conductor: Reads token directly from file (full access)
+- Extension: Fetches via `/api/auth/token` for WebSocket auth
+- External web pages: Must have user manually paste token (conscious authorization)
+- Malicious sites: Cannot auto-spawn because user must paste token
+
 ### GET/POST /api/settings/working-dir
 
 Sync working directory settings between extension and dashboard.

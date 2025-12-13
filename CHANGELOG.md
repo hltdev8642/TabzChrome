@@ -17,6 +17,13 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ## [Unreleased]
 
+### Added
+
+#### Manual Token Input for External Launchers
+- **Extension Settings: "API Token" button** - Click to reveal "Copy Token" button that copies auth token to clipboard
+- **GitHub Pages launcher: Token input field** - Paste token once, stored in localStorage for persistence
+- **Improved UX for external sites** - Users consciously authorize sites by pasting their token instead of auto-fetch
+
 ### Fixed
 
 #### Terminal Corruption During Refresh While Working
