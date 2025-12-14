@@ -1,0 +1,44 @@
+{
+  "name": "tabz-chrome-marketplace",
+  "description": "Browser automation, terminal management, and Claude Code integration - MCP tools, skills, and commands",
+  "owner": {
+    "name": "GGPrompts",
+    "url": "https://github.com/GGPrompts"
+  },
+  "version": "1.0.0",
+  "plugins": [
+    {
+      "name": "tabz-mcp",
+      "description": "Browser automation via Tabz MCP tools - tabs, screenshots, clicks, forms, network capture",
+      "source": "./.claude/skills/tabz-mcp",
+      "category": "browser",
+      "tags": ["browser", "automation", "mcp", "screenshots", "chrome"]
+    },
+    {
+      "name": "xterm-js",
+      "description": "xterm.js terminal emulator patterns - React integration, WebSocket, state management",
+      "source": "./.claude/skills/xterm-js",
+      "category": "development",
+      "tags": ["terminal", "xterm", "react", "websocket"]
+    },
+    {
+      "name": "mcp-builder",
+      "description": "Build MCP servers in Python (FastMCP) and Node.js - design patterns and best practices",
+      "source": "./.claude/skills/mcp-builder",
+      "category": "development",
+      "tags": ["mcp", "python", "nodejs", "servers"]
+    },
+    {
+      "name": "tabz-chrome-full",
+      "description": "Full TabzChrome plugin with Tabz MCP server, state tracker hooks, commands, and all skills",
+      "source": ".",
+      "category": "integration",
+      "tags": ["browser", "terminal", "mcp", "chrome-extension", "hooks", "state-tracking"]
+    }
+  ],
+  "categories": {
+    "browser": "Browser automation and Chrome extension integration",
+    "development": "Development tools, patterns, and best practices",
+    "integration": "Full plugin bundles with MCP servers"
+  }
+}
