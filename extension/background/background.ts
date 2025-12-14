@@ -1851,7 +1851,7 @@ function setupContextMenus() {
   chrome.contextMenus.removeAll(() => {
     // Check for errors after removing
     if (chrome.runtime.lastError) {
-      console.error('Error removing context menus:', chrome.runtime.lastError)
+      console.error('Error removing context menus:', chrome.runtime.lastError.message)
     }
 
     // Simple context menu: open side panel
@@ -1862,7 +1862,7 @@ function setupContextMenus() {
       contexts: ['all'],
     }, () => {
       if (chrome.runtime.lastError) {
-        console.error('Error creating open-sidepanel menu:', chrome.runtime.lastError)
+        console.error('Error creating open-sidepanel menu:', chrome.runtime.lastError.message)
       } else {
         console.log('✅ Open sidebar menu created')
       }
@@ -1875,7 +1875,7 @@ function setupContextMenus() {
       contexts: ['selection'],
     }, () => {
       if (chrome.runtime.lastError) {
-        console.error('Error creating paste-to-terminal menu:', chrome.runtime.lastError)
+        console.error('Error creating paste-to-terminal menu:', chrome.runtime.lastError.message)
       }
     })
 
@@ -1886,7 +1886,7 @@ function setupContextMenus() {
       contexts: ['selection'],
     }, () => {
       if (chrome.runtime.lastError) {
-        console.error('Error creating send-to-chat menu:', chrome.runtime.lastError)
+        console.error('Error creating send-to-chat menu:', chrome.runtime.lastError.message)
       }
     })
 
@@ -1897,7 +1897,7 @@ function setupContextMenus() {
       contexts: ['selection'],
     }, () => {
       if (chrome.runtime.lastError) {
-        console.error('Error creating read-aloud menu:', chrome.runtime.lastError)
+        console.error('Error creating read-aloud menu:', chrome.runtime.lastError.message)
       }
     })
 

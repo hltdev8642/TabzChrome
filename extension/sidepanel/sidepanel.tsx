@@ -11,7 +11,7 @@ import { WorkingDirDropdown } from '../components/WorkingDirDropdown'
 import { ChatInputBar } from '../components/ChatInputBar'
 import { connectToBackground, sendMessage } from '../shared/messaging'
 import { setupConsoleForwarding } from '../shared/consoleForwarder'
-import { useClaudeStatus, getStatusEmoji, getStatusText, getFullStatusText, getRobotEmojis, getContextPercent, getContextColor } from '../hooks/useClaudeStatus'
+import { useClaudeStatus, getStatusEmoji, getStatusText, getFullStatusText, getRobotEmojis } from '../hooks/useClaudeStatus'
 import { useCommandHistory } from '../hooks/useCommandHistory'
 import { useOrphanedSessions } from '../hooks/useOrphanedSessions'
 import { useWorkingDirectory } from '../hooks/useWorkingDirectory'
@@ -776,15 +776,6 @@ function SidePanelTerminal() {
                           : session.name
                         }
                       </span>
-                      {/* Context window usage percentage for Claude tabs */}
-                      {claudeStatuses.has(session.id) && getContextPercent(claudeStatuses.get(session.id)) !== null && (
-                        <span
-                          className={`flex-shrink-0 text-xs font-medium ${getContextColor(claudeStatuses.get(session.id))}`}
-                          title={`Context: ${getContextPercent(claudeStatuses.get(session.id))}%`}
-                        >
-                          {getContextPercent(claudeStatuses.get(session.id))}%
-                        </span>
-                      )}
                     </span>
                     <button
                       onClick={(e) => handleCloseTab(e, session.id)}

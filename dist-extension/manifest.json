@@ -115,7 +115,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/content.ts-B4U7HLEV.js"
+        "assets/content.ts-C4E5OsND.js"
       ],
       "matches": [
         "https://github.com/*",
@@ -144,7 +144,7 @@
         "spawn-options.json",
         "profiles.json",
         "icons/tabz-logo-light.png",
-        "assets/content.ts-B4U7HLEV.js"
+        "assets/content.ts-C4E5OsND.js"
       ],
       "use_dynamic_url": false
     }

@@ -6,13 +6,6 @@ export interface ClaudeStatus {
   last_updated?: string
   tmuxPane?: string  // Pane ID (e.g., '%42') for targeted send to Claude in split layouts
   subagent_count?: number  // Number of active subagents (for 🤖🤖🤖 display)
-  context_window?: {
-    total_input_tokens: number
-    total_output_tokens: number
-    context_window_size: number
-    total_tokens: number
-    usage_percent: number
-  }
   details?: {
     args?: {
       file_path?: string
@@ -119,7 +112,6 @@ export function useClaudeStatus(terminals: TerminalInfo[]): Map<string, ClaudeSt
                   last_updated: result.last_updated,
                   tmuxPane: result.tmuxPane,
                   subagent_count: result.subagent_count || 0,
-                  context_window: result.context_window,
                   details: result.details,
                 } as ClaudeStatus,
                 success: true,
@@ -361,42 +353,3 @@ export function getFullStatusText(status: ClaudeStatus | undefined): string {
   }
 }
 
-/**
- * Get context window usage percentage
- * Returns null if context data is not available
- */
-export function getContextPercent(status: ClaudeStatus | undefined): number | null {
-  if (!status?.context_window) return null
-  return status.context_window.usage_percent
-}
-
-/**
- * Get formatted context display string
- * Returns "45K/200K" format for compact display
- */
-export function getContextDisplay(status: ClaudeStatus | undefined): string {
-  if (!status?.context_window) return ''
-
-  const formatTokens = (num: number): string => {
-    if (num >= 1000) {
-      return `${Math.round(num / 1000)}K`
-    }
-    return String(num)
-  }
-
-  const { total_tokens, context_window_size, usage_percent } = status.context_window
-  return `${formatTokens(total_tokens)}/${formatTokens(context_window_size)} (${usage_percent}%)`
-}
-
-/**
- * Get color class for context usage
- * Returns tailwind color classes based on percentage thresholds
- */
-export function getContextColor(status: ClaudeStatus | undefined): string {
-  const percent = getContextPercent(status)
-  if (percent === null) return ''
-
-  if (percent >= 90) return 'text-red-400'
-  if (percent >= 75) return 'text-yellow-400'
-  return 'text-green-400'
-}
