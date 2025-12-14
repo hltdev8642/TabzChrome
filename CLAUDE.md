@@ -122,6 +122,30 @@ backend/
 5. **Don't Make Sessions Too Persistent** - Balance between UX and simplicity
 6. **Don't Bundle Static JSON** - Default profiles load once, user edits in settings
 
+### 🔖 Versioning & Breaking Changes
+
+**This project is public (v1.0.0+). Follow semantic versioning:**
+- `1.0.x` - Bug fixes only, safe to update
+- `1.x.0` - New features, backward compatible
+- `x.0.0` - Breaking changes (avoid unless necessary)
+
+**What counts as a breaking change:**
+- WebSocket message format changes (breaks extension ↔ backend communication)
+- REST API endpoint changes (breaks spawn API consumers)
+- Chrome storage schema changes (breaks saved sessions/profiles)
+- MCP tool parameter changes (breaks Claude workflows)
+
+**When making breaking changes:**
+1. Bump major version (e.g., 1.x.x → 2.0.0)
+2. Document migration steps in CHANGELOG.md
+3. Consider deprecation period if possible (support old + new temporarily)
+4. Update README with any new setup requirements
+
+**Releases:**
+- Tag releases when stable: `git tag v1.0.1 && git push --tags`
+- Keep working on main normally between releases
+- Use GitHub Releases to publish with changelog notes
+
 ### 📝 Documentation Workflow
 
 **After completing work (features, bug fixes, refactoring):**

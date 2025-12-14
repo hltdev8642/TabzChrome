@@ -64,6 +64,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
   const fitAddonRef = useRef<FitAddon | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)  // Track if xterm has been opened
+  const wasDisconnectedRef = useRef(false)  // Track if we were disconnected (for resync on reconnect)
   // NOTE: Claude status polling removed - sidepanel handles it via useClaudeStatus hook
 
   // Track previous dimensions to avoid unnecessary resize events (from terminal-tabs pattern)
@@ -720,8 +721,23 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
         }
       } else if (message.type === 'WS_CONNECTED') {
         setIsConnected(true)
+        // If we were disconnected, trigger a resync to fix any corruption
+        // This happens when service worker goes idle and WebSocket closes
+        // Output during disconnect is lost, so xterm and tmux may be out of sync
+        if (wasDisconnectedRef.current) {
+          wasDisconnectedRef.current = false
+          console.log(`[Terminal] ${terminalId.slice(-8)} reconnected after disconnect, scheduling resync`)
+          // Delay resync to let WebSocket fully stabilize
+          // Use force=true to bypass output quiet period (we NEED to resync)
+          setTimeout(() => {
+            console.log(`[Terminal] ${terminalId.slice(-8)} triggering post-reconnect resize trick`)
+            triggerResizeTrick(true)
+          }, 500)
+        }
       } else if (message.type === 'WS_DISCONNECTED') {
         setIsConnected(false)
+        wasDisconnectedRef.current = true
+        console.log(`[Terminal] ${terminalId.slice(-8)} disconnected, will resync on reconnect`)
       } else if (message.type === 'REFRESH_TERMINALS') {
         // Skip entirely if there's been very recent output (indicates active Claude session)
         // This prevents even scheduling the refresh during active streaming

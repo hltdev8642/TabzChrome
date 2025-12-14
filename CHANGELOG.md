@@ -15,6 +15,15 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.0.1] - 2025-12-14
+
+### Fixed
+
+#### Terminal Corruption After Long Idle
+- **Fixed terminal display corruption when returning after idle** - When Chrome service worker goes idle (30+ seconds), WebSocket disconnects. Previously, reconnection didn't resync the terminal, causing xterm.js and tmux buffers to be out of sync. Now triggers a resize trick on reconnect which forces tmux to redraw, resyncing the display.
+
+---
+
 ## [1.0.0] - 2025-12-14
 
 **First Public Release** - Full Linux terminals in your Chrome sidebar!
