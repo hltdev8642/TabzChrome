@@ -101,7 +101,7 @@ export function useClaudeStatus(terminals: TerminalInfo[]): Map<string, ClaudeSt
             const result = await response.json()
 
             // Debug: log status fetches
-            console.log(`[ClaudeStatus] ${terminal.id.slice(-8)} (session: ${effectiveSessionName || 'none'}) → ${result.status}`, result.current_tool ? `(${result.current_tool})` : '')
+            // Debug log removed to reduce console spam
 
             if (result.success && result.status !== 'unknown') {
               return {

@@ -79,11 +79,10 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
   const isMountedRef = useRef(true)
   const mountIdRef = useRef(Math.random().toString(36).slice(2, 8))
 
-  // Log mount/unmount to detect sidebar remounting
+  // Track mount/unmount for debugging (logs removed to reduce console spam)
   useEffect(() => {
-    console.log(`[Audio] 🟢 Hook MOUNTED (id=${mountIdRef.current})`)
     return () => {
-      console.log(`[Audio] 🔴 Hook UNMOUNTED (id=${mountIdRef.current})`)
+      // Cleanup on unmount
     }
   }, [])
 
@@ -133,7 +132,6 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
         // Mark all current sessions as already announced
         sessions.forEach(s => announcedSessionsRef.current.add(s.id))
         initialLoadRef.current = false
-        console.log(`[Audio] Initial load complete, ${sessions.length} sessions marked as announced`)
       }, 1000)
       return () => clearTimeout(timer)
     }
@@ -212,30 +210,18 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
 
   // Audio playback helper - plays MP3 from backend cache via Chrome
   const playAudio = useCallback(async (text: string, session?: TerminalSession, isToolAnnouncement = false) => {
-    console.log(`[Audio:playAudio] Called with text="${text}", isToolAnnouncement=${isToolAnnouncement}`)
     const settings = getAudioSettingsForProfile(session?.profile, session?.assignedVoice)
-    if (!settings.enabled) {
-      console.log(`[Audio:playAudio] Audio not enabled for this profile, skipping`)
-      return
-    }
+    if (!settings.enabled) return
 
     // Debounce: use separate timers for tools vs other announcements
     const now = Date.now()
     if (isToolAnnouncement) {
       const timeSinceLast = now - lastToolAudioTimeRef.current
-      console.log(`[Audio:playAudio] Tool debounce check: ${timeSinceLast}ms since last (threshold: ${audioSettings.toolDebounceMs}ms)`)
-      if (timeSinceLast < audioSettings.toolDebounceMs) {
-        console.log(`[Audio:playAudio] ❌ BLOCKED by tool debounce`)
-        return
-      }
+      if (timeSinceLast < audioSettings.toolDebounceMs) return
       lastToolAudioTimeRef.current = now
     } else {
       const timeSinceLast = now - lastAudioTimeRef.current
-      console.log(`[Audio:playAudio] Non-tool debounce check: ${timeSinceLast}ms since last (threshold: 1000ms)`)
-      if (timeSinceLast < 1000) {
-        console.log(`[Audio:playAudio] ❌ BLOCKED by non-tool debounce`)
-        return
-      }
+      if (timeSinceLast < 1000) return
       lastAudioTimeRef.current = now
     }
 
@@ -264,13 +250,8 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
         audio.volume = settings.volume
         audio.play().catch(err => console.warn('[Audio] Playback failed:', err.message))
       }
-    } catch (err) {
-      // Silently ignore aborted requests and timeouts to prevent console spam
-      if (err instanceof Error && err.name === 'AbortError') {
-        console.debug('[Audio] Request timed out (3s)')
-      } else {
-        console.warn('[Audio] Failed to generate/play:', err)
-      }
+    } catch {
+      // Silently ignore errors (timeouts, network issues) to prevent console spam
     }
   }, [getAudioSettingsForProfile, audioSettings.toolDebounceMs])
 
@@ -288,7 +269,6 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
         const settings = getAudioSettingsForProfile(session.profile, session.assignedVoice)
         if (settings.enabled) {
           const displayName = session.profile?.name || session.name || 'Terminal'
-          console.log(`[Audio] 🔊 SESSION START: ${displayName} (${session.id.slice(-8)})`)
           playAudio(`${displayName} started`, session)
         }
       }
@@ -306,9 +286,6 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
   useEffect(() => {
     // If master mute is on, no audio plays regardless of profile settings
     if (audioGlobalMute) return
-
-    // DEBUG: Log effect trigger
-    console.log(`[Audio] useEffect triggered, claudeStatuses.size=${claudeStatuses.size}, sessions.length=${sessions.length}`)
 
     // Check each terminal for status transitions
     claudeStatuses.forEach((status, terminalId) => {
@@ -367,10 +344,6 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
       const statusAge = currentLastUpdated ? (now - new Date(currentLastUpdated).getTime()) : Infinity
       const isNotStale = statusAge < 5000
 
-      // Only log if we're in a ready state to reduce spam
-      if (isNowReady) {
-        console.log(`[Audio] ${terminalId.slice(-8)}: ${prevStatus || 'undefined'} → ${currentStatus}, wasWorking=${wasWorking}, fresh=${isStatusFresh}, stale=${statusAge > 5000 ? 'YES' : 'no'}, cooldown=${cooldownPassed ? 'OK' : `${Math.round((cooldownMs - (now - lastReadyTime))/1000)}s left`}`)
-      }
 
       // Include freshness checks in the decision (Codex fix for flapping status)
       const shouldPlayReady = audioSettings.events.ready &&
@@ -380,7 +353,6 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
                               isNotStale
 
       if (shouldPlayReady) {
-        console.log(`[Audio] 🔊 PLAYING ready for ${terminalId.slice(-8)} (${prevStatus} → ${currentStatus}, lastUpdated=${currentLastUpdated})`)
         lastReadyAnnouncementRef.current.set(terminalId, now)
         lastStatusUpdateRef.current.set(terminalId, currentLastUpdated) // Track to prevent re-triggering
         const displayName = getDisplayName()
