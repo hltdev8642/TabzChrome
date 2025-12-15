@@ -75,7 +75,7 @@ function getConsoleLogs(options: {
 async function handleBrowserExecuteScript(message: { requestId: string; code: string; tabId?: number; allFrames?: boolean }) {
   try {
     // Get target tab
-    const targetTabId = message.tabId || (await chrome.tabs.query({ active: true, currentWindow: true }))[0]?.id
+    const targetTabId = message.tabId || (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0]?.id
     if (!targetTabId) {
       sendToWebSocket({
         type: 'browser-script-result',
@@ -198,7 +198,7 @@ async function handleBrowserGetPageInfo(message: { requestId: string; tabId?: nu
   try {
     const tabs = message.tabId
       ? [await chrome.tabs.get(message.tabId)]
-      : await chrome.tabs.query({ active: true, currentWindow: true })
+      : await chrome.tabs.query({ active: true, lastFocusedWindow: true })
     const tab = tabs[0]
 
     if (tab) {
@@ -243,7 +243,7 @@ async function handleBrowserGetPageInfo(message: { requestId: string; tabId?: nu
 async function handleBrowserListTabs(message: { requestId: string }) {
   try {
     // Get all tabs in the current window
-    const allTabs = await chrome.tabs.query({ currentWindow: true })
+    const allTabs = await chrome.tabs.query({ lastFocusedWindow: true })
 
     // Filter out chrome:// and extension pages
     const tabs = allTabs.filter(tab =>
@@ -312,7 +312,7 @@ async function handleBrowserSwitchTab(message: { requestId: string; tabId: numbe
  */
 async function handleBrowserGetActiveTab(message: { requestId: string }) {
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
 
     if (tab) {
       sendToWebSocket({
@@ -634,7 +634,7 @@ async function handleBrowserCaptureImage(message: {
     // Get target tab
     const tabs = message.tabId
       ? [{ id: message.tabId }]
-      : await chrome.tabs.query({ active: true, currentWindow: true })
+      : await chrome.tabs.query({ active: true, lastFocusedWindow: true })
 
     const targetTab = tabs[0]
     if (!targetTab?.id) {
@@ -1602,7 +1602,7 @@ chrome.runtime.onMessage.addListener(async (message: ExtensionMessage, sender, s
     case 'BROWSER_EXECUTE_SCRIPT':
       // Execute script in browser tab using safe predefined operations (no eval)
       try {
-        const targetTabId = message.tabId || (await chrome.tabs.query({ active: true, currentWindow: true }))[0]?.id
+        const targetTabId = message.tabId || (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0]?.id
         if (!targetTabId) {
           sendResponse({ type: 'BROWSER_SCRIPT_RESULT', success: false, error: 'No active tab found' })
           return true
@@ -1716,7 +1716,7 @@ chrome.runtime.onMessage.addListener(async (message: ExtensionMessage, sender, s
       try {
         const tabs = message.tabId
           ? [await chrome.tabs.get(message.tabId)]
-          : await chrome.tabs.query({ active: true, currentWindow: true })
+          : await chrome.tabs.query({ active: true, lastFocusedWindow: true })
         const tab = tabs[0]
 
         if (tab) {
@@ -2113,7 +2113,7 @@ chrome.commands.onCommand.addListener(async (command) => {
   if (command === 'paste-selection') {
     console.log('[Background] Paste selection shortcut triggered')
     try {
-      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true })
+      const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
 
       if (activeTab?.id) {
         const results = await chrome.scripting.executeScript({
@@ -2158,7 +2158,7 @@ chrome.commands.onCommand.addListener(async (command) => {
   if (command === 'send-to-chat') {
     console.log('[Background] Send to chat shortcut triggered')
     try {
-      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true })
+      const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
 
       if (activeTab?.id) {
         const results = await chrome.scripting.executeScript({

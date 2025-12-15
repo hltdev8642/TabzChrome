@@ -83,6 +83,8 @@ TabzChrome includes a [Claude Code plugin](.claude-plugin/plugin.json) with agen
 
 ### Installation
 
+> **⚠️ WSL Users:** Run these commands **inside a WSL terminal**, not from Windows Git Bash or PowerShell accessing WSL paths. The backend uses native modules (`node-pty`) that require Linux npm to compile properly. Open WSL first: `wsl` in Windows Terminal, then proceed.
+
 ```bash
 # Clone
 git clone https://github.com/GGPrompts/TabzChrome.git
@@ -539,6 +541,11 @@ LOG_LEVEL=5        # Enable debug logging
 ---
 
 ## Troubleshooting
+
+**npm install fails with EPERM/UNC path errors (WSL)**
+- You're running npm from Windows (Git Bash/PowerShell) on a WSL path
+- **Fix:** Open a WSL terminal first (`wsl` in Windows Terminal), then run commands there
+- The backend uses `node-pty` which requires Linux npm to compile native modules
 
 **Backend won't start**
 ```bash
