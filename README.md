@@ -107,14 +107,23 @@ npm run build
 ### Start Backend
 
 ```bash
-# Recommended: interactive setup with tmux session
+# Recommended (WSL/Linux/macOS)
 ./scripts/dev.sh
-
-# Or simple start:
-cd backend && npm start  # Runs on port 8129
 ```
 
-The dev script creates a `tabz-chrome` tmux session with optional browser logs window - useful for AI debugging workflows.
+**Why use `dev.sh`?**
+- Creates a `tabz-chrome` tmux session with correct config
+- Enables log forwarding so the **"Backend Logs"** profile works (shows live server output)
+- Makes debugging with Claude Code easier (can capture logs via `tmux capture-pane`)
+
+<details>
+<summary>Alternative: manual start</summary>
+
+```bash
+cd backend && npm start  # Runs on port 8129
+```
+Note: Without dev.sh, the "Backend Logs" profile won't show logs since it relies on the named tmux session.
+</details>
 
 ### Open Sidebar
 
