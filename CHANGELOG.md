@@ -15,6 +15,13 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.1.5] - 2025-12-16
+
+### Fixed
+- **Fixed MCP tools targeting wrong browser tab** - Screenshots, clicks, and other MCP operations now correctly target the user's actual focused tab instead of always defaulting to the first tab. The fix stores the tab URL alongside the Chrome tab ID and matches CDP pages by URL.
+
+---
+
 ## [1.1.4] - 2025-12-16
 
 ### Fixed
