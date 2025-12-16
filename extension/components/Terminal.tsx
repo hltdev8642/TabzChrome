@@ -391,7 +391,11 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
         if (xtermRef.current) {
           // For tmux sessions, clear any stale scrollback that might cause phantom lines
           if (sessionName) {
+            // Lock during clear to prevent isWrapped error from concurrent writes
+            isResizingRef.current = true
             xtermRef.current.clear()
+            isResizingRef.current = false
+            writeQueueRef.current = []
           }
           xtermRef.current.refresh(0, xtermRef.current.rows - 1)
         }
@@ -632,9 +636,14 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
         // CRITICAL: Plain resize with same dimensions is IGNORED by tmux.
         console.log(`[Terminal] ${terminalId.slice(-8)} RECONNECTED - clearing and forcing redraw`)
         if (xtermRef.current && fitAddonRef.current) {
+          // Lock before clear to prevent isWrapped error from concurrent writes
+          isResizingRef.current = true
           // Clear terminal content - tmux will send fresh scrollback
           xtermRef.current.clear()
           xtermRef.current.reset()
+          // Release lock and clear queue after buffer stabilizes
+          isResizingRef.current = false
+          writeQueueRef.current = [] // Discard stale data queued during clear
           // Use resize trick after a short delay to force tmux redraw
           setTimeout(() => {
             if (fitAddonRef.current && xtermRef.current) {
@@ -802,8 +811,13 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
         // CRITICAL FIX: For large dimension changes (>5 cols), clear xterm before tmux redraws
         // xterm's reflow algorithm corrupts content with complex ANSI sequences (Claude Code statusline, diffs)
         // Clearing ensures tmux's redraw starts fresh, avoiding corrupted reflow
+        // NOTE: Must set resize lock BEFORE clear() to prevent isWrapped error from concurrent writes
         if (isTmuxSession && colDelta > 5) {
+          isResizingRef.current = true
           xtermRef.current.clear()
+          // Release lock and clear queue so triggerResizeTrick can proceed
+          isResizingRef.current = false
+          writeQueueRef.current = [] // Discard stale data from reflow
         }
 
         // Then use resize trick to force tmux to fully recalculate

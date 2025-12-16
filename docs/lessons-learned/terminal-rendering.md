@@ -106,7 +106,49 @@ triggerResizeTrick()
 - The threshold avoids unnecessary clears during minor adjustments
 
 **Files:**
-- `extension/components/Terminal.tsx:802-807` - Clear buffer on large resize
+- `extension/components/Terminal.tsx:811-816` - Clear buffer on large resize
+
+---
+
+## Protect clear() with Resize Lock
+
+### Lesson: clear() Causes isWrapped Error Without Lock (Dec 16, 2025)
+
+**Problem:** `Cannot set properties of undefined (setting 'isWrapped')` error in xterm.js.
+
+**What Happened:**
+1. `terminal.clear()` modifies xterm's buffer structure
+2. Concurrent data arrives via WebSocket
+3. `safeWrite()` writes directly (resize lock not set)
+4. xterm's `lineFeed` function tries to access buffer line that no longer exists
+5. Crash: `isWrapped` property of undefined
+
+**Root Cause:** The `clear()` calls weren't protected by `isResizingRef.current = true`, so `safeWrite()` didn't queue incoming data during the buffer modification.
+
+**Solution:** Wrap all `clear()` calls with the resize lock:
+
+```typescript
+// Lock during clear to prevent isWrapped error from concurrent writes
+isResizingRef.current = true
+xtermRef.current.clear()
+// Release lock and clear queue (discard stale data from reflow)
+isResizingRef.current = false
+writeQueueRef.current = []
+```
+
+**Why Clear the Write Queue:**
+- Data queued during `clear()` is stale - it was formatted for the old buffer
+- Discarding it is safe because `triggerResizeTrick()` forces tmux to resend fresh content
+
+**Locations Fixed:**
+- Line 394 - Initialization clear for tmux sessions
+- Line 636-642 - TERMINAL_RECONNECTED handler
+- Line 811-816 - Window resize large dimension change
+
+**Key Insight:** Any xterm buffer modification (`clear()`, `reset()`, `resize()`) must be protected by the resize lock to prevent race conditions with async writes.
+
+**Files:**
+- `extension/components/Terminal.tsx:394-398,636-642,811-816` - All clear() calls protected
 
 ---
 
@@ -599,4 +641,4 @@ this.resizeTimers.set(terminalId, setTimeout(() => {
 
 ---
 
-**Last Updated:** December 15, 2025
+**Last Updated:** December 16, 2025
