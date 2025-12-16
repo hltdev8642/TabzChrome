@@ -66,10 +66,15 @@ export function useTerminalSessions({
   // Load saved terminal sessions from Chrome storage on mount
   // CRITICAL: Must complete before LIST_TERMINALS request to avoid race condition
   useEffect(() => {
-    chrome.storage.local.get(['terminalSessions'], (result) => {
+    chrome.storage.local.get(['terminalSessions', 'currentTerminalId'], (result) => {
       if (result.terminalSessions && Array.isArray(result.terminalSessions)) {
         setSessions(result.terminalSessions)
-        if (result.terminalSessions.length > 0) {
+        // Restore saved current terminal, or fall back to first
+        const savedCurrentId = result.currentTerminalId as string | undefined
+        const sessionExists = savedCurrentId && result.terminalSessions.some((s: TerminalSession) => s.id === savedCurrentId)
+        if (savedCurrentId && sessionExists) {
+          setCurrentSession(savedCurrentId)
+        } else if (result.terminalSessions.length > 0) {
           setCurrentSession(result.terminalSessions[0].id)
         }
       }
@@ -85,6 +90,13 @@ export function useTerminalSessions({
       chrome.storage.local.remove('terminalSessions')
     }
   }, [sessions])
+
+  // Save current terminal ID to Chrome storage (persists across sidebar refresh)
+  useEffect(() => {
+    if (currentSession) {
+      chrome.storage.local.set({ currentTerminalId: currentSession })
+    }
+  }, [currentSession])
 
   // Request terminal list when WebSocket connects AND storage is loaded
   useEffect(() => {
