@@ -19,6 +19,7 @@ const SCREENSHOT_MAX_FILES = 50;
 // Track current tab after switching (for screenshot/other operations)
 // Exported so tools can show which tab Claude is currently targeting
 let currentTabId: number = 1;
+let currentTabUrl: string = '';  // URL for matching CDP pages to Chrome tabs
 
 /**
  * Get the current tab ID that Claude is targeting
@@ -32,8 +33,11 @@ export function getCurrentTabId(): number {
  * Set the current tab ID that Claude is targeting
  * Used by tabz_open_url when opening/switching tabs
  */
-export function setCurrentTabId(tabId: number): void {
+export function setCurrentTabId(tabId: number, url?: string): void {
   currentTabId = tabId;
+  if (url) {
+    currentTabUrl = url;
+  }
 }
 
 /**
@@ -225,20 +229,37 @@ async function getNonChromePages(): Promise<import('puppeteer-core').Page[] | nu
 }
 
 /**
- * Get a specific page by tabId (index in non-chrome pages array)
+ * Get a specific page by tabId
  * If no tabId specified, uses currentTabId (set by switchTab)
+ *
+ * Strategy:
+ * 1. If we have a stored URL (from extension API), find CDP page by URL
+ * 2. If tabId is small (1-based index), use as CDP array index (fallback)
+ * 3. Default to first page
  */
 async function getPageByTabId(tabId?: number): Promise<import('puppeteer-core').Page | null> {
   const pages = await getNonChromePages();
   if (!pages || pages.length === 0) return null;
 
-  // Use provided tabId, or fall back to currentTabId (set by switchTab)
+  // If using current tab and we have a URL, find by URL (most reliable)
+  // This handles the case where extension API returns real Chrome tabIds
+  if (tabId === undefined && currentTabUrl) {
+    const pageByUrl = pages.find(p => p.url() === currentTabUrl);
+    if (pageByUrl) {
+      return pageByUrl;
+    }
+    // URL might have changed (navigation), fall through to other methods
+  }
+
+  // Use provided tabId, or fall back to currentTabId
   const effectiveTabId = tabId ?? currentTabId;
 
-  // Tab IDs are 1-based for user clarity, convert to 0-based index
+  // Small tabId = likely CDP array index (1-based for user clarity)
+  // Large tabId = real Chrome tabId (can't use as index)
   if (effectiveTabId >= 1 && effectiveTabId <= pages.length) {
     return pages[effectiveTabId - 1];
   }
+
   // Default to first page if tabId is out of range
   return pages[0];
 }
@@ -808,10 +829,11 @@ export async function listTabs(): Promise<{ tabs: TabInfo[]; error?: string }> {
         active: tab.active  // Accurate! Extension knows the real focused tab
       }));
 
-      // Update currentTabId to the actually active tab
+      // Update currentTabId and URL to the actually active tab
       const activeTab = tabs.find(t => t.active);
       if (activeTab) {
         currentTabId = activeTab.tabId;
+        currentTabUrl = activeTab.url;  // Store URL for CDP page matching
       }
 
       return { tabs };
@@ -860,6 +882,11 @@ export async function switchTab(tabId: number): Promise<{ success: boolean; erro
     const response = await axios.post(`${BACKEND_URL}/api/browser/switch-tab`, { tabId }, { timeout: 5000 });
     if (response.data.success) {
       currentTabId = tabId;
+      // Get the URL of the switched-to tab for CDP page matching
+      const activeResult = await getActiveTab();
+      if (activeResult.tab?.url) {
+        currentTabUrl = activeResult.tab.url;
+      }
       return { success: true };
     }
     if (response.data.error) {
@@ -883,6 +910,7 @@ export async function switchTab(tabId: number): Promise<{ success: boolean; erro
 
     await pages[tabId - 1].bringToFront();
     currentTabId = tabId;
+    currentTabUrl = pages[tabId - 1].url();  // Store URL for consistency
 
     return { success: true };
   } catch (error) {
@@ -898,8 +926,9 @@ export async function getActiveTab(): Promise<{ tab?: { tabId: number; url: stri
   try {
     const response = await axios.get(`${BACKEND_URL}/api/browser/active-tab`, { timeout: 5000 });
     if (response.data.success && response.data.tab) {
-      // Update currentTabId to match reality
+      // Update currentTabId and URL to match reality
       currentTabId = response.data.tab.tabId;
+      currentTabUrl = response.data.tab.url;
       return { tab: response.data.tab };
     }
     return { error: response.data.error || 'Failed to get active tab' };
