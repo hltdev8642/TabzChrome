@@ -15,6 +15,14 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.1.7] - 2025-12-16
+
+### Fixed
+- **Context menu "Open Terminal Sidebar" now works** - Fixed the context menu action that was silently failing to open the sidebar
+- **Persist selected terminal tab across sidebar refresh** - The active terminal tab selection is now saved and restored when the sidebar is refreshed or reopened
+
+---
+
 ## [1.1.6] - 2025-12-16
 
 ### Added
