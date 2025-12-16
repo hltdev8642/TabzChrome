@@ -66,6 +66,12 @@ TabzChrome includes a [Claude Code plugin](.claude-plugin/plugin.json) with agen
 
 **Quick setup:** The plugin auto-loads when you run Claude Code in the TabzChrome directory.
 
+**📦 Install from anywhere via Plugin Marketplace:**
+```bash
+/plugin marketplace add GGPrompts/TabzChrome
+```
+Then use `/plugin install` to browse and install individual agents, skills, and commands from this repository.
+
 ---
 
 ## Quick Start
