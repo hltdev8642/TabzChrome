@@ -84,6 +84,9 @@ Then use `/plugin install` to browse and install individual agents, skills, and 
 | Chrome | 116+ | Manifest V3, Side Panel API |
 | tmux | 3.0+ | Session persistence |
 | OS | WSL2 / Linux / macOS | Backend requires Unix shell |
+| edge-tts | 6.0+ | *Optional* - for TTS audio features |
+
+> **Tip:** Run `./scripts/dev.sh` to automatically check all dependencies with install instructions.
 
 <details>
 <summary>📦 Installing tmux</summary>
@@ -94,6 +97,22 @@ Then use `/plugin install` to browse and install individual agents, skills, and 
 | **Ubuntu/Debian** | `sudo apt install tmux` |
 | **Fedora** | `sudo dnf install tmux` |
 | **Arch** | `sudo pacman -S tmux` |
+
+</details>
+
+<details>
+<summary>🔊 Installing edge-tts (Optional - for audio features)</summary>
+
+| Platform | Command |
+|----------|---------|
+| **All platforms** | `pip install edge-tts` |
+
+Requires Python 3.8+. If you have multiple Python versions, use `pip3 install edge-tts`.
+
+**Verify installation:**
+```bash
+edge-tts --version  # Should show 6.0.0 or higher
+```
 
 </details>
 
@@ -149,7 +168,9 @@ npm run build
 ```
 
 **Why use `dev.sh`?**
-- Creates a `tabz-chrome` tmux session with correct config
+- **Checks dependencies** - Verifies Node.js, npm, tmux are installed with helpful install instructions
+- **Warns about optional deps** - Alerts if edge-tts or Nerd Fonts are missing
+- Creates a `tabzchrome` tmux session with correct config
 - Enables log forwarding so the **"Backend Logs"** profile works (shows live server output)
 - Makes debugging with Claude Code easier (can capture logs via `tmux capture-pane`)
 
@@ -705,7 +726,7 @@ curl -X POST http://localhost:8129/api/audio/speak \
 | `rate` | string | `+0%` | Speech rate (`-50%` to `+100%`) |
 | `volume` | number | `0.7` | Playback volume (0-1) |
 
-Audio is generated via `edge-tts`, cached, and broadcast to connected sidebars via WebSocket.
+Audio is generated via `edge-tts` (v6.0+ required), cached, and broadcast to connected sidebars via WebSocket.
 
 ---
 
