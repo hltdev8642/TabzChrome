@@ -1,7 +1,7 @@
 # PLAN.md - TabzChrome Roadmap
 
 **Last Updated**: December 16, 2025
-**Current Version**: 1.1.6
+**Current Version**: 1.1.8
 
 ---
 
