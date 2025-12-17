@@ -188,27 +188,38 @@ if [ ${#MISSING_OPTIONAL[@]} -gt 0 ]; then
         case "$dep" in
             edge-tts)
                 echo -e "   ${NC}• TTS audio features will be unavailable."
-                echo -e "     Install with: ${BLUE}pip install edge-tts${NC}"
+                echo -e "     Install with: ${BLUE}pipx install edge-tts${NC}"
+                if ! command -v pipx &> /dev/null; then
+                    case "$(uname -s)" in
+                        Darwin)
+                            echo -e "     (First install pipx: ${BLUE}brew install pipx && pipx ensurepath${NC})"
+                            ;;
+                        Linux)
+                            echo -e "     (First install pipx: ${BLUE}sudo apt install pipx && pipx ensurepath${NC})"
+                            ;;
+                    esac
+                fi
                 ;;
             python-for-edge-tts)
                 echo -e "   ${NC}• TTS audio features will be unavailable (Python not found)."
-                echo -e "     Install Python first, then: ${BLUE}pip install edge-tts${NC}"
+                echo -e "     Install Python and pipx first, then: ${BLUE}pipx install edge-tts${NC}"
                 case "$(uname -s)" in
                     Darwin)
                         if [ "$HAS_BREW" = true ]; then
-                            echo -e "     Python: ${BLUE}brew install python${NC}"
+                            echo -e "     ${BLUE}brew install python pipx && pipx ensurepath${NC}"
                         else
                             echo -e "     Python: ${BLUE}https://www.python.org/downloads/${NC}"
                         fi
                         ;;
                     Linux)
-                        echo -e "     Python: ${BLUE}sudo apt install python3 python3-pip${NC}"
+                        echo -e "     ${BLUE}sudo apt install python3 pipx && pipx ensurepath${NC}"
                         ;;
                 esac
                 ;;
             edge-tts-outdated)
                 echo -e "   ${NC}• edge-tts v${EDGE_TTS_VERSION} is outdated (v6.0+ required)."
-                echo -e "     Upgrade with: ${BLUE}pip install --upgrade edge-tts${NC}"
+                echo -e "     Upgrade with: ${BLUE}pipx upgrade edge-tts${NC}"
+                echo -e "     (If installed via pip, first: ${BLUE}pip uninstall edge-tts && pipx install edge-tts${NC})"
                 ;;
             nerd-font)
                 echo -e "   ${NC}• Terminal icons may not display correctly."
