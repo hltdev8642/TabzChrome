@@ -3,6 +3,7 @@ import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
+import { CanvasAddon } from '@xterm/addon-canvas'
 import '@xterm/xterm/css/xterm.css'
 import { sendMessage, connectToBackground } from '../shared/messaging'
 import { getThemeColors, getBackgroundGradient } from '../styles/themes'
@@ -62,6 +63,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
   const containerRef = useRef<HTMLDivElement>(null)
   const xtermRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
+  const canvasAddonRef = useRef<CanvasAddon | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)  // Track if xterm has been opened
   const wasDisconnectedRef = useRef(false)  // Track if we were disconnected (for resync on reconnect)
@@ -275,6 +277,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
       fontSize,
       fontFamily,
       theme: themeColors,
+      allowTransparency: true, // Required for transparent backgrounds (CSS gradient shows through)
       scrollback: sessionName ? 0 : 10000, // No scrollback for tmux (tmux handles scrolling)
       convertEol: false,
       allowProposedApi: true,
@@ -425,12 +428,25 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
       if (terminalRef.current && terminalRef.current.offsetWidth > 0 && terminalRef.current.offsetHeight > 0) {
         xterm.open(terminalRef.current)
         setIsInitialized(true)
+
+        // Load Canvas addon for GPU-accelerated rendering (must be after open())
+        // Canvas supports transparency unlike WebGL
+        try {
+          const canvasAddon = new CanvasAddon()
+          xterm.loadAddon(canvasAddon)
+          canvasAddonRef.current = canvasAddon
+          console.log('[Terminal] Canvas renderer enabled')
+        } catch (e) {
+          console.warn('[Terminal] Canvas not available, using DOM renderer:', e)
+        }
+
         console.log('[Terminal] xterm opened successfully', {
           terminalId,
           attempt: retryCount + 1,
           containerSize: `${terminalRef.current.offsetWidth}x${terminalRef.current.offsetHeight}`,
           requestedFontSize: fontSize,
           requestedFontFamily: fontFamily,
+          renderer: canvasAddonRef.current ? 'canvas' : 'dom',
         })
         // Now that it's open, do the initial fit
         initialFit()
@@ -443,6 +459,17 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
         if (terminalRef.current) {
           xterm.open(terminalRef.current)
           setIsInitialized(true)
+
+          // Load Canvas addon (same as main path)
+          try {
+            const canvasAddon = new CanvasAddon()
+            xterm.loadAddon(canvasAddon)
+            canvasAddonRef.current = canvasAddon
+            console.log('[Terminal] Canvas renderer enabled (fallback path)')
+          } catch (e) {
+            console.warn('[Terminal] Canvas not available, using DOM renderer:', e)
+          }
+
           initialFit()
         }
       }
@@ -597,6 +624,11 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
   useEffect(() => {
     return () => {
       console.log('[Terminal] Disposing xterm for terminal:', terminalId)
+      // Dispose Canvas addon first (before xterm)
+      if (canvasAddonRef.current) {
+        canvasAddonRef.current.dispose()
+        canvasAddonRef.current = null
+      }
       if (xtermRef.current) {
         xtermRef.current.dispose()
         xtermRef.current = null
@@ -763,6 +795,9 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     // Update theme colors from the new theme system
     const themeColors = getThemeColors(themeName, isDark)
     xterm.options.theme = themeColors
+
+    // Clear texture atlas after theme change (cached glyphs have old colors)
+    // Note: CanvasAddon doesn't have clearTextureAtlas, but xterm.js handles theme changes
 
     // Force complete redraw after font/theme changes
     // Font changes require clearing renderer cache (canvas caches glyphs)
