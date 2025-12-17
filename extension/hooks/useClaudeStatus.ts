@@ -47,7 +47,7 @@ export function useClaudeStatus(terminals: TerminalInfo[]): Map<string, ClaudeSt
   // The parent component passes a new array reference each render (sessions.map(...))
   // which would cause the effect to re-run and flood the network with requests
   const terminalsRef = useRef<TerminalInfo[]>([])
-  const terminalsKey = terminals.map(t => `${t.id}:${t.sessionName}:${t.workingDir}`).join('|')
+  const terminalsKey = terminals.map(t => `${t.id}:${t.sessionName}:${t.workingDir}:${t.profileCommand}`).join('|')
   const prevTerminalsKeyRef = useRef<string>('')
 
   // Only update ref when terminals actually change (by content, not reference)

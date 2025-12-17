@@ -70,8 +70,8 @@ speak_tabz() {
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 HOOK_TYPE="${1:-unknown}"
 
-# Debug logging for tool events
-if [[ "$HOOK_TYPE" == "pre-tool" ]] || [[ "$HOOK_TYPE" == "post-tool" ]]; then
+# Debug logging for tool events and stop
+if [[ "$HOOK_TYPE" == "pre-tool" ]] || [[ "$HOOK_TYPE" == "post-tool" ]] || [[ "$HOOK_TYPE" == "stop" ]] || [[ "$HOOK_TYPE" == "notification" ]]; then
     echo "$STDIN_DATA" > "$DEBUG_DIR/${HOOK_TYPE}-$(date +%s%N)-$$.json" 2>/dev/null || true
 fi
 
@@ -177,6 +177,11 @@ case "$HOOK_TYPE" in
                 STATUS="awaiting_input"
                 CURRENT_TOOL=""
                 DETAILS='{"event":"awaiting_input_bell"}'
+                # Audio announcement via TabzChrome
+                if [[ "${CLAUDE_AUDIO:-0}" == "1" ]]; then
+                    SESSION_NAME="${CLAUDE_SESSION_NAME:-Claude}"
+                    speak_tabz "$SESSION_NAME ready"
+                fi
                 ;;
             permission_prompt)
                 if [[ -f "$STATE_FILE" ]]; then

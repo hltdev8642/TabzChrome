@@ -157,6 +157,7 @@ function SidePanelTerminal() {
     audioGlobalMute,
     setAudioGlobalMute,
     getNextAvailableVoice,
+    markSessionDetached,
   } = audioNotifications
 
   // Update the ref so useTerminalSessions can use it
@@ -513,6 +514,8 @@ function SidePanelTerminal() {
 
       const data = await response.json()
       if (data.success) {
+        // Mark as detached so audio says "detached" instead of "closed"
+        markSessionDetached(terminal.id)
         // Update local state immediately for responsiveness
         setSessions(prev => prev.filter(s => s.id !== terminal.id))
         if (currentSession === terminal.id) {
