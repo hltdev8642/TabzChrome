@@ -244,11 +244,10 @@ app.post('/api/audio/generate', audioRateLimiter, async (req, res) => {
   // execFile passes arguments as array, not through shell
   let tempTextFile = null;
   try {
-    const outputBase = path.join(audioDir, cacheKey);
     // Build args array - no shell interpretation
-    const args = ['synthesize', '-v', voice];
+    const args = ['-v', voice];
     if (rate && rate !== '+0%') {
-      args.push('-r', rate);
+      args.push('--rate', rate);
     }
 
     // For long text (> 5000 chars), use file input to avoid command-line limits
@@ -260,16 +259,12 @@ app.post('/api/audio/generate', audioRateLimiter, async (req, res) => {
     } else {
       args.push('-t', text);
     }
-    args.push('-o', outputBase);
+    // Specify full path with extension - edge-tts uses the exact filename given
+    args.push('--write-media', cacheFile);
 
     // Scale timeout with text length: 10s base + 1s per 1000 chars, max 120s
     const timeoutMs = Math.min(120000, 10000 + Math.floor(text.length / 1000) * 1000);
     await execFileAsync('edge-tts', args, { timeout: timeoutMs });
-
-    // edge-tts adds .mp3 extension
-    if (fs.existsSync(`${outputBase}.mp3`)) {
-      fs.renameSync(`${outputBase}.mp3`, cacheFile);
-    }
 
     if (fs.existsSync(cacheFile)) {
       res.json({
@@ -338,10 +333,9 @@ app.post('/api/audio/speak', async (req, res) => {
   if (!fs.existsSync(cacheFile)) {
     let tempTextFile = null;
     try {
-      const outputBase = path.join(audioDir, cacheKey);
-      const args = ['synthesize', '-v', voice];
+      const args = ['-v', voice];
       if (rate && rate !== '+0%') {
-        args.push('-r', rate);
+        args.push('--rate', rate);
       }
 
       // For long text (> 5000 chars), use file input to avoid command-line limits
@@ -353,15 +347,12 @@ app.post('/api/audio/speak', async (req, res) => {
       } else {
         args.push('-t', text);
       }
-      args.push('-o', outputBase);
+      // Specify full path with extension - edge-tts uses the exact filename given
+      args.push('--write-media', cacheFile);
 
       // Scale timeout with text length: 10s base + 1s per 1000 chars, max 120s
       const timeoutMs = Math.min(120000, 10000 + Math.floor(text.length / 1000) * 1000);
       await execFileAsync('edge-tts', args, { timeout: timeoutMs });
-
-      if (fs.existsSync(`${outputBase}.mp3`)) {
-        fs.renameSync(`${outputBase}.mp3`, cacheFile);
-      }
 
       if (!fs.existsSync(cacheFile)) {
         return res.status(500).json({ success: false, error: 'Audio generation failed' });

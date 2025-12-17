@@ -17,6 +17,143 @@ Or install directly from GitHub:
 claude plugins install https://github.com/GGPrompts/TabzChrome
 ```
 
+## Complete Setup (All Dependencies)
+
+Follow these steps in order for full functionality:
+
+### 0. Install System Dependencies
+
+```bash
+# Required for state-tracker hooks
+sudo apt-get install jq
+```
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/GGPrompts/TabzChrome.git
+cd TabzChrome
+```
+
+### 2. Build the MCP Server
+
+**This is required** - the MCP server needs to be compiled:
+
+```bash
+cd tabz-mcp-server
+npm install
+npm run build    # Creates dist/ folder - REQUIRED!
+cd ..
+```
+
+### 3. Start the Backend
+
+```bash
+cd backend
+npm install
+npm start        # Runs on localhost:8129
+```
+
+Or use the dev script (runs in tmux):
+```bash
+./scripts/dev.sh
+```
+
+### 4. Set Up Chrome with Debugging (WSL2/Windows)
+
+Create `Chrome-Debug.bat` on Windows:
+```batch
+@echo off
+taskkill /F /IM chrome.exe 2>nul
+timeout /t 2 /nobreak >nul
+start "" "C:\Program Files\Google\Chrome\Application\chrome.exe" ^
+    --remote-debugging-port=9222 ^
+    --user-data-dir=C:\Temp\chrome-debug ^
+    --no-first-run
+```
+
+**Always launch Chrome using this script** for browser automation to work.
+
+### 5. Load the Extension in Chrome
+
+1. Open `chrome://extensions`
+2. Enable "Developer mode"
+3. Click "Load unpacked"
+4. Select the `dist-extension/` folder
+
+### 6. Install the Claude Code Plugin
+
+```bash
+# From the TabzChrome directory
+/plugin install .
+```
+
+Or via `/plugin` menu → Install from local path.
+
+### 7. Restart Claude Code
+
+Exit and restart Claude Code to load the plugin:
+```
+/exit
+claude
+```
+
+### 8. Verify Setup
+
+```bash
+# Check MCP connection
+/mcp
+# Should show: plugin:tabz-chrome:tabz ✓ connected
+
+# Test a tool
+mcp-cli call plugin_tabz-chrome_tabz/tabz_list_tabs '{}'
+```
+
+## Troubleshooting Setup Issues
+
+### "MCP failed to connect"
+
+1. **MCP server not built:**
+   ```bash
+   cd tabz-mcp-server && npm run build
+   ```
+
+2. **Backend not running:**
+   ```bash
+   curl http://localhost:8129/api/health
+   # Should return {"status":"ok"}
+   ```
+
+3. **Old MCP configs interfering:**
+   ```bash
+   # Check for old configs
+   grep -r "browser-mcp\|tabz" ~/.claude.json
+   # Remove any old mcpServers entries
+   ```
+
+4. **plugin.json missing:**
+   ```bash
+   # Restore from git if missing
+   git checkout .claude-plugin/plugin.json
+   ```
+
+### "Chrome not reachable" / CDP errors
+
+1. **Chrome not started with debugging:**
+   - Use the Chrome-Debug.bat script
+   - Verify: `curl http://localhost:9222/json/version` (from PowerShell)
+
+2. **Wrong Chrome profile:**
+   - Close all Chrome windows
+   - Only use the debug shortcut
+
+### After Git Pull
+
+If you pull new changes, rebuild the MCP server:
+```bash
+cd tabz-mcp-server && npm run build
+```
+
 ## What's Included
 
 ### MCP Server: Tabz
