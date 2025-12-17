@@ -161,6 +161,7 @@ case "$HOOK_TYPE" in
         decrement_subagent_count
         SUBAGENT_COUNT=$(get_subagent_count)
         CURRENT_TOOL=""
+        # FIX: When all subagents done, set to awaiting_input (not processing)
         if [[ "$SUBAGENT_COUNT" -eq 0 ]]; then
             STATUS="awaiting_input"
             DETAILS='{"event":"subagent_stopped","remaining_subagents":0,"all_complete":true}'
@@ -176,6 +177,16 @@ case "$HOOK_TYPE" in
                 STATUS="awaiting_input"
                 CURRENT_TOOL=""
                 DETAILS='{"event":"awaiting_input_bell"}'
+                ;;
+            permission_prompt)
+                if [[ -f "$STATE_FILE" ]]; then
+                    STATUS=$(jq -r '.status // "idle"' "$STATE_FILE")
+                    CURRENT_TOOL=$(jq -r '.current_tool // ""' "$STATE_FILE")
+                else
+                    STATUS="idle"
+                    CURRENT_TOOL=""
+                fi
+                DETAILS='{"event":"permission_prompt"}'
                 ;;
             *)
                 if [[ -f "$STATE_FILE" ]]; then

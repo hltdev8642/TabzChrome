@@ -10,9 +10,6 @@ STATE_DIR="/tmp/claude-code-state"
 DEBUG_DIR="$STATE_DIR/debug"
 SUBAGENT_DIR="$STATE_DIR/subagents"
 TABZ_BACKEND="${TABZ_BACKEND_URL:-http://localhost:8129}"
-# Audio disabled by default - use TabzChrome extension Settings → Audio instead
-# Set CLAUDE_AUDIO=1 to enable hook-based audio (may cause double announcements)
-CLAUDE_AUDIO="${CLAUDE_AUDIO:-0}"
 mkdir -p "$STATE_DIR" "$DEBUG_DIR" "$SUBAGENT_DIR"
 
 # Get tmux pane ID if running in tmux
@@ -101,7 +98,7 @@ case "$HOOK_TYPE" in
             find "$DEBUG_DIR" -name "*.json" -mmin +60 -delete 2>/dev/null || true
         ) &
         # Audio announcement via TabzChrome
-        if [[ "$CLAUDE_AUDIO" == "1" ]]; then
+        if [[ "${CLAUDE_AUDIO:-0}" == "1" ]]; then
             SESSION_NAME="${CLAUDE_SESSION_NAME:-Claude}"
             speak_tabz "$SESSION_NAME session started"
         fi
@@ -119,7 +116,7 @@ case "$HOOK_TYPE" in
         DETAILS=$(jq -n --arg tool "$CURRENT_TOOL" --arg args "$TOOL_ARGS_STR" '{event:"tool_starting",tool:$tool,args:($args|fromjson)}' 2>/dev/null || echo '{"event":"tool_starting"}')
         if [[ "$CURRENT_TOOL" == "Task" ]]; then increment_subagent_count; fi
         # Audio announcement via TabzChrome
-        if [[ "$CLAUDE_AUDIO" == "1" ]]; then
+        if [[ "${CLAUDE_AUDIO:-0}" == "1" ]]; then
             TOOL_DETAIL=""
             case "$CURRENT_TOOL" in
                 Read|Write|Edit) TOOL_DETAIL=$(echo "$STDIN_DATA" | jq -r '.tool_input.file_path // .input.file_path // ""' 2>/dev/null | xargs basename 2>/dev/null || echo "") ;;
@@ -155,7 +152,7 @@ case "$HOOK_TYPE" in
         CURRENT_TOOL=""
         DETAILS='{"event":"claude_stopped","waiting_for_user":true}'
         # Audio announcement via TabzChrome
-        if [[ "$CLAUDE_AUDIO" == "1" ]]; then
+        if [[ "${CLAUDE_AUDIO:-0}" == "1" ]]; then
             SESSION_NAME="${CLAUDE_SESSION_NAME:-Claude}"
             speak_tabz "$SESSION_NAME ready for input"
         fi
@@ -164,6 +161,7 @@ case "$HOOK_TYPE" in
         decrement_subagent_count
         SUBAGENT_COUNT=$(get_subagent_count)
         CURRENT_TOOL=""
+        # FIX: When all subagents done, set to awaiting_input (not processing)
         if [[ "$SUBAGENT_COUNT" -eq 0 ]]; then
             STATUS="awaiting_input"
             DETAILS='{"event":"subagent_stopped","remaining_subagents":0,"all_complete":true}'
@@ -179,6 +177,16 @@ case "$HOOK_TYPE" in
                 STATUS="awaiting_input"
                 CURRENT_TOOL=""
                 DETAILS='{"event":"awaiting_input_bell"}'
+                ;;
+            permission_prompt)
+                if [[ -f "$STATE_FILE" ]]; then
+                    STATUS=$(jq -r '.status // "idle"' "$STATE_FILE")
+                    CURRENT_TOOL=$(jq -r '.current_tool // ""' "$STATE_FILE")
+                else
+                    STATUS="idle"
+                    CURRENT_TOOL=""
+                fi
+                DETAILS='{"event":"permission_prompt"}'
                 ;;
             *)
                 if [[ -f "$STATE_FILE" ]]; then
