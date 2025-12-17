@@ -11,7 +11,15 @@
   "bugs": {
     "url": "https://github.com/GGPrompts/TabzChrome/issues"
   },
-  "keywords": ["chrome-extension", "tmux", "terminal", "sidebar", "xterm", "bash", "tabz"],
+  "keywords": [
+    "chrome-extension",
+    "tmux",
+    "terminal",
+    "sidebar",
+    "xterm",
+    "bash",
+    "tabz"
+  ],
   "author": "Matt",
   "license": "MIT",
   "scripts": {
@@ -30,6 +38,7 @@
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-separator": "^1.1.8",
     "@radix-ui/react-slot": "^1.2.4",
+    "@xterm/addon-canvas": "^0.7.0",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-unicode11": "^0.8.0",
     "@xterm/addon-web-links": "^0.11.0",
