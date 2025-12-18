@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { Wrench, Search, RefreshCw, ChevronDown, ChevronRight, ExternalLink, CheckCircle, Circle, Settings } from 'lucide-react'
+import { Wrench, Search, RefreshCw, ChevronDown, ChevronRight, ExternalLink, CheckCircle, Circle, Settings, Zap, Terminal, Microscope } from 'lucide-react'
+import { spawnTerminal } from '../hooks/useDashboard'
+
+const MCP_SERVER_PATH = '~/projects/TabzChrome/tabz-mcp-server/dist/index.js'
 
 // MCP Tools configuration (matches extension/components/settings/types.ts)
 interface McpTool {
@@ -165,7 +168,7 @@ export default function McpPlayground() {
         <div>
           <h1 className="text-3xl font-bold terminal-glow flex items-center gap-3">
             <Wrench className="w-8 h-8" />
-            MCP Playground
+            MCP Settings
           </h1>
           <p className="text-muted-foreground mt-1">
             Configure which browser automation tools are available to Claude Code
@@ -193,6 +196,31 @@ export default function McpPlayground() {
             )}
             Save Config
           </button>
+        </div>
+      </div>
+
+      {/* MCP Inspector */}
+      <div className="p-4 rounded-lg bg-cyan-500/10 border border-cyan-500/30 mb-6">
+        <div className="flex items-start gap-3">
+          <Microscope className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="font-semibold text-cyan-200 mb-1">MCP Inspector</h3>
+            <p className="text-sm text-cyan-200/80 mb-3">
+              Test and debug Tabz MCP tools interactively. Opens at localhost:6274.
+            </p>
+            <button
+              onClick={async () => {
+                await spawnTerminal({
+                  name: 'MCP Inspector',
+                  command: `npx @modelcontextprotocol/inspector node ${MCP_SERVER_PATH}`,
+                })
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 transition-colors"
+            >
+              <Microscope className="w-4 h-4" />
+              Launch Inspector
+            </button>
+          </div>
         </div>
       </div>
 
@@ -265,6 +293,54 @@ export default function McpPlayground() {
             Learn about mcp-cli mode <ExternalLink className="w-3 h-3" />
           </a>
         </p>
+      </div>
+
+      {/* Experimental MCP CLI Mode */}
+      <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/30 mb-6">
+        <div className="flex items-start gap-3">
+          <Zap className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="font-semibold text-purple-200 mb-1">Experimental: MCP CLI Mode</h3>
+            <p className="text-sm text-purple-200/80 mb-3">
+              Load MCP tools on-demand instead of upfront. Reclaims ~50k tokens for actual work.
+              Requires Claude Code restart after enabling.
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={async () => {
+                  await spawnTerminal({
+                    name: 'Enable MCP CLI',
+                    command: `grep -q 'ENABLE_EXPERIMENTAL_MCP_CLI' ~/.bashrc 2>/dev/null || echo 'export ENABLE_EXPERIMENTAL_MCP_CLI=true' >> ~/.bashrc; echo "✓ MCP CLI mode enabled. Restart Claude Code to apply."`,
+                  })
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+              >
+                <Terminal className="w-4 h-4" />
+                Enable
+              </button>
+              <button
+                onClick={async () => {
+                  await spawnTerminal({
+                    name: 'Disable MCP CLI',
+                    command: `sed -i '/ENABLE_EXPERIMENTAL_MCP_CLI/d' ~/.bashrc 2>/dev/null; echo "✓ MCP CLI mode disabled. Restart Claude Code to apply."`,
+                  })
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+              >
+                <Terminal className="w-4 h-4" />
+                Disable
+              </button>
+              <a
+                href="https://gist.github.com/GGPrompts/50e82596b345557656df2fc8d2d54e2c"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-purple-400 hover:underline inline-flex items-center gap-1"
+              >
+                Details <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
 
       {loading ? (

@@ -34,7 +34,7 @@ const navItems: NavItem[] = [
   { id: 'profiles', label: 'Profiles', icon: Grid3X3 },
   { id: 'terminals', label: 'Terminals', icon: Terminal },
   { id: 'api', label: 'API Playground', icon: Code2 },
-  { id: 'mcp', label: 'MCP Playground', icon: Wrench },
+  { id: 'mcp', label: 'MCP Settings', icon: Wrench },
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
 
@@ -130,7 +130,7 @@ export default function App() {
         {/* Footer */}
         <div className="p-2 border-t border-border">
           <a
-            href="https://github.com/anthropics/claude-code"
+            href="https://github.com/GGPrompts/TabzChrome"
             target="_blank"
             rel="noopener noreferrer"
             className={`flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${

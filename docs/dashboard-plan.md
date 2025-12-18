@@ -8,8 +8,12 @@ This document tracks the development of the new React-based dashboard to replace
 **Last Updated:** 2025-12-18
 
 ### ✅ Completed
-- Dashboard scaffold with 6 sections (Home, Profiles, Terminals, API Playground, MCP Playground, Settings)
+- Dashboard scaffold with 6 sections (Home, Profiles, Terminals, API Playground, MCP Settings, Settings)
 - Profiles section with grid/list view, search, category filtering
+- Profiles section drag-drop reordering (profiles and categories)
+- Profiles section theme gradient backdrops on cards
+- Profiles section default profile indicator (star badge)
+- Profiles section auto-updates when Chrome storage changes
 - Working directory selector (syncs with sidepanel via Chrome storage)
 - Kill active terminals (per-row + bulk selection)
 - Reattach orphaned sessions (per-row + bulk selection)
@@ -17,7 +21,7 @@ This document tracks the development of the new React-based dashboard to replace
 - All Tmux Sessions view with AI tool detection
 - System info panel (Node version, platform, memory stats)
 - Connection status indicator (backend connected/disconnected)
-- MCP Playground section (tool configuration, presets, URL settings)
+- MCP Settings section (tool configuration, presets, URL settings, MCP Inspector launcher)
 - Settings section (working directory, API token info, theme preview)
 - API Playground health checks (green/red indicators per endpoint, 60s refresh)
 - API-spawned terminals now show name in Ready status (fallback when no profile)
@@ -57,10 +61,10 @@ extension/dashboard/
 │   └── globals.css         # Theme variables + utilities
 ├── sections/
 │   ├── Home.tsx            # Dashboard overview + system info
-│   ├── Profiles.tsx        # Profile launcher grid/list
+│   ├── Profiles.tsx        # Profile launcher grid/list + drag-drop
 │   ├── Terminals.tsx       # Terminal management
 │   ├── ApiPlayground.tsx   # REST API testing + health checks
-│   ├── McpPlayground.tsx   # MCP tool configuration
+│   ├── McpPlayground.tsx   # MCP tool config + Inspector launcher
 │   └── Settings.tsx        # Dashboard settings
 ├── hooks/
 │   └── useDashboard.ts     # Chrome messaging + API utilities
@@ -118,6 +122,11 @@ extension/dashboard/
 | Emoji icon extraction | ✗ | ✓ | ✅ New feature |
 | **Working directory selector** | ✗ | ✓ dropdown with recent dirs | ✅ New feature |
 | **Inherit global workingDir** | ✗ | ✓ profiles inherit if empty | ✅ New feature |
+| **Drag-drop profile reordering** | ✗ | ✓ with visual indicators | ✅ New feature |
+| **Drag-drop category reordering** | ✗ | ✓ with visual indicators | ✅ New feature |
+| **Theme gradient backdrops** | ✗ | ✓ cards use profile theme | ✅ New feature |
+| **Default profile indicator** | ✗ | ✓ star badge | ✅ New feature |
+| **Auto-update on storage change** | ✗ | ✓ real-time sync | ✅ New feature |
 
 ### API Playground Section (NEW)
 
@@ -195,7 +204,7 @@ extension/dashboard/
 
 ## Planned Sections - COMPLETED
 
-### MCP Playground ✅
+### MCP Settings ✅
 - [x] List all available TabzChrome MCP tools
 - [x] Toggle individual tools on/off
 - [x] Category-based organization with collapse/expand
@@ -204,6 +213,7 @@ extension/dashboard/
 - [x] Token usage estimates per tool
 - [x] URL settings for tabz_open_url (YOLO mode, custom domains)
 - [x] Save config to backend (restart Claude Code to apply)
+- [x] MCP Inspector launcher (test tools interactively at localhost:6274)
 
 ### Settings ✅
 - [x] Default working directory (syncs with sidepanel)
@@ -234,7 +244,7 @@ extension/dashboard/
 | `extension/dashboard/sections/Profiles.tsx` | Profile launcher |
 | `extension/dashboard/sections/Terminals.tsx` | Terminal/orphan management |
 | `extension/dashboard/sections/ApiPlayground.tsx` | API testing + health checks |
-| `extension/dashboard/sections/McpPlayground.tsx` | MCP tool configuration |
+| `extension/dashboard/sections/McpPlayground.tsx` | MCP tool config + Inspector launcher |
 | `extension/dashboard/sections/Settings.tsx` | Dashboard settings |
 | `extension/dashboard/hooks/useDashboard.ts` | Chrome messaging, API helpers |
 | `extension/dashboard/styles/globals.css` | Theme CSS variables |
@@ -243,6 +253,21 @@ extension/dashboard/
 ---
 
 ## Changelog
+
+### 2025-12-18 (session 5)
+- Enhanced Profiles section with drag-drop reordering:
+  - Drag profiles to reorder within and across categories
+  - Drag category headers to reorder categories
+  - Visual drop indicators (left/right for grid, above/below for list)
+  - Uncategorized stays pinned at bottom
+- Added theme gradient backdrops to profile cards (grid and list view)
+- Added default profile indicator (star badge) matching sidebar
+- Added Chrome storage listener for auto-updating when profiles change
+- Renamed "MCP Playground" to "MCP Settings" in navigation
+- Added MCP Inspector launcher to dashboard and sidebar:
+  - Spawns terminal with `npx @modelcontextprotocol/inspector`
+  - Opens interactive tool testing UI at localhost:6274
+- Fixed GitHub link in dashboard footer (was pointing to wrong repo)
 
 ### 2025-12-18 (session 4)
 - Added API Playground health check indicators:

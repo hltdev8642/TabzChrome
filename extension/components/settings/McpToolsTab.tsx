@@ -1,6 +1,9 @@
 import React, { useState } from 'react'
-import { Settings } from 'lucide-react'
+import { Settings, Microscope } from 'lucide-react'
 import { MCP_TOOLS, PRESETS } from './types'
+import { sendMessage } from '../../shared/messaging'
+
+const MCP_SERVER_PATH = '~/projects/TabzChrome/tabz-mcp-server/dist/index.js'
 
 interface McpToolsTabProps {
   mcpEnabledTools: string[]
@@ -69,6 +72,32 @@ export function McpToolsTab({
             rel="noopener noreferrer"
             className="text-[#00c8ff] hover:underline"
           >Save ~80% tokens with mcp-cli mode</a>
+        </p>
+      </div>
+
+      {/* MCP Inspector */}
+      <div className="mb-4 p-3 rounded-lg bg-cyan-500/10 border border-cyan-500/30">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Microscope className="w-4 h-4 text-cyan-400" />
+            <span className="text-sm text-cyan-200">MCP Inspector</span>
+          </div>
+          <button
+            onClick={() => {
+              sendMessage({
+                type: 'SPAWN_TERMINAL',
+                name: 'MCP Inspector',
+                command: `npx @modelcontextprotocol/inspector node ${MCP_SERVER_PATH}`,
+              })
+            }}
+            className="flex items-center gap-1.5 px-2 py-1 text-xs rounded bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 transition-colors"
+          >
+            <Microscope className="w-3 h-3" />
+            Launch
+          </button>
+        </div>
+        <p className="text-xs text-cyan-200/60 mt-1">
+          Test tools interactively at localhost:6274
         </p>
       </div>
 
