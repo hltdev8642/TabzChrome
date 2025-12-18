@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import ReactDOM from 'react-dom/client'
-import { Terminal as TerminalIcon, Settings, Plus, X, ChevronDown, Moon, Sun, Keyboard, Volume2, VolumeX, RefreshCw, LayoutDashboard } from 'lucide-react'
+import { Terminal as TerminalIcon, Settings, Plus, X, ChevronDown, Moon, Sun, Keyboard, Volume2, VolumeX, RefreshCw, LayoutDashboard, Zap, Layers } from 'lucide-react'
 import { Badge } from '../components/ui/badge'
 import { Terminal } from '../components/Terminal'
 import { SettingsModal, type Profile } from '../components/SettingsModal'
@@ -56,6 +56,7 @@ function SidePanelTerminal() {
   const [showDirDropdown, setShowDirDropdown] = useState(false)
   const [customDirInput, setCustomDirInput] = useState('')
   const [isDark, setIsDark] = useState(true)  // Global dark/light mode toggle
+  const [useWebGL, setUseWebGL] = useState(true)  // WebGL renderer (crisp but dark-mode only)
   const audioUnlockedRef = useRef(false)  // Track if audio has been unlocked by user interaction
 
   // Unlock audio on first user interaction (Chrome autoplay policy workaround)
@@ -294,11 +295,19 @@ function SidePanelTerminal() {
     }
   }, [contextMenu.show])
 
-  // Load dark mode preference from Chrome storage
+  // Load dark mode and renderer preferences from Chrome storage
   useEffect(() => {
-    chrome.storage.local.get(['isDark'], (result) => {
+    chrome.storage.local.get(['isDark', 'useWebGL'], (result) => {
       if (typeof result.isDark === 'boolean') {
         setIsDark(result.isDark)
+      }
+      if (typeof result.useWebGL === 'boolean') {
+        setUseWebGL(result.useWebGL)
+        // WebGL requires dark mode - enforce this on load
+        if (result.useWebGL && result.isDark === false) {
+          setIsDark(true)
+          chrome.storage.local.set({ isDark: true })
+        }
       }
     })
   }, [])
@@ -307,6 +316,15 @@ function SidePanelTerminal() {
   useEffect(() => {
     chrome.storage.local.set({ isDark })
   }, [isDark])
+
+  // Save renderer preference and enforce dark mode when WebGL is enabled
+  useEffect(() => {
+    chrome.storage.local.set({ useWebGL })
+    // WebGL requires dark mode
+    if (useWebGL && !isDark) {
+      setIsDark(true)
+    }
+  }, [useWebGL])
 
   // Close dir dropdown when clicking outside
   useEffect(() => {
@@ -625,16 +643,38 @@ function SidePanelTerminal() {
             />
           )}
 
-          {/* Dark/Light Mode Toggle */}
+          {/* Renderer Toggle (WebGL/Canvas) - auto-refreshes to apply */}
           <button
-            onClick={() => setIsDark(!isDark)}
+            onClick={() => {
+              const newValue = !useWebGL
+              chrome.storage.local.set({ useWebGL: newValue, isDark: newValue ? true : isDark }, () => {
+                window.location.reload()
+              })
+            }}
             className={`p-1.5 rounded-md transition-colors ${
-              isDark
-                ? 'hover:bg-[#00ff88]/10 text-gray-400 hover:text-[#00ff88]'
-                : 'hover:bg-orange-500/10 text-gray-400 hover:text-orange-400'
+              useWebGL
+                ? 'bg-[#00ff88]/20 text-[#00ff88] hover:bg-[#00ff88]/30'
+                : 'hover:bg-purple-500/10 text-gray-400 hover:text-purple-400'
             }`}
-            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={useWebGL ? 'WebGL (dark only, crisp) - click to switch to Canvas' : 'Canvas (light/dark) - click to switch to WebGL'}
+            aria-label={useWebGL ? 'Switch to Canvas renderer' : 'Switch to WebGL renderer'}
+          >
+            {useWebGL ? <Zap className="h-4 w-4" /> : <Layers className="h-4 w-4" />}
+          </button>
+
+          {/* Dark/Light Mode Toggle - disabled when WebGL is on */}
+          <button
+            onClick={() => !useWebGL && setIsDark(!isDark)}
+            className={`p-1.5 rounded-md transition-colors ${
+              useWebGL
+                ? 'text-gray-600 cursor-not-allowed'
+                : isDark
+                  ? 'hover:bg-[#00ff88]/10 text-gray-400 hover:text-[#00ff88]'
+                  : 'hover:bg-orange-500/10 text-gray-400 hover:text-orange-400'
+            }`}
+            title={useWebGL ? 'Light mode disabled (WebGL requires dark mode)' : isDark ? 'Switch to light mode' : 'Switch to dark mode'}
             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            disabled={useWebGL}
           >
             {isDark ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
           </button>
@@ -996,6 +1036,7 @@ function SidePanelTerminal() {
                       fontFamily={effectiveProfile?.fontFamily || 'monospace'}
                       themeName={effectiveProfile?.themeName || 'high-contrast'}
                       isDark={isDark}
+                      useWebGL={useWebGL}
                       isActive={session.id === currentSession}
                       pasteCommand={session.id === currentSession ? pasteCommand : null}
                       onClose={() => {

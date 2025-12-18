@@ -56,11 +56,11 @@ export const themes: Record<string, Theme> = {
     description: 'Maximum readability with vibrant, distinct colors',
     dark: {
       colors: {
-        background: 'transparent',
+        background: 'rgba(0, 0, 0, 0)',  // Fully transparent to show CSS gradient
         foreground: '#e0e0e0',
         cursor: '#00d4ff',
         selectionBackground: 'rgba(255, 255, 255, 0.25)',
-        black: '#1a1a1a',
+        black: 'rgba(0, 0, 0, 0)',  // Transparent to blend with background
         red: '#ff4757',           // Errors - bright, attention-grabbing
         green: '#3cb371',         // Success - medium sea green (readable as diff background)
         yellow: '#ffd93d',        // Warnings - warm yellow
@@ -81,11 +81,11 @@ export const themes: Record<string, Theme> = {
     },
     light: {
       colors: {
-        background: '#f0f1f3',    // Match gradient midpoint for minimumContrastRatio
+        background: 'rgba(248, 249, 250, 1)',  // Opaque for light mode readability
         foreground: '#1a1a2e',
         cursor: '#0077b6',
         selectionBackground: 'rgba(0, 119, 182, 0.2)',
-        black: '#f8f9fa',
+        black: 'rgba(0, 0, 0, 0)',  // Transparent to blend with background
         red: '#c41a16',
         green: '#007400',
         yellow: '#7a5d00',
@@ -111,11 +111,11 @@ export const themes: Record<string, Theme> = {
     description: 'Classic Dracula theme with purple accents',
     dark: {
       colors: {
-        background: 'transparent',
+        background: 'rgba(0, 0, 0, 0)',  // Fully transparent to show CSS gradient
         foreground: '#f8f8f2',
         cursor: '#ff79c6',
         selectionBackground: 'rgba(255, 255, 255, 0.25)',
-        black: '#21222c',
+        black: 'rgba(0, 0, 0, 0)',  // Transparent to blend with background
         red: '#ff5555',
         green: '#50fa7b',
         yellow: '#f1fa8c',
@@ -136,11 +136,11 @@ export const themes: Record<string, Theme> = {
     },
     light: {
       colors: {
-        background: '#f0edf3',    // Match gradient midpoint for minimumContrastRatio
+        background: 'rgba(245, 243, 247, 1)',  // Opaque for light mode readability
         foreground: '#282a36',
         cursor: '#c850a0',
         selectionBackground: 'rgba(200, 80, 160, 0.2)',
-        black: '#faf8fc',
+        black: 'rgba(0, 0, 0, 0)',  // Transparent to blend with background
         red: '#d63031',
         green: '#00a86b',
         yellow: '#9c7b00',
@@ -166,11 +166,11 @@ export const themes: Record<string, Theme> = {
     description: 'Gentle ocean-inspired colors, easy on the eyes',
     dark: {
       colors: {
-        background: 'transparent',
+        background: 'rgba(0, 0, 0, 0)',  // Fully transparent to show CSS gradient
         foreground: '#cad3f5',
         cursor: '#91d7e3',
         selectionBackground: 'rgba(255, 255, 255, 0.25)',
-        black: '#1e2030',
+        black: 'rgba(0, 0, 0, 0)',  // Transparent to blend with background
         red: '#ed8796',
         green: '#a6da95',
         yellow: '#eed49f',
@@ -191,11 +191,11 @@ export const themes: Record<string, Theme> = {
     },
     light: {
       colors: {
-        background: '#dceff8',    // Match gradient midpoint for minimumContrastRatio
+        background: 'rgba(232, 244, 252, 1)',  // Opaque for light mode readability
         foreground: '#1e2030',
         cursor: '#0891b2',
         selectionBackground: 'rgba(8, 145, 178, 0.2)',
-        black: '#f0f9ff',
+        black: 'rgba(0, 0, 0, 0)',  // Transparent to blend with background
         red: '#be123c',
         green: '#059669',
         yellow: '#a16207',
@@ -221,11 +221,11 @@ export const themes: Record<string, Theme> = {
     description: 'Ultra-vibrant neon colors that pop',
     dark: {
       colors: {
-        background: 'transparent',
+        background: 'rgba(0, 0, 0, 0)',  // Fully transparent to show CSS gradient
         foreground: '#00ffff',
         cursor: '#ff00ff',
         selectionBackground: 'rgba(255, 255, 255, 0.25)',
-        black: '#0a0014',
+        black: 'rgba(0, 0, 0, 0)',  // Transparent to blend with background
         red: '#ff0055',
         green: '#00ff88',
         yellow: '#ffee00',
@@ -246,11 +246,11 @@ export const themes: Record<string, Theme> = {
     },
     light: {
       colors: {
-        background: '#f9e2fe',    // Match gradient midpoint for minimumContrastRatio
+        background: 'rgba(253, 244, 255, 1)',  // Opaque for light mode readability
         foreground: '#1a0033',
         cursor: '#c026d3',
         selectionBackground: 'rgba(192, 38, 211, 0.2)',
-        black: '#fdf4ff',
+        black: 'rgba(0, 0, 0, 0)',  // Transparent to blend with background
         red: '#db2777',
         green: '#059669',
         yellow: '#d97706',
@@ -276,11 +276,11 @@ export const themes: Record<string, Theme> = {
     description: 'Warm retro amber with modern accents',
     dark: {
       colors: {
-        background: 'transparent',
+        background: 'rgba(0, 0, 0, 0)',  // Fully transparent to show CSS gradient
         foreground: '#ffb86c',
         cursor: '#ffcc95',
         selectionBackground: 'rgba(255, 255, 255, 0.25)',
-        black: '#1a1308',
+        black: 'rgba(0, 0, 0, 0)',  // Transparent to blend with background
         red: '#ff6b35',
         green: '#a3e635',
         yellow: '#fde047',
@@ -301,11 +301,11 @@ export const themes: Record<string, Theme> = {
     },
     light: {
       colors: {
-        background: '#fef7d9',    // Match gradient midpoint for minimumContrastRatio
+        background: 'rgba(255, 251, 235, 1)',  // Opaque for light mode readability
         foreground: '#78350f',
         cursor: '#b45309',
         selectionBackground: 'rgba(180, 83, 9, 0.2)',
-        black: '#fffbeb',
+        black: 'rgba(0, 0, 0, 0)',  // Transparent to blend with background
         red: '#c2410c',
         green: '#4d7c0f',
         yellow: '#a16207',
@@ -331,11 +331,11 @@ export const themes: Record<string, Theme> = {
     description: 'Classic green terminal aesthetic',
     dark: {
       colors: {
-        background: 'transparent',
+        background: 'rgba(0, 0, 0, 0)',  // Fully transparent to show CSS gradient
         foreground: '#00ff00',
         cursor: '#00ff00',
         selectionBackground: 'rgba(255, 255, 255, 0.25)',
-        black: '#0a0f0a',
+        black: 'rgba(0, 0, 0, 0)',  // Transparent to blend with background
         red: '#ff6b6b',
         green: '#00ff00',
         yellow: '#d0d0d0',        // Muted - keeps green focus
@@ -356,11 +356,11 @@ export const themes: Record<string, Theme> = {
     },
     light: {
       colors: {
-        background: '#e6fcee',    // Match gradient midpoint for minimumContrastRatio
+        background: 'rgba(240, 253, 244, 1)',  // Opaque for light mode readability
         foreground: '#166534',
         cursor: '#15803d',
         selectionBackground: 'rgba(22, 163, 74, 0.2)',
-        black: '#f0fdf4',
+        black: 'rgba(0, 0, 0, 0)',  // Transparent to blend with background
         red: '#dc2626',
         green: '#15803d',
         yellow: '#4b5563',

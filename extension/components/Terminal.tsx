@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { CanvasAddon } from '@xterm/addon-canvas'
+import { WebglAddon } from '@xterm/addon-webgl'
 import '@xterm/xterm/css/xterm.css'
 import { sendMessage, connectToBackground } from '../shared/messaging'
 import { getThemeColors, getBackgroundGradient } from '../styles/themes'
@@ -24,6 +25,7 @@ interface TerminalProps {
   isActive?: boolean       // Whether this terminal is currently visible/active
   pasteCommand?: string | null  // Command to paste into terminal input
   onClose?: () => void
+  useWebGL?: boolean       // Use WebGL renderer (crispest text, but requires dark mode)
 }
 // NOTE: ClaudeStatus interface removed - status polling handled by sidepanel's useClaudeStatus hook
 
@@ -58,7 +60,7 @@ interface TerminalProps {
  * @param props.onClose - Callback when terminal is closed
  * @returns Terminal container with xterm.js instance
  */
-export function Terminal({ terminalId, sessionName, terminalType = 'bash', workingDir, tmuxSession, fontSize = 16, fontFamily = 'monospace', themeName = 'high-contrast', isDark = true, isActive = true, pasteCommand = null, onClose }: TerminalProps) {
+export function Terminal({ terminalId, sessionName, terminalType = 'bash', workingDir, tmuxSession, fontSize = 16, fontFamily = 'monospace', themeName = 'high-contrast', isDark = true, isActive = true, pasteCommand = null, onClose, useWebGL = true }: TerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const xtermRef = useRef<XTerm | null>(null)
@@ -429,15 +431,42 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
         xterm.open(terminalRef.current)
         setIsInitialized(true)
 
-        // Load Canvas addon for GPU-accelerated rendering (must be after open())
-        // Canvas supports transparency unlike WebGL
-        try {
-          const canvasAddon = new CanvasAddon()
-          xterm.loadAddon(canvasAddon)
-          canvasAddonRef.current = canvasAddon
-          console.log('[Terminal] Canvas renderer enabled')
-        } catch (e) {
-          console.warn('[Terminal] Canvas not available, using DOM renderer:', e)
+        // Load renderer addon for GPU-accelerated rendering (must be after open())
+        // WebGL = crispest text but requires dark mode (transparent bg issue)
+        // Canvas = supports both light and dark modes
+        let rendererUsed = 'dom'
+        if (useWebGL) {
+          try {
+            const webglAddon = new WebglAddon()
+            webglAddon.onContextLoss(() => {
+              console.warn('[Terminal] WebGL context lost, disposing addon')
+              webglAddon.dispose()
+            })
+            xterm.loadAddon(webglAddon)
+            rendererUsed = 'webgl'
+            console.log('[Terminal] WebGL renderer enabled')
+          } catch (e) {
+            console.warn('[Terminal] WebGL not available, falling back to Canvas:', e)
+            try {
+              const canvasAddon = new CanvasAddon()
+              xterm.loadAddon(canvasAddon)
+              canvasAddonRef.current = canvasAddon
+              rendererUsed = 'canvas'
+              console.log('[Terminal] Canvas renderer enabled (WebGL fallback)')
+            } catch (e2) {
+              console.warn('[Terminal] Canvas also not available, using DOM renderer:', e2)
+            }
+          }
+        } else {
+          try {
+            const canvasAddon = new CanvasAddon()
+            xterm.loadAddon(canvasAddon)
+            canvasAddonRef.current = canvasAddon
+            rendererUsed = 'canvas'
+            console.log('[Terminal] Canvas renderer enabled')
+          } catch (e) {
+            console.warn('[Terminal] Canvas not available, using DOM renderer:', e)
+          }
         }
 
         console.log('[Terminal] xterm opened successfully', {
@@ -446,7 +475,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
           containerSize: `${terminalRef.current.offsetWidth}x${terminalRef.current.offsetHeight}`,
           requestedFontSize: fontSize,
           requestedFontFamily: fontFamily,
-          renderer: canvasAddonRef.current ? 'canvas' : 'dom',
+          renderer: rendererUsed,
         })
         // Now that it's open, do the initial fit
         initialFit()
@@ -460,14 +489,36 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
           xterm.open(terminalRef.current)
           setIsInitialized(true)
 
-          // Load Canvas addon (same as main path)
-          try {
-            const canvasAddon = new CanvasAddon()
-            xterm.loadAddon(canvasAddon)
-            canvasAddonRef.current = canvasAddon
-            console.log('[Terminal] Canvas renderer enabled (fallback path)')
-          } catch (e) {
-            console.warn('[Terminal] Canvas not available, using DOM renderer:', e)
+          // Load renderer addon (same as main path)
+          if (useWebGL) {
+            try {
+              const webglAddon = new WebglAddon()
+              webglAddon.onContextLoss(() => {
+                console.warn('[Terminal] WebGL context lost (fallback path), disposing addon')
+                webglAddon.dispose()
+              })
+              xterm.loadAddon(webglAddon)
+              console.log('[Terminal] WebGL renderer enabled (fallback path)')
+            } catch (e) {
+              console.warn('[Terminal] WebGL not available (fallback path), using Canvas:', e)
+              try {
+                const canvasAddon = new CanvasAddon()
+                xterm.loadAddon(canvasAddon)
+                canvasAddonRef.current = canvasAddon
+                console.log('[Terminal] Canvas renderer enabled (fallback path)')
+              } catch (e2) {
+                console.warn('[Terminal] Canvas also not available (fallback path):', e2)
+              }
+            }
+          } else {
+            try {
+              const canvasAddon = new CanvasAddon()
+              xterm.loadAddon(canvasAddon)
+              canvasAddonRef.current = canvasAddon
+              console.log('[Terminal] Canvas renderer enabled (fallback path)')
+            } catch (e) {
+              console.warn('[Terminal] Canvas not available (fallback path), using DOM renderer:', e)
+            }
           }
 
           initialFit()
