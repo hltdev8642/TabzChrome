@@ -8,7 +8,7 @@ This document tracks the development of the new React-based dashboard to replace
 **Last Updated:** 2025-12-18
 
 ### ✅ Completed
-- Dashboard scaffold with 7 sections (Home, Profiles, Terminals, API Playground, MCP Playground, Prompts, Settings)
+- Dashboard scaffold with 6 sections (Home, Profiles, Terminals, API Playground, MCP Playground, Settings)
 - Profiles section with grid/list view, search, category filtering
 - Working directory selector (syncs with sidepanel via Chrome storage)
 - Kill active terminals (per-row + bulk selection)
@@ -20,7 +20,6 @@ This document tracks the development of the new React-based dashboard to replace
 - MCP Playground section (tool configuration, presets, URL settings)
 - Settings section (working directory, API token info, theme preview)
 - API Playground health checks (green/red indicators per endpoint, 60s refresh)
-- Prompts section (saved prompt templates with fillable fields, multiple targets)
 - API-spawned terminals now show name in Ready status (fallback when no profile)
 
 ### 📋 Future (Low Priority)
@@ -62,7 +61,6 @@ extension/dashboard/
 │   ├── Terminals.tsx       # Terminal management
 │   ├── ApiPlayground.tsx   # REST API testing + health checks
 │   ├── McpPlayground.tsx   # MCP tool configuration
-│   ├── Prompts.tsx         # Saved prompt templates
 │   └── Settings.tsx        # Dashboard settings
 ├── hooks/
 │   └── useDashboard.ts     # Chrome messaging + API utilities
@@ -132,18 +130,6 @@ extension/dashboard/
 | TabzChrome endpoint presets | ✗ | ✓ | ✅ New feature |
 | **Health check indicators** | ✗ | ✓ green/red dots per endpoint | ✅ New feature |
 | **Auto-refresh health (60s)** | ✗ | ✓ | ✅ New feature |
-
-### Prompts Section (NEW)
-
-| Feature | Old HTML | New React | Status |
-|---------|----------|-----------|--------|
-| Saved prompt templates | ✗ | ✓ | ✅ New feature |
-| Fillable form fields | ✗ | ✓ text/dropdown/checkbox | ✅ New feature |
-| Template placeholder resolution | ✗ | ✓ `{{field}}` syntax | ✅ New feature |
-| Multiple targets | ✗ | ✓ spawn/tmux-send/clipboard | ✅ New feature |
-| Live command preview | ✗ | ✓ | ✅ New feature |
-| Chrome storage persistence | ✗ | ✓ | ✅ New feature |
-| Reset to defaults | ✗ | ✓ | ✅ New feature |
 
 ### Architecture Differences
 
@@ -249,7 +235,6 @@ extension/dashboard/
 | `extension/dashboard/sections/Terminals.tsx` | Terminal/orphan management |
 | `extension/dashboard/sections/ApiPlayground.tsx` | API testing + health checks |
 | `extension/dashboard/sections/McpPlayground.tsx` | MCP tool configuration |
-| `extension/dashboard/sections/Prompts.tsx` | Saved prompt templates |
 | `extension/dashboard/sections/Settings.tsx` | Dashboard settings |
 | `extension/dashboard/hooks/useDashboard.ts` | Chrome messaging, API helpers |
 | `extension/dashboard/styles/globals.css` | Theme CSS variables |
@@ -264,18 +249,11 @@ extension/dashboard/
   - Green/red/gray dots next to each endpoint preset
   - GET endpoints checked on page load and every 60 seconds
   - POST/DELETE endpoints show neutral (gray) indicator
-- Created new Prompts section:
-  - Saved prompt templates with fillable form fields
-  - Supports text, dropdown, and checkbox field types
-  - Template resolution with `{{field}}` placeholders
-  - Conditional sections with `{{#field}}...{{/field}}` syntax
-  - Three target types: spawn (new terminal), tmux-send, clipboard
-  - Default prompts: Summarize Activity, Quick Command, Generate Handoff
-  - Persists to Chrome storage with reset option
 - Fixed terminal display names for API-spawned sessions:
   - Sidebar now uses `session.name` as fallback when no profile exists
   - API-spawned terminals show "✓ Terminal Name" instead of "✓ Ready"
-- Added Prompts to navigation (FileText icon)
+- Removed Prompts section (prompt library will be at ggprompts.com instead)
+- Created prompts-section-design.md spec for future reference
 
 ### 2025-12-18 (session 3)
 - Added System Information panel to Home section (Backend URL, WebSocket URL, Version, Node.js, Platform, Memory Heap/RSS)
