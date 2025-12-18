@@ -685,4 +685,74 @@ this.resizeTimers.set(terminalId, setTimeout(() => {
 
 ---
 
-**Last Updated:** December 16, 2025
+## WebGL vs Canvas Renderer
+
+### Lesson: WebGL Requires Opaque Backgrounds (Dec 18, 2025)
+
+**Problem:** WebGL renderer shows black background instead of CSS gradient, and light mode renders text invisible.
+
+**What Happened:**
+1. Terminal themes use `rgba(0,0,0,0)` (fully transparent) backgrounds
+2. CSS gradient is applied to container behind the terminal
+3. Canvas renderer composites correctly - gradient shows through
+4. WebGL renderer can't composite over external CSS properly
+5. Result: black background instead of gradient, light mode broken
+
+**Root Cause:** WebGL renders to its own framebuffer and doesn't participate in standard CSS compositing. When the background is fully transparent, WebGL has no "surface" to render text against, causing:
+- Black backgrounds (no gradient visible)
+- Text rendering issues in light mode (no contrast reference)
+- Glyph texture atlas problems with certain color schemes
+
+**Solution - Hybrid Approach:**
+
+```typescript
+function adjustThemeForWebGL(colors: ThemeColors, useWebGL: boolean): ThemeColors {
+  if (!useWebGL) return colors  // Canvas: full transparency OK
+
+  // WebGL: add 50% opacity for rendering surface
+  const bg = colors.background
+  const rgbaMatch = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+  if (rgbaMatch) {
+    const [, r, g, b] = rgbaMatch
+    return { ...colors, background: `rgba(${r}, ${g}, ${b}, 0.5)` }
+  }
+  return { ...colors, background: 'rgba(10, 10, 15, 0.5)' }
+}
+```
+
+**Why 50% Opacity:**
+- Gives WebGL a solid "surface" to render against
+- Visible difference from Canvas - darker terminal area with gradient at edges
+- Provides consistent rendering for text
+- Text remains crisp with proper contrast reference
+
+**Why Light Mode is Disabled for WebGL:**
+- Light themes have light foreground colors designed for dark-on-light
+- WebGL's transparency issues make backgrounds unreliable
+- Claude Code's chat blocks use ANSI colors that assume dark backgrounds
+- Result: invisible or unreadable text
+
+**Tradeoffs:**
+
+| Setting | Canvas | WebGL |
+|---------|--------|-------|
+| Background | 100% transparent | 50% opaque tint |
+| Gradient visibility | Full | 50% (visible at edges) |
+| Light mode | ✅ Supported | ❌ Disabled |
+| Text sharpness | Good | Best |
+| Performance | CPU-bound | GPU-accelerated |
+
+**Implementation:**
+- Toggle stored in Chrome storage (`useWebGL`)
+- When WebGL enabled, light mode toggle is disabled
+- Background opacity adjusted dynamically based on renderer
+- Falls back to Canvas if WebGL context fails
+
+**Files:**
+- `extension/components/Terminal.tsx:17-30` - adjustThemeForWebGL function
+- `extension/components/Terminal.tsx:295,867` - Theme adjustment applied
+- `extension/sidepanel/sidepanel.tsx:686` - WebGL toggle with light mode constraint
+
+---
+
+**Last Updated:** December 18, 2025

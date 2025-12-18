@@ -7,7 +7,27 @@ import { CanvasAddon } from '@xterm/addon-canvas'
 import { WebglAddon } from '@xterm/addon-webgl'
 import '@xterm/xterm/css/xterm.css'
 import { sendMessage, connectToBackground } from '../shared/messaging'
-import { getThemeColors, getBackgroundGradient } from '../styles/themes'
+import { getThemeColors, getBackgroundGradient, ThemeColors } from '../styles/themes'
+
+/**
+ * Adjust theme background for WebGL renderer compatibility
+ * WebGL needs slight opacity (not fully transparent) for proper rendering
+ * Canvas renderer works fine with full transparency
+ */
+function adjustThemeForWebGL(colors: ThemeColors, useWebGL: boolean): ThemeColors {
+  if (!useWebGL) return colors
+
+  // Parse existing background to get RGB values, add 50% opacity for WebGL
+  // Theme backgrounds are rgba(0,0,0,0) - we add a visible dark tint
+  const bg = colors.background
+  const rgbaMatch = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+  if (rgbaMatch) {
+    const [, r, g, b] = rgbaMatch
+    return { ...colors, background: `rgba(${r}, ${g}, ${b}, 0.5)` }
+  }
+  // Fallback: add dark overlay for WebGL
+  return { ...colors, background: 'rgba(10, 10, 15, 0.5)' }
+}
 
 /**
  * Props for the Terminal component
@@ -272,7 +292,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     console.log('[Terminal] Initializing xterm for terminal:', terminalId, '(now active)')
 
     // Get theme colors from the new theme system
-    const themeColors = getThemeColors(themeName, isDark)
+    const themeColors = adjustThemeForWebGL(getThemeColors(themeName, isDark), useWebGL)
 
     const xterm = new XTerm({
       cursorBlink: true,
@@ -844,7 +864,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     }
 
     // Update theme colors from the new theme system
-    const themeColors = getThemeColors(themeName, isDark)
+    const themeColors = adjustThemeForWebGL(getThemeColors(themeName, isDark), useWebGL)
     xterm.options.theme = themeColors
 
     // Clear texture atlas after theme change (cached glyphs have old colors)

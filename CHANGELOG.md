@@ -15,6 +15,19 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.1.9] - 2025-12-18
+
+### Added
+- **WebGL/Canvas renderer toggle** - New setting to switch between WebGL (crispest text, GPU-accelerated) and Canvas (universal compatibility) renderers. WebGL provides sharper text rendering but requires dark mode due to transparency limitations.
+
+### Technical
+- WebGL renderer automatically uses 50% background opacity for compatibility with gradient backgrounds
+- Canvas renderer uses fully transparent backgrounds for maximum gradient visibility
+- Light mode is disabled when WebGL is enabled (WebGL has rendering issues with transparent backgrounds in light mode)
+- Added 150ms delay before reload when toggling renderer to ensure Chrome storage propagates
+
+---
+
 ## [1.1.8] - 2025-12-17
 
 ### Added

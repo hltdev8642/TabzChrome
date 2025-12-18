@@ -648,7 +648,8 @@ function SidePanelTerminal() {
             onClick={() => {
               const newValue = !useWebGL
               chrome.storage.local.set({ useWebGL: newValue, isDark: newValue ? true : isDark }, () => {
-                window.location.reload()
+                // Small delay ensures storage is fully propagated before reload reads it back
+                setTimeout(() => window.location.reload(), 150)
               })
             }}
             className={`p-1.5 rounded-md transition-colors ${

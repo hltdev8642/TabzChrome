@@ -252,6 +252,16 @@ The folder icon in the header sets a global working directory. Profiles without 
 - **Copy/Paste** - Ctrl+Shift+C / Ctrl+Shift+V
 - **Session persistence** - Terminals survive sidebar close (tmux-backed)
 - **Tab management** - Multiple terminals, click to switch
+- **WebGL/Canvas renderer toggle** - Choose between WebGL (crispest text, GPU-accelerated) or Canvas (universal compatibility)
+
+#### Renderer Options
+
+| Renderer | Pros | Cons |
+|----------|------|------|
+| **Canvas** (default) | Works everywhere, supports light mode, full gradient transparency | CPU-bound, can lag with heavy output |
+| **WebGL** | GPU-accelerated, crispest text, smooth scrolling | Dark mode only, darker background (gradient at edges) |
+
+Toggle in the header toolbar (GPU icon). WebGL automatically disables light mode due to transparency rendering limitations.
 
 ### Ghost Badge - Detached Sessions Manager
 
