@@ -69,6 +69,50 @@
 
 ---
 
+## Conductor Agent Enhancements
+
+**Goal**: Make the conductor smarter about worker health and prompt quality.
+
+### Context Window Monitoring
+
+Currently, hooks don't receive context window data - only the statusline does via `current_usage`.
+
+**Proposed solution**: Statusline writes context info to state files:
+```bash
+# In statusline.sh, write context to shared state dir
+STATE_FILE="/tmp/claude-code-state/${SESSION_ID}-context.json"
+echo '{"context_percent": '$percent', "tokens": '$current_tokens'}' > "$STATE_FILE"
+```
+
+Then conductor can check before assigning work:
+```bash
+context=$(jq '.context_percent' /tmp/claude-code-state/${WORKER}-context.json)
+if [ "$context" -gt 80 ]; then
+    echo "Worker at ${context}% - spawn fresh worker instead"
+fi
+```
+
+**Tasks:**
+- [ ] Update statusline.sh to write context info to `/tmp/claude-code-state/`
+- [ ] Update Tmuxplexer's `claude_state.go` to read `context_percent`
+- [ ] Add "Worker Health Monitoring" section to conductor.md
+- [ ] Document context hygiene best practices
+
+### Prompt Enhancement Tips (from /pmux)
+
+Add tips to conductor.md for better prompts:
+- [ ] **@ file references** - "Use `@filepath` to give workers context"
+- [ ] **Capability triggers** - "Add `ultrathink` for complex architectural tasks"
+- [ ] **Soften "one task per worker"** → "one goal per worker (they can use subagents)"
+
+### Tmuxplexer Integration
+
+- [ ] Conductor reads `/tmp/claude-code-state/` for worker status (already works)
+- [ ] Add `subagent_count` display to Tmuxplexer TUI
+- [ ] Show context % in Tmuxplexer session list (once statusline writes it)
+
+---
+
 ## Future Enhancements (Phase 3)
 
 ### Waiting on Chrome Updates
