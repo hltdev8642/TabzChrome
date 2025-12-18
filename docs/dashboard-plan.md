@@ -16,7 +16,7 @@ This document tracks the development of the new React-based dashboard to replace
 - Chrome messaging for spawning (no auth tokens needed)
 
 ### 🔜 Next Up (Medium Priority)
-1. **All Tmux Sessions view** - Show external sessions + AI tool detection
+1. ~~**All Tmux Sessions view**~~ ✅ - Show external sessions + AI tool detection
 2. **System info panel** - Node version, platform, memory stats
 3. **Connection status indicator** - WebSocket connected/disconnected
 
@@ -100,8 +100,8 @@ extension/dashboard/
 | **Bulk select active terminals** | ✓ checkboxes | ✓ | ✅ Complete |
 | **Kill active terminals** | ✓ per-row + bulk | ✓ | ✅ Complete |
 | **Reattach orphans** | ✓ | ✓ per-row + bulk | ✅ Complete |
-| **All Tmux Sessions view** | ✓ shows external sessions | ✗ | ❌ Missing |
-| **AI Tool detection** | ✓ detects claude/gemini etc | ✗ | ❌ Missing |
+| **All Tmux Sessions view** | ✓ shows external sessions | ✓ | ✅ Complete |
+| **AI Tool detection** | ✓ detects claude/gemini etc | ✓ | ✅ Complete |
 
 ### Profiles Section (NEW - not in old dashboard)
 
@@ -158,10 +158,11 @@ extension/dashboard/
 
 ### Medium Priority
 
-4. **All Tmux Sessions View**
+4. ~~**All Tmux Sessions View**~~ ✅
    - Show all tmux sessions (not just TabzChrome)
    - Detect AI tools (claude, gemini, codex)
-   - Source indicator (Tabz vs External)
+   - Source indicator (Tabz vs External vs AI tool)
+   - Git branch display
    - Kill any session
 
 5. **System Information Panel**
@@ -240,6 +241,10 @@ extension/dashboard/
 - Added reattach buttons for orphaned sessions (per-row + bulk)
 - Added selection checkboxes for active terminals
 - Updated useDashboard hook with killSessions and reattachSessions
+- Added All Tmux Sessions view with AI tool detection
+- Shows source indicator (Tabz/claude-code/External)
+- Displays git branch for each session
+- Kill button for any tmux session
 
 ### 2024-12-18
 - Initial scaffold with 4 sections (Home, Profiles, Terminals, API Playground)

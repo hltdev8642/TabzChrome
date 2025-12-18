@@ -99,3 +99,23 @@ export async function reattachSessions(sessionNames: string[]) {
   if (!res.ok) throw new Error('Failed to reattach sessions')
   return res.json()
 }
+
+/**
+ * Fetch all tmux sessions with detailed info (AI tool detection, etc.)
+ */
+export async function getAllTmuxSessions() {
+  const res = await fetch(`${API_BASE}/api/tmux/sessions/detailed`)
+  if (!res.ok) throw new Error('Failed to fetch tmux sessions')
+  return res.json()
+}
+
+/**
+ * Kill a tmux session by name (for external sessions)
+ */
+export async function killTmuxSession(sessionName: string) {
+  const res = await fetch(`${API_BASE}/api/tmux/sessions/${encodeURIComponent(sessionName)}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) throw new Error('Failed to kill tmux session')
+  return res.json()
+}

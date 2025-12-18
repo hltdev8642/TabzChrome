@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { Terminal, Trash2, RefreshCw, Ghost, AlertTriangle, CheckCircle, RotateCcw } from 'lucide-react'
-import { getTerminals, getOrphanedSessions, killSession, killSessions, reattachSessions } from '../hooks/useDashboard'
+import { Terminal, Trash2, RefreshCw, Ghost, AlertTriangle, CheckCircle, RotateCcw, Cpu, GitBranch, Folder } from 'lucide-react'
+import { getTerminals, getOrphanedSessions, killSession, killSessions, reattachSessions, getAllTmuxSessions, killTmuxSession } from '../hooks/useDashboard'
 
 interface TerminalSession {
   id: string
@@ -16,9 +16,26 @@ interface OrphanedSession {
   windows: number
 }
 
+interface TmuxSession {
+  name: string
+  windows: number
+  attached: boolean
+  created: string
+  workingDir: string
+  gitBranch?: string
+  aiTool?: string | null
+  tabzManaged: boolean
+  claudeState?: {
+    status: string
+    currentTool?: string
+  } | null
+  paneCommand?: string
+}
+
 export default function TerminalsSection() {
   const [terminals, setTerminals] = useState<TerminalSession[]>([])
   const [orphaned, setOrphaned] = useState<OrphanedSession[]>([])
+  const [tmuxSessions, setTmuxSessions] = useState<TmuxSession[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedOrphans, setSelectedOrphans] = useState<Set<string>>(new Set())
@@ -27,13 +44,15 @@ export default function TerminalsSection() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [terminalsRes, orphanedRes] = await Promise.all([
+      const [terminalsRes, orphanedRes, tmuxRes] = await Promise.all([
         getTerminals(),
         getOrphanedSessions(),
+        getAllTmuxSessions(),
       ])
 
       setTerminals(terminalsRes.data || [])
       setOrphaned(orphanedRes.data?.sessions || [])
+      setTmuxSessions(tmuxRes.data?.sessions || [])
       setError(null)
     } catch (err) {
       setError('Failed to connect to backend')
@@ -150,6 +169,39 @@ export default function TerminalsSection() {
     } else {
       setSelectedTerminals(new Set(terminals.map((t) => t.id)))
     }
+  }
+
+  // Kill any tmux session (including external ones)
+  const handleKillTmuxSession = async (sessionName: string) => {
+    try {
+      await killTmuxSession(sessionName)
+      await fetchData()
+    } catch (err) {
+      console.error('Failed to kill tmux session:', err)
+    }
+  }
+
+  // Helper to get source badge styling
+  const getSourceBadge = (session: TmuxSession) => {
+    if (session.name.startsWith('ctt-') && session.tabzManaged) {
+      return { label: 'Tabz', className: 'bg-emerald-500/20 text-emerald-400' }
+    }
+    if (session.aiTool) {
+      return { label: session.aiTool, className: 'bg-purple-500/20 text-purple-400' }
+    }
+    return { label: 'External', className: 'bg-blue-500/20 text-blue-400' }
+  }
+
+  // Helper to format timestamp
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(parseInt(timestamp) * 1000)
+    return date.toLocaleTimeString()
+  }
+
+  // Helper to shorten path
+  const shortenPath = (path: string, maxLen = 25) => {
+    if (!path || path.length <= maxLen) return path
+    return '...' + path.slice(-maxLen + 3)
   }
 
   return (
@@ -340,6 +392,104 @@ export default function TerminalsSection() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* All Tmux Sessions */}
+      <div className="mt-6 rounded-xl bg-card border border-border">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Cpu className="w-5 h-5 text-blue-400" />
+            <h2 className="font-semibold">All Tmux Sessions</h2>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">
+              {tmuxSessions.length}
+            </span>
+          </div>
+        </div>
+        <p className="px-4 py-2 text-sm text-muted-foreground border-b border-border">
+          All tmux sessions on this system, including non-Tabz sessions
+        </p>
+
+        {tmuxSessions.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <Cpu className="w-12 h-12 mb-4 opacity-50" />
+            <p>No tmux sessions found</p>
+          </div>
+        ) : (
+          <div>
+            {/* Header row */}
+            <div className="flex items-center gap-4 px-4 py-2 text-sm text-muted-foreground border-b border-border">
+              <span className="flex-1">Session</span>
+              <span className="w-16 text-center">Windows</span>
+              <span className="w-24">AI Tool</span>
+              <span className="w-32">Working Dir</span>
+              <span className="w-24">Source</span>
+              <span className="w-16"></span>
+            </div>
+
+            {/* Session rows */}
+            <div className="divide-y divide-border">
+              {tmuxSessions.map((session) => {
+                const sourceBadge = getSourceBadge(session)
+                return (
+                  <div
+                    key={session.name}
+                    className="flex items-center gap-4 px-4 py-3 hover:bg-muted/50 transition-colors"
+                  >
+                    {/* Session name */}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-mono text-sm truncate">{session.name}</div>
+                      {session.gitBranch && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                          <GitBranch className="w-3 h-3" />
+                          {session.gitBranch}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Windows */}
+                    <div className="w-16 text-center text-sm text-muted-foreground">
+                      {session.windows}
+                    </div>
+
+                    {/* AI Tool */}
+                    <div className="w-24">
+                      {session.aiTool ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-400">
+                          {session.aiTool}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </div>
+
+                    {/* Working Dir */}
+                    <div className="w-32 text-sm text-muted-foreground font-mono truncate" title={session.workingDir}>
+                      {shortenPath(session.workingDir)}
+                    </div>
+
+                    {/* Source */}
+                    <div className="w-24">
+                      <span className={`inline-flex px-2 py-0.5 rounded text-xs ${sourceBadge.className}`}>
+                        {sourceBadge.label}
+                      </span>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="w-16 flex justify-end">
+                      <button
+                        onClick={() => handleKillTmuxSession(session.name)}
+                        className="p-1.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
+                        title="Kill session"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}
