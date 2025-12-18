@@ -56,7 +56,7 @@ function SidePanelTerminal() {
   const [showDirDropdown, setShowDirDropdown] = useState(false)
   const [customDirInput, setCustomDirInput] = useState('')
   const [isDark, setIsDark] = useState(true)  // Global dark/light mode toggle
-  const [useWebGL, setUseWebGL] = useState(true)  // WebGL renderer (crisp but dark-mode only)
+  const [useWebGL, setUseWebGL] = useState(false)  // Canvas default (supports light/dark), WebGL optional
   const audioUnlockedRef = useRef(false)  // Track if audio has been unlocked by user interaction
 
   // Unlock audio on first user interaction (Chrome autoplay policy workaround)
