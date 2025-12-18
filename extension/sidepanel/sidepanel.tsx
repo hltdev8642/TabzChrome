@@ -820,7 +820,7 @@ function SidePanelTerminal() {
                       )}
                       <span className="flex-1 min-w-0 truncate">
                         {claudeStatuses.has(session.id)
-                          ? getStatusText(claudeStatuses.get(session.id), session.profile?.name)
+                          ? getStatusText(claudeStatuses.get(session.id), session.profile?.name || session.name)
                           : session.name
                         }
                       </span>

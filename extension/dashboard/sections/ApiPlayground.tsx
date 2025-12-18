@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Send, Copy, Check, Clock, ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react'
 
 const API_BASE = 'http://localhost:8129'
@@ -19,6 +19,8 @@ interface ResponseData {
   body: string
 }
 
+type HealthStatus = 'healthy' | 'unhealthy' | 'neutral' | 'checking'
+
 const METHOD_COLORS: Record<HttpMethod, string> = {
   GET: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/30',
   POST: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',
@@ -32,7 +34,7 @@ const PRESETS = [
   { method: 'GET' as HttpMethod, url: '/api/agents', name: 'List Terminals' },
   { method: 'GET' as HttpMethod, url: '/api/browser/profiles', name: 'Get Profiles' },
   { method: 'GET' as HttpMethod, url: '/api/tmux/orphaned-sessions', name: 'Orphaned Sessions' },
-  { method: 'GET' as HttpMethod, url: '/api/tmux/all-sessions', name: 'All Tmux Sessions' },
+  { method: 'GET' as HttpMethod, url: '/api/tmux/sessions/detailed', name: 'All Tmux Sessions' },
   { method: 'POST' as HttpMethod, url: '/api/spawn', name: 'Spawn Terminal' },
   { method: 'DELETE' as HttpMethod, url: '/api/tmux/sessions/:name', name: 'Kill Session' },
 ]
@@ -48,6 +50,48 @@ export default function ApiPlayground() {
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
   const [showPresets, setShowPresets] = useState(true)
+  const [healthStatus, setHealthStatus] = useState<Record<string, HealthStatus>>({})
+
+  const checkHealth = useCallback(async () => {
+    const newStatus: Record<string, HealthStatus> = {}
+
+    // Set all GET endpoints to 'checking', POST/DELETE to 'neutral'
+    PRESETS.forEach((preset) => {
+      if (preset.method === 'GET') {
+        newStatus[preset.url] = 'checking'
+      } else {
+        newStatus[preset.url] = 'neutral'
+      }
+    })
+    setHealthStatus(newStatus)
+
+    // Check GET endpoints in parallel
+    const getPresets = PRESETS.filter((p) => p.method === 'GET')
+    const results = await Promise.allSettled(
+      getPresets.map(async (preset) => {
+        const res = await fetch(`${API_BASE}${preset.url}`, { method: 'GET' })
+        return { url: preset.url, ok: res.ok }
+      })
+    )
+
+    const finalStatus = { ...newStatus }
+    results.forEach((result, i) => {
+      const url = getPresets[i].url
+      if (result.status === 'fulfilled') {
+        finalStatus[url] = result.value.ok ? 'healthy' : 'unhealthy'
+      } else {
+        finalStatus[url] = 'unhealthy'
+      }
+    })
+    setHealthStatus(finalStatus)
+  }, [])
+
+  // Check health on mount and every minute
+  useEffect(() => {
+    checkHealth()
+    const interval = setInterval(checkHealth, 60000)
+    return () => clearInterval(interval)
+  }, [checkHealth])
 
   const sendRequest = async () => {
     try {
@@ -275,20 +319,32 @@ export default function ApiPlayground() {
             </button>
             {showPresets && (
               <div className="p-2 space-y-1">
-                {PRESETS.map((preset, i) => (
-                  <button
-                    key={i}
-                    onClick={() => applyPreset(preset)}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted text-left"
-                  >
-                    <span
-                      className={`px-2 py-0.5 rounded text-xs font-mono font-medium ${METHOD_COLORS[preset.method]}`}
+                {PRESETS.map((preset, i) => {
+                  const status = healthStatus[preset.url]
+                  const dotColor =
+                    status === 'healthy'
+                      ? 'bg-emerald-400'
+                      : status === 'unhealthy'
+                        ? 'bg-red-400'
+                        : status === 'checking'
+                          ? 'bg-amber-400 animate-pulse'
+                          : 'bg-gray-500'
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => applyPreset(preset)}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted text-left"
                     >
-                      {preset.method}
-                    </span>
-                    <span className="text-sm">{preset.name}</span>
-                  </button>
-                ))}
+                      <span
+                        className={`px-2 py-0.5 rounded text-xs font-mono font-medium ${METHOD_COLORS[preset.method]}`}
+                      >
+                        {preset.method}
+                      </span>
+                      <span className="text-sm flex-1">{preset.name}</span>
+                      <span className={`w-2 h-2 rounded-full ${dotColor}`} title={status || 'unknown'} />
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>

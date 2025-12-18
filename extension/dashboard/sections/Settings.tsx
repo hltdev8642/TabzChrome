@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Settings as SettingsIcon, FolderOpen, Key, Palette, Copy, Check, Eye, EyeOff, RefreshCw, ExternalLink } from 'lucide-react'
+import { Settings as SettingsIcon, FolderOpen, Key, Palette, Copy, Check, RefreshCw, ExternalLink } from 'lucide-react'
 
 const API_BASE = 'http://localhost:8129'
 

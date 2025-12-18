@@ -5,6 +5,7 @@ import {
   Terminal,
   Code2,
   Wrench,
+  FileText,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -19,9 +20,10 @@ import ProfilesSection from './sections/Profiles'
 import TerminalsSection from './sections/Terminals'
 import ApiPlayground from './sections/ApiPlayground'
 import McpPlayground from './sections/McpPlayground'
+import PromptsSection from './sections/Prompts'
 import SettingsSection from './sections/Settings'
 
-type Section = 'home' | 'profiles' | 'terminals' | 'api' | 'mcp' | 'settings'
+type Section = 'home' | 'profiles' | 'terminals' | 'api' | 'mcp' | 'prompts' | 'settings'
 
 interface NavItem {
   id: Section
@@ -35,6 +37,7 @@ const navItems: NavItem[] = [
   { id: 'terminals', label: 'Terminals', icon: Terminal },
   { id: 'api', label: 'API Playground', icon: Code2 },
   { id: 'mcp', label: 'MCP Playground', icon: Wrench },
+  { id: 'prompts', label: 'Prompts', icon: FileText },
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
 
@@ -74,6 +77,8 @@ export default function App() {
         return <ApiPlayground />
       case 'mcp':
         return <McpPlayground />
+      case 'prompts':
+        return <PromptsSection />
       case 'settings':
         return <SettingsSection />
       default:
