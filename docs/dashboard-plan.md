@@ -2,11 +2,35 @@
 
 This document tracks the development of the new React-based dashboard to replace the existing HTML pages in `backend/public/`.
 
+## Current Status
+
+**Branch:** `feature/react-dashboard`
+**Last Updated:** 2025-12-18
+
+### ✅ Completed
+- Dashboard scaffold with 4 sections (Home, Profiles, Terminals, API Playground)
+- Profiles section with grid/list view, search, category filtering
+- Working directory selector (syncs with sidepanel via Chrome storage)
+- Kill active terminals (per-row + bulk selection)
+- Reattach orphaned sessions (per-row + bulk selection)
+- Chrome messaging for spawning (no auth tokens needed)
+
+### 🔜 Next Up (Medium Priority)
+1. **All Tmux Sessions view** - Show external sessions + AI tool detection
+2. **System info panel** - Node version, platform, memory stats
+3. **Connection status indicator** - WebSocket connected/disconnected
+
+### 📋 Future
+- MCP Playground section
+- Settings section
+- WebSocket integration for real-time updates
+
+---
+
 ## Overview
 
 The new dashboard is a **Chrome extension page** (not backend-served) that provides a modern React + TypeScript + Tailwind interface for managing TabzChrome terminals and profiles.
 
-**Branch:** `feature/react-dashboard`
 **Location:** `extension/dashboard/`
 **URL:** `chrome-extension://[id]/dashboard/index.html`
 
@@ -60,7 +84,7 @@ extension/dashboard/
 | Auto-refresh stats | ✓ 10s | ✓ 10s | ✅ Complete |
 | Quick spawn buttons | ✓ | ✓ | ✅ Complete |
 | Backend version display | ✓ | ✓ | ✅ Complete |
-| **Working directory selector** | ✓ dropdown with recent dirs | ✗ | ❌ Missing |
+| **Working directory selector** | ✓ dropdown with recent dirs | ✓ (in Profiles section) | ✅ Complete |
 | **System info table** | ✓ (node, platform, heap, rss) | ✗ | ❌ Missing |
 | **WebSocket connection indicator** | ✓ live status | ✗ | ❌ Missing |
 | **Active terminals preview** | ✓ first 5 | ✗ | ❌ Missing (separate section) |
@@ -69,13 +93,13 @@ extension/dashboard/
 
 | Feature | Old HTML | New React | Status |
 |---------|----------|-----------|--------|
-| Active terminals list | ✓ full table | ✓ simplified list | ⚠️ Partial |
+| Active terminals list | ✓ full table | ✓ with checkboxes | ✅ Complete |
 | Orphaned sessions warning | ✓ | ✓ | ✅ Complete |
 | Kill orphaned sessions | ✓ | ✓ | ✅ Complete |
 | Bulk select orphans | ✓ | ✓ | ✅ Complete |
-| **Bulk select active terminals** | ✓ checkboxes | ✗ | ❌ Missing |
-| **Kill active terminals** | ✓ per-row + bulk | ✗ | ❌ Missing |
-| **Reattach orphans** | ✓ | ✗ | ❌ Missing |
+| **Bulk select active terminals** | ✓ checkboxes | ✓ | ✅ Complete |
+| **Kill active terminals** | ✓ per-row + bulk | ✓ | ✅ Complete |
+| **Reattach orphans** | ✓ | ✓ per-row + bulk | ✅ Complete |
 | **All Tmux Sessions view** | ✓ shows external sessions | ✗ | ❌ Missing |
 | **AI Tool detection** | ✓ detects claude/gemini etc | ✗ | ❌ Missing |
 
@@ -89,6 +113,8 @@ extension/dashboard/
 | Search | ✗ | ✓ | ✅ New feature |
 | Click to spawn | ✗ | ✓ | ✅ New feature |
 | Emoji icon extraction | ✗ | ✓ | ✅ New feature |
+| **Working directory selector** | ✗ | ✓ dropdown with recent dirs | ✅ New feature |
+| **Inherit global workingDir** | ✗ | ✓ profiles inherit if empty | ✅ New feature |
 
 ### API Playground Section (NEW)
 
@@ -114,19 +140,19 @@ extension/dashboard/
 
 ## Features to Add (from old dashboard)
 
-### High Priority
+### High Priority - COMPLETED ✅
 
-1. **Working Directory Selector**
+1. ~~**Working Directory Selector**~~ ✅
    - Dropdown with recent directories
    - Custom path input
-   - Syncs with extension header selector
+   - Syncs with extension header selector (via Chrome storage listener)
    - Persists in Chrome storage
 
-2. **Reattach Orphaned Sessions**
+2. ~~**Reattach Orphaned Sessions**~~ ✅
    - Button to reattach orphans to new tabs
    - Bulk reattach selected
 
-3. **Kill Active Terminals**
+3. ~~**Kill Active Terminals**~~ ✅
    - Add kill button per terminal row
    - Bulk selection and kill
 
@@ -204,6 +230,16 @@ extension/dashboard/
 ---
 
 ## Changelog
+
+### 2025-12-18 (continued)
+- Added working directory selector to Profiles section
+- Working directory now syncs bidirectionally between dashboard and sidepanel
+- Added Chrome storage change listener for real-time sync
+- Profiles without workingDir now inherit globalWorkingDir
+- Added kill buttons for active terminals (per-row + bulk)
+- Added reattach buttons for orphaned sessions (per-row + bulk)
+- Added selection checkboxes for active terminals
+- Updated useDashboard hook with killSessions and reattachSessions
 
 ### 2024-12-18
 - Initial scaffold with 4 sections (Home, Profiles, Terminals, API Playground)

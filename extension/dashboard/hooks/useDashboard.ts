@@ -49,7 +49,7 @@ export async function getHealth() {
  * Fetch terminals list from backend
  */
 export async function getTerminals() {
-  const res = await fetch(`${API_BASE}/api/terminals`)
+  const res = await fetch(`${API_BASE}/api/agents`)
   if (!res.ok) throw new Error('Failed to fetch terminals')
   return res.json()
 }
@@ -67,11 +67,35 @@ export async function getOrphanedSessions() {
  * Kill a tmux session
  */
 export async function killSession(sessionName: string) {
-  const res = await fetch(`${API_BASE}/api/tmux/kill-session`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionName }),
+  const res = await fetch(`${API_BASE}/api/tmux/sessions/${encodeURIComponent(sessionName)}`, {
+    method: 'DELETE',
   })
   if (!res.ok) throw new Error('Failed to kill session')
+  return res.json()
+}
+
+/**
+ * Kill multiple tmux sessions
+ */
+export async function killSessions(sessionNames: string[]) {
+  const res = await fetch(`${API_BASE}/api/tmux/sessions/bulk`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessions: sessionNames }),
+  })
+  if (!res.ok) throw new Error('Failed to kill sessions')
+  return res.json()
+}
+
+/**
+ * Reattach orphaned sessions
+ */
+export async function reattachSessions(sessionNames: string[]) {
+  const res = await fetch(`${API_BASE}/api/tmux/reattach`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessions: sessionNames }),
+  })
+  if (!res.ok) throw new Error('Failed to reattach sessions')
   return res.json()
 }

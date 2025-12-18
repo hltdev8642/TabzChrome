@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { Send, Copy, Check, Clock, ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react'
 
+const API_BASE = 'http://localhost:8129'
+
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
 
 interface KeyValue {
@@ -27,11 +29,12 @@ const METHOD_COLORS: Record<HttpMethod, string> = {
 // TabzChrome API endpoints for quick access
 const PRESETS = [
   { method: 'GET' as HttpMethod, url: '/api/health', name: 'Health Check' },
-  { method: 'GET' as HttpMethod, url: '/api/terminals', name: 'List Terminals' },
+  { method: 'GET' as HttpMethod, url: '/api/agents', name: 'List Terminals' },
   { method: 'GET' as HttpMethod, url: '/api/browser/profiles', name: 'Get Profiles' },
   { method: 'GET' as HttpMethod, url: '/api/tmux/orphaned-sessions', name: 'Orphaned Sessions' },
+  { method: 'GET' as HttpMethod, url: '/api/tmux/all-sessions', name: 'All Tmux Sessions' },
   { method: 'POST' as HttpMethod, url: '/api/spawn', name: 'Spawn Terminal' },
-  { method: 'POST' as HttpMethod, url: '/api/tmux/kill-session', name: 'Kill Session' },
+  { method: 'DELETE' as HttpMethod, url: '/api/tmux/sessions/:name', name: 'Kill Session' },
 ]
 
 export default function ApiPlayground() {
@@ -65,7 +68,9 @@ export default function ApiPlayground() {
         options.body = body
       }
 
-      const res = await fetch(url, options)
+      // Prepend API_BASE for relative URLs
+      const fullUrl = url.startsWith('http') ? url : `${API_BASE}${url}`
+      const res = await fetch(fullUrl, options)
       const endTime = performance.now()
 
       let responseBody: string
@@ -118,12 +123,8 @@ export default function ApiPlayground() {
   const applyPreset = (preset: (typeof PRESETS)[0]) => {
     setMethod(preset.method)
     setUrl(preset.url)
-    if (preset.method === 'POST') {
-      if (preset.url === '/api/spawn') {
-        setBody(JSON.stringify({ name: 'Test Terminal', command: 'bash', workingDir: '~' }, null, 2))
-      } else if (preset.url === '/api/tmux/kill-session') {
-        setBody(JSON.stringify({ sessionName: 'session-name' }, null, 2))
-      }
+    if (preset.method === 'POST' && preset.url === '/api/spawn') {
+      setBody(JSON.stringify({ name: 'Test Terminal', command: 'bash', workingDir: '~' }, null, 2))
     } else {
       setBody('')
     }

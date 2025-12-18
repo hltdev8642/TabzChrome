@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react'
-import { Terminal, Trash2, RefreshCw, Ghost, AlertTriangle, CheckCircle } from 'lucide-react'
-import { getTerminals, getOrphanedSessions, killSession } from '../hooks/useDashboard'
+import { Terminal, Trash2, RefreshCw, Ghost, AlertTriangle, CheckCircle, RotateCcw } from 'lucide-react'
+import { getTerminals, getOrphanedSessions, killSession, killSessions, reattachSessions } from '../hooks/useDashboard'
 
 interface TerminalSession {
   id: string
   name: string
-  tmuxSession: string
   createdAt: string
-  status?: string
+  state?: string
+  workingDir?: string
 }
 
 interface OrphanedSession {
@@ -22,6 +22,7 @@ export default function TerminalsSection() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedOrphans, setSelectedOrphans] = useState<Set<string>>(new Set())
+  const [selectedTerminals, setSelectedTerminals] = useState<Set<string>>(new Set())
 
   const fetchData = async () => {
     try {
@@ -85,6 +86,72 @@ export default function TerminalsSection() {
     }
   }
 
+  // Reattach orphaned sessions
+  const reattachOrphaned = async (sessionName: string) => {
+    try {
+      await reattachSessions([sessionName])
+      await fetchData()
+    } catch (err) {
+      console.error('Failed to reattach session:', err)
+    }
+  }
+
+  const reattachSelectedOrphans = async () => {
+    try {
+      await reattachSessions(Array.from(selectedOrphans))
+      setSelectedOrphans(new Set())
+      await fetchData()
+    } catch (err) {
+      console.error('Failed to reattach sessions:', err)
+    }
+  }
+
+  // Active terminal management
+  const killTerminal = async (id: string) => {
+    try {
+      await killSession(id)
+      setTerminals((prev) => prev.filter((t) => t.id !== id))
+      setSelectedTerminals((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+    } catch (err) {
+      console.error('Failed to kill terminal:', err)
+    }
+  }
+
+  const killSelectedTerminals = async () => {
+    const toKill = Array.from(selectedTerminals)
+    try {
+      await killSessions(toKill)
+      setTerminals((prev) => prev.filter((t) => !selectedTerminals.has(t.id)))
+      setSelectedTerminals(new Set())
+    } catch (err) {
+      console.error('Failed to kill terminals:', err)
+    }
+  }
+
+  const toggleTerminalSelect = (id: string) => {
+    setSelectedTerminals((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  const selectAllTerminals = () => {
+    if (selectedTerminals.size === terminals.length) {
+      setSelectedTerminals(new Set())
+    } else {
+      setSelectedTerminals(new Set(terminals.map((t) => t.id)))
+    }
+  }
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -122,13 +189,22 @@ export default function TerminalsSection() {
               <span className="text-sm text-amber-400/70">({orphaned.length})</span>
             </div>
             {selectedOrphans.size > 0 && (
-              <button
-                onClick={killSelectedOrphans}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-destructive/20 text-destructive hover:bg-destructive/30 text-sm font-medium"
-              >
-                <Trash2 className="w-4 h-4" />
-                Kill Selected ({selectedOrphans.size})
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={reattachSelectedOrphans}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 text-sm font-medium"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Reattach ({selectedOrphans.size})
+                </button>
+                <button
+                  onClick={killSelectedOrphans}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-destructive/20 text-destructive hover:bg-destructive/30 text-sm font-medium"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Kill ({selectedOrphans.size})
+                </button>
+              </div>
             )}
           </div>
 
@@ -143,7 +219,7 @@ export default function TerminalsSection() {
               <span className="flex-1">Session Name</span>
               <span className="w-24">Windows</span>
               <span className="w-32">Created</span>
-              <span className="w-20"></span>
+              <span className="w-32"></span>
             </div>
 
             {orphaned.map((session) => (
@@ -163,13 +239,23 @@ export default function TerminalsSection() {
                 </div>
                 <span className="w-24 text-sm text-muted-foreground">{session.windows} windows</span>
                 <span className="w-32 text-sm text-muted-foreground">{session.created}</span>
-                <button
-                  onClick={() => killOrphaned(session.name)}
-                  className="w-20 flex items-center justify-center gap-1 px-2 py-1 rounded text-sm text-destructive hover:bg-destructive/20"
-                >
-                  <Trash2 className="w-3 h-3" />
-                  Kill
-                </button>
+                <div className="w-32 flex items-center gap-1">
+                  <button
+                    onClick={() => reattachOrphaned(session.name)}
+                    className="flex items-center gap-1 px-2 py-1 rounded text-sm text-primary hover:bg-primary/20"
+                    title="Reattach to sidebar"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    Reattach
+                  </button>
+                  <button
+                    onClick={() => killOrphaned(session.name)}
+                    className="flex items-center gap-1 px-2 py-1 rounded text-sm text-destructive hover:bg-destructive/20"
+                    title="Kill session"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -178,9 +264,20 @@ export default function TerminalsSection() {
 
       {/* Active Terminals */}
       <div className="rounded-xl bg-card border border-border">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-          <Terminal className="w-5 h-5 text-primary" />
-          <h2 className="font-semibold">Active Terminals</h2>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Terminal className="w-5 h-5 text-primary" />
+            <h2 className="font-semibold">Active Terminals</h2>
+          </div>
+          {selectedTerminals.size > 0 && (
+            <button
+              onClick={killSelectedTerminals}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-destructive/20 text-destructive hover:bg-destructive/30 text-sm font-medium"
+            >
+              <Trash2 className="w-4 h-4" />
+              Kill Selected ({selectedTerminals.size})
+            </button>
+          )}
         </div>
 
         {loading ? (
@@ -193,24 +290,57 @@ export default function TerminalsSection() {
             <p>No active terminals</p>
           </div>
         ) : (
-          <div className="divide-y divide-border">
-            {terminals.map((terminal) => (
-              <div
-                key={terminal.id}
-                className="flex items-center gap-4 px-4 py-3 hover:bg-muted/50"
-              >
-                <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{terminal.name}</div>
-                  <div className="text-sm text-muted-foreground font-mono truncate">
-                    {terminal.tmuxSession}
+          <div>
+            {/* Header row */}
+            <div className="flex items-center gap-4 px-4 py-2 text-sm text-muted-foreground border-b border-border">
+              <input
+                type="checkbox"
+                checked={selectedTerminals.size === terminals.length && terminals.length > 0}
+                onChange={selectAllTerminals}
+                className="w-4 h-4 rounded"
+              />
+              <span className="flex-1">Terminal</span>
+              <span className="w-32 text-right">Created</span>
+              <span className="w-16"></span>
+            </div>
+
+            {/* Terminal rows */}
+            <div className="divide-y divide-border">
+              {terminals.map((terminal) => (
+                <div
+                  key={terminal.id}
+                  className={`flex items-center gap-4 px-4 py-3 hover:bg-muted/50 transition-colors ${
+                    selectedTerminals.has(terminal.id) ? 'bg-primary/5' : ''
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedTerminals.has(terminal.id)}
+                    onChange={() => toggleTerminalSelect(terminal.id)}
+                    className="w-4 h-4 rounded"
+                  />
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{terminal.name}</div>
+                    <div className="text-sm text-muted-foreground font-mono truncate">
+                      {terminal.id}
+                    </div>
+                  </div>
+                  <div className="w-32 text-sm text-muted-foreground text-right">
+                    {new Date(terminal.createdAt).toLocaleTimeString()}
+                  </div>
+                  <div className="w-16 flex justify-end">
+                    <button
+                      onClick={() => killTerminal(terminal.id)}
+                      className="p-1.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
+                      title="Kill terminal"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  {new Date(terminal.createdAt).toLocaleTimeString()}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
       </div>
