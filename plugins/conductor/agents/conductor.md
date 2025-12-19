@@ -162,25 +162,36 @@ Watcher returns:
 - Worker stale for > 5 minutes
 - New unrelated task
 
-### Tabz Manager (Opus) - Browser Automation
+### Tabz Manager - Browser Automation (Visible Terminal)
 
-```
-Task tool:
-  subagent_type: "conductor:tabz-manager"
-  prompt: "Screenshot the current page"
+**IMPORTANT**: Spawn tabz-manager as a visible terminal worker so you can see what it's doing:
+
+```bash
+# Get token first
+TOKEN=$(cat /tmp/tabz-auth-token)
+
+# Spawn tabz-manager as visible worker
+curl -s -X POST http://localhost:8129/api/spawn \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: $TOKEN" \
+  -d '{"name": "Claude: Browser Bot", "workingDir": "'$(pwd)'", "command": "claude --agent tabz-manager --dangerously-skip-permissions"}'
 ```
 
-```
-Task tool:
-  subagent_type: "conductor:tabz-manager"
-  prompt: "Fill the login form with username 'test@example.com' and password 'secret', then click submit"
+Then send browser tasks via tmux:
+```bash
+SESSION="ctt-browser-bot-xxxxx"  # from spawn response
+sleep 4  # wait for Claude init
+
+tmux send-keys -t "$SESSION" -l 'Screenshot the current page and tell me what you see'
+sleep 0.3
+tmux send-keys -t "$SESSION" C-m
 ```
 
-```
-Task tool:
-  subagent_type: "conductor:tabz-manager"
-  prompt: "Capture network requests while clicking the 'Load Data' button"
-```
+Example tasks to send:
+- "Screenshot the current page"
+- "Fill the login form with username 'test@example.com' and password 'secret', then click submit"
+- "Capture network requests while clicking the 'Load Data' button"
+- "List all tabs and rename the active one to 'Dashboard'"
 
 ## Workflows
 
@@ -237,10 +248,11 @@ tmux ls | grep "^ctt-" | cut -d: -f1 | xargs -I {} tmux kill-session -t {}
 
 ## Agent Hierarchy
 
-| Subagent Type | Model | Use For |
-|---------------|-------|---------|
-| `conductor:watcher` | Haiku | Monitor worker health (cheap polling) |
-| `conductor:tabz-manager` | Opus | Browser automation via tabz MCP |
+| Agent | How to Use | Purpose |
+|-------|------------|---------|
+| `conductor:watcher` | Task tool (subagent) | Monitor worker health (cheap Haiku polling) |
+| `conductor:skill-picker` | Task tool (subagent) | Search/install skills from skillsmp.com |
+| `tabz-manager` | Spawn as terminal (`--agent tabz-manager`) | Browser automation (visible for safety) |
 
 ## Best Practices
 
@@ -250,8 +262,8 @@ tmux ls | grep "^ctt-" | cut -d: -f1 | xargs -I {} tmux kill-session -t {}
 4. **Include @ file references** - Give workers context
 5. **Use capability triggers** - Activate relevant skills
 6. **"Use subagents in parallel"** - For complex exploration tasks
-7. **Delegate monitoring to watcher** - Cheap Haiku polling
-8. **Delegate browser to tabz-manager** - Specialized for MCP tools
+7. **Delegate monitoring to watcher** - Cheap Haiku subagent polling
+8. **Spawn tabz-manager as terminal** - Visible browser automation for safety
 9. **One goal per worker** - Workers can spawn their own subagents
 10. **Clean up when done** - Kill terminals after tasks complete
 
