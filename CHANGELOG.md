@@ -15,6 +15,13 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.1.12] - 2025-12-18
+
+### Fixed
+- **State-tracker plugin SubagentStop hook** - Added missing `SubagentStop` hook to `hooks/hooks.json`. Previously only defined in `plugin.json`, causing subagent counts to never decrement when Task agents completed. This resulted in persistent robot emoji indicators in the statusline and terminal tabs.
+
+---
+
 ## [1.1.11] - 2025-12-18
 
 ### Fixed
