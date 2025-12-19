@@ -69,52 +69,55 @@ const fitTerminal = () => {
 Tmux sometimes doesn't properly rewrap text after dimension changes. The "resize trick" sends two SIGWINCHs in quick succession, forcing a full redraw.
 
 ```typescript
-const triggerResizeTrick = (force = false) => {
-  if (!xtermRef.current) return
+const triggerResizeTrick = () => {
+  if (!xtermRef.current || !fitAddonRef.current) return
 
   const currentCols = xtermRef.current.cols
   const currentRows = xtermRef.current.rows
 
-  // Check output quiet period (unless forced)
-  const timeSinceOutput = Date.now() - lastOutputTimeRef.current
-  if (!force && timeSinceOutput < OUTPUT_QUIET_PERIOD) {
-    // Defer logic (see Pattern 1)
-    return
-  }
-
-  // Debounce (unless forced)
+  // Debounce to prevent redraw storms
   const timeSinceLast = Date.now() - lastResizeTrickTimeRef.current
-  if (!force && timeSinceLast < RESIZE_TRICK_DEBOUNCE_MS) {
+  if (timeSinceLast < RESIZE_TRICK_DEBOUNCE_MS) {
     return
   }
   lastResizeTrickTimeRef.current = Date.now()
 
   console.log(`[triggerResizeTrick] ${currentCols}x${currentRows}`)
 
-  // Step 1: Resize down by 1 column
-  xtermRef.current.resize(currentCols - 1, currentRows)
-  sendResize(currentCols - 1, currentRows)
+  // Step 1: Resize down by 1 ROW (sends SIGWINCH)
+  // CRITICAL: Use rows, NOT columns! Column changes can cause tmux status bar
+  // to wrap when sidebar is narrow, corrupting the terminal display.
+  const minRows = Math.max(1, currentRows - 1)
+  xtermRef.current.resize(currentCols, minRows)
+  sendResize(currentCols, minRows)
 
-  // Step 2: Resize back (100ms later)
+  // Step 2: Fit to container (200ms later for tmux to process first SIGWINCH)
   setTimeout(() => {
-    if (!xtermRef.current) return
-    xtermRef.current.resize(currentCols, currentRows)
-    sendResize(currentCols, currentRows)
+    if (!xtermRef.current || !fitAddonRef.current) return
+    fitAddonRef.current.fit()
+    const finalCols = xtermRef.current.cols
+    const finalRows = xtermRef.current.rows
+    sendResize(finalCols, finalRows)
 
     // Update tracking to prevent redundant sends
-    prevDimensionsRef.current = { cols: currentCols, rows: currentRows }
-  }, 100)
+    prevDimensionsRef.current = { cols: finalCols, rows: finalRows }
+  }, 200)
 }
 ```
+
+**Why rows instead of columns?**
+
+Shrinking columns by 1 can cause the tmux status bar to wrap when the sidebar is already narrow (e.g., Chrome bookmarks bar open). This single-character wrap corrupts terminal display with garbled scroll regions.
+
+Row changes trigger the same SIGWINCH without affecting horizontal layout because:
+- Status bar width is column-bound, not row-bound
+- Vertical resize still forces tmux to recalculate
+- No risk of text wrapping during the resize flicker
 
 **When to use:**
 - After sidebar resize settles
 - After reconnection/page refresh
 - When terminal content looks corrupted
-
-**When to use `force=true`:**
-- Post-initialization recovery (after output guard lifts)
-- User-triggered "fix terminal" action
 
 ## Pattern 3: Write Queue Management
 

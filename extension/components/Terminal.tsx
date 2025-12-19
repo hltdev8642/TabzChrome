@@ -120,7 +120,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
   const resizeLockTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Debounce for triggerResizeTrick - prevents "redraw storms" from multiple rapid calls
-  // Each call causes 2 resize events (cols-1, cols), and tmux redraws the entire screen each time
+  // Each call causes 2 resize events (rows-1, then fit), and tmux redraws the entire screen each time
   const lastResizeTrickTimeRef = useRef(0)
   const RESIZE_TRICK_DEBOUNCE_MS = 500 // Minimum time between resize tricks
 
@@ -772,7 +772,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
       } else if (message.type === 'REFRESH_TERMINALS') {
         // Force tmux to redraw - xterm is new/empty after sidebar refresh
         // CRITICAL: Plain resize with same dimensions is IGNORED by tmux.
-        // We need triggerResizeTrick (cols-1, then cols) to force SIGWINCH redraw.
+        // We need triggerResizeTrick (rows-1, then fit) to force SIGWINCH redraw.
         console.log(`[Terminal] ${terminalId.slice(-8)} received REFRESH_TERMINALS, forcing redraw`)
         if (xtermRef.current && fitAddonRef.current) {
           fitAddonRef.current.fit()
@@ -925,7 +925,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
 
   // Handle window resize - use triggerResizeTrick to force tmux to fully recalculate
   // EXPERIMENT: Like the EOL fix for tmux splits, we need CONSISTENT handling.
-  // Simple resize can leave xterm and tmux out of sync. The resize trick (cols-1, cols)
+  // Simple resize can leave xterm and tmux out of sync. The resize trick (rows-1, then fit)
   // forces tmux to do a complete redraw, ensuring dimensions are fully in sync.
   useEffect(() => {
     let resizeTimeout: ReturnType<typeof setTimeout> | null = null

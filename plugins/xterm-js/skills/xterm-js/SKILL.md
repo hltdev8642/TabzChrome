@@ -372,30 +372,31 @@ const safeToResize = () => {
 Tmux sometimes doesn't properly rewrap text after dimension changes. The "resize trick" forces a full redraw:
 
 ```typescript
-const triggerResizeTrick = (force = false) => {
+const triggerResizeTrick = () => {
   if (!xtermRef.current || !fitAddonRef.current) return
 
   const currentCols = xtermRef.current.cols
   const currentRows = xtermRef.current.rows
 
-  // Skip if output is active (unless forced)
-  if (!force && !safeToResize()) {
-    // Defer and retry later
-    setTimeout(() => triggerResizeTrick(), OUTPUT_QUIET_PERIOD)
-    return
-  }
+  // Step 1: Resize down by 1 ROW (sends SIGWINCH)
+  // CRITICAL: Use rows, NOT columns! Column changes can cause tmux status bar
+  // to wrap when sidebar is narrow, corrupting the terminal display.
+  // Row changes trigger the same SIGWINCH without affecting horizontal layout.
+  const minRows = Math.max(1, currentRows - 1)
+  xtermRef.current.resize(currentCols, minRows)
+  sendResize(currentCols, minRows)
 
-  // Step 1: Resize down by 1 column (sends SIGWINCH)
-  xtermRef.current.resize(currentCols - 1, currentRows)
-  sendResize(currentCols - 1, currentRows)
-
-  // Step 2: Resize back (sends another SIGWINCH)
+  // Step 2: Fit to container (sends another SIGWINCH)
   setTimeout(() => {
-    xtermRef.current.resize(currentCols, currentRows)
-    sendResize(currentCols, currentRows)
-  }, 100)
+    fitAddonRef.current.fit()
+    const finalCols = xtermRef.current.cols
+    const finalRows = xtermRef.current.rows
+    sendResize(finalCols, finalRows)
+  }, 200)
 }
 ```
+
+**Why rows instead of columns?** Shrinking columns by 1 can cause the tmux status bar to wrap when the sidebar is already narrow (e.g., Chrome bookmarks bar open). This single-character wrap corrupts terminal display. Row changes avoid this because status bar width is column-bound, not row-bound.
 
 **Critical Pattern: Clear Write Queue After Resize Trick**
 
