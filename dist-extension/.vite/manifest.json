@@ -1,20 +1,20 @@
 {
   "../../../../../@crx/manifest": {
-    "file": "assets/crx-manifest.js-5MhW9VTx.js",
+    "file": "assets/crx-manifest.js-CXiffPP-.js",
     "name": "crx-manifest.js",
     "src": "../../../../../@crx/manifest",
     "isEntry": true
-  },
-  "_messaging-C505Xsyh.js": {
-    "file": "assets/messaging-C505Xsyh.js",
-    "name": "messaging"
   },
   "_modulepreload-polyfill-B5Qt9EMX.js": {
     "file": "assets/modulepreload-polyfill-B5Qt9EMX.js",
     "name": "modulepreload-polyfill"
   },
+  "_themes-B6lgfwnx.js": {
+    "file": "assets/themes-B6lgfwnx.js",
+    "name": "themes"
+  },
   "background/background.ts": {
-    "file": "assets/background.ts-BGm2JHGr.js",
+    "file": "assets/background.ts-DteINKQg.js",
     "name": "background.ts",
     "src": "background/background.ts",
     "isEntry": true
@@ -26,16 +26,16 @@
     "isEntry": true
   },
   "dashboard/index.html": {
-    "file": "assets/dashboard-BkKZ5Ulh.js",
+    "file": "assets/dashboard-p4sem6n4.js",
     "name": "dashboard",
     "src": "dashboard/index.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
-      "_messaging-C505Xsyh.js"
+      "_themes-B6lgfwnx.js"
     ],
     "css": [
-      "assets/dashboard-cmZ1_Hg-.css"
+      "assets/dashboard-DwOTMaOl.css"
     ]
   },
   "devtools/devtools.html": {
@@ -48,16 +48,16 @@
     ]
   },
   "sidepanel/sidepanel.html": {
-    "file": "assets/sidepanel.html-5NJ2zF07.js",
+    "file": "assets/sidepanel.html-sLKEUhp1.js",
     "name": "sidepanel.html",
     "src": "sidepanel/sidepanel.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
-      "_messaging-C505Xsyh.js"
+      "_themes-B6lgfwnx.js"
     ],
     "css": [
-      "assets/sidepanel-C6s21pP5.css"
+      "assets/sidepanel-Djn3KW26.css"
     ]
   }
 }

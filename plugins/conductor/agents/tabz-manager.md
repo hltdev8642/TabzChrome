@@ -61,15 +61,74 @@ Both accept optional `tabId` for background tab capture without switching focus.
 | `tabz_get_downloads` | List recent downloads |
 | `tabz_cancel_download` | Cancel in-progress download |
 
+## Tab Targeting (Critical)
+
+**Chrome tab IDs are large numbers** (e.g., `1762561083`), NOT sequential indices like 1, 2, 3.
+
+### Always List Tabs First
+
+Before any operation, call `tabz_list_tabs` to:
+1. Get valid Chrome tab IDs
+2. Sync Claude's target to the user's active tab
+3. See which tab is actually focused (`active: true`)
+
+```bash
+mcp-cli call tabz/tabz_list_tabs '{"response_format": "json"}'
+```
+
+Returns:
+```json
+{
+  "claudeCurrentTabId": 1762561083,  // Tab Claude will target by default
+  "tabs": [
+    {"tabId": 1762561065, "url": "...", "active": false},
+    {"tabId": 1762561083, "url": "...", "active": true}  // User's focused tab
+  ]
+}
+```
+
+### Use Explicit tabId for Reliability
+
+Screenshots and operations sometimes target the wrong tab if relying on "current tab". For reliable targeting, **always pass tabId explicitly**:
+
+```bash
+# DON'T rely on implicit current tab
+mcp-cli call tabz/tabz_screenshot '{}'  # May target wrong tab!
+
+# DO use explicit tabId
+mcp-cli call tabz/tabz_list_tabs '{"response_format": "json"}'  # Get IDs first
+mcp-cli call tabz/tabz_screenshot '{"tabId": 1762561083}'       # Target explicit tab
+```
+
+### Tab Targeting Pattern
+
+```bash
+# 1. List tabs to get IDs and sync current target
+TABS=$(mcp-cli call tabz/tabz_list_tabs '{"response_format": "json"}')
+
+# 2. Extract the active tab's ID (what user has focused)
+ACTIVE_TAB=$(echo "$TABS" | jq '.tabs[] | select(.active) | .tabId')
+
+# 3. Use explicit tabId for all operations
+mcp-cli call tabz/tabz_screenshot "{\"tabId\": $ACTIVE_TAB}"
+```
+
+### Renaming Tabs
+
+Use Chrome tabIds (not indices) with `tabz_rename_tab`:
+```bash
+mcp-cli call tabz/tabz_rename_tab '{"tabId": 1762561083, "name": "My Dashboard"}'
+```
+
 ## Common Workflows
 
 ### Screenshot a Page
 ```bash
-# Get current page info first
-mcp-cli call tabz/tabz_get_page_info '{}'
+# List tabs first to sync and get IDs
+mcp-cli call tabz/tabz_list_tabs '{"response_format": "json"}'
 
-# Take screenshot
-mcp-cli call tabz/tabz_screenshot '{}'
+# Screenshot with explicit tabId for reliability
+mcp-cli call tabz/tabz_screenshot '{"tabId": 1762561083}'
 ```
 
 ### Fill and Submit Form
