@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { Wrench, Search, RefreshCw, ChevronDown, ChevronRight, ExternalLink, CheckCircle, Circle, Settings, Zap, Terminal, Microscope } from 'lucide-react'
 import { spawnTerminal } from '../hooks/useDashboard'
 
-const MCP_SERVER_PATH = '~/projects/TabzChrome/tabz-mcp-server/dist/index.js'
-
 // MCP Tools configuration (matches extension/components/settings/types.ts)
 interface McpTool {
   id: string
@@ -65,17 +63,27 @@ export default function McpPlayground() {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['Core', 'Interaction', 'Screenshot']))
   const [allowAllUrls, setAllowAllUrls] = useState(false)
   const [customDomains, setCustomDomains] = useState('')
+  const [inspectorCommand, setInspectorCommand] = useState<string>('')
 
-  // Fetch config on mount
+  // Fetch config and inspector command on mount
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/mcp-config`)
-        if (res.ok) {
-          const data = await res.json()
+        const [configRes, inspectorRes] = await Promise.all([
+          fetch(`${API_BASE}/api/mcp-config`),
+          fetch(`${API_BASE}/api/mcp/inspector-command`),
+        ])
+
+        if (configRes.ok) {
+          const data = await configRes.json()
           setEnabledTools(data.enabledTools || PRESETS.standard)
           setAllowAllUrls(data.allowAllUrls || false)
           setCustomDomains(data.customDomains || '')
+        }
+
+        if (inspectorRes.ok) {
+          const inspectorData = await inspectorRes.json()
+          setInspectorCommand(inspectorData.data?.command || '')
         }
       } catch (err) {
         console.error('Failed to fetch MCP config:', err)
@@ -206,16 +214,19 @@ export default function McpPlayground() {
           <div className="flex-1">
             <h3 className="font-semibold text-cyan-200 mb-1">MCP Inspector</h3>
             <p className="text-sm text-cyan-200/80 mb-3">
-              Test and debug Tabz MCP tools interactively. Opens at localhost:6274.
+              Test and debug Tabz MCP tools interactively. Opens at localhost:6274. Installs on first use.
             </p>
             <button
               onClick={async () => {
-                await spawnTerminal({
-                  name: 'MCP Inspector',
-                  command: `npx @modelcontextprotocol/inspector node ${MCP_SERVER_PATH}`,
-                })
+                if (inspectorCommand) {
+                  await spawnTerminal({
+                    name: 'MCP Inspector',
+                    command: inspectorCommand,
+                  })
+                }
               }}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 transition-colors"
+              disabled={!inspectorCommand}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Microscope className="w-4 h-4" />
               Launch Inspector
@@ -279,22 +290,6 @@ export default function McpPlayground() {
         </div>
       </div>
 
-      {/* Info Box */}
-      <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/30 mb-6">
-        <p className="text-sm text-blue-200">
-          <strong>Pro tip:</strong> Fewer tools = less context usage = faster responses.
-          Start with Minimal preset and add tools as needed.{' '}
-          <a
-            href="https://gist.github.com/GGPrompts/50e82596b345557656df2fc8d2d54e2c"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-cyan-400 hover:underline inline-flex items-center gap-1"
-          >
-            Learn about mcp-cli mode <ExternalLink className="w-3 h-3" />
-          </a>
-        </p>
-      </div>
-
       {/* Experimental MCP CLI Mode */}
       <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/30 mb-6">
         <div className="flex items-start gap-3">
@@ -302,8 +297,7 @@ export default function McpPlayground() {
           <div className="flex-1">
             <h3 className="font-semibold text-purple-200 mb-1">Experimental: MCP CLI Mode</h3>
             <p className="text-sm text-purple-200/80 mb-3">
-              Load MCP tools on-demand instead of upfront. Reclaims ~50k tokens for actual work.
-              Requires Claude Code restart after enabling.
+              Load MCP tools on-demand instead of upfront. Requires Claude Code restart after enabling.
             </p>
             <div className="flex items-center gap-3">
               <button
