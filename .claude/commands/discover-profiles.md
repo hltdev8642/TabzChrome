@@ -2,6 +2,8 @@
 
 Scan the user's system for installed CLI tools and help them create TabzChrome profiles.
 
+> **Note**: There is no API to edit profiles directly. Profiles are stored in Chrome storage and can only be modified via the Settings UI. This skill generates JSON files for the user to import.
+
 ## Instructions
 
 1. **Check existing profiles first** to avoid duplicates. Use the profiles API:

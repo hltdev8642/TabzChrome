@@ -657,8 +657,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
             const rowDelta = Math.abs(afterRows - beforeRows)
 
             // CRITICAL FIX: Clear xterm buffer for ANY narrowing or large row changes
-            // Claude Code's full-width prompt highlighting (Dec 2025 update) uses ANSI background
-            // sequences that span the entire line. xterm.js's reflow corrupts these when narrowing.
+            // xterm's reflow algorithm corrupts content with complex ANSI sequences
             // Row delta >2 catches bookmarks bar appearing/disappearing (~2-3 rows)
             if (isNarrowing || rowDelta > 2) {
               isResizingRef.current = true
@@ -961,19 +960,19 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
         const isNarrowing = afterCols < beforeCols
 
         // CRITICAL FIX: Clear xterm buffer for ANY narrowing operation
-        // Claude Code's full-width prompt highlighting (Dec 2025 update) uses ANSI background
-        // sequences that span the entire line. xterm.js's reflow algorithm corrupts these
-        // when the terminal narrows, causing extra line breaks between all lines.
-        // Clearing ensures tmux's redraw starts fresh, avoiding corrupted reflow.
+        // xterm's reflow algorithm corrupts content with complex ANSI sequences
+        // Clearing ensures tmux's redraw starts fresh, avoiding corrupted reflow
         // NOTE: Must set resize lock BEFORE clear() to prevent isWrapped error from concurrent writes
         if (isTmuxSession && isNarrowing) {
           isResizingRef.current = true
           xtermRef.current.clear()
+          // Release lock and clear queue so triggerResizeTrick can proceed
           isResizingRef.current = false
           writeQueueRef.current = [] // Discard stale data from reflow
         }
 
-        // Use resize trick to force tmux to fully recalculate
+        // Then use resize trick to force tmux to fully recalculate
+        // This is like the EOL fix - ensures consistent handling instead of racing
         triggerResizeTrick()
       }, 300) // 300ms debounce - wait for resize to settle, then do trick
     }
