@@ -290,6 +290,22 @@ function SidePanelTerminal() {
     }
   }, [])
 
+  // Auto-reconnect on visibility change (e.g., after laptop sleep/wake)
+  // When sidebar becomes visible again, request terminal list to verify connection
+  // This triggers background worker to reconnect WebSocket if needed
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[Sidepanel] Visibility changed to visible, requesting terminal list')
+        // Request terminal list - this will reconnect WebSocket if disconnected
+        sendMessage({ type: 'LIST_TERMINALS' })
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
+
   // Close tab context menu on outside click
   useEffect(() => {
     if (!contextMenu.show) return

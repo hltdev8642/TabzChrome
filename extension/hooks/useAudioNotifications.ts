@@ -5,6 +5,20 @@ import type { ClaudeStatus } from './useClaudeStatus'
 // Re-export types that consumers need
 export type { AudioSettings }
 
+// Strip emojis from text for cleaner TTS announcements
+// Matches most emoji ranges: emoticons, symbols, pictographs, transport, flags, etc.
+const stripEmojis = (text: string): string => {
+  return text
+    .replace(/[\u{1F300}-\u{1F9FF}]/gu, '') // Symbols, pictographs, emoticons
+    .replace(/[\u{2600}-\u{26FF}]/gu, '')   // Misc symbols (☀️, ⚡, etc.)
+    .replace(/[\u{2700}-\u{27BF}]/gu, '')   // Dingbats
+    .replace(/[\u{FE00}-\u{FE0F}]/gu, '')   // Variation selectors
+    .replace(/[\u{1F000}-\u{1F02F}]/gu, '') // Mahjong, dominos
+    .replace(/[\u{1F0A0}-\u{1F0FF}]/gu, '') // Playing cards
+    .trim()
+    .replace(/\s+/g, ' ') // Collapse multiple spaces from removed emojis
+}
+
 // Voice pool for auto-assignment (rotates through these when no profile override)
 const VOICE_POOL = [
   'en-US-AndrewMultilingualNeural',  // Andrew (US Male)
@@ -222,6 +236,9 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
     const settings = getAudioSettingsForProfile(session?.profile, session?.assignedVoice)
     if (!settings.enabled) return
 
+    // Strip emojis for cleaner TTS (e.g., "🟠 Amber Claude" → "Amber Claude")
+    const cleanText = stripEmojis(text)
+
     // Debounce: use separate timers for tools vs other announcements
     const now = Date.now()
     if (isToolAnnouncement) {
@@ -244,7 +261,7 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text,
+          text: cleanText,
           voice: settings.voice,
           rate: settings.rate
         }),

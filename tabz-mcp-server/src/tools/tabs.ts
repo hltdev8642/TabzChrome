@@ -113,14 +113,18 @@ No web pages currently open.
 Only chrome:// or extension pages are present.`;
           } else {
             const lines: string[] = [`# Browser Tabs (${result.tabs.length} open)`, ""];
-            lines.push(`**Claude's current target:** Tab ${claudeCurrentTab}`, "");
+
+            // Find the user's actual focused tab (from Chrome extension API)
+            const userActiveTab = result.tabs.find(t => t.active);
+            if (userActiveTab) {
+              lines.push(`**User's focused tab:** ${userActiveTab.tabId} (${userActiveTab.customName || userActiveTab.title})`, "");
+            }
 
             for (const tab of result.tabs) {
               const displayName = tab.customName || tab.title || "(no title)";
-              const isClaudeTarget = tab.tabId === claudeCurrentTab;
 
-              // Show marker for Claude's current target tab
-              const marker = isClaudeTarget ? " ← CURRENT" : "";
+              // Show marker for user's ACTUAL focused tab (from Chrome extension)
+              const marker = tab.active ? " ← ACTIVE" : "";
               lines.push(`## Tab ${tab.tabId}${marker}`);
               lines.push(`**Title:** ${displayName}`);
               if (tab.customName) {
