@@ -24,6 +24,7 @@ extension/                      backend/
 │   ├── useTerminalSessions.ts  └── routes/
 │   ├── useProfiles.ts              ├── api.js
 │   └── useClaudeStatus.ts          └── browser.js (MCP)
+├── 3d/FocusScene.tsx           (3D Focus Mode - Three.js)
 ├── background/background.ts
 └── shared/messaging.ts
 ```
@@ -133,6 +134,7 @@ See `docs/API.md` for full API documentation.
 | `extension/hooks/useTerminalSessions.ts` | Session lifecycle, Chrome storage sync |
 | `extension/hooks/useProfiles.ts` | Profile CRUD and persistence |
 | `extension/background/background.ts` | Service worker, WebSocket management |
+| `extension/3d/FocusScene.tsx` | 3D Focus Mode (Three.js + React Three Fiber) |
 | `backend/modules/pty-handler.js` | PTY spawning, tmux integration |
 | `backend/routes/api.js` | REST endpoints including spawn API |
 

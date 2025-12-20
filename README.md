@@ -34,6 +34,7 @@ Browse the web with your terminals always visible - no window juggling, no Alt+T
 - **Profiles system** - Save configurations for different tools (Claude Code, lazygit, htop)
 - **Category organization** - Color-coded groups for easy identification
 - **Smart directory inheritance** - Set a global working directory, profiles inherit it
+- **3D Focus Mode** - Pop any terminal into an immersive full-tab 3D view (scroll to zoom, mouse to orbit, F2 to lock)
 - **Local dashboard** - Web UI at `localhost:8129` for terminal management and quick stats
 - **Tabz MCP tools** - Let Claude Code control your browser (screenshots, clicks, form filling)
 - **Keyboard shortcuts** - Quick access to paste text, send to chat, spawn terminals

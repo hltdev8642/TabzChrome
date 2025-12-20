@@ -15,6 +15,21 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.1.14] - 2025-12-20
+
+### Added
+- **3D Focus Mode** - Immersive terminal experience in a dedicated browser tab:
+  - Right-click any terminal tab → "🧊 Open in 3D Focus"
+  - Terminal floats in 3D space with starfield background
+  - **Controls:** Scroll to zoom (1.5x-25x), mouse to orbit, F2 to lock camera, Esc to unfocus terminal
+  - Preserves terminal's theme, font size, and font family from profile
+  - Auto-returns to sidebar when 3D tab closes or extension reloads
+
+### Fixed
+- **Stale 3D focus state** - Terminals no longer get stuck showing "Viewing in 3D" after extension reload
+
+---
+
 ## [1.1.13] - 2025-12-19
 
 ### Added
