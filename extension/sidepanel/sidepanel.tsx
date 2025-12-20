@@ -683,11 +683,19 @@ function SidePanelTerminal() {
       s.id === terminal.id ? { ...s, focusedIn3D: true } : s
     ))
 
+    // Look up CURRENT profile settings (not stale snapshot from spawn time)
+    // This ensures theme/font changes made after spawning are respected
+    const sessionProfileId = terminal.profile?.id
+    const currentProfile = sessionProfileId
+      ? profiles.find(p => p.id === sessionProfileId)
+      : null
+    const defaultProfile = profiles.find(p => p.id === 'default') || profiles[0]
+    const effectiveProfile = currentProfile || defaultProfile
+
     // Open new browser tab with 3D focus page
-    // Include theme information from the terminal's profile
-    const themeName = terminal.profile?.themeName || 'high-contrast'
-    const fontSize = terminal.profile?.fontSize || 16
-    const fontFamily = encodeURIComponent(terminal.profile?.fontFamily || 'monospace')
+    const themeName = effectiveProfile?.themeName || 'high-contrast'
+    const fontSize = effectiveProfile?.fontSize || 16
+    const fontFamily = encodeURIComponent(effectiveProfile?.fontFamily || 'monospace')
     const url = chrome.runtime.getURL(`3d/3d-focus.html?session=${terminal.sessionName}&id=${terminal.id}&theme=${themeName}&fontSize=${fontSize}&fontFamily=${fontFamily}`)
     chrome.tabs.create({ url })
 
