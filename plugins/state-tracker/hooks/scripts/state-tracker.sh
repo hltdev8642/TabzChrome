@@ -219,6 +219,15 @@ esac
 
 SUBAGENT_COUNT=$(get_subagent_count)
 
+# Preserve claude_session_id if it exists (set by statusline for context % display)
+CLAUDE_SID_JSON="null"
+if [ -f "$STATE_FILE" ]; then
+    EXISTING_SID=$(jq -r '.claude_session_id // ""' "$STATE_FILE" 2>/dev/null)
+    if [ -n "$EXISTING_SID" ]; then
+        CLAUDE_SID_JSON="\"$EXISTING_SID\""
+    fi
+fi
+
 STATE_JSON=$(cat <<EOF
 {
   "session_id": "$SESSION_ID",
@@ -230,7 +239,8 @@ STATE_JSON=$(cat <<EOF
   "tmux_pane": "$TMUX_PANE",
   "pid": $$,
   "hook_type": "$HOOK_TYPE",
-  "details": $DETAILS
+  "details": $DETAILS,
+  "claude_session_id": $CLAUDE_SID_JSON
 }
 EOF
 )
