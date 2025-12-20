@@ -727,11 +727,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
           // This prevents tmux status bar corruption when scroll regions are being updated
           lastOutputTimeRef.current = Date.now()
 
-          // Strip VS16 (variation selector, U+FE0F) to prevent tmux width calculation issues
-          // VS16 makes emojis render in emoji presentation, but tmux miscalculates width
-          // when it sees emoji+VS16, corrupting scroll regions and hiding status bar
-          // The emoji still renders correctly without VS16, just uses default presentation
-          const sanitizedData = message.data.replace(/\uFE0F/g, '')
+          const sanitizedData = message.data
 
           // Output guard - buffer output during first 300ms after init to prevent
           // escape sequence corruption on reconnect (copy mode, display corruption)
