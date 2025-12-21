@@ -1,58 +1,76 @@
 # PLAN.md - TabzChrome Roadmap
 
-**Last Updated**: December 16, 2025
-**Current Version**: 1.1.8
+**Last Updated**: December 21, 2025
+**Current Version**: 1.1.16
 
 ---
 
-## Current Focus: Power Tools (Phase 2C)
+## Current Focus: MCP Tool Expansion
 
-**Goal**: Implement Chrome API-based tools now that the settings infrastructure is in place.
+**Goal**: With dynamic tool discovery (`mcp-cli`), there's no context cost for having many tools. Expand MCP capabilities using Chrome Extension APIs.
 
-### `chrome.debugger` - Additional DevTools Tools
+### Priority 1: High Value, Easy to Implement
 
-**Impact**: Eliminates need for `--remote-debugging-port=9222`. Full CDP access from inside the extension.
+#### `chrome.cookies` - Authentication Debugging
+**Permission**: `"cookies"` + host patterns
 
-**Tools to implement:**
-- [ ] `tabz_profile_performance` - Profile page performance metrics
-- [ ] `tabz_get_dom_tree` - Full DOM inspection
-- [ ] `tabz_set_breakpoint` - Debug JavaScript issues
-- [ ] `tabz_get_coverage` - Code coverage analysis
+| Tool | Description | Status |
+|------|-------------|--------|
+| `tabz_get_cookies` | Get all cookies for a domain | Planned |
+| `tabz_check_auth` | Check if logged into a service (has session cookie) | Planned |
+| `tabz_clear_cookies` | Clear cookies for a domain (logout) | Planned |
 
-### `chrome.downloads` - Future Enhancements
+#### `chrome.history` - Research Assistant
+**Permission**: `"history"`
 
-- [ ] `tabz_save_page` - Save page as HTML/MHTML
-- [ ] `tabz_batch_download` - Download multiple files
+| Tool | Description | Status |
+|------|-------------|--------|
+| `tabz_search_history` | Search browsing history by text/date | Planned |
+| `tabz_frequent_sites` | Get most visited sites | Planned |
+| `tabz_delete_history` | Remove specific URLs from history | Planned |
 
-### `chrome.webRequest` - Additional Network Tools
+#### `chrome.bookmarks` - Knowledge Management
+**Permission**: `"bookmarks"`
 
-**Impact**: WebSocket monitoring and auth debugging.
+| Tool | Description | Status |
+|------|-------------|--------|
+| `tabz_save_bookmark` | Save URL to bookmarks (with folder support) | Planned |
+| `tabz_search_bookmarks` | Find bookmarks by title/URL | Planned |
+| `tabz_get_bookmark_tree` | Get full bookmark hierarchy | Planned |
+| `tabz_create_folder` | Create bookmark folder | Planned |
+| `tabz_move_bookmark` | Move bookmark to different folder | Planned |
+| `tabz_delete_bookmark` | Remove a bookmark | Planned |
 
-- [ ] `tabz_monitor_websockets` - Track WebSocket messages
-- [ ] `tabz_capture_auth_flow` - Debug OAuth/auth issues
+#### `chrome.downloads` - Page Saving
+**Permission**: `"downloads"` (already have)
 
-### `chrome.cookies` - Authentication Debugging
+| Tool | Description | Status |
+|------|-------------|--------|
+| `tabz_save_page` | Save page as HTML/MHTML for offline analysis | Planned |
 
-- [ ] `tabz_check_auth` - Check if logged into a service
-- [ ] `tabz_get_cookies` - Get all cookies for a domain
-- [ ] `tabz_get_session` - Get specific session cookie
+### Priority 2: Medium Value
 
-### `chrome.history` - Research Assistant
+#### `chrome.debugger` - DevTools Access
+**Permission**: `"debugger"` (shows warning to user)
+**Note**: Eliminates need for `--remote-debugging-port=9222`
 
-- [ ] `tabz_search_history` - Search browsing history
-- [ ] `tabz_get_research` - Gather pages visited for a topic
-- [ ] `tabz_frequent_sites` - Get most visited sites
+| Tool | Description | Status |
+|------|-------------|--------|
+| `tabz_get_dom_tree` | Full DOM inspection | Planned |
+| `tabz_profile_performance` | Profile page performance metrics | Planned |
+| `tabz_get_coverage` | Code coverage analysis | Planned |
 
-### `chrome.bookmarks` - Knowledge Management
+### Priority 3: Lower Value / Complex
 
-- [ ] `tabz_save_bookmark` - Bookmark current page
-- [ ] `tabz_search_bookmarks` - Find saved resources
-- [ ] `tabz_organize_bookmarks` - Auto-organize bookmarks
-- [ ] `tabz_get_bookmark_tree` - Export bookmark structure
+| Tool | Description | Why Lower |
+|------|-------------|-----------|
+| `tabz_monitor_websockets` | Track WebSocket messages | Niche use case |
+| `tabz_set_breakpoint` | Debug JavaScript | Complex, better in DevTools |
+| `tabz_capture_auth_flow` | Debug OAuth flows | Complex setup |
 
 ---
 
-## Documentation & Testing (Phase 2D/2E)
+## Documentation & Testing
 
 ### Documentation TODO
 - [x] **Verify --dynamic-tool-discovery flag** - Fixed! Was inaccurate. Updated README to use `ENABLE_EXPERIMENTAL_MCP_CLI=true` env var instead
@@ -71,78 +89,28 @@
 
 ## Conductor Agent Enhancements
 
-**Goal**: Make the conductor smarter about worker health and prompt quality.
+**Status**: Mostly complete. Core infrastructure is working.
 
-### Context Window Monitoring
+### Completed
 
-Currently, hooks don't receive context window data - only the statusline does via `current_usage`.
+- [x] **Context Window Monitoring** - Statusline writes to `/tmp/claude-code-state/{session}-context.json` with `context_pct`
+- [x] **Sub-Agent Architecture** - All agents created:
+  - `conductor.md` - Multi-session orchestrator (Opus)
+  - `tabz-manager.md` - Browser automation specialist (Opus)
+  - `watcher.md` - Worker health monitor (Haiku)
+  - `skill-picker.md` - SkillsMP integration
+  - `tui-expert.md` - TUI tool specialist
+- [x] **Conductor reads state files** - Can check worker context % before assigning work
+- [x] **Prompt tips in conductor.md** - @ file references, capability triggers documented
 
-**Proposed solution**: Statusline writes context info to state files:
-```bash
-# In statusline.sh, write context to shared state dir
-STATE_FILE="/tmp/claude-code-state/${SESSION_ID}-context.json"
-echo '{"context_percent": '$percent', "tokens": '$current_tokens'}' > "$STATE_FILE"
-```
+### Remaining
 
-Then conductor can check before assigning work:
-```bash
-context=$(jq '.context_percent' /tmp/claude-code-state/${WORKER}-context.json)
-if [ "$context" -gt 80 ]; then
-    echo "Worker at ${context}% - spawn fresh worker instead"
-fi
-```
-
-**Tasks:**
-- [ ] Update statusline.sh to write context info to `/tmp/claude-code-state/`
-- [ ] Update Tmuxplexer's `claude_state.go` to read `context_percent`
-- [ ] Add "Worker Health Monitoring" section to conductor.md
-- [ ] Document context hygiene best practices
-
-### Prompt Enhancement Tips (from /pmux)
-
-Add tips to conductor.md for better prompts:
-- [ ] **@ file references** - "Use `@filepath` to give workers context"
-- [ ] **Capability triggers** - "Add `ultrathink` for complex architectural tasks"
-- [ ] **Soften "one task per worker"** → "one goal per worker (they can use subagents)"
-
-### Tmuxplexer Integration
-
-- [ ] Conductor reads `/tmp/claude-code-state/` for worker status (already works)
 - [ ] Add `subagent_count` display to Tmuxplexer TUI
-- [ ] Show context % in Tmuxplexer session list (once statusline writes it)
-
-### Sub-Agent Architecture
-
-The conductor currently handles too many responsibilities. Split into specialized sub-agents:
-
-| Agent | Model | Role |
-|-------|-------|------|
-| **Conductor** | Opus | Orchestrator - decides what needs doing, delegates to specialists |
-| **Tabz Manager** | Sonnet | Browser control (screenshots, clicks, forms, page inspection) |
-| **Watcher** | Haiku | Cheap polling of worker status/context, alerts when stuck/full/done |
-
-**Watcher agent** (Haiku) - ideal for monitoring because it's fast/cheap:
-```yaml
-name: watcher
-model: haiku
-description: Monitor Claude worker sessions - check progress, context usage, completion status
-```
-
-Responsibilities:
-- Periodic `tmux capture-pane` to check worker output
-- Read `/tmp/claude-code-state/*.json` for status and context %
-- Alert conductor when: worker done, worker stuck, context > 80%, errors detected
-- Return structured status reports for conductor to act on
-
-**Tasks:**
-- [ ] Create `agents/watcher.md` - Haiku-based session monitor
-- [ ] Create `agents/tabz-manager.md` - Browser automation specialist
-- [ ] Slim down conductor to pure orchestration (spawn, delegate, cleanup)
-- [ ] Add watcher invocation pattern to conductor docs
+- [ ] Show context % in Tmuxplexer session list
 
 ---
 
-## Future Enhancements (Phase 3)
+## Future Enhancements
 
 ### Waiting on Chrome Updates
 

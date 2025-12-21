@@ -111,6 +111,7 @@ const ALLOWED_URL_PATTERNS = [
   /^https?:\/\/(www\.)?huggingface\.co(\/.*)?$/i,            // Hugging Face
   /^https?:\/\/(www\.)?replicate\.com(\/.*)?$/i,             // Replicate
   /^https?:\/\/(www\.)?openrouter\.ai(\/.*)?$/i,             // OpenRouter
+  /^https?:\/\/(www\.)?skillsmp\.com(\/.*)?$/i,              // SkillsMP (Claude Code skills)
   // Design & Assets
   /^https?:\/\/(www\.)?figma\.com(\/.*)?$/i,                 // Figma
   /^https?:\/\/(www\.)?dribbble\.com(\/.*)?$/i,              // Dribbble
@@ -150,7 +151,7 @@ function isAllowedUrl(url: string, settings?: UrlSettings): { allowed: boolean; 
         // AI Chat
         /^(www\.)?(claude\.ai|perplexity\.ai|deepseek\.com|chat\.deepseek\.com|phind\.com|you\.com|gemini\.google\.com|copilot\.microsoft\.com)/i,
         // AI/ML platforms
-        /^(www\.)?(huggingface\.co|replicate\.com|openrouter\.ai)/i,
+        /^(www\.)?(huggingface\.co|replicate\.com|openrouter\.ai|skillsmp\.com)/i,
         // Design
         /^(www\.)?(figma\.com|dribbble\.com|unsplash\.com|iconify\.design)/i,
       ];
@@ -253,7 +254,7 @@ tab accumulation over time. Use reuseExisting=false to force a new tab.
 - Playgrounds: codepen.io, jsfiddle.net
 - AI Image: bing.com/images/create, chatgpt.com, ideogram.ai, leonardo.ai, tensor.art, playground.com, lexica.art
 - AI Chat: claude.ai, perplexity.ai, deepseek.com, phind.com, you.com, gemini.google.com, copilot.microsoft.com
-- AI/ML: huggingface.co, replicate.com, openrouter.ai
+- AI/ML: huggingface.co, replicate.com, openrouter.ai, skillsmp.com
 - Design: figma.com, dribbble.com, unsplash.com, iconify.design
 
 Args:
@@ -315,7 +316,7 @@ Security:
 - Playgrounds: codepen.io, jsfiddle.net
 - AI Image: bing.com/images/create, chatgpt.com, ideogram.ai, leonardo.ai, tensor.art, playground.com, lexica.art
 - AI Chat: claude.ai, perplexity.ai, deepseek.com, phind.com, you.com, gemini.google.com, copilot.microsoft.com
-- AI/ML: huggingface.co, replicate.com, openrouter.ai
+- AI/ML: huggingface.co, replicate.com, openrouter.ai, skillsmp.com
 - Design: figma.com, dribbble.com, unsplash.com, iconify.design${customDomainsNote}
 
 Please provide a URL from one of the allowed domains, or add custom domains in Settings > MCP Tools > Open URL.`
