@@ -51,6 +51,12 @@
       "category": "skills"
     },
     {
+      "name": "page-reader",
+      "description": "Summarize and read aloud current browser page content via TTS",
+      "source": "./plugins/page-reader",
+      "category": "commands"
+    },
+    {
       "name": "tabz-chrome-full",
       "description": "Everything - all skills, commands, agents, hooks, and MCP server",
       "source": "./",
