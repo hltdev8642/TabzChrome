@@ -15,6 +15,27 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.1.16] - 2025-12-21
+
+### Added
+- **tabz-guide plugin** - Progressive disclosure help system for TabzChrome:
+  - On-demand guidance for profiles, MCP tools, API, debugging, integration
+  - Brief answers with links to detailed documentation
+  - Install with `/plugin install tabz-chrome:tabz-guide`
+- **tui-expert agent** - Spawn and control TUI tools (btop, lazygit, lnav) via tmux
+- **terminal-tools skill** - Structured patterns for TUI tool interaction
+
+### Fixed
+- **State-tracker hooks** - Plugin now properly references `hooks.json` file instead of inline config
+- **State-tracker robustness** - Prevents script exit on corrupted JSON files, uses atomic writes
+- **3D Focus settings sync** - WebGL/Canvas toggle now syncs with sidebar settings
+
+### Changed
+- **tui-expert model** - Upgraded from haiku to opus for better reasoning
+- **README plugin docs** - Fixed broken links, added complete plugin table with correct paths
+
+---
+
 ## [1.1.15] - 2025-12-20
 
 ### Added
