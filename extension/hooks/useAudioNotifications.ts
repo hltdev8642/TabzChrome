@@ -50,7 +50,7 @@ export interface UseAudioNotificationsReturn {
   audioGlobalMute: boolean
   setAudioGlobalMute: (mute: boolean) => void
   getNextAvailableVoice: () => string
-  getAudioSettingsForProfile: (profile?: Profile, assignedVoice?: string) => { voice: string; rate: string; volume: number; enabled: boolean }
+  getAudioSettingsForProfile: (profile?: Profile, assignedVoice?: string) => { voice: string; rate: string; pitch: string; volume: number; enabled: boolean }
   playAudio: (text: string, session?: TerminalSession, isToolAnnouncement?: boolean) => Promise<void>
   markSessionDetached: (sessionId: string) => void
 }
@@ -60,6 +60,7 @@ const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
   volume: 0.7,
   voice: 'en-US-AndrewMultilingualNeural',
   rate: '+0%',
+  pitch: '+0Hz',
   events: { ready: true, sessionStart: false, tools: false, toolDetails: false, subagents: false, contextWarning: false, contextCritical: false },
   toolDebounceMs: 1000,
 }
@@ -188,7 +189,7 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
   // | ON (🔇)     | default      | ❌ Silent (master mute) |
   // | ON (🔇)     | enabled      | ❌ Silent (master mute) |
   // | ON (🔇)     | disabled     | ❌ Silent |
-  const getAudioSettingsForProfile = useCallback((profile?: Profile, assignedVoice?: string): { voice: string; rate: string; volume: number; enabled: boolean } => {
+  const getAudioSettingsForProfile = useCallback((profile?: Profile, assignedVoice?: string): { voice: string; rate: string; pitch: string; volume: number; enabled: boolean } => {
     const overrides = profile?.audioOverrides
     const mode = overrides?.mode || 'default'
 
@@ -227,13 +228,15 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
     return {
       voice,
       rate: overrides?.rate || audioSettings.rate,
+      pitch: overrides?.pitch || audioSettings.pitch,
       volume: audioSettings.volume,
       enabled,
     }
   }, [audioGlobalMute, audioSettings])
 
   // Audio playback helper - plays MP3 from backend cache via Chrome
-  const playAudio = useCallback(async (text: string, session?: TerminalSession, isToolAnnouncement = false) => {
+  // Optional pitchOverride for urgent alerts (e.g., context warnings)
+  const playAudio = useCallback(async (text: string, session?: TerminalSession, isToolAnnouncement = false, pitchOverride?: string) => {
     const settings = getAudioSettingsForProfile(session?.profile, session?.assignedVoice)
     if (!settings.enabled) return
 
@@ -264,7 +267,8 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
         body: JSON.stringify({
           text: cleanText,
           voice: settings.voice,
-          rate: settings.rate
+          rate: settings.rate,
+          pitch: pitchOverride || settings.pitch
         }),
         signal: controller.signal
       })
@@ -464,6 +468,7 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
 
       // EVENT: Context window threshold alerts
       // Uses hysteresis: only triggers when CROSSING a threshold (not on every poll above it)
+      // Uses elevated pitch for urgent/alert tone
       const currentContextPct = status.context_pct
       const prevContextPct = prevContextPctRef.current.get(terminalId)
 
@@ -471,18 +476,20 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
         const displayName = getDisplayName()
 
         // Warning threshold: 50% (matches statusline yellow threshold)
+        // Use +20Hz pitch for mild urgency
         if (audioSettings.events.contextWarning) {
           const crossedWarningUp = prevContextPct < 50 && currentContextPct >= 50
           if (crossedWarningUp) {
-            playAudio(`${displayName} 50 percent context`, session)
+            playAudio(`${displayName} 50 percent context`, session, false, '+20Hz')
           }
         }
 
         // Critical threshold: 75% (matches statusline red threshold)
+        // Use +40Hz pitch for high urgency alert tone
         if (audioSettings.events.contextCritical) {
           const crossedCriticalUp = prevContextPct < 75 && currentContextPct >= 75
           if (crossedCriticalUp) {
-            playAudio(`${displayName} context critical`, session)
+            playAudio(`${displayName} context critical!`, session, false, '+40Hz')
           }
         }
       }

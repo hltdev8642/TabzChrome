@@ -31,7 +31,8 @@ export function AudioTab({
         body: JSON.stringify({
           text: 'Claude ready',
           voice: testVoice,
-          rate: audioSettings.rate
+          rate: audioSettings.rate,
+          pitch: audioSettings.pitch
         })
       })
       const data = await response.json()
@@ -127,6 +128,33 @@ export function AudioTab({
               <span>0%</span>
               <span>+100% (faster)</span>
             </div>
+          </div>
+
+          {/* Pitch Slider */}
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">
+              Pitch: {audioSettings.pitch}
+            </label>
+            <input
+              type="range"
+              min="-20"
+              max="50"
+              step="10"
+              value={parseInt(audioSettings.pitch)}
+              onChange={(e) => {
+                const val = parseInt(e.target.value)
+                updateAudioSettings({ pitch: val >= 0 ? `+${val}Hz` : `${val}Hz` })
+              }}
+              className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[#00ff88]"
+            />
+            <div className="flex justify-between text-xs text-gray-400 mt-1">
+              <span>-20Hz (lower)</span>
+              <span>0Hz</span>
+              <span>+50Hz (higher)</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Context alerts auto-elevate pitch for urgency (+20Hz warning, +40Hz critical)
+            </p>
           </div>
 
           {/* Volume Slider */}

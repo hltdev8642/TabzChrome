@@ -207,7 +207,7 @@ app.get('/api/audio/list', (req, res) => {
 });
 
 // Generate audio using edge-tts (with caching)
-// POST /api/audio/generate { text: string, voice?: string, rate?: string }
+// POST /api/audio/generate { text: string, voice?: string, rate?: string, pitch?: string }
 // Rate limited: 30 requests per minute per IP
 app.post('/api/audio/generate', audioRateLimiter, async (req, res) => {
   const { execFile } = require('child_process');
@@ -219,7 +219,8 @@ app.post('/api/audio/generate', audioRateLimiter, async (req, res) => {
   const {
     text,
     voice = 'en-US-AndrewMultilingualNeural',
-    rate = '+0%'  // e.g., "+30%", "-10%"
+    rate = '+0%',   // e.g., "+30%", "-10%"
+    pitch = '+0Hz'  // e.g., "+50Hz", "-20Hz" (higher = more urgent/alert)
   } = req.body;
 
   if (!text || typeof text !== 'string') {
@@ -236,6 +237,11 @@ app.post('/api/audio/generate', audioRateLimiter, async (req, res) => {
     return res.status(400).json({ success: false, error: 'Invalid rate parameter' });
   }
 
+  // Validate pitch parameter (format: +NHz or -NHz where N is 0-100)
+  if (!/^[+-]?\d{1,3}Hz$/.test(pitch)) {
+    return res.status(400).json({ success: false, error: 'Invalid pitch parameter' });
+  }
+
   const audioDir = '/tmp/claude-audio-cache';
 
   // Ensure directory exists
@@ -243,8 +249,8 @@ app.post('/api/audio/generate', audioRateLimiter, async (req, res) => {
     fs.mkdirSync(audioDir, { recursive: true });
   }
 
-  // Generate cache key from voice + rate + text
-  const cacheKey = crypto.createHash('md5').update(`${voice}:${rate}:${text}`).digest('hex');
+  // Generate cache key from voice + rate + pitch + text
+  const cacheKey = crypto.createHash('md5').update(`${voice}:${rate}:${pitch}:${text}`).digest('hex');
   const cacheFile = path.join(audioDir, `${cacheKey}.mp3`);
 
   // Check if cached (ensure file exists and has content)
@@ -271,6 +277,9 @@ app.post('/api/audio/generate', audioRateLimiter, async (req, res) => {
     const args = ['-v', voice];
     if (rate && rate !== '+0%') {
       args.push('--rate', rate);
+    }
+    if (pitch && pitch !== '+0Hz') {
+      args.push('--pitch', pitch);
     }
 
     // For long text (> 5000 chars), use file input to avoid command-line limits
@@ -327,6 +336,7 @@ app.post('/api/audio/speak', async (req, res) => {
     text,
     voice = 'en-US-AndrewMultilingualNeural',
     rate = '+0%',
+    pitch = '+0Hz',
     volume = 0.7
   } = req.body;
 
@@ -344,6 +354,11 @@ app.post('/api/audio/speak', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Invalid rate parameter' });
   }
 
+  // Validate pitch parameter (format: +NHz or -NHz where N is 0-100)
+  if (!/^[+-]?\d{1,3}Hz$/.test(pitch)) {
+    return res.status(400).json({ success: false, error: 'Invalid pitch parameter' });
+  }
+
   const audioDir = '/tmp/claude-audio-cache';
 
   // Ensure directory exists
@@ -351,8 +366,8 @@ app.post('/api/audio/speak', async (req, res) => {
     fs.mkdirSync(audioDir, { recursive: true });
   }
 
-  // Generate cache key from voice + rate + text
-  const cacheKey = crypto.createHash('md5').update(`${voice}:${rate}:${text}`).digest('hex');
+  // Generate cache key from voice + rate + pitch + text
+  const cacheKey = crypto.createHash('md5').update(`${voice}:${rate}:${pitch}:${text}`).digest('hex');
   const cacheFile = path.join(audioDir, `${cacheKey}.mp3`);
   const audioUrl = `http://localhost:8129/audio/${cacheKey}.mp3`;
 
@@ -376,6 +391,9 @@ app.post('/api/audio/speak', async (req, res) => {
       const args = ['-v', voice];
       if (rate && rate !== '+0%') {
         args.push('--rate', rate);
+      }
+      if (pitch && pitch !== '+0Hz') {
+        args.push('--pitch', pitch);
       }
 
       // For long text (> 5000 chars), use file input to avoid command-line limits

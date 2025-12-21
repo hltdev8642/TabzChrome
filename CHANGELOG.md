@@ -26,6 +26,11 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
   - `tabz_move_bookmark` - Move bookmarks between folders
   - `tabz_delete_bookmark` - Remove bookmarks or folders
 - **skillsmp.com** - Added to default URL allowlist for `tabz_open_url`
+- **TTS pitch control** - New pitch parameter for audio notifications:
+  - Adjustable from -20Hz (lower) to +50Hz (higher/urgent)
+  - Settings slider in Audio tab
+  - Context alerts auto-elevate pitch for urgency (+20Hz at 50%, +40Hz at 75%)
+  - Backend API endpoints now accept `pitch` parameter
 
 ---
 

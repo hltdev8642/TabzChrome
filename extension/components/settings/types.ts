@@ -154,6 +154,7 @@ export interface AudioSettings {
   volume: number  // 0-1
   voice: string
   rate: string    // e.g., "+30%", "-10%"
+  pitch: string   // e.g., "+20Hz", "-10Hz" (higher = more urgent/alert tone)
   events: AudioEventSettings
   toolDebounceMs: number
 }
@@ -164,6 +165,7 @@ export interface ProfileAudioOverrides {
   mode?: AudioMode     // 'default' = follow global, 'enabled' = always on, 'disabled' = never
   voice?: string       // Override voice (undefined = use global default)
   rate?: string        // Override rate (undefined = use global default)
+  pitch?: string       // Override pitch (undefined = use global default)
 }
 
 export const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
@@ -171,6 +173,7 @@ export const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
   volume: 0.7,
   voice: 'en-US-AndrewMultilingualNeural',
   rate: '+0%',
+  pitch: '+0Hz',
   events: {
     ready: true,
     sessionStart: false,

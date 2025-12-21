@@ -1,6 +1,6 @@
 ---
 name: tabz-guide
-description: "Progressive disclosure guide to TabzChrome capabilities. This skill should be used when users ask about profiles, terminal management, browser automation, MCP tools, integration, debugging, API, or setup. Provides on-demand help organized by topic with references to detailed documentation."
+description: "Progressive disclosure guide to TabzChrome capabilities. This skill should be used when users ask about profiles, terminal management, browser automation, MCP tools, audio/TTS notifications, integration, debugging, API, or setup. Provides on-demand help organized by topic with references to detailed documentation."
 ---
 
 # TabzChrome Guide
@@ -13,6 +13,7 @@ Trigger on questions about:
 - Profile creation and management
 - Terminal spawning and API integration
 - MCP browser automation tools
+- Audio/TTS notifications and settings
 - Debugging terminal issues
 - Recent features and changes
 
@@ -82,6 +83,29 @@ curl http://localhost:8129/api/health           # Health check
 ```
 
 For common issues and solutions, read `references/debugging.md`.
+
+### Audio/TTS
+
+Neural text-to-speech notifications for Claude Code status changes. Audio generated via edge-tts, played through Chrome.
+
+**Key settings** (Settings → Audio):
+- **Voice**: 10 neural voices, or "Random" for unique voice per terminal
+- **Rate**: Speech speed (-50% to +100%)
+- **Pitch**: Voice pitch (-20Hz to +50Hz) - higher = more urgent
+- **Events**: Ready, session start, tools, subagents, context warnings
+
+**Context alerts auto-elevate pitch:**
+- 50% warning: `+20Hz` (mild urgency)
+- 75% critical: `+40Hz` (alert tone)
+
+**API example:**
+```bash
+curl -X POST http://localhost:8129/api/audio/generate \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Task complete", "pitch": "+20Hz"}'
+```
+
+For voice codes, parameters, and API details, read `references/audio-tts.md`.
 
 ### Recent Features
 
