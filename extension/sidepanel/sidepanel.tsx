@@ -698,7 +698,7 @@ function SidePanelTerminal() {
     const themeName = effectiveProfile?.themeName || 'high-contrast'
     const fontSize = effectiveProfile?.fontSize || 16
     const fontFamily = encodeURIComponent(effectiveProfile?.fontFamily || 'monospace')
-    const url = chrome.runtime.getURL(`3d/3d-focus.html?session=${terminal.sessionName}&id=${terminal.id}&theme=${themeName}&fontSize=${fontSize}&fontFamily=${fontFamily}`)
+    const url = chrome.runtime.getURL(`3d/3d-focus.html?session=${terminal.sessionName}&id=${terminal.id}&theme=${themeName}&fontSize=${fontSize}&fontFamily=${fontFamily}&useWebGL=${useWebGL}`)
     chrome.tabs.create({ url })
 
     setContextMenu({ show: false, x: 0, y: 0, terminalId: null })
