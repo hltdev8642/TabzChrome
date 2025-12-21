@@ -235,8 +235,13 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
   }, [audioGlobalMute, audioSettings])
 
   // Audio playback helper - plays MP3 from backend cache via Chrome
-  // Optional pitchOverride for urgent alerts (e.g., context warnings)
-  const playAudio = useCallback(async (text: string, session?: TerminalSession, isToolAnnouncement = false, pitchOverride?: string) => {
+  // Optional overrides for urgent alerts (e.g., context warnings)
+  const playAudio = useCallback(async (
+    text: string,
+    session?: TerminalSession,
+    isToolAnnouncement = false,
+    overrides?: { pitch?: string; rate?: string }
+  ) => {
     const settings = getAudioSettingsForProfile(session?.profile, session?.assignedVoice)
     if (!settings.enabled) return
 
@@ -267,8 +272,8 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
         body: JSON.stringify({
           text: cleanText,
           voice: settings.voice,
-          rate: settings.rate,
-          pitch: pitchOverride || settings.pitch
+          rate: overrides?.rate || settings.rate,
+          pitch: overrides?.pitch || settings.pitch
         }),
         signal: controller.signal
       })
@@ -468,7 +473,7 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
 
       // EVENT: Context window threshold alerts
       // Uses hysteresis: only triggers when CROSSING a threshold (not on every poll above it)
-      // Uses elevated pitch for urgent/alert tone
+      // Uses elevated pitch + rate for urgent/alert tone
       const currentContextPct = status.context_pct
       const prevContextPct = prevContextPctRef.current.get(terminalId)
 
@@ -476,20 +481,20 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
         const displayName = getDisplayName()
 
         // Warning threshold: 50% (matches statusline yellow threshold)
-        // Use +20Hz pitch for mild urgency
+        // Elevated pitch + rate for noticeable urgency
         if (audioSettings.events.contextWarning) {
           const crossedWarningUp = prevContextPct < 50 && currentContextPct >= 50
           if (crossedWarningUp) {
-            playAudio(`${displayName} 50 percent context`, session, false, '+20Hz')
+            playAudio(`Warning! ${displayName} 50 percent context!`, session, false, { pitch: '+30Hz', rate: '+15%' })
           }
         }
 
         // Critical threshold: 75% (matches statusline red threshold)
-        // Use +40Hz pitch for high urgency alert tone
+        // Maximum urgency - high pitch + fast rate
         if (audioSettings.events.contextCritical) {
           const crossedCriticalUp = prevContextPct < 75 && currentContextPct >= 75
           if (crossedCriticalUp) {
-            playAudio(`${displayName} context critical!`, session, false, '+40Hz')
+            playAudio(`Alert! ${displayName} context critical!`, session, false, { pitch: '+50Hz', rate: '+30%' })
           }
         }
       }

@@ -66,9 +66,9 @@ Voice pitch in Hz. Format: `+NHz` or `-NHz`
 
 Range: -20Hz to +50Hz
 
-**Context alerts auto-elevate pitch:**
-- 50% context warning: `+20Hz` (mild urgency)
-- 75% context critical: `+40Hz` (alert tone)
+**Context alerts auto-elevate pitch + rate for distinct urgency:**
+- 50% warning: `+30Hz` pitch, `+15%` rate, "Warning!" prefix
+- 75% critical: `+50Hz` pitch, `+30%` rate, "Alert!" prefix
 
 ### Volume
 

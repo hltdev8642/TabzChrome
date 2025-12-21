@@ -153,7 +153,7 @@ export function AudioTab({
               <span>+50Hz (higher)</span>
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Context alerts auto-elevate pitch for urgency (+20Hz warning, +40Hz critical)
+              Context alerts auto-elevate: warning (+30Hz, +15% rate), critical (+50Hz, +30% rate)
             </p>
           </div>
 

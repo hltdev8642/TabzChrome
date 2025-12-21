@@ -94,9 +94,9 @@ Neural text-to-speech notifications for Claude Code status changes. Audio genera
 - **Pitch**: Voice pitch (-20Hz to +50Hz) - higher = more urgent
 - **Events**: Ready, session start, tools, subagents, context warnings
 
-**Context alerts auto-elevate pitch:**
-- 50% warning: `+20Hz` (mild urgency)
-- 75% critical: `+40Hz` (alert tone)
+**Context alerts auto-elevate pitch + rate:**
+- 50% warning: `+30Hz`, `+15%` rate
+- 75% critical: `+50Hz`, `+30%` rate
 
 **API example:**
 ```bash
