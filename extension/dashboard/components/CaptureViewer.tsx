@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { X, Download, Copy, Check, FileText } from 'lucide-react'
+import React, { useState, useRef, useEffect } from 'react'
+import { X, Download, Copy, Check, FileText, RefreshCw } from 'lucide-react'
 
 interface CaptureMetadata {
   sessionName: string
@@ -17,10 +17,19 @@ interface CaptureData {
 interface CaptureViewerProps {
   capture: CaptureData
   onClose: () => void
+  onRefresh?: () => void
 }
 
-export default function CaptureViewer({ capture, onClose }: CaptureViewerProps) {
+export default function CaptureViewer({ capture, onClose, onRefresh }: CaptureViewerProps) {
   const [copied, setCopied] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to bottom when content changes
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTop = contentRef.current.scrollHeight
+    }
+  }, [capture.content])
 
   const formatDate = (isoString: string) => {
     const date = new Date(isoString)
@@ -104,6 +113,16 @@ export default function CaptureViewer({ capture, onClose }: CaptureViewerProps) 
         </div>
 
         <div className="flex items-center gap-2">
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+              title="Refresh capture"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Refresh</span>
+            </button>
+          )}
           <button
             onClick={handleCopyAll}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
@@ -138,7 +157,7 @@ export default function CaptureViewer({ capture, onClose }: CaptureViewerProps) 
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-6">
+      <div ref={contentRef} className="flex-1 overflow-auto p-6">
         <pre className="font-mono text-sm whitespace-pre-wrap break-words leading-relaxed text-foreground/90">
           {capture.content}
         </pre>

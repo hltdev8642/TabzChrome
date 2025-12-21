@@ -15,6 +15,15 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.1.17] - 2025-12-21
+
+### Improved
+- **View as Text** - Enhanced terminal capture viewer:
+  - Auto-scrolls to bottom on open (shows most recent output first)
+  - Added Refresh button to re-fetch terminal content without closing
+
+---
+
 ## [1.1.16] - 2025-12-21
 
 ### Added

@@ -91,6 +91,24 @@ export default function App() {
     window.history.replaceState({}, '', window.location.pathname)
   }
 
+  const handleRefreshCapture = async () => {
+    if (!captureData?.metadata?.sessionName) return
+
+    try {
+      const response = await fetch(
+        `http://localhost:8129/api/tmux/sessions/${captureData.metadata.sessionName}/capture`
+      )
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          setCaptureData(result.data)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to refresh capture:', err)
+    }
+  }
+
   // Check backend connection on mount and periodically
   useEffect(() => {
     const checkConnection = async () => {
@@ -213,7 +231,7 @@ export default function App() {
 
       {/* Capture Viewer Overlay */}
       {captureData && (
-        <CaptureViewer capture={captureData} onClose={handleCloseCapture} />
+        <CaptureViewer capture={captureData} onClose={handleCloseCapture} onRefresh={handleRefreshCapture} />
       )}
     </div>
   )
