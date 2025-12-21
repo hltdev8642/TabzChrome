@@ -56,22 +56,26 @@ Using Claude Code's experimental MCP CLI mode, tool schemas are loaded on-demand
 
 **🎭 Power Features (Claude Code Integration):**
 
-TabzChrome includes a [Claude Code plugin](.claude-plugin/plugin.json) with agents, skills, and MCP tools:
+TabzChrome includes a [Claude Code plugin marketplace](.claude-plugin/marketplace.json) with agents, skills, hooks, and MCP tools:
 
-| Component | Description |
-|-----------|-------------|
-| [**conductor**](agents/conductor.md) agent | Orchestrate multi-session workflows - spawn Claude workers, send prompts via tmux, coordinate parallel tasks |
-| [**tabz-mcp**](skills/tabz-mcp/SKILL.md) skill | Guided browser automation with dynamic tool discovery and workflow patterns |
-| [**xterm-js**](skills/xterm-js/SKILL.md) skill | 13 battle-tested patterns for terminal development (resize handling, WebSocket, React hooks, tmux integration) |
-| [**Tabz MCP Server**](tabz-mcp-server/MCP_TOOLS.md) | 20 browser control tools (screenshots, clicks, network capture, downloads) |
+| Plugin | Type | Description |
+|--------|------|-------------|
+| [**conductor**](plugins/conductor/) | agents | Multi-session orchestration with 5 specialized agents (conductor, tabz-manager, tui-expert, watcher, skill-picker) |
+| [**tabz-mcp**](plugins/tabz-mcp/skills/tabz-mcp/SKILL.md) | skill | Guided browser automation with dynamic tool discovery |
+| [**xterm-js**](plugins/xterm-js/skills/xterm-js/SKILL.md) | skill | Terminal development patterns (resize, WebSocket, React hooks, tmux) |
+| [**tabz-guide**](plugins/tabz-guide/skills/tabz-guide/SKILL.md) | skill | Progressive help for TabzChrome (profiles, API, debugging) |
+| [**state-tracker**](plugins/state-tracker/) | hooks | Live Claude status tracking for terminal tab updates |
+| [**ctthandoff**](plugins/ctthandoff/) | command | Generate handoff summary, copy to clipboard, speak via TTS |
+| [**tabz-integration**](plugins/tabz-integration/) | command | Integration guide for connecting projects to TabzChrome |
+| [**Tabz MCP Server**](tabz-mcp-server/MCP_TOOLS.md) | MCP | 20 browser control tools (screenshots, clicks, network capture) |
 
-**Quick setup:** The plugin auto-loads when you run Claude Code in the TabzChrome directory.
+**Quick setup:** Plugins auto-load when you run Claude Code in the TabzChrome directory.
 
-**📦 Install from anywhere via Plugin Marketplace:**
+**📦 Install from anywhere:**
 ```bash
 /plugin marketplace add GGPrompts/TabzChrome
+/plugin install tabz-chrome:conductor   # Install specific plugins
 ```
-Then use `/plugin install` to browse and install individual agents, skills, and commands from this repository.
 
 ---
 

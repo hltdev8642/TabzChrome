@@ -45,6 +45,12 @@
       "category": "hooks"
     },
     {
+      "name": "tabz-guide",
+      "description": "Progressive disclosure guide to TabzChrome - profiles, MCP tools, API, debugging, integration",
+      "source": "./plugins/tabz-guide",
+      "category": "skills"
+    },
+    {
       "name": "tabz-chrome-full",
       "description": "Everything - all skills, commands, agents, hooks, and MCP server",
       "source": "./",
