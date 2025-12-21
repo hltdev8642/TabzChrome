@@ -222,8 +222,9 @@ SUBAGENT_COUNT=$(get_subagent_count)
 # Preserve claude_session_id if it exists (set by statusline for context % display)
 CLAUDE_SID_JSON="null"
 if [ -f "$STATE_FILE" ]; then
-    EXISTING_SID=$(jq -r '.claude_session_id // ""' "$STATE_FILE" 2>/dev/null)
-    if [ -n "$EXISTING_SID" ]; then
+    # Use || true to prevent set -e from exiting on corrupted JSON files
+    EXISTING_SID=$(jq -r '.claude_session_id // ""' "$STATE_FILE" 2>/dev/null) || true
+    if [ -n "$EXISTING_SID" ] && [ "$EXISTING_SID" != "null" ]; then
         CLAUDE_SID_JSON="\"$EXISTING_SID\""
     fi
 fi
@@ -245,13 +246,16 @@ STATE_JSON=$(cat <<EOF
 EOF
 )
 
-echo "$STATE_JSON" > "$STATE_FILE"
+# Atomic write: write to temp file then move (prevents corruption from concurrent writes)
+TEMP_FILE="${STATE_FILE}.tmp.$$"
+echo "$STATE_JSON" > "$TEMP_FILE" && mv -f "$TEMP_FILE" "$STATE_FILE"
 
 # Also write by pane ID if both session types are available
 if [[ "$SESSION_ID" =~ ^[a-f0-9]{12}$ ]] && [[ "$TMUX_PANE" != "none" && -n "$TMUX_PANE" ]]; then
     PANE_ID=$(echo "$TMUX_PANE" | sed 's/[^a-zA-Z0-9_-]/_/g')
     PANE_STATE_FILE="$STATE_DIR/${PANE_ID}.json"
-    echo "$STATE_JSON" > "$PANE_STATE_FILE"
+    TEMP_PANE_FILE="${PANE_STATE_FILE}.tmp.$$"
+    echo "$STATE_JSON" > "$TEMP_PANE_FILE" && mv -f "$TEMP_PANE_FILE" "$PANE_STATE_FILE"
 fi
 
 exit 0
