@@ -21,7 +21,6 @@ Quick reference for the browser MCP tools available to Claude Code.
 | `tabz_open_url` | "open URL", "navigate to", "open GitHub", "open localhost" | Open allowed URLs (GitHub, GitLab, Vercel, localhost) in browser tabs |
 | `tabz_enable_network_capture` | "enable network", "start capture", "monitor requests" | Start capturing network requests (XHR, fetch, etc.) |
 | `tabz_get_network_requests` | "network requests", "API calls", "what requests" | List captured network requests with filtering |
-| `tabz_get_api_response` | "API response", "response body", "request data" | Get full response body for a specific request |
 | `tabz_clear_network_requests` | "clear network", "reset requests" | Clear all captured network requests |
 | `tabz_download_file` | "download file", "download URL", "save file" | Download any URL to disk (returns Windows + WSL paths) |
 | `tabz_get_downloads` | "list downloads", "download status", "recent downloads" | List recent downloads with status and progress |
@@ -652,41 +651,6 @@ Only whitelisted domains can be opened to prevent abuse. Cannot open arbitrary w
 
 ---
 
-## tabz_get_api_response
-
-**Purpose:** Get the full response body for a specific network request.
-
-**Trigger phrases:**
-- "Show the API response"
-- "What did that request return?"
-- "Get the response body"
-
-**Parameters:**
-- `requestId` (required): The request ID from `tabz_get_network_requests`
-- `response_format`: `markdown` (default) or `json`
-
-**Returns:**
-Full request details including:
-- URL, method, status
-- Request and response headers
-- Response body (truncated at 100KB if larger)
-- POST data (if applicable)
-
-**Limitations:**
-- Response bodies may not be available for:
-  - Redirects (3xx status)
-  - Pages that have navigated away
-  - Requests older than 5 minutes (auto-cleaned)
-- Large bodies (>100KB) are truncated
-
-**Examples:**
-```javascript
-// Get response for specific request
-{ requestId: "12345.67" }
-```
-
----
-
 ## tabz_clear_network_requests
 
 **Purpose:** Clear all captured network requests.
@@ -1090,27 +1054,26 @@ Install the `tabz-mcp` skill for guided browser automation. The skill **dynamica
 
 ## Extension vs CDP Dependencies
 
-Most tools can work via **CDP (Chrome DevTools Protocol)** with Chrome launched with `--remote-debugging-port=9222`. However, the extension provides better accuracy for tab management and is required for some features.
+All tools use **Chrome Extension APIs** - no CDP or `--remote-debugging-port=9222` flag required.
 
 | Tool | Needs Extension? | Implementation |
 |------|-----------------|----------------|
-| `tabz_list_tabs` | ⚠️ Preferred | Extension first (accurate active tab), CDP fallback |
-| `tabz_switch_tab` | ⚠️ Preferred | Extension first (real tab IDs), CDP fallback |
-| `tabz_rename_tab` | ❌ No | In-memory storage |
-| `tabz_get_page_info` | ⚠️ Fallback | CDP first, extension fallback |
-| `tabz_click` | ❌ No | CDP |
-| `tabz_fill` | ❌ No | CDP |
-| `tabz_screenshot` | ❌ No | CDP |
-| `tabz_screenshot_full` | ❌ No | CDP |
-| `tabz_download_image` | ⚠️ Hybrid | Extension extracts URL, downloads via extension |
-| `tabz_get_element` | ❌ No | CDP |
-| `tabz_open_url` | ⚠️ Partial | Extension for URL allowlist |
-| `tabz_execute_script` | ⚠️ Fallback | CDP first, extension fallback |
+| `tabz_list_tabs` | ✅ Required | chrome.tabs API |
+| `tabz_switch_tab` | ✅ Required | chrome.tabs API |
+| `tabz_rename_tab` | ✅ Required | In-memory + chrome.tabs |
+| `tabz_get_page_info` | ✅ Required | chrome.tabs API |
+| `tabz_click` | ✅ Required | chrome.scripting.executeScript |
+| `tabz_fill` | ✅ Required | chrome.scripting.executeScript |
+| `tabz_screenshot` | ✅ Required | chrome.tabs.captureVisibleTab |
+| `tabz_screenshot_full` | ✅ Required | Content script scroll + stitch |
+| `tabz_download_image` | ✅ Required | chrome.scripting + downloads API |
+| `tabz_get_element` | ✅ Required | chrome.scripting.executeScript |
+| `tabz_open_url` | ✅ Required | chrome.tabs API |
+| `tabz_execute_script` | ✅ Required | chrome.scripting.executeScript |
 | `tabz_get_console_logs` | ✅ Required | Extension captures logs |
-| `tabz_enable_network_capture` | ❌ No | CDP |
-| `tabz_get_network_requests` | ❌ No | CDP |
-| `tabz_get_api_response` | ❌ No | CDP |
-| `tabz_clear_network_requests` | ❌ No | CDP |
+| `tabz_enable_network_capture` | ✅ Required | chrome.webRequest API |
+| `tabz_get_network_requests` | ✅ Required | chrome.webRequest API |
+| `tabz_clear_network_requests` | ✅ Required | chrome.webRequest API |
 | `tabz_download_file` | ✅ Required | Chrome downloads API |
 | `tabz_get_downloads` | ✅ Required | Chrome downloads API |
 | `tabz_cancel_download` | ✅ Required | Chrome downloads API |
@@ -1122,25 +1085,20 @@ Most tools can work via **CDP (Chrome DevTools Protocol)** with Chrome launched 
 | `tabz_delete_bookmark` | ✅ Required | Chrome bookmarks API |
 
 **Summary:**
-- **CDP-only tools (10):** Work with just Chrome + `--remote-debugging-port=9222`
-- **Extension-required (10):** Console logs, downloads API, bookmarks API
-- **Extension-preferred (2):** Tab management (accurate active tab detection)
-- **Hybrid (4):** Use both extension and CDP for best results
-
-**Why extension-preferred for tabs?**
-CDP cannot detect which tab the user has actually focused. The extension uses `chrome.tabs.query({active: true})` to get the **real** active tab, so Claude always knows what you're looking at.
+- **All tools use Chrome Extension APIs** - no CDP required
+- No need for `--remote-debugging-port=9222` flag
+- Extension provides accurate active tab detection
 
 ## Requirements
 
-1. **Chrome with remote debugging:** Use the "Chrome (Claude Debug)" desktop shortcut
-2. **Backend running:** `cd backend && npm start` (in WSL2)
-3. **Chrome extension loaded:** Reload at `chrome://extensions` (required for console logs and downloads)
+1. **Backend running:** `cd backend && npm start`
+2. **Chrome extension loaded:** At `chrome://extensions`
 
 ## Platform Setup (Quick Reference)
 
 | Platform | Script | Notes |
 |----------|--------|-------|
-| WSL2 | `run-wsl.sh` | Uses Windows node.exe for CDP |
+| WSL2 | `run-wsl.sh` | Backend in WSL, Chrome on Windows |
 | Native Linux/macOS | `run.sh` | Uses native node |
 | Auto-detect | `run-auto.sh` | Recommended - detects platform |
 

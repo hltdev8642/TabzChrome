@@ -27,7 +27,7 @@
 | `tabz_get_element` | `page.evaluate()` | `chrome.scripting.executeScript()` | [x] |
 | `tabz_enable_network_capture` | CDP Network domain | `chrome.webRequest` API | [x] |
 | `tabz_get_network_requests` | CDP Network domain | `chrome.webRequest` API | [x] |
-| `tabz_get_api_response` | CDP `Network.getResponseBody` | CDP only (browser security) | N/A |
+| ~~`tabz_get_api_response`~~ | CDP `Network.getResponseBody` | REMOVED - browser security prevents response body capture | ✓ |
 
 ### Implementation Order (Suggested)
 1. **Open URL** - Simple, just `chrome.tabs.create()`
@@ -44,8 +44,9 @@
 - `tabz-mcp-server/src/tools/*.ts` - Update tool descriptions (remove CDP references)
 
 ### After Migration
-- [ ] Remove `puppeteer-core` dependency from `tabz-mcp-server/package.json`
-- [ ] Remove CDP connection code from `client.ts`
+- [x] Remove `puppeteer-core` dependency from `tabz-mcp-server/package.json`
+- [x] Remove CDP connection code from `client.ts`
+- [x] Remove `tabz_get_api_response` tool (browser security prevents response body capture)
 - [ ] Update README to remove `--remote-debugging-port` instructions
 - [ ] Update tool descriptions to remove CDP error messages
 

@@ -3,14 +3,14 @@
  * Tabz MCP Server
  *
  * Provides tools for Claude to interact with browser console and pages
- * via the TabzChrome extension and Chrome DevTools Protocol (CDP).
+ * via the TabzChrome extension (Chrome Extension APIs).
  *
  * Tool Groups:
  * - core: tabz_list_tabs, tabz_switch_tab, tabz_rename_tab, tabz_get_page_info
  * - interaction: tabz_click, tabz_fill, tabz_screenshot, tabz_download_image, tabz_get_element
  * - navigation: tabz_open_url
  * - console: tabz_get_console_logs, tabz_execute_script
- * - network: tabz_enable_network_capture, tabz_get_network_requests, tabz_get_api_response, tabz_clear_network_requests
+ * - network: tabz_enable_network_capture, tabz_get_network_requests, tabz_clear_network_requests
  * - downloads: tabz_download_file, tabz_get_downloads, tabz_cancel_download, tabz_save_page
  * - bookmarks: tabz_get_bookmark_tree, tabz_search_bookmarks, tabz_save_bookmark, tabz_create_folder, tabz_move_bookmark, tabz_delete_bookmark
  * - cookies: (future) tabz_check_auth, tabz_get_cookies
@@ -64,9 +64,9 @@ const TOOL_GROUPS: Record<string, ToolGroupRegistrar> = {
     registerConsoleTools(server, BACKEND_URL); // tabz_get_console_logs
     registerScriptTools(server, BACKEND_URL);  // tabz_execute_script
   },
-  // Network monitoring tools (CDP-based)
+  // Network monitoring tools (chrome.webRequest API)
   network: (server) => {
-    registerNetworkTools(server);     // tabz_enable_network_capture, tabz_get_network_requests, tabz_get_api_response, tabz_clear_network_requests
+    registerNetworkTools(server);     // tabz_enable_network_capture, tabz_get_network_requests, tabz_clear_network_requests
   },
   // Download tools (Chrome downloads + pageCapture API)
   downloads: (server) => {

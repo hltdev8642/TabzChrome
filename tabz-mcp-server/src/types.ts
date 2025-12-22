@@ -73,12 +73,6 @@ export interface NetworkRequestsResponse {
   captureActive: boolean;
 }
 
-export interface NetworkResponseResult {
-  success: boolean;
-  request?: NetworkRequest;
-  error?: string;
-}
-
 // Download types
 export type DownloadState = 'in_progress' | 'complete' | 'interrupted';
 export type ConflictAction = 'uniquify' | 'overwrite' | 'prompt';

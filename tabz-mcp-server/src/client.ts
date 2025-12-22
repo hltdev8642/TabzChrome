@@ -1,12 +1,11 @@
 /**
  * HTTP Client for Backend Communication
  *
- * Communicates with TabzChrome backend to access browser data
- * Also supports direct CDP (Chrome DevTools Protocol) for CSP-bypassing script execution
+ * Communicates with TabzChrome backend to access browser data via Chrome Extension APIs.
+ * All browser interactions go through the extension - no CDP/Puppeteer required.
  */
 
 import axios, { AxiosError } from "axios";
-import puppeteer from "puppeteer-core";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -19,11 +18,6 @@ const SCREENSHOT_MAX_FILES = 50;
 // Track current tab after switching (for screenshot/other operations)
 // Exported so tools can show which tab Claude is currently targeting
 let currentTabId: number = 1;
-let currentTabUrl: string = '';  // URL for matching CDP pages to Chrome tabs
-
-// Map Chrome tab IDs to URLs (populated by listTabs)
-// Enables targeting specific tabs by ID in parallel operations
-const tabIdToUrl: Map<number, string> = new Map();
 
 /**
  * Get the current tab ID that Claude is targeting
@@ -37,11 +31,8 @@ export function getCurrentTabId(): number {
  * Set the current tab ID that Claude is targeting
  * Used by tabz_open_url when opening/switching tabs
  */
-export function setCurrentTabId(tabId: number, url?: string): void {
+export function setCurrentTabId(tabId: number): void {
   currentTabId = tabId;
-  if (url) {
-    currentTabUrl = url;
-  }
 }
 
 /**
@@ -127,220 +118,6 @@ async function cleanupScreenshots(): Promise<void> {
   }
 }
 
-// CDP connection cache
-let cdpBrowser: Awaited<ReturnType<typeof puppeteer.connect>> | null = null;
-
-/**
- * Resolve hostname to IP address (needed because Chrome DevTools rejects non-IP Host headers)
- */
-async function resolveHostToIp(hostname: string): Promise<string | null> {
-  try {
-    const dns = await import('dns');
-    return new Promise((resolve) => {
-      dns.lookup(hostname, (err, address) => {
-        if (err) resolve(null);
-        else resolve(address);
-      });
-    });
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Try to connect to Chrome via CDP (requires Chrome started with --remote-debugging-port=9222)
- * Tries multiple connection methods for WSL2 compatibility
- */
-async function getCdpBrowser(): Promise<typeof cdpBrowser> {
-  if (cdpBrowser && cdpBrowser.connected) {
-    return cdpBrowser;
-  }
-
-  try {
-    let wsEndpoint: string | null = null;
-
-    // Build list of hosts to try (localhost first for Windows, then 127.0.0.1, then WSL2 host)
-    const hostsToTry: string[] = ['localhost', '127.0.0.1'];
-
-    // Resolve host.docker.internal for WSL2 -> Windows
-    const dockerHostIp = await resolveHostToIp('host.docker.internal');
-    if (dockerHostIp && dockerHostIp !== '127.0.0.1') {
-      hostsToTry.push(dockerHostIp);
-    }
-
-    // Try each host
-    for (const host of hostsToTry) {
-      try {
-        console.error(`[CDP] Trying ${host}:9222...`);
-        const response = await axios.get(`http://${host}:9222/json/version`, { timeout: 3000 });
-        wsEndpoint = response.data.webSocketDebuggerUrl;
-        console.error(`[CDP] Found Chrome at ${host}:9222, wsEndpoint: ${wsEndpoint}`);
-        break;
-      } catch (err) {
-        console.error(`[CDP] Failed to connect to ${host}:9222:`, err instanceof Error ? err.message : err);
-        // Try next host
-      }
-    }
-
-    // If direct connection failed, try via PowerShell (WSL2 -> Windows localhost)
-    if (!wsEndpoint) {
-      try {
-        const { execSync } = await import('child_process');
-        const result = execSync(
-          `powershell.exe -Command "(Invoke-WebRequest 'http://localhost:9222/json/version' -UseBasicParsing | ConvertFrom-Json).webSocketDebuggerUrl"`,
-          { timeout: 5000, encoding: 'utf8' }
-        );
-        wsEndpoint = result.trim().replace(/\r\n/g, '');
-        // PowerShell returns localhost URL, but we need to connect via Windows IP from WSL2
-        if (wsEndpoint && dockerHostIp && wsEndpoint.includes('localhost')) {
-          wsEndpoint = wsEndpoint.replace('localhost', dockerHostIp);
-        }
-        console.error('[CDP] Got endpoint via PowerShell:', wsEndpoint);
-      } catch {
-        // PowerShell not available or Chrome debugging not enabled
-      }
-    }
-
-    if (wsEndpoint) {
-      cdpBrowser = await puppeteer.connect({
-        browserWSEndpoint: wsEndpoint,
-        defaultViewport: null  // Don't resize browser windows
-      });
-      console.error('[CDP] Connected to Chrome via DevTools Protocol');
-      return cdpBrowser;
-    }
-  } catch (err) {
-    console.error('[CDP] Connection failed:', err instanceof Error ? err.message : err);
-    // CDP not available, will fall back to extension method
-  }
-  return null;
-}
-
-/**
- * Get filtered non-chrome pages from CDP browser
- */
-async function getNonChromePages(): Promise<import('puppeteer-core').Page[] | null> {
-  const browser = await getCdpBrowser();
-  if (!browser) return null;
-
-  const pages = await browser.pages();
-  return pages.filter(p => {
-    const url = p.url();
-    return !url.startsWith('chrome://') &&
-           !url.startsWith('chrome-extension://') &&
-           !url.startsWith('chrome-error://');
-  });
-}
-
-/**
- * Get a specific page by tabId
- * If no tabId specified, uses currentTabId (set by switchTab)
- *
- * Strategy:
- * 1. If specific tabId provided, look up URL from tabIdToUrl map
- * 2. If no tabId, REFRESH current tab state from Extension API first
- * 3. Find CDP page by URL
- * 4. Fall back to array index for small tabIds (CDP-only mode)
- * 5. Default to first page
- */
-async function getPageByTabId(tabId?: number): Promise<import('puppeteer-core').Page | null> {
-  const pages = await getNonChromePages();
-  if (!pages || pages.length === 0) return null;
-
-  // Determine which URL to look for
-  let targetUrl: string | undefined;
-
-  if (tabId !== undefined) {
-    // Specific tabId requested - look up URL from map
-    targetUrl = tabIdToUrl.get(tabId);
-  } else {
-    // No tabId - refresh current tab state from Extension API
-    // This ensures we always target the user's ACTUAL focused tab
-    try {
-      const activeResult = await getActiveTab();
-      if (activeResult.tab?.url) {
-        currentTabUrl = activeResult.tab.url;
-        currentTabId = activeResult.tab.tabId;
-      }
-    } catch {
-      // Extension not available, use stale currentTabUrl
-    }
-    targetUrl = currentTabUrl;
-  }
-
-  // Try to find page by URL (most reliable for Chrome tab IDs)
-  if (targetUrl) {
-    const pageByUrl = pages.find(p => p.url() === targetUrl);
-    if (pageByUrl) {
-      return pageByUrl;
-    }
-    // URL might have changed (navigation), fall through to other methods
-  }
-
-  // Use provided tabId, or fall back to currentTabId
-  const effectiveTabId = tabId ?? currentTabId;
-
-  // Small tabId = likely CDP array index (1-based for user clarity)
-  // Large tabId = real Chrome tabId (can't use as index)
-  if (effectiveTabId >= 1 && effectiveTabId <= pages.length) {
-    return pages[effectiveTabId - 1];
-  }
-
-  // Default to first page if tabId is out of range
-  return pages[0];
-}
-
-/**
- * Execute script via CDP (bypasses CSP)
- */
-async function executeScriptViaCdp(code: string, tabId?: number): Promise<ScriptResult | null> {
-  try {
-    const page = await getPageByTabId(tabId);
-
-    if (!page) {
-      return { success: false, error: 'No active page found' };
-    }
-
-    const result = await page.evaluate((script) => {
-      try {
-        // eslint-disable-next-line no-eval
-        return eval(script);
-      } catch (e) {
-        throw e;
-      }
-    }, code);
-
-    return { success: true, result };
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
-  }
-}
-
-/**
- * Get page info via CDP
- * Returns the REAL Chrome tab ID (not CDP array index) for consistency with listTabs
- */
-async function getPageInfoViaCdp(tabId?: number): Promise<PageInfo | null> {
-  try {
-    const page = await getPageByTabId(tabId);
-
-    if (!page) {
-      return { url: '', title: '', tabId: -1, error: 'No active page' };
-    }
-
-    // Return the actual Chrome tab ID, not the CDP array index
-    // currentTabId is updated by getPageByTabId when it syncs via extension API
-    // This ensures consistency with tabz_list_tabs which returns real Chrome tab IDs
-    return {
-      url: page.url(),
-      title: await page.title(),
-      tabId: currentTabId
-    };
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Get console logs from the browser via backend
  */
@@ -373,8 +150,7 @@ export async function getConsoleLogs(
 }
 
 /**
- * Execute JavaScript in the browser via backend
- * Tries CDP first (bypasses CSP), falls back to extension method
+ * Execute JavaScript in the browser via Extension API
  */
 export async function executeScript(
   backendUrl: string,
@@ -384,13 +160,6 @@ export async function executeScript(
     allFrames?: boolean;
   }
 ): Promise<ScriptResult> {
-  // Try CDP first (bypasses CSP)
-  const cdpResult = await executeScriptViaCdp(options.code, options.tabId);
-  if (cdpResult !== null) {
-    return cdpResult;
-  }
-
-  // Fall back to extension method
   try {
     const response = await axios.post<ScriptResult>(
       `${backendUrl}/api/browser/execute-script`,
@@ -408,20 +177,12 @@ export async function executeScript(
 }
 
 /**
- * Get current page info from the browser via backend
- * Tries CDP first, falls back to extension method
+ * Get current page info from the browser via Extension API
  */
 export async function getPageInfo(
   backendUrl: string,
   tabId?: number
 ): Promise<PageInfo> {
-  // Try CDP first
-  const cdpResult = await getPageInfoViaCdp(tabId);
-  if (cdpResult !== null) {
-    return cdpResult;
-  }
-
-  // Fall back to extension method
   try {
     const response = await axios.get<PageInfo>(
       `${backendUrl}/api/browser/page-info`,
@@ -462,9 +223,6 @@ function handleApiError(error: unknown, context: string): Error {
   return new Error(`${context}: ${error instanceof Error ? error.message : String(error)}`);
 }
 
-// Re-export getCdpBrowser for use by other modules
-export { getCdpBrowser };
-
 /**
  * Screenshot result type
  */
@@ -475,8 +233,7 @@ export interface ScreenshotResult {
 }
 
 /**
- * Take a screenshot via Chrome Extension API (no CDP required)
- * Falls back to CDP if extension is unavailable
+ * Take a screenshot via Chrome Extension API
  */
 export async function takeScreenshot(options: {
   selector?: string;
@@ -484,7 +241,6 @@ export async function takeScreenshot(options: {
   outputPath?: string;
   tabId?: number;
 }): Promise<ScreenshotResult> {
-  // Try Extension API first (no CDP required)
   try {
     const endpoint = options.fullPage ? '/api/browser/screenshot-full' : '/api/browser/screenshot';
     const response = await axios.post<ScreenshotResult>(
@@ -495,60 +251,7 @@ export async function takeScreenshot(options: {
       },
       { timeout: options.fullPage ? 65000 : 35000 }
     );
-    if (response.data.success || response.data.error) {
-      return response.data;
-    }
-  } catch (extError) {
-    // Extension API failed, try CDP fallback
-    console.error('[screenshot] Extension API failed, trying CDP:', extError instanceof Error ? extError.message : extError);
-  }
-
-  // Fallback to CDP
-  try {
-    const page = await getPageByTabId(options.tabId);
-
-    if (!page) {
-      return { success: false, error: 'Neither Extension API nor CDP available. Make sure Chrome extension is installed or Chrome is running with --remote-debugging-port=9222' };
-    }
-
-    // Clean up old screenshots before taking new one
-    await cleanupScreenshots();
-
-    // Ensure output directory exists
-    const defaultDir = path.join(os.homedir(), 'ai-images');
-    if (!fs.existsSync(defaultDir)) {
-      fs.mkdirSync(defaultDir, { recursive: true });
-    }
-
-    // Generate filename with timestamp
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `screenshot-${timestamp}.png`;
-    const outputPath = options.outputPath || path.join(defaultDir, filename);
-
-    // Ensure output directory exists for custom path
-    const outputDir = path.dirname(outputPath);
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
-
-    if (options.selector) {
-      // Screenshot specific element
-      const element = await page.$(options.selector);
-      if (!element) {
-        return { success: false, error: `Element not found: ${options.selector}` };
-      }
-      await element.screenshot({ path: outputPath });
-    } else {
-      // Full page or viewport screenshot
-      await page.screenshot({
-        path: outputPath,
-        fullPage: options.fullPage ?? false
-      });
-    }
-
-    // Convert path for WSL compatibility (Windows paths -> /mnt/c/...)
-    const returnPath = convertPathForWSL(outputPath);
-    return { success: true, filePath: returnPath };
+    return response.data;
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
@@ -564,7 +267,7 @@ export interface DownloadImageResult {
 }
 
 /**
- * Download an image from the page via CDP
+ * Download an image from the page via Extension API
  */
 export async function downloadImage(options: {
   selector?: string;
@@ -657,157 +360,6 @@ export async function downloadImage(options: {
   };
 }
 
-// Legacy CDP-based downloadImage (kept for reference, no longer used)
-async function downloadImageCDP(options: {
-  selector?: string;
-  url?: string;
-  outputPath?: string;
-  tabId?: number;
-}): Promise<DownloadImageResult> {
-  try {
-    const page = await getPageByTabId(options.tabId);
-
-    if (!page) {
-      return { success: false, error: 'No active page found. Make sure Chrome is running with --remote-debugging-port=9222' };
-    }
-
-    let imageUrl = options.url;
-
-    // If selector provided, extract the image URL from the element
-    if (options.selector && !imageUrl) {
-      const extractedUrl = await page.evaluate((sel) => {
-        const el = document.querySelector(sel);
-        if (!el) return null;
-        if (el.tagName === 'IMG') {
-          return (el as HTMLImageElement).src;
-        }
-        // Check for background-image
-        const style = window.getComputedStyle(el);
-        const bgImage = style.backgroundImage;
-        if (bgImage && bgImage !== 'none') {
-          const match = bgImage.match(/url\(['"]?([^'"]+)['"]?\)/);
-          return match ? match[1] : null;
-        }
-        return null;
-      }, options.selector);
-
-      if (!extractedUrl) {
-        return { success: false, error: `Could not find image URL from selector: ${options.selector}` };
-      }
-      imageUrl = extractedUrl;
-    }
-
-    if (!imageUrl && !options.selector) {
-      return { success: false, error: 'Either selector or url parameter is required' };
-    }
-
-    // For blob URLs or when we have a selector, use canvas capture instead of fetch
-    // This works for AI-generated images (ChatGPT, Copilot, DALL-E, etc.) which use blob URLs
-    const isBlobUrl = imageUrl?.startsWith('blob:');
-
-    let response: string;
-
-    if (isBlobUrl || options.selector) {
-      // Canvas capture approach - works for blob URLs and any visible image
-      const selector = options.selector || 'img';
-      response = await page.evaluate(async (sel, targetUrl) => {
-        // Find the image element
-        let imgEl: HTMLImageElement | null = null;
-
-        if (targetUrl) {
-          // Find img with matching src (for blob URLs)
-          imgEl = document.querySelector(`img[src="${targetUrl}"]`) as HTMLImageElement;
-        }
-        if (!imgEl && sel) {
-          const el = document.querySelector(sel);
-          if (el?.tagName === 'IMG') {
-            imgEl = el as HTMLImageElement;
-          }
-        }
-
-        if (!imgEl) {
-          throw new Error('Could not find image element');
-        }
-
-        // Wait for image to load if needed
-        if (!imgEl.complete) {
-          await new Promise((resolve, reject) => {
-            imgEl!.onload = resolve;
-            imgEl!.onerror = reject;
-            setTimeout(reject, 5000); // 5s timeout
-          });
-        }
-
-        // Draw to canvas and export
-        const canvas = document.createElement('canvas');
-        canvas.width = imgEl.naturalWidth || imgEl.width;
-        canvas.height = imgEl.naturalHeight || imgEl.height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Could not get canvas context');
-        ctx.drawImage(imgEl, 0, 0);
-        return canvas.toDataURL('image/png');
-      }, selector, imageUrl);
-    } else {
-      // Standard fetch approach for regular URLs
-      response = await page.evaluate(async (url) => {
-        try {
-          const res = await fetch(url);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const blob = await res.blob();
-          const reader = new FileReader();
-          return new Promise<string>((resolve, reject) => {
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-        } catch (e) {
-          throw e;
-        }
-      }, imageUrl!);
-    }
-
-    // Clean up old images before saving new one
-    await cleanupScreenshots();
-
-    // Save to file
-    const defaultDir = path.join(os.homedir(), 'ai-images');
-    if (!fs.existsSync(defaultDir)) {
-      fs.mkdirSync(defaultDir, { recursive: true });
-    }
-
-    // Extract extension from URL or default to png
-    let ext = '.png';
-    if (imageUrl && !isBlobUrl) {
-      try {
-        const urlPath = new URL(imageUrl).pathname;
-        ext = path.extname(urlPath) || '.png';
-      } catch {
-        // Invalid URL, use default extension
-      }
-    }
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `image-${timestamp}${ext}`;
-    const outputPath = options.outputPath || path.join(defaultDir, filename);
-
-    // Ensure output directory exists
-    const outputDir = path.dirname(outputPath);
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
-
-    // Convert data URL to buffer and save
-    const base64Data = response.replace(/^data:image\/\w+;base64,/, '');
-    const buffer = Buffer.from(base64Data, 'base64');
-    fs.writeFileSync(outputPath, buffer);
-
-    // Convert path for WSL compatibility (Windows paths -> /mnt/c/...)
-    const returnPath = convertPathForWSL(outputPath);
-    return { success: true, filePath: returnPath };
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
-  }
-}
-
 /**
  * Tab info type
  */
@@ -831,39 +383,23 @@ const customTabNames: Map<string, string> = new Map();
  */
 export async function renameTab(tabId: number, name: string): Promise<{ success: boolean; error?: string }> {
   try {
-    // First, try to get URL from tabIdToUrl map (populated by listTabs with Chrome tab IDs)
-    let url = tabIdToUrl.get(tabId);
+    // Get the tab list to find the URL for this tabId
+    const tabsResult = await listTabs();
+    const tab = tabsResult.tabs.find(t => t.tabId === tabId);
 
-    // If not found in map, the user may not have called listTabs recently
-    // Try to refresh the tab list via extension API
-    if (!url) {
-      const tabsResult = await listTabs();
-      url = tabIdToUrl.get(tabId);
-    }
-
-    // Still not found? Check if it's a small number (CDP array index fallback)
-    if (!url) {
-      const pages = await getNonChromePages();
-      if (pages && tabId >= 1 && tabId <= pages.length) {
-        // Small number, treat as 1-based CDP index (legacy behavior)
-        url = pages[tabId - 1].url();
-      }
-    }
-
-    if (!url) {
-      // Build helpful error message
-      const availableIds = [...tabIdToUrl.keys()];
+    if (!tab) {
+      const availableIds = tabsResult.tabs.map(t => t.tabId);
       const idsStr = availableIds.length > 0
         ? `Available tab IDs: ${availableIds.join(', ')}`
-        : 'Run tabz_list_tabs first to get valid tab IDs';
+        : 'No tabs found';
       return { success: false, error: `Invalid tab ID: ${tabId}. ${idsStr}` };
     }
 
     if (name.trim() === '') {
       // Empty name clears the custom name
-      customTabNames.delete(url);
+      customTabNames.delete(tab.url);
     } else {
-      customTabNames.set(url, name.trim());
+      customTabNames.set(tab.url, name.trim());
     }
 
     return { success: true };
@@ -873,68 +409,29 @@ export async function renameTab(tabId: number, name: string): Promise<{ success:
 }
 
 /**
- * List all open browser tabs via Extension API (accurate active state)
- * Falls back to CDP if extension is not available.
- *
- * Note: Extension API provides REAL Chrome tab IDs and accurate active state.
- * CDP can't detect which tab the user has focused.
+ * List all open browser tabs via Extension API
  */
 export async function listTabs(): Promise<{ tabs: TabInfo[]; error?: string }> {
-  // Try extension API first (accurate active state)
   try {
     const response = await axios.get(`${BACKEND_URL}/api/browser/tabs`, { timeout: 5000 });
     if (response.data.success && response.data.tabs) {
       const tabs: TabInfo[] = response.data.tabs.map((tab: any) => ({
-        tabId: tab.tabId,  // Real Chrome tab ID
+        tabId: tab.tabId,
         url: tab.url,
         title: tab.title,
         customName: customTabNames.get(tab.url),
-        active: tab.active  // Accurate! Extension knows the real focused tab
+        active: tab.active
       }));
 
-      // Update currentTabId and URL to the actually active tab
+      // Update currentTabId to the actually active tab
       const activeTab = tabs.find(t => t.active);
       if (activeTab) {
         currentTabId = activeTab.tabId;
-        currentTabUrl = activeTab.url;  // Store URL for CDP page matching
-      }
-
-      // Populate tabId -> URL map for parallel tab operations
-      tabIdToUrl.clear();
-      for (const tab of tabs) {
-        tabIdToUrl.set(tab.tabId, tab.url);
       }
 
       return { tabs };
     }
-  } catch (error) {
-    // Extension API failed, try CDP fallback
-  }
-
-  // Fallback to CDP (no accurate active state)
-  try {
-    const pages = await getNonChromePages();
-    if (!pages) {
-      return { tabs: [], error: 'Neither extension nor CDP available. Make sure Chrome extension is installed or Chrome is running with --remote-debugging-port=9222' };
-    }
-
-    const tabs: TabInfo[] = [];
-
-    for (let i = 0; i < pages.length; i++) {
-      const page = pages[i];
-      const url = page.url();
-      const customName = customTabNames.get(url);
-
-      tabs.push({
-        tabId: i + 1, // CDP uses 1-based array index (less reliable)
-        url: url,
-        title: await page.title(),
-        customName: customName,
-        active: i + 1 === currentTabId // Best guess based on last switch
-      });
-    }
-
-    return { tabs };
+    return { tabs: [], error: response.data.error || 'Failed to list tabs' };
   } catch (error) {
     return { tabs: [], error: error instanceof Error ? error.message : String(error) };
   }
@@ -942,46 +439,16 @@ export async function listTabs(): Promise<{ tabs: TabInfo[]; error?: string }> {
 
 /**
  * Switch to a specific tab via Extension API
- * Falls back to CDP if extension is not available.
  * Also updates currentTabId so subsequent operations target this tab.
  */
 export async function switchTab(tabId: number): Promise<{ success: boolean; error?: string }> {
-  // Try extension API first (uses real Chrome tab IDs)
   try {
     const response = await axios.post(`${BACKEND_URL}/api/browser/switch-tab`, { tabId }, { timeout: 5000 });
     if (response.data.success) {
       currentTabId = tabId;
-      // Get the URL of the switched-to tab for CDP page matching
-      const activeResult = await getActiveTab();
-      if (activeResult.tab?.url) {
-        currentTabUrl = activeResult.tab.url;
-      }
       return { success: true };
     }
-    if (response.data.error) {
-      return { success: false, error: response.data.error };
-    }
-  } catch (error) {
-    // Extension API failed, try CDP fallback
-  }
-
-  // Fallback to CDP (uses array indices)
-  try {
-    const pages = await getNonChromePages();
-    if (!pages) {
-      return { success: false, error: 'Neither extension nor CDP available' };
-    }
-
-    // For CDP fallback, tabId is 1-based array index
-    if (tabId < 1 || tabId > pages.length) {
-      return { success: false, error: `Invalid tab ID: ${tabId}. Available tabs: 1-${pages.length}` };
-    }
-
-    await pages[tabId - 1].bringToFront();
-    currentTabId = tabId;
-    currentTabUrl = pages[tabId - 1].url();  // Store URL for consistency
-
-    return { success: true };
+    return { success: false, error: response.data.error || 'Failed to switch tab' };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
@@ -995,9 +462,7 @@ export async function getActiveTab(): Promise<{ tab?: { tabId: number; url: stri
   try {
     const response = await axios.get(`${BACKEND_URL}/api/browser/active-tab`, { timeout: 5000 });
     if (response.data.success && response.data.tab) {
-      // Update currentTabId and URL to match reality
       currentTabId = response.data.tab.tabId;
-      currentTabUrl = response.data.tab.url;
       return { tab: response.data.tab };
     }
     return { error: response.data.error || 'Failed to get active tab' };
@@ -1018,8 +483,7 @@ export interface OpenUrlResult {
 }
 
 /**
- * Open a URL via Chrome Extension API (no CDP required)
- * This is the preferred method - works without --remote-debugging-port
+ * Open a URL via Chrome Extension API
  */
 export async function openUrl(options: {
   url: string;
@@ -1042,9 +506,6 @@ export async function openUrl(options: {
     // Update current tab tracking if successful and not background
     if (response.data.success && response.data.tabId && !options.background) {
       currentTabId = response.data.tabId;
-      if (response.data.url) {
-        currentTabUrl = response.data.url;
-      }
     }
 
     return response.data;
@@ -1054,84 +515,32 @@ export async function openUrl(options: {
 }
 
 /**
- * Click an element via Chrome Extension API (no CDP required)
- * Falls back to CDP if extension is unavailable
+ * Click an element via Chrome Extension API
  */
 export async function clickElement(selector: string, tabId?: number): Promise<{ success: boolean; error?: string }> {
-  // Try Extension API first (no CDP required)
   try {
     const response = await axios.post<{ success: boolean; tagName?: string; error?: string }>(
       `${BACKEND_URL}/api/browser/click-element`,
       { selector, tabId },
       { timeout: 20000 }
     );
-    if (response.data.success || response.data.error) {
-      return response.data;
-    }
-  } catch (extError) {
-    // Extension API failed, try CDP fallback
-    console.error('[click] Extension API failed, trying CDP:', extError instanceof Error ? extError.message : extError);
-  }
-
-  // Fallback to CDP
-  try {
-    const page = await getPageByTabId(tabId);
-
-    if (!page) {
-      return { success: false, error: 'Neither Extension API nor CDP available. Make sure Chrome extension is installed or Chrome is running with --remote-debugging-port=9222' };
-    }
-
-    // Wait for element and click
-    await page.waitForSelector(selector, { timeout: 5000 });
-    await page.click(selector);
-
-    return { success: true };
+    return response.data;
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
 /**
- * Fill an input field via Chrome Extension API (no CDP required)
- * Falls back to CDP if extension is unavailable
+ * Fill an input field via Chrome Extension API
  */
 export async function fillInput(selector: string, value: string, tabId?: number): Promise<{ success: boolean; error?: string }> {
-  // Try Extension API first (no CDP required)
   try {
     const response = await axios.post<{ success: boolean; tagName?: string; error?: string }>(
       `${BACKEND_URL}/api/browser/fill-input`,
       { selector, value, tabId },
       { timeout: 20000 }
     );
-    if (response.data.success || response.data.error) {
-      return response.data;
-    }
-  } catch (extError) {
-    // Extension API failed, try CDP fallback
-    console.error('[fill] Extension API failed, trying CDP:', extError instanceof Error ? extError.message : extError);
-  }
-
-  // Fallback to CDP
-  try {
-    const page = await getPageByTabId(tabId);
-
-    if (!page) {
-      return { success: false, error: 'Neither Extension API nor CDP available. Make sure Chrome extension is installed or Chrome is running with --remote-debugging-port=9222' };
-    }
-
-    // Wait for element, clear it, and type
-    await page.waitForSelector(selector, { timeout: 5000 });
-
-    // Clear existing value
-    await page.evaluate((sel) => {
-      const el = document.querySelector(sel) as HTMLInputElement;
-      if (el) el.value = '';
-    }, selector);
-
-    // Type new value
-    await page.type(selector, value);
-
-    return { success: true };
+    return response.data;
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
@@ -1163,63 +572,19 @@ export interface ElementInfo {
   childCount?: number;
 }
 
-/**
- * Get detailed information about an element via CDP
- */
 // =====================================
 // Network Monitoring
 // =====================================
 
-import type { NetworkRequest, NetworkRequestsResponse, NetworkResponseResult } from "./types.js";
+import type { NetworkRequest, NetworkRequestsResponse } from "./types.js";
 
-// Network request storage (in-memory, for CDP fallback)
-const networkRequests: Map<string, NetworkRequest> = new Map();
-const MAX_STORED_REQUESTS = 500;
-const REQUEST_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
-const MAX_BODY_SIZE = 100 * 1024; // 100KB max response body
-
-// Track which pages have network monitoring enabled (CDP mode)
-const networkEnabledPages: Set<string> = new Set();
-
-// Track if Extension API capture is active (preferred method)
+// Track if Extension API capture is active
 let extensionNetworkCaptureActive = false;
 
-// CDP session cache for network monitoring (fallback for response bodies)
-let networkCdpSession: Awaited<ReturnType<typeof import('puppeteer-core').Page.prototype.createCDPSession>> | null = null;
-
 /**
- * Clean up old network requests (for CDP fallback)
- */
-function cleanupOldRequests(): void {
-  const now = Date.now();
-  const toDelete: string[] = [];
-
-  for (const [id, req] of networkRequests) {
-    if (now - req.timestamp > REQUEST_MAX_AGE_MS) {
-      toDelete.push(id);
-    }
-  }
-
-  for (const id of toDelete) {
-    networkRequests.delete(id);
-  }
-
-  // Also enforce max size
-  if (networkRequests.size > MAX_STORED_REQUESTS) {
-    const sorted = [...networkRequests.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp);
-    const toRemove = sorted.slice(0, networkRequests.size - MAX_STORED_REQUESTS);
-    for (const [id] of toRemove) {
-      networkRequests.delete(id);
-    }
-  }
-}
-
-/**
- * Enable network monitoring via Extension API (no CDP required)
- * Falls back to CDP if extension is unavailable
+ * Enable network monitoring via Extension API
  */
 export async function enableNetworkCapture(tabId?: number): Promise<{ success: boolean; error?: string }> {
-  // Try Extension API first (no CDP required)
   try {
     const response = await axios.post<{ success: boolean; error?: string }>(
       `${BACKEND_URL}/api/browser/network-capture/enable`,
@@ -1229,84 +594,10 @@ export async function enableNetworkCapture(tabId?: number): Promise<{ success: b
 
     if (response.data.success) {
       extensionNetworkCaptureActive = true;
-      console.error('[Network] Capture enabled via Extension API');
       return { success: true };
     }
 
-    if (response.data.error) {
-      console.error('[Network] Extension API failed:', response.data.error);
-    }
-  } catch (extError) {
-    console.error('[Network] Extension API failed, trying CDP:', extError instanceof Error ? extError.message : extError);
-  }
-
-  // Fallback to CDP
-  try {
-    const page = await getPageByTabId(tabId);
-    if (!page) {
-      return { success: false, error: 'Neither Extension API nor CDP available. Make sure Chrome extension is installed or Chrome is running with --remote-debugging-port=9222' };
-    }
-
-    const pageUrl = page.url();
-
-    // Check if already enabled for this page
-    if (networkEnabledPages.has(pageUrl)) {
-      return { success: true };
-    }
-
-    // Create CDP session for this page
-    const client = await page.createCDPSession();
-    networkCdpSession = client;
-
-    // Enable Network domain
-    await client.send('Network.enable');
-
-    // Get the effective tabId
-    const pages = await getNonChromePages();
-    const effectiveTabId = pages?.findIndex(p => p === page) ?? 0;
-
-    // Listen for requests
-    client.on('Network.requestWillBeSent', (event: any) => {
-      cleanupOldRequests();
-
-      const request: NetworkRequest = {
-        requestId: event.requestId,
-        url: event.request.url,
-        method: event.request.method,
-        resourceType: event.type || 'Other',
-        timestamp: Date.now(),
-        tabId: effectiveTabId + 1,
-        requestHeaders: event.request.headers,
-        postData: event.request.postData
-      };
-
-      networkRequests.set(event.requestId, request);
-    });
-
-    // Listen for responses
-    client.on('Network.responseReceived', (event: any) => {
-      const request = networkRequests.get(event.requestId);
-      if (request) {
-        request.status = event.response.status;
-        request.statusText = event.response.statusText;
-        request.responseHeaders = event.response.headers;
-        request.mimeType = event.response.mimeType;
-      }
-    });
-
-    // Listen for loading finished (timing)
-    client.on('Network.loadingFinished', (event: any) => {
-      const request = networkRequests.get(event.requestId);
-      if (request) {
-        request.responseTime = Date.now() - request.timestamp;
-        request.encodedDataLength = event.encodedDataLength;
-      }
-    });
-
-    networkEnabledPages.add(pageUrl);
-    console.error(`[Network] Monitoring enabled via CDP for: ${pageUrl}`);
-
-    return { success: true };
+    return { success: false, error: response.data.error || 'Failed to enable network capture' };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
@@ -1316,12 +607,11 @@ export async function enableNetworkCapture(tabId?: number): Promise<{ success: b
  * Check if network capture is currently active
  */
 export function isNetworkCaptureActive(): boolean {
-  return extensionNetworkCaptureActive || networkEnabledPages.size > 0;
+  return extensionNetworkCaptureActive;
 }
 
 /**
- * Get captured network requests via Extension API (preferred)
- * Falls back to local CDP storage if extension unavailable
+ * Get captured network requests via Extension API
  */
 export async function getNetworkRequests(options: {
   urlPattern?: string;
@@ -1333,197 +623,39 @@ export async function getNetworkRequests(options: {
   offset?: number;
   tabId?: number;
 }): Promise<NetworkRequestsResponse> {
-  // Try Extension API first
-  if (extensionNetworkCaptureActive) {
-    try {
-      const response = await axios.post<NetworkRequestsResponse>(
-        `${BACKEND_URL}/api/browser/network-requests`,
-        {
-          urlPattern: options.urlPattern,
-          method: options.method,
-          statusMin: options.statusMin,
-          statusMax: options.statusMax,
-          resourceType: options.resourceType,
-          limit: options.limit,
-          offset: options.offset,
-          tabId: options.tabId
-        },
-        { timeout: 10000 }
-      );
-
-      if (response.data.requests) {
-        return response.data;
-      }
-    } catch (extError) {
-      console.error('[Network] Extension API get requests failed:', extError instanceof Error ? extError.message : extError);
-      // Fall through to CDP storage
-    }
-  }
-
-  // Fallback to local CDP storage
-  cleanupOldRequests();
-
-  let requests = [...networkRequests.values()];
-
-  // Apply filters
-  if (options.urlPattern) {
-    try {
-      const regex = new RegExp(options.urlPattern, 'i');
-      requests = requests.filter(r => regex.test(r.url));
-    } catch {
-      // Invalid regex, treat as literal string
-      requests = requests.filter(r => r.url.includes(options.urlPattern!));
-    }
-  }
-
-  if (options.method && options.method !== 'all') {
-    requests = requests.filter(r => r.method.toUpperCase() === options.method!.toUpperCase());
-  }
-
-  if (options.statusMin !== undefined) {
-    requests = requests.filter(r => r.status !== undefined && r.status >= options.statusMin!);
-  }
-
-  if (options.statusMax !== undefined) {
-    requests = requests.filter(r => r.status !== undefined && r.status <= options.statusMax!);
-  }
-
-  if (options.resourceType && options.resourceType !== 'all') {
-    requests = requests.filter(r => r.resourceType.toLowerCase() === options.resourceType!.toLowerCase());
-  }
-
-  if (options.tabId !== undefined) {
-    requests = requests.filter(r => r.tabId === options.tabId);
-  }
-
-  // Sort by timestamp (newest first)
-  requests.sort((a, b) => b.timestamp - a.timestamp);
-
-  const total = requests.length;
-  const offset = options.offset || 0;
-  const limit = options.limit || 50;
-
-  // Apply pagination
-  const paginatedRequests = requests.slice(offset, offset + limit);
-
-  return {
-    requests: paginatedRequests,
-    total,
-    hasMore: offset + limit < total,
-    nextOffset: offset + limit < total ? offset + limit : undefined,
-    captureActive: isNetworkCaptureActive()
-  };
-}
-
-/**
- * Get response body for a specific request
- * NOTE: This requires CDP - Extension API cannot capture response bodies
- * Falls back gracefully with helpful error message
- */
-export async function getNetworkResponseBody(requestId: string): Promise<NetworkResponseResult> {
-  // First check if we have the request in Extension API storage
-  // (we can't get body, but we can return metadata)
-  if (extensionNetworkCaptureActive) {
-    try {
-      const response = await axios.post<NetworkRequestsResponse>(
-        `${BACKEND_URL}/api/browser/network-requests`,
-        { limit: 500 },
-        { timeout: 10000 }
-      );
-
-      const extRequest = response.data.requests?.find(r => r.requestId === requestId);
-      if (extRequest) {
-        // Found the request but can't get body without CDP
-        if (!networkCdpSession) {
-          return {
-            success: false,
-            error: 'Response body retrieval requires Chrome to be running with --remote-debugging-port=9222. ' +
-                   'The Extension API can capture request metadata but not response bodies. ' +
-                   'Start Chrome with: chrome --remote-debugging-port=9222',
-            request: extRequest
-          };
-        }
-      }
-    } catch {
-      // Extension API not available, continue to CDP
-    }
-  }
-
-  // Check local CDP storage
-  const request = networkRequests.get(requestId);
-
-  if (!request) {
-    return { success: false, error: `Request not found: ${requestId}. Requests expire after 5 minutes.` };
-  }
-
-  // If we already have the body cached, return it
-  if (request.responseBody !== undefined) {
-    return { success: true, request };
-  }
-
-  // Try to get the body via CDP
   try {
-    if (!networkCdpSession) {
-      return {
-        success: false,
-        error: 'Response body retrieval requires CDP. Start Chrome with --remote-debugging-port=9222'
-      };
-    }
+    const response = await axios.post<NetworkRequestsResponse>(
+      `${BACKEND_URL}/api/browser/network-requests`,
+      {
+        urlPattern: options.urlPattern,
+        method: options.method,
+        statusMin: options.statusMin,
+        statusMax: options.statusMax,
+        resourceType: options.resourceType,
+        limit: options.limit,
+        offset: options.offset,
+        tabId: options.tabId
+      },
+      { timeout: 10000 }
+    );
 
-    const response = await networkCdpSession.send('Network.getResponseBody', {
-      requestId: requestId
-    }) as { body: string; base64Encoded: boolean };
-
-    let body = response.body;
-    let truncated = false;
-
-    // Handle base64 encoded bodies
-    if (response.base64Encoded) {
-      try {
-        body = Buffer.from(response.body, 'base64').toString('utf8');
-      } catch {
-        // Keep as base64 if can't decode
-        body = `[Base64 encoded, ${response.body.length} chars]`;
-      }
-    }
-
-    // Truncate large bodies
-    if (body.length > MAX_BODY_SIZE) {
-      body = body.slice(0, MAX_BODY_SIZE) + `\n\n[Truncated: ${body.length - MAX_BODY_SIZE} more characters]`;
-      truncated = true;
-    }
-
-    // Cache the body
-    request.responseBody = body;
-    request.responseBodyTruncated = truncated;
-
-    return { success: true, request };
+    return response.data;
   } catch (error) {
-    // Body may not be available (e.g., for redirects, or if page navigated away)
-    const errorMessage = error instanceof Error ? error.message : String(error);
-
-    if (errorMessage.includes('No resource with given identifier')) {
-      return { success: false, error: 'Response body no longer available. The page may have navigated away.' };
-    }
-
-    return { success: false, error: `Failed to get response body: ${errorMessage}` };
+    return {
+      requests: [],
+      total: 0,
+      hasMore: false,
+      captureActive: extensionNetworkCaptureActive
+    };
   }
 }
 
 /**
- * Clear all captured network requests
+ * Clear all captured network requests via Extension API
  */
 export function clearNetworkRequests(): void {
-  // Try Extension API first
-  if (extensionNetworkCaptureActive) {
-    axios.post(`${BACKEND_URL}/api/browser/network-requests/clear`, {}, { timeout: 5000 })
-      .then(() => console.error('[Network] Cleared requests via Extension API'))
-      .catch(() => { /* Ignore errors */ });
-  }
-
-  // Also clear local CDP storage
-  networkRequests.clear();
-  console.error('[Network] Cleared all captured requests');
+  axios.post(`${BACKEND_URL}/api/browser/network-requests/clear`, {}, { timeout: 5000 })
+    .catch(() => { /* Ignore errors */ });
 }
 
 // =====================================
@@ -1629,7 +761,7 @@ export async function savePage(options: {
 }
 
 /**
- * Capture an image from the page via canvas (extension-based, no CDP required)
+ * Capture an image from the page via canvas (extension-based)
  * Works for blob URLs and AI-generated images (ChatGPT, Copilot, DALL-E, etc.)
  */
 export interface CaptureImageResult {
@@ -1664,8 +796,7 @@ export async function captureImage(options: {
 }
 
 /**
- * Get detailed information about an element via Chrome Extension API (no CDP required)
- * Falls back to CDP if extension is unavailable
+ * Get detailed information about an element via Chrome Extension API
  */
 export async function getElementInfo(
   selector: string,
@@ -1675,7 +806,6 @@ export async function getElementInfo(
     tabId?: number;
   } = {}
 ): Promise<ElementInfo> {
-  // Try Extension API first (no CDP required)
   try {
     const response = await axios.post<ElementInfo>(
       `${BACKEND_URL}/api/browser/get-element-info`,
@@ -1687,130 +817,7 @@ export async function getElementInfo(
       },
       { timeout: 15000 }
     );
-    if (response.data.success || response.data.error) {
-      return response.data;
-    }
-  } catch (extError) {
-    // Extension API failed, try CDP fallback
-    console.error('[getElementInfo] Extension API failed, trying CDP:', extError instanceof Error ? extError.message : extError);
-  }
-
-  // Fallback to CDP
-  try {
-    const page = await getPageByTabId(options.tabId);
-
-    if (!page) {
-      return { success: false, error: 'Neither Extension API nor CDP available. Make sure Chrome extension is installed or Chrome is running with --remote-debugging-port=9222' };
-    }
-
-    // Default style properties to extract (most useful for recreation)
-    const defaultStyleProps = [
-      // Layout
-      'display', 'position', 'top', 'right', 'bottom', 'left',
-      'width', 'height', 'minWidth', 'maxWidth', 'minHeight', 'maxHeight',
-      'margin', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft',
-      'padding', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
-      'boxSizing', 'overflow', 'overflowX', 'overflowY',
-      // Flexbox
-      'flexDirection', 'flexWrap', 'justifyContent', 'alignItems', 'alignContent',
-      'flex', 'flexGrow', 'flexShrink', 'flexBasis', 'alignSelf', 'gap',
-      // Grid
-      'gridTemplateColumns', 'gridTemplateRows', 'gridColumn', 'gridRow', 'gridGap',
-      // Typography
-      'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'lineHeight',
-      'textAlign', 'textDecoration', 'textTransform', 'letterSpacing', 'color',
-      // Background
-      'background', 'backgroundColor', 'backgroundImage', 'backgroundSize', 'backgroundPosition',
-      // Border
-      'border', 'borderWidth', 'borderStyle', 'borderColor', 'borderRadius',
-      'borderTop', 'borderRight', 'borderBottom', 'borderLeft',
-      // Effects
-      'boxShadow', 'opacity', 'transform', 'transition', 'zIndex',
-      'cursor', 'pointerEvents'
-    ];
-
-    const styleProps = options.styleProperties || defaultStyleProps;
-    const includeStyles = options.includeStyles !== false; // Default true
-
-    const result = await page.evaluate((sel: string, props: string[], getStyles: boolean) => {
-      const el = document.querySelector(sel);
-      if (!el) return { found: false };
-
-      const rect = el.getBoundingClientRect();
-
-      // Get all attributes
-      const attributes: Record<string, string> = {};
-      for (let i = 0; i < el.attributes.length; i++) {
-        const attr = el.attributes[i];
-        attributes[attr.name] = attr.value;
-      }
-
-      // Get computed styles
-      let styles: Record<string, string> = {};
-      if (getStyles) {
-        const computed = window.getComputedStyle(el);
-        for (const prop of props) {
-          const value = computed.getPropertyValue(
-            prop.replace(/([A-Z])/g, '-$1').toLowerCase()
-          );
-          if (value && value !== 'none' && value !== 'normal' && value !== 'auto' && value !== '0px' && value !== 'rgba(0, 0, 0, 0)') {
-            styles[prop] = value;
-          }
-        }
-      }
-
-      // Try to build a parent selector for context
-      let parentSelector = '';
-      const parent = el.parentElement;
-      if (parent) {
-        if (parent.id) {
-          parentSelector = `#${parent.id}`;
-        } else if (parent.className) {
-          parentSelector = `.${parent.className.split(' ')[0]}`;
-        } else {
-          parentSelector = parent.tagName.toLowerCase();
-        }
-      }
-
-      return {
-        found: true,
-        html: el.innerHTML,
-        outerHTML: el.outerHTML,
-        innerText: (el as HTMLElement).innerText?.slice(0, 500), // Limit text
-        tagName: el.tagName.toLowerCase(),
-        attributes,
-        bounds: {
-          x: Math.round(rect.x),
-          y: Math.round(rect.y),
-          width: Math.round(rect.width),
-          height: Math.round(rect.height),
-          top: Math.round(rect.top),
-          right: Math.round(rect.right),
-          bottom: Math.round(rect.bottom),
-          left: Math.round(rect.left)
-        },
-        styles,
-        parentSelector,
-        childCount: el.children.length
-      };
-    }, selector, styleProps, includeStyles);
-
-    if (!result.found) {
-      return { success: false, error: `Element not found: ${selector}` };
-    }
-
-    return {
-      success: true,
-      html: result.html,
-      outerHTML: result.outerHTML,
-      innerText: result.innerText,
-      tagName: result.tagName,
-      attributes: result.attributes,
-      bounds: result.bounds,
-      styles: result.styles,
-      parentSelector: result.parentSelector,
-      childCount: result.childCount
-    };
+    return response.data;
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
