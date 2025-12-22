@@ -66,7 +66,7 @@ URL: [url]
 Convert the summary to natural spoken text (no markdown, no bullets - conversational):
 
 ```bash
-cat <<'AUDIO_TEXT_EOF' | jq -Rs '{text: ., voice: "en-US-AriaNeural", rate: "+10%", pitch: "+0Hz", volume: 0.85}' | curl -s -X POST http://localhost:8129/api/audio/speak -H "Content-Type: application/json" -d @- > /dev/null 2>&1 &
+cat <<'AUDIO_TEXT_EOF' | jq -Rs '{text: ., voice: "en-US-AriaNeural", rate: "+10%", pitch: "+0Hz", volume: 0.85, priority: "high"}' | curl -s -X POST http://localhost:8129/api/audio/speak -H "Content-Type: application/json" -d @- > /dev/null 2>&1 &
 [INSERT SPOKEN VERSION OF SUMMARY HERE]
 This page is about [topic]. The key points are: [point 1], [point 2], and [point 3].
 Notable details include [specific facts].

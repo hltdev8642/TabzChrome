@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import type { Profile, AudioSettings } from '../components/SettingsModal'
 import type { ClaudeStatus } from './useClaudeStatus'
+import { playLowPriority, isHighPriorityPlaying } from '../utils/audioManager'
 
 // Re-export types that consumers need
 export type { AudioSettings }
@@ -235,6 +236,7 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
   }, [audioGlobalMute, audioSettings])
 
   // Audio playback helper - plays MP3 from backend cache via Chrome
+  // Uses low priority - will be skipped if high-priority audio (summaries, handoffs) is playing
   // Optional overrides for urgent alerts (e.g., context warnings)
   const playAudio = useCallback(async (
     text: string,
@@ -244,6 +246,12 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
   ) => {
     const settings = getAudioSettingsForProfile(session?.profile, session?.assignedVoice)
     if (!settings.enabled) return
+
+    // Skip if high-priority audio is playing (summaries, handoffs, page readings)
+    if (isHighPriorityPlaying()) {
+      console.log('[Audio] Skipping status update - high-priority audio playing')
+      return
+    }
 
     // Strip emojis for cleaner TTS (e.g., "🟠 Amber Claude" → "Amber Claude")
     const cleanText = stripEmojis(text)
@@ -282,9 +290,8 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
       const data = await response.json()
 
       if (data.success && data.url) {
-        const audio = new Audio(data.url)
-        audio.volume = settings.volume
-        audio.play().catch(err => console.warn('[Audio] Playback failed:', err.message))
+        // Use low priority - will be skipped if high-priority audio starts
+        playLowPriority(data.url, settings.volume)
       }
     } catch {
       // Silently ignore errors (timeouts, network issues) to prevent console spam
@@ -461,13 +468,15 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
       prevToolNamesRef.current.set(terminalId, currentToolKey)
 
       // EVENT: Subagent count changes
+      // Subagents get the "chipmunk" voice (high pitch) so you can tell them apart by ear!
       if (audioSettings.events.subagents && currentSubagentCount !== prevSubagentCount) {
+        const chipmunkVoice = { pitch: '+50Hz', rate: '+15%' }
         if (currentSubagentCount > prevSubagentCount) {
           // New subagent spawned
-          playAudio(`${currentSubagentCount} agent${currentSubagentCount > 1 ? 's' : ''} running`, session, true)
+          playAudio(`${currentSubagentCount} agent${currentSubagentCount > 1 ? 's' : ''} running`, session, true, chipmunkVoice)
         } else if (currentSubagentCount === 0 && prevSubagentCount > 0) {
           // All subagents finished
-          playAudio('All agents complete', session)
+          playAudio('All agents complete', session, false, chipmunkVoice)
         }
       }
 
@@ -485,7 +494,7 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
         if (audioSettings.events.contextWarning) {
           const crossedWarningUp = prevContextPct < 50 && currentContextPct >= 50
           if (crossedWarningUp) {
-            playAudio(`Warning! ${displayName} 50 percent context!`, session, false, { pitch: '+30Hz', rate: '+10%' })
+            playAudio(`Warning! ${displayName} 50 percent context!`, session, false, { pitch: '+15Hz', rate: '+5%' })
           }
         }
 
@@ -494,7 +503,7 @@ export function useAudioNotifications({ sessions, claudeStatuses }: UseAudioNoti
         if (audioSettings.events.contextCritical) {
           const crossedCriticalUp = prevContextPct < 75 && currentContextPct >= 75
           if (crossedCriticalUp) {
-            playAudio(`Alert! ${displayName} context critical!`, session, false, { pitch: '+50Hz', rate: '+20%' })
+            playAudio(`Alert! ${displayName} context critical!`, session, false, { pitch: '+25Hz', rate: '+10%' })
           }
         }
       }

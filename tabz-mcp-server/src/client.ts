@@ -238,7 +238,7 @@ async function getNonChromePages(): Promise<import('puppeteer-core').Page[] | nu
  *
  * Strategy:
  * 1. If specific tabId provided, look up URL from tabIdToUrl map
- * 2. If no tabId, use currentTabUrl (from last listTabs/switchTab)
+ * 2. If no tabId, REFRESH current tab state from Extension API first
  * 3. Find CDP page by URL
  * 4. Fall back to array index for small tabIds (CDP-only mode)
  * 5. Default to first page
@@ -254,7 +254,17 @@ async function getPageByTabId(tabId?: number): Promise<import('puppeteer-core').
     // Specific tabId requested - look up URL from map
     targetUrl = tabIdToUrl.get(tabId);
   } else {
-    // No tabId - use current tab URL
+    // No tabId - refresh current tab state from Extension API
+    // This ensures we always target the user's ACTUAL focused tab
+    try {
+      const activeResult = await getActiveTab();
+      if (activeResult.tab?.url) {
+        currentTabUrl = activeResult.tab.url;
+        currentTabId = activeResult.tab.tabId;
+      }
+    } catch {
+      // Extension not available, use stale currentTabUrl
+    }
     targetUrl = currentTabUrl;
   }
 

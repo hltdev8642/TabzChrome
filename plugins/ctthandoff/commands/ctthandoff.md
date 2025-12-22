@@ -99,7 +99,7 @@ To continue in a new session:
 When playing audio, use jq to safely escape the text for JSON (handles quotes, newlines, special chars):
 
 ```bash
-cat <<'AUDIO_TEXT_EOF' | jq -Rs '{text: ., voice: "en-GB-SoniaNeural", rate: "+20%", volume: 0.8}' | curl -s -X POST http://localhost:8129/api/audio/speak -H "Content-Type: application/json" -d @- > /dev/null 2>&1 &
+cat <<'AUDIO_TEXT_EOF' | jq -Rs '{text: ., voice: "en-GB-SoniaNeural", rate: "+20%", volume: 0.8, priority: "high"}' | curl -s -X POST http://localhost:8129/api/audio/speak -H "Content-Type: application/json" -d @- > /dev/null 2>&1 &
 [INSERT PLAIN TEXT VERSION OF SUMMARY - no markdown, conversational, 2-4 sentences max]
 AUDIO_TEXT_EOF
 ```

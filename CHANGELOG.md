@@ -15,6 +15,27 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.1.19] - 2025-12-21
+
+### Added
+- **Audio priority system** - High-priority audio (summaries, handoffs) now blocks low-priority status updates:
+  - `/ctthandoff` and `/page-reader:read-page` play at high priority
+  - Claude status updates (tools, ready) are skipped while high-priority audio plays
+  - Prevents status announcements from interrupting spoken summaries
+- **page-reader plugin** - New `/page-reader:read-page` command captures current page, summarizes key points, and reads aloud via TTS
+- **User settings for speak endpoint** - `/api/audio/speak` now respects user's configured voice, rate, and pitch from Settings modal
+- **Chipmunk voice for subagents** - Subagent announcements use +50Hz pitch so you can distinguish them by ear
+
+### Fixed
+- **MCP tab targeting** - Fixed bug where MCP tools could operate on wrong tab if user switched tabs in Chrome. Now refreshes active tab state before CDP operations
+- **Ghost badge route order** - Fixed routing bug that could cause issues with kill/reattach actions
+- **Ghost badge feedback** - Improved visual feedback for kill and reattach operations
+- **Context alert pitch** - Reduced pitch elevation for context warnings (was too chipmunk-y):
+  - 50% warning: now +15Hz pitch, +5% rate (was +30Hz, +10%)
+  - 75% critical: now +25Hz pitch, +10% rate (was +50Hz, +20%)
+
+---
+
 ## [1.1.18] - 2025-12-21
 
 ### Added

@@ -337,7 +337,8 @@ app.post('/api/audio/speak', async (req, res) => {
     voice = 'en-US-AndrewMultilingualNeural',
     rate = '+0%',
     pitch = '+0Hz',
-    volume = 0.7
+    volume = 0.7,
+    priority = 'low'  // 'high' for summaries/handoffs, 'low' for status updates
   } = req.body;
 
   if (!text || typeof text !== 'string') {
@@ -430,11 +431,14 @@ app.post('/api/audio/speak', async (req, res) => {
   }
 
   // Broadcast to all WebSocket clients to play this audio
+  // Priority: 'high' for summaries/handoffs (interrupts), 'low' for status updates (skipped if high playing)
+  // Send full text so sidepanel can regenerate with user settings if needed
   broadcast({
     type: 'audio-speak',
     url: audioUrl,
     volume: Math.max(0, Math.min(1, volume)),
-    text: text.slice(0, 100) // Include truncated text for logging
+    priority: priority === 'high' ? 'high' : 'low',
+    text: text // Full text for regeneration with user settings
   });
 
   res.json({

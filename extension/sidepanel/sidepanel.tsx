@@ -21,6 +21,7 @@ import { useTerminalSessions, type TerminalSession } from '../hooks/useTerminalS
 import { useChatInput } from '../hooks/useChatInput'
 import { useTabDragDrop } from '../hooks/useTabDragDrop'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
+import { playWithPriority, type AudioPriority } from '../utils/audioManager'
 import '../styles/globals.css'
 
 // Setup console forwarding to backend for Claude debugging
@@ -265,13 +266,42 @@ function SidePanelTerminal() {
           refreshOrphaned()
         }
         // Play audio from /api/audio/speak endpoint (for slash commands, etc.)
-        if (message.data?.type === 'audio-speak' && message.data?.url) {
-          // Use stored audio settings volume (from Settings modal) instead of broadcast volume
-          chrome.storage.local.get(['audioSettings'], (result) => {
-            const storedVolume = (result.audioSettings as { volume?: number })?.volume
-            const audio = new Audio(message.data.url)
-            audio.volume = storedVolume ?? message.data.volume ?? 0.7
-            audio.play().catch(err => console.warn('[Audio] Playback failed:', err.message))
+        // Uses priority system: 'high' for summaries/handoffs, 'low' for status updates
+        // Regenerates audio with user settings (rate, voice, pitch) for consistency
+        if (message.data?.type === 'audio-speak' && message.data?.text) {
+          const audioData = message.data // Capture in closure
+          // Get user audio settings and regenerate with their preferences
+          chrome.storage.local.get(['audioSettings'], async (result) => {
+            const settings = result.audioSettings as {
+              voice?: string; rate?: string; pitch?: string; volume?: number
+            } || {}
+            const priority: AudioPriority = audioData.priority === 'high' ? 'high' : 'low'
+
+            try {
+              // Regenerate audio with user's configured settings
+              const response = await fetch('http://localhost:8129/api/audio/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  text: audioData.text,
+                  voice: settings.voice || 'en-US-AndrewMultilingualNeural',
+                  rate: settings.rate || '+0%',
+                  pitch: settings.pitch || '+0Hz'
+                })
+              })
+              const data = await response.json()
+
+              if (data.success && data.url) {
+                const volume = settings.volume ?? audioData.volume ?? 0.7
+                playWithPriority(data.url, priority, volume)
+              }
+            } catch (err) {
+              console.warn('[Audio] Failed to generate with user settings, using fallback:', err)
+              // Fallback to pre-generated URL if regeneration fails
+              if (audioData.url) {
+                playWithPriority(audioData.url, priority, settings.volume ?? 0.7)
+              }
+            }
           })
         }
       } else if (message.type === 'TERMINAL_OUTPUT') {
