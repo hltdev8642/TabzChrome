@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react'
-import { Grid, List, Search, Play, RefreshCw, Terminal, Folder, X, FolderOpen, ChevronDown, Settings, GripVertical, Star, Copy } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { Grid, List, Search, Play, RefreshCw, Terminal, Folder, X, Settings, GripVertical, Star, Copy } from 'lucide-react'
 import { spawnTerminal, getProfiles } from '../hooks/useDashboard'
 import { useWorkingDirectory } from '../../hooks/useWorkingDirectory'
 import type { Profile } from '../../components/SettingsModal'
@@ -31,30 +31,8 @@ export default function ProfilesSection() {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [dropPosition, setDropPosition] = useState<'above' | 'below' | null>(null)
 
-  // Working directory management
-  const {
-    globalWorkingDir,
-    setGlobalWorkingDir,
-    recentDirs,
-    setRecentDirs,
-    addToRecentDirs,
-  } = useWorkingDirectory()
-  const [showDirDropdown, setShowDirDropdown] = useState(false)
-  const [customDirInput, setCustomDirInput] = useState('')
-  const dropdownRef = useRef<HTMLDivElement>(null)
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowDirDropdown(false)
-      }
-    }
-    if (showDirDropdown) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [showDirDropdown])
+  // Working directory (dropdown is now in sidebar)
+  const { globalWorkingDir } = useWorkingDirectory()
 
   const fetchProfiles = async () => {
     try {
@@ -339,94 +317,6 @@ export default function ProfilesSection() {
 
   return (
     <div className="p-6">
-      {/* Working Directory Bar */}
-      <div className="mb-6 p-4 rounded-xl bg-card border border-border">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <FolderOpen className="w-5 h-5 text-primary" />
-            <span className="text-sm font-medium text-muted-foreground">Working Directory</span>
-          </div>
-          <div className="relative" ref={dropdownRef}>
-            <button
-              onClick={() => setShowDirDropdown(!showDirDropdown)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-background border border-border hover:border-primary/50 transition-colors font-mono text-sm"
-            >
-              <span className="max-w-[300px] truncate">{globalWorkingDir}</span>
-              <ChevronDown className={`w-4 h-4 transition-transform ${showDirDropdown ? 'rotate-180' : ''}`} />
-            </button>
-
-            {showDirDropdown && (
-              <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-lg shadow-xl z-50 overflow-hidden">
-                {/* Custom input */}
-                <div className="p-3 border-b border-border">
-                  <input
-                    type="text"
-                    value={customDirInput}
-                    onChange={(e) => setCustomDirInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && customDirInput.trim()) {
-                        setGlobalWorkingDir(customDirInput.trim())
-                        addToRecentDirs(customDirInput.trim())
-                        setShowDirDropdown(false)
-                        setCustomDirInput('')
-                      } else if (e.key === 'Escape') {
-                        setShowDirDropdown(false)
-                      }
-                    }}
-                    placeholder="Type path and press Enter"
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm font-mono focus:border-primary focus:outline-none"
-                    autoFocus
-                  />
-                </div>
-
-                {/* Recent directories */}
-                <div className="max-h-[250px] overflow-y-auto">
-                  {recentDirs.length === 0 ? (
-                    <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-                      No recent directories
-                    </div>
-                  ) : (
-                    recentDirs.map((dir) => (
-                      <div
-                        key={dir}
-                        className={`flex items-center justify-between px-3 py-2 hover:bg-muted transition-colors group ${
-                          dir === globalWorkingDir ? 'bg-primary/10 text-primary' : ''
-                        }`}
-                      >
-                        <button
-                          onClick={() => {
-                            setGlobalWorkingDir(dir)
-                            setShowDirDropdown(false)
-                          }}
-                          className="flex-1 text-left text-sm font-mono truncate"
-                        >
-                          {dir}
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setRecentDirs((prev) => prev.filter((d) => d !== dir))
-                            if (globalWorkingDir === dir) {
-                              setGlobalWorkingDir('~')
-                            }
-                          }}
-                          className="ml-2 p-1 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Remove from list"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          Profiles without a specific directory will launch in this location
-        </p>
-      </div>
 
       {/* Header */}
       <div className="flex items-start sm:items-center justify-between gap-4 mb-6">

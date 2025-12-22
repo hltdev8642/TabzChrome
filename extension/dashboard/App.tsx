@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Home,
   Grid3X3,
@@ -12,7 +12,11 @@ import {
   Wifi,
   WifiOff,
   FolderOpen,
+  Folder,
+  ChevronDown,
+  Trash2,
 } from 'lucide-react'
+import { useWorkingDirectory } from '../hooks/useWorkingDirectory'
 
 // Sections
 import HomeSection from './sections/Home'
@@ -69,6 +73,22 @@ export default function App() {
   })
   const [connected, setConnected] = useState<boolean | null>(null) // null = checking
   const [captureData, setCaptureData] = useState<CaptureData | null>(null)
+  const [showDirDropdown, setShowDirDropdown] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Shared working directory
+  const { globalWorkingDir, setGlobalWorkingDir, recentDirs, setRecentDirs } = useWorkingDirectory()
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDirDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   // Persist section and sidebar state
   useEffect(() => {
@@ -189,6 +209,85 @@ export default function App() {
             <div className="flex items-center gap-2">
               <span className="font-semibold text-lg terminal-glow">TabzChrome</span>
               <ConnectionStatus connected={connected} />
+            </div>
+          )}
+        </div>
+
+        {/* Working Directory Selector */}
+        <div className="p-2 border-b border-border" ref={dropdownRef}>
+          {sidebarCollapsed ? (
+            <button
+              onClick={() => setShowDirDropdown(!showDirDropdown)}
+              className="w-full flex justify-center p-2 rounded-lg hover:bg-muted transition-colors"
+              title={globalWorkingDir}
+            >
+              <Folder className="w-5 h-5 text-yellow-400" />
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowDirDropdown(!showDirDropdown)}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-background border border-border hover:border-primary/50 transition-colors text-sm"
+            >
+              <Folder className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+              <span className="flex-1 text-left font-mono truncate text-xs">{globalWorkingDir}</span>
+              <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${showDirDropdown ? 'rotate-180' : ''}`} />
+            </button>
+          )}
+
+          {showDirDropdown && (
+            <div className={`absolute ${sidebarCollapsed ? 'left-16' : 'left-2 right-2'} mt-1 bg-card border border-border rounded-lg shadow-xl z-50`} style={sidebarCollapsed ? { width: '280px' } : {}}>
+              <div className="p-2 border-b border-border">
+                <input
+                  type="text"
+                  placeholder="Enter path..."
+                  className="w-full px-3 py-2 bg-background border border-border rounded text-sm font-mono"
+                  defaultValue={globalWorkingDir}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setGlobalWorkingDir((e.target as HTMLInputElement).value)
+                      setShowDirDropdown(false)
+                    }
+                  }}
+                />
+              </div>
+              <div className="max-h-[250px] overflow-y-auto">
+                {recentDirs.length === 0 ? (
+                  <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                    No recent directories
+                  </div>
+                ) : (
+                  recentDirs.map((dir) => (
+                    <div
+                      key={dir}
+                      className={`flex items-center justify-between px-3 py-2 hover:bg-muted transition-colors group ${
+                        dir === globalWorkingDir ? 'bg-primary/10 text-primary' : ''
+                      }`}
+                    >
+                      <button
+                        className="flex-1 text-left font-mono text-sm truncate"
+                        onClick={() => {
+                          setGlobalWorkingDir(dir)
+                          setShowDirDropdown(false)
+                        }}
+                      >
+                        {dir}
+                      </button>
+                      <button
+                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-background rounded transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setRecentDirs((prev) => prev.filter((d) => d !== dir))
+                          if (globalWorkingDir === dir) {
+                            setGlobalWorkingDir('~')
+                          }
+                        }}
+                      >
+                        <Trash2 className="w-3 h-3 text-muted-foreground hover:text-red-400" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
         </div>

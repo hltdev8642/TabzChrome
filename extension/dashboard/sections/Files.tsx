@@ -4,7 +4,7 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { FileTree } from '../components/files/FileTree'
-import { X, Copy, ExternalLink, Code, Image as ImageIcon, ChevronDown, Folder, Trash2, FileText, FileJson, Settings, ZoomIn, ZoomOut, Maximize, Download, Video, Table } from 'lucide-react'
+import { X, Copy, ExternalLink, Code, Image as ImageIcon, FileText, FileJson, Settings, ZoomIn, ZoomOut, Maximize, Download, Video, Table } from 'lucide-react'
 import { useWorkingDirectory } from '../../hooks/useWorkingDirectory'
 import { useFileViewerSettings } from '../hooks/useFileViewerSettings'
 import { getFileTypeAndLanguage, FileType } from '../utils/fileTypeUtils'
@@ -76,25 +76,20 @@ export default function FilesSection() {
   // Use context for persistent state across tab switches
   const { openFiles, activeFileId, setActiveFileId, openFile, closeFile } = useFilesContext()
 
-  const [showDirDropdown, setShowDirDropdown] = useState(false)
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false)
   const [imageZoom, setImageZoom] = useState<'fit' | number>('fit')
   const [imageDimensions, setImageDimensions] = useState<{width: number, height: number} | null>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
   const settingsRef = useRef<HTMLDivElement>(null)
 
-  // Share working directory with rest of dashboard
-  const { globalWorkingDir, setGlobalWorkingDir, recentDirs, setRecentDirs, isLoaded: workingDirLoaded } = useWorkingDirectory()
+  // Share working directory with rest of dashboard (working dir dropdown is in sidebar now)
+  const { globalWorkingDir, isLoaded: workingDirLoaded } = useWorkingDirectory()
 
   // File viewer settings (font size, family, max depth)
   const { settings: viewerSettings, setFontSize, setFontFamily } = useFileViewerSettings()
 
-  // Close dropdowns when clicking outside
+  // Close settings dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowDirDropdown(false)
-      }
       if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
         setShowSettingsDropdown(false)
       }
@@ -126,76 +121,10 @@ export default function FilesSection() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header with Working Directory Selector and Settings */}
+      {/* Header with Settings */}
       <div className="flex items-center gap-4 px-4 py-3 border-b border-border bg-card/50">
-        <span className="text-sm text-muted-foreground">Working Directory:</span>
-        <div className="relative" ref={dropdownRef}>
-          <button
-            onClick={() => setShowDirDropdown(!showDirDropdown)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background border border-border hover:border-primary/50 transition-colors font-mono text-sm"
-          >
-            <Folder className="w-4 h-4 text-yellow-400" />
-            <span className="max-w-[300px] truncate">{globalWorkingDir}</span>
-            <ChevronDown className={`w-4 h-4 transition-transform ${showDirDropdown ? 'rotate-180' : ''}`} />
-          </button>
-
-          {showDirDropdown && (
-            <div className="absolute top-full left-0 mt-1 w-80 bg-card border border-border rounded-lg shadow-xl z-50">
-              <div className="p-2 border-b border-border">
-                <input
-                  type="text"
-                  placeholder="Enter path..."
-                  className="w-full px-3 py-2 bg-background border border-border rounded text-sm font-mono"
-                  defaultValue={globalWorkingDir}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      setGlobalWorkingDir((e.target as HTMLInputElement).value)
-                      setShowDirDropdown(false)
-                    }
-                  }}
-                />
-              </div>
-              <div className="max-h-[250px] overflow-y-auto">
-                {recentDirs.length === 0 ? (
-                  <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-                    No recent directories
-                  </div>
-                ) : (
-                  recentDirs.map((dir) => (
-                    <div
-                      key={dir}
-                      className={`flex items-center justify-between px-3 py-2 hover:bg-muted transition-colors group ${
-                        dir === globalWorkingDir ? 'bg-primary/10 text-primary' : ''
-                      }`}
-                    >
-                      <button
-                        className="flex-1 text-left font-mono text-sm truncate"
-                        onClick={() => {
-                          setGlobalWorkingDir(dir)
-                          setShowDirDropdown(false)
-                        }}
-                      >
-                        {dir}
-                      </button>
-                      <button
-                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-background rounded transition-opacity"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setRecentDirs((prev) => prev.filter((d) => d !== dir))
-                          if (globalWorkingDir === dir) {
-                            setGlobalWorkingDir('~')
-                          }
-                        }}
-                      >
-                        <Trash2 className="w-3 h-3 text-muted-foreground hover:text-red-400" />
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+        <h2 className="text-lg font-semibold">Files</h2>
+        <span className="text-sm text-muted-foreground font-mono">{globalWorkingDir}</span>
 
         {/* Settings Dropdown */}
         <div className="relative ml-auto" ref={settingsRef}>

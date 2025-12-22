@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Settings as SettingsIcon, FolderOpen, Key, Palette, Copy, Check, RefreshCw, ExternalLink, FileCode } from 'lucide-react'
+import { Settings as SettingsIcon, Key, Palette, Copy, Check, RefreshCw, ExternalLink, FileCode } from 'lucide-react'
 
 const API_BASE = 'http://localhost:8129'
 
@@ -14,14 +14,11 @@ const THEMES = [
 ]
 
 export default function SettingsSection() {
-  const [globalWorkingDir, setGlobalWorkingDir] = useState('~')
-  const [recentDirs, setRecentDirs] = useState<string[]>(['~', '~/projects'])
   const [authToken, setAuthToken] = useState<string | null>(null)
   const [tokenVisible, setTokenVisible] = useState(false)
   const [copied, setCopied] = useState(false)
   const [tokenCopied, setTokenCopied] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [newDir, setNewDir] = useState('')
   const [selectedTheme, setSelectedTheme] = useState('high-contrast')
 
   // File tree settings
@@ -34,18 +31,12 @@ export default function SettingsSection() {
         // Load from Chrome storage (syncs with sidepanel)
         if (typeof chrome !== 'undefined' && chrome.storage) {
           chrome.storage.local.get([
-            'globalWorkingDir',
-            'recentDirs',
             'dashboardTheme',
             'fileTreeMaxDepth'
           ], (result: {
-            globalWorkingDir?: string
-            recentDirs?: string[]
             dashboardTheme?: string
             fileTreeMaxDepth?: number
           }) => {
-            if (result.globalWorkingDir) setGlobalWorkingDir(result.globalWorkingDir)
-            if (result.recentDirs) setRecentDirs(result.recentDirs)
             if (result.dashboardTheme) setSelectedTheme(result.dashboardTheme)
             if (result.fileTreeMaxDepth) setFileTreeMaxDepth(result.fileTreeMaxDepth)
           })
@@ -67,31 +58,6 @@ export default function SettingsSection() {
     loadSettings()
   }, [])
 
-  // Save working directory to Chrome storage and backend
-  const saveWorkingDir = async (dir: string) => {
-    setGlobalWorkingDir(dir)
-
-    // Update recent dirs
-    const newRecent = [dir, ...recentDirs.filter(d => d !== dir)].slice(0, 15)
-    setRecentDirs(newRecent)
-
-    // Save to Chrome storage (syncs with sidepanel)
-    if (typeof chrome !== 'undefined' && chrome.storage) {
-      chrome.storage.local.set({ globalWorkingDir: dir, recentDirs: newRecent })
-    }
-
-    // Also save to backend API
-    try {
-      await fetch(`${API_BASE}/api/settings/working-dir`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ globalWorkingDir: dir, recentDirs: newRecent }),
-      })
-    } catch (err) {
-      console.error('Failed to save to backend:', err)
-    }
-  }
-
   const saveTheme = (themeId: string) => {
     setSelectedTheme(themeId)
     if (typeof chrome !== 'undefined' && chrome.storage) {
@@ -103,13 +69,6 @@ export default function SettingsSection() {
     setFileTreeMaxDepth(depth)
     if (typeof chrome !== 'undefined' && chrome.storage) {
       chrome.storage.local.set({ fileTreeMaxDepth: depth })
-    }
-  }
-
-  const addCustomDir = () => {
-    if (newDir.trim()) {
-      saveWorkingDir(newDir.trim())
-      setNewDir('')
     }
   }
 
@@ -157,64 +116,6 @@ export default function SettingsSection() {
           Configure dashboard preferences and view connection info
         </p>
       </div>
-
-      {/* Working Directory */}
-      <section className="mb-8">
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <FolderOpen className="w-5 h-5 text-primary" />
-          Default Working Directory
-        </h2>
-        <div className="rounded-xl bg-card border border-border p-6">
-          <p className="text-sm text-muted-foreground mb-4">
-            The default directory for new terminals. Profiles with empty workingDir will inherit this value.
-          </p>
-
-          {/* Current directory */}
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-sm text-muted-foreground">Current:</span>
-            <code className="px-3 py-1.5 bg-muted rounded-lg font-mono text-sm">{globalWorkingDir}</code>
-          </div>
-
-          {/* Recent directories */}
-          <div className="mb-4">
-            <span className="text-sm text-muted-foreground block mb-2">Recent directories:</span>
-            <div className="flex flex-wrap gap-2">
-              {recentDirs.map(dir => (
-                <button
-                  key={dir}
-                  onClick={() => saveWorkingDir(dir)}
-                  className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                    dir === globalWorkingDir
-                      ? 'bg-primary/20 border border-primary/50 text-primary'
-                      : 'bg-muted hover:bg-muted/80 border border-border'
-                  }`}
-                >
-                  {dir}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Add custom directory */}
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={newDir}
-              onChange={(e) => setNewDir(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addCustomDir()}
-              placeholder="Enter custom path..."
-              className="flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:border-primary focus:outline-none"
-            />
-            <button
-              onClick={addCustomDir}
-              disabled={!newDir.trim()}
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              Add
-            </button>
-          </div>
-        </div>
-      </section>
 
       {/* File Tree Settings */}
       <section className="mb-8">
