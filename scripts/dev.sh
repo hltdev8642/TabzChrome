@@ -243,6 +243,28 @@ fi
 echo -e "${GREEN}✓ Dependencies OK${NC}"
 echo ""
 
+# ═══════════════════════════════════════════════════════════════
+# Claude Code StatusLine Check (for context % on tabs)
+# ═══════════════════════════════════════════════════════════════
+
+STATUSLINE_CONFIGURED=false
+if [ -f "$HOME/.claude/settings.json" ]; then
+    # Check if statusLine is configured to use our context-aware script
+    STATUSLINE_CMD=$(jq -r '.statusLine.command // ""' "$HOME/.claude/settings.json" 2>/dev/null)
+    if [[ "$STATUSLINE_CMD" == *"statusline-script.sh"* ]] || [[ "$STATUSLINE_CMD" == *"statusline-with-context"* ]]; then
+        STATUSLINE_CONFIGURED=true
+    fi
+fi
+
+if [ "$STATUSLINE_CONFIGURED" = false ]; then
+    echo -e "${YELLOW}╭─────────────────────────────────────────────────────╮${NC}"
+    echo -e "${YELLOW}│  💡 Context % on tabs not configured                │${NC}"
+    echo -e "${YELLOW}╰─────────────────────────────────────────────────────╯${NC}"
+    echo -e "   TabzChrome can show context window usage on Claude tabs."
+    echo -e "   Run: ${BLUE}./plugins/state-tracker/setup.sh${NC}"
+    echo ""
+fi
+
 # Quick update check (non-blocking, 2s timeout)
 CURRENT_VERSION=$(grep '"version"' "$SCRIPT_DIR/../package.json" | sed 's/.*"version": "\([^"]*\)".*/\1/')
 LATEST_RELEASE=$(curl -s --max-time 2 https://api.github.com/repos/GGPrompts/TabzChrome/releases/latest 2>/dev/null | grep '"tag_name"' | sed 's/.*"tag_name": "v\?\([^"]*\)".*/\1/')
@@ -388,11 +410,81 @@ if [ -n "$PORT_PID" ]; then
     fi
 fi
 
-# Check if backend dependencies are installed
-if [ ! -d "$BACKEND_DIR/node_modules" ]; then
-    echo -e "${YELLOW}📦 Installing backend dependencies...${NC}"
-    cd "$BACKEND_DIR"
-    npm install
+# ═══════════════════════════════════════════════════════════════
+# NPM Dependency Staleness Check
+# ═══════════════════════════════════════════════════════════════
+# Compares package-lock.json mtime against node_modules to detect
+# if dependencies are out of date after a git pull
+
+check_deps_stale() {
+    local dir="$1"
+    local name="$2"
+
+    # If node_modules doesn't exist, definitely need install
+    if [ ! -d "$dir/node_modules" ]; then
+        return 0  # stale
+    fi
+
+    # If package-lock.json doesn't exist, skip check
+    if [ ! -f "$dir/package-lock.json" ]; then
+        return 1  # not stale
+    fi
+
+    # Compare modification times: is package-lock.json newer than node_modules?
+    if [ "$dir/package-lock.json" -nt "$dir/node_modules" ]; then
+        return 0  # stale
+    fi
+
+    return 1  # not stale
+}
+
+NEEDS_INSTALL=()
+
+# Check root project
+if check_deps_stale "$SCRIPT_DIR/.." "root"; then
+    NEEDS_INSTALL+=("root")
+fi
+
+# Check backend
+if check_deps_stale "$BACKEND_DIR" "backend"; then
+    NEEDS_INSTALL+=("backend")
+fi
+
+# Check tabz-mcp-server
+MCP_DIR="$SCRIPT_DIR/../tabz-mcp-server"
+if [ -d "$MCP_DIR" ] && check_deps_stale "$MCP_DIR" "tabz-mcp-server"; then
+    NEEDS_INSTALL+=("tabz-mcp-server")
+fi
+
+# Install stale dependencies
+if [ ${#NEEDS_INSTALL[@]} -gt 0 ]; then
+    echo -e "${YELLOW}📦 Dependencies out of date: ${NEEDS_INSTALL[*]}${NC}"
+    echo -e "   ${NC}(package-lock.json is newer than node_modules)"
+    echo ""
+
+    for location in "${NEEDS_INSTALL[@]}"; do
+        case "$location" in
+            root)
+                echo -e "${BLUE}   Installing root dependencies...${NC}"
+                cd "$SCRIPT_DIR/.."
+                npm install
+                ;;
+            backend)
+                echo -e "${BLUE}   Installing backend dependencies...${NC}"
+                cd "$BACKEND_DIR"
+                npm install
+                ;;
+            tabz-mcp-server)
+                echo -e "${BLUE}   Installing MCP server dependencies...${NC}"
+                cd "$MCP_DIR"
+                npm install
+                ;;
+        esac
+    done
+
+    echo ""
+    echo -e "${GREEN}✓ Dependencies updated${NC}"
+    echo ""
 fi
 
 echo -e "${GREEN}🚀 Creating tmux session: $SESSION_NAME${NC}"

@@ -1363,9 +1363,9 @@ function SidePanelTerminal() {
             }}
           >
             <div className="bg-[#1a1a1a] border border-[#333] rounded-lg shadow-xl px-4 py-3 min-w-[320px] max-w-[450px]">
-              {/* Session Name */}
-              <div className="text-[15px] font-semibold text-white mb-2">
-                {session.name}
+              {/* Start Command or $ */}
+              <div className="text-[14px] font-mono text-gray-300 mb-2">
+                <span className="text-[#00ff88]">$</span> {session.command || session.profile?.command || 'bash'}
               </div>
 
               {/* Working Directory - truncate from start to show end of path */}

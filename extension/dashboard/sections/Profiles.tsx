@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { Grid, List, Search, Play, RefreshCw, Terminal, Folder, X, FolderOpen, ChevronDown, Settings, GripVertical, Star } from 'lucide-react'
+import { Grid, List, Search, Play, RefreshCw, Terminal, Folder, X, FolderOpen, ChevronDown, Settings, GripVertical, Star, Copy } from 'lucide-react'
 import { spawnTerminal, getProfiles } from '../hooks/useDashboard'
 import { useWorkingDirectory } from '../../hooks/useWorkingDirectory'
 import type { Profile } from '../../components/SettingsModal'
@@ -727,6 +727,19 @@ function ProfileCard({
         </div>
       )}
 
+      {/* Copy button - top right */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          navigator.clipboard.writeText(profile.command || 'bash')
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        className="absolute top-2 right-8 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-all z-10"
+        title="Copy command"
+      >
+        <Copy className="w-3.5 h-3.5 text-white/50 hover:text-white/80" />
+      </button>
+
       {/* Edit button - top right corner */}
       <button
         onClick={(e) => { e.stopPropagation(); onEdit() }}
@@ -855,6 +868,17 @@ function ProfileListItem({
           )}
         </div>
       </div>
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          navigator.clipboard.writeText(profile.command || 'bash')
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-all flex-shrink-0 z-10"
+        title="Copy command"
+      >
+        <Copy className="w-4 h-4 text-white/50 hover:text-white/80" />
+      </button>
       <button
         onClick={(e) => { e.stopPropagation(); onEdit() }}
         onMouseDown={(e) => e.stopPropagation()}

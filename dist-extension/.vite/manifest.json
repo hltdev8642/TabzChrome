@@ -6,28 +6,28 @@
     "isEntry": true
   },
   "3d/3d-focus.html": {
-    "file": "assets/3d-focus-B1P5MrQW.js",
+    "file": "assets/3d-focus-Dw-ryBgL.js",
     "name": "3d-focus",
     "src": "3d/3d-focus.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_themes-BBQ4p4b-.js",
-      "_globals-9TQulcp6.js"
+      "_globals-CTPNRbab.js"
     ]
   },
   "_globals-!~{007}~.js": {
-    "file": "assets/globals-CeQRaRM5.css",
+    "file": "assets/globals-_Tliz3Ea.css",
     "src": "_globals-!~{007}~.js"
   },
-  "_globals-9TQulcp6.js": {
-    "file": "assets/globals-9TQulcp6.js",
+  "_globals-CTPNRbab.js": {
+    "file": "assets/globals-CTPNRbab.js",
     "name": "globals",
     "imports": [
       "_themes-BBQ4p4b-.js"
     ],
     "css": [
-      "assets/globals-CeQRaRM5.css"
+      "assets/globals-_Tliz3Ea.css"
     ]
   },
   "_modulepreload-polyfill-B5Qt9EMX.js": {
@@ -38,8 +38,8 @@
     "file": "assets/themes-BBQ4p4b-.js",
     "name": "themes"
   },
-  "_useWorkingDirectory-DAJoXhFA.js": {
-    "file": "assets/useWorkingDirectory-DAJoXhFA.js",
+  "_useWorkingDirectory-lO1AjKtA.js": {
+    "file": "assets/useWorkingDirectory-lO1AjKtA.js",
     "name": "useWorkingDirectory",
     "imports": [
       "_themes-BBQ4p4b-.js"
@@ -58,17 +58,17 @@
     "isEntry": true
   },
   "dashboard/index.html": {
-    "file": "assets/dashboard-Cyiah0IG.js",
+    "file": "assets/dashboard-CAZhN0ls.js",
     "name": "dashboard",
     "src": "dashboard/index.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_themes-BBQ4p4b-.js",
-      "_useWorkingDirectory-DAJoXhFA.js"
+      "_useWorkingDirectory-lO1AjKtA.js"
     ],
     "css": [
-      "assets/dashboard-DrcXvzNd.css"
+      "assets/dashboard-DCoAqQY1.css"
     ]
   },
   "devtools/devtools.html": {
@@ -81,15 +81,15 @@
     ]
   },
   "sidepanel/sidepanel.html": {
-    "file": "assets/sidepanel.html-CFOmWPcp.js",
+    "file": "assets/sidepanel.html-B3aIFY9d.js",
     "name": "sidepanel.html",
     "src": "sidepanel/sidepanel.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_themes-BBQ4p4b-.js",
-      "_globals-9TQulcp6.js",
-      "_useWorkingDirectory-DAJoXhFA.js"
+      "_globals-CTPNRbab.js",
+      "_useWorkingDirectory-lO1AjKtA.js"
     ]
   }
 }
