@@ -249,15 +249,24 @@ router.get('/project-files', async (req, res) => {
   }
 });
 
+// Helper to expand ~ to home directory
+function expandTilde(filePath) {
+  if (filePath.startsWith('~')) {
+    return path.join(process.env.HOME || process.env.USERPROFILE, filePath.slice(1));
+  }
+  return filePath;
+}
+
 // Get file tree
 router.get('/tree', async (req, res) => {
   try {
-    const targetPath = req.query.path || path.resolve(process.env.HOME, 'workspace');
+    let targetPath = req.query.path || path.resolve(process.env.HOME, 'workspace');
+    targetPath = expandTilde(targetPath); // Expand ~ to home directory
     const depth = parseInt(req.query.depth) || 5; // Good balance for most projects
     const showHidden = req.query.showHidden === 'true'; // Parse boolean parameter
 
     console.log(`[FileTree API] Fetching tree: path=${targetPath}, depth=${depth}, showHidden=${showHidden}`);
-    
+
     // Security: Resolve the path
     const resolvedPath = path.resolve(targetPath);
 

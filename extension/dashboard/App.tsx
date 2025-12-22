@@ -11,6 +11,7 @@ import {
   Github,
   Wifi,
   WifiOff,
+  FolderOpen,
 } from 'lucide-react'
 
 // Sections
@@ -20,6 +21,7 @@ import TerminalsSection from './sections/Terminals'
 import ApiPlayground from './sections/ApiPlayground'
 import McpPlayground from './sections/McpPlayground'
 import SettingsSection from './sections/Settings'
+import FilesSection from './sections/Files'
 
 // Components
 import CaptureViewer from './components/CaptureViewer'
@@ -36,7 +38,7 @@ interface CaptureData {
   }
 }
 
-type Section = 'home' | 'profiles' | 'terminals' | 'api' | 'mcp' | 'settings'
+type Section = 'home' | 'profiles' | 'terminals' | 'files' | 'api' | 'mcp' | 'settings'
 
 interface NavItem {
   id: Section
@@ -48,6 +50,7 @@ const navItems: NavItem[] = [
   { id: 'home', label: 'Dashboard', icon: Home },
   { id: 'profiles', label: 'Profiles', icon: Grid3X3 },
   { id: 'terminals', label: 'Terminals', icon: Terminal },
+  { id: 'files', label: 'Files', icon: FolderOpen },
   { id: 'api', label: 'API Playground', icon: Code2 },
   { id: 'mcp', label: 'MCP Settings', icon: Wrench },
   { id: 'settings', label: 'Settings', icon: Settings },
@@ -136,6 +139,8 @@ export default function App() {
         return <ProfilesSection />
       case 'terminals':
         return <TerminalsSection />
+      case 'files':
+        return <FilesSection />
       case 'api':
         return <ApiPlayground />
       case 'mcp':
