@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Settings as SettingsIcon, FolderOpen, Key, Palette, Copy, Check, RefreshCw, ExternalLink } from 'lucide-react'
+import { Settings as SettingsIcon, FolderOpen, Key, Palette, Copy, Check, RefreshCw, ExternalLink, FileCode } from 'lucide-react'
 
 const API_BASE = 'http://localhost:8129'
 
@@ -24,20 +24,30 @@ export default function SettingsSection() {
   const [newDir, setNewDir] = useState('')
   const [selectedTheme, setSelectedTheme] = useState('high-contrast')
 
+  // File tree settings
+  const [fileTreeMaxDepth, setFileTreeMaxDepth] = useState(5)
+
   // Load settings from Chrome storage
   useEffect(() => {
     const loadSettings = async () => {
       try {
         // Load from Chrome storage (syncs with sidepanel)
         if (typeof chrome !== 'undefined' && chrome.storage) {
-          chrome.storage.local.get(['globalWorkingDir', 'recentDirs', 'dashboardTheme'], (result: {
+          chrome.storage.local.get([
+            'globalWorkingDir',
+            'recentDirs',
+            'dashboardTheme',
+            'fileTreeMaxDepth'
+          ], (result: {
             globalWorkingDir?: string
             recentDirs?: string[]
             dashboardTheme?: string
+            fileTreeMaxDepth?: number
           }) => {
             if (result.globalWorkingDir) setGlobalWorkingDir(result.globalWorkingDir)
             if (result.recentDirs) setRecentDirs(result.recentDirs)
             if (result.dashboardTheme) setSelectedTheme(result.dashboardTheme)
+            if (result.fileTreeMaxDepth) setFileTreeMaxDepth(result.fileTreeMaxDepth)
           })
         }
 
@@ -86,6 +96,13 @@ export default function SettingsSection() {
     setSelectedTheme(themeId)
     if (typeof chrome !== 'undefined' && chrome.storage) {
       chrome.storage.local.set({ dashboardTheme: themeId })
+    }
+  }
+
+  const saveFileTreeMaxDepth = (depth: number) => {
+    setFileTreeMaxDepth(depth)
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      chrome.storage.local.set({ fileTreeMaxDepth: depth })
     }
   }
 
@@ -196,6 +213,41 @@ export default function SettingsSection() {
               Add
             </button>
           </div>
+        </div>
+      </section>
+
+      {/* File Tree Settings */}
+      <section className="mb-8">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <FileCode className="w-5 h-5 text-primary" />
+          File Browser
+        </h2>
+        <div className="rounded-xl bg-card border border-border p-6">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">File Tree Depth</label>
+              <span className="text-sm text-muted-foreground">{fileTreeMaxDepth} levels</span>
+            </div>
+            <input
+              type="range"
+              min="1"
+              max="10"
+              step="1"
+              value={fileTreeMaxDepth}
+              onChange={(e) => saveFileTreeMaxDepth(parseInt(e.target.value))}
+              className="w-full accent-primary"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+              <span>1</span>
+              <span>10</span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Lower values load faster. Use keyboard navigation to explore deeper.
+            </p>
+          </div>
+          <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-border">
+            Font settings are available directly in the Files page header.
+          </p>
         </div>
       </section>
 

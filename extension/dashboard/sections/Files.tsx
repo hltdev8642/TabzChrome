@@ -1,7 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { FileTree } from '../components/files/FileTree'
-import { X, Copy, ExternalLink, Code, Image as ImageIcon, ChevronDown, Folder, Trash2 } from 'lucide-react'
+import { X, Copy, ExternalLink, Code, Image as ImageIcon, ChevronDown, Folder, Trash2, FileText, Settings, ZoomIn, ZoomOut, Maximize, Download } from 'lucide-react'
 import { useWorkingDirectory } from '../../hooks/useWorkingDirectory'
+import { useFileViewerSettings } from '../hooks/useFileViewerSettings'
+import { getFileTypeAndLanguage } from '../utils/fileTypeUtils'
 
 interface OpenFile {
   id: string
@@ -20,16 +26,26 @@ export default function FilesSection() {
   const [openFiles, setOpenFiles] = useState<OpenFile[]>([])
   const [activeFileId, setActiveFileId] = useState<string | null>(null)
   const [showDirDropdown, setShowDirDropdown] = useState(false)
+  const [showSettingsDropdown, setShowSettingsDropdown] = useState(false)
+  const [imageZoom, setImageZoom] = useState<'fit' | number>('fit')
+  const [imageDimensions, setImageDimensions] = useState<{width: number, height: number} | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const settingsRef = useRef<HTMLDivElement>(null)
 
   // Share working directory with rest of dashboard
   const { globalWorkingDir, setGlobalWorkingDir, recentDirs, setRecentDirs } = useWorkingDirectory()
 
-  // Close dropdown when clicking outside
+  // File viewer settings (font size, family, max depth)
+  const { settings: viewerSettings, setFontSize, setFontFamily } = useFileViewerSettings()
+
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setShowDirDropdown(false)
+      }
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
+        setShowSettingsDropdown(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -92,18 +108,18 @@ export default function FilesSection() {
     if (!activeFile) return
     const dir = activeFile.path.split('/').slice(0, -1).join('/')
 
-    // Use Chrome messaging to spawn terminal with editor
+    // Use Chrome messaging to spawn terminal with editor (respects $EDITOR, falls back to nano)
     chrome.runtime?.sendMessage({
       type: 'SPAWN_TERMINAL',
       name: `Edit: ${activeFile.name}`,
-      command: `nano "${activeFile.path}"`,
+      command: `\${EDITOR:-nano} "${activeFile.path}"`,
       workingDir: dir,
     })
   }
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header with Working Directory Selector */}
+      {/* Header with Working Directory Selector and Settings */}
       <div className="flex items-center gap-4 px-4 py-3 border-b border-border bg-card/50">
         <span className="text-sm text-muted-foreground">Working Directory:</span>
         <div className="relative" ref={dropdownRef}>
@@ -173,13 +189,62 @@ export default function FilesSection() {
             </div>
           )}
         </div>
+
+        {/* Settings Dropdown */}
+        <div className="relative ml-auto" ref={settingsRef}>
+          <button
+            onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background border border-border hover:border-primary/50 transition-colors text-sm"
+            title="Font settings"
+          >
+            <Settings className="w-4 h-4" />
+            <span className="text-muted-foreground">{viewerSettings.fontSize}px</span>
+          </button>
+
+          {showSettingsDropdown && (
+            <div className="absolute top-full right-0 mt-1 w-64 bg-card border border-border rounded-lg shadow-xl z-50 p-4 space-y-4">
+              {/* Font Size */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium">Font Size</label>
+                  <span className="text-sm text-muted-foreground">{viewerSettings.fontSize}px</span>
+                </div>
+                <input
+                  type="range"
+                  min="12"
+                  max="24"
+                  step="1"
+                  value={viewerSettings.fontSize}
+                  onChange={(e) => setFontSize(parseInt(e.target.value))}
+                  className="w-full accent-primary"
+                />
+              </div>
+
+              {/* Font Family */}
+              <div>
+                <label className="text-sm font-medium block mb-2">Font</label>
+                <select
+                  value={viewerSettings.fontFamily}
+                  onChange={(e) => setFontFamily(e.target.value)}
+                  className="w-full px-3 py-1.5 bg-background border border-border rounded-lg text-sm"
+                  style={{ fontFamily: viewerSettings.fontFamily }}
+                >
+                  <option value="JetBrains Mono">JetBrains Mono</option>
+                  <option value="Fira Code">Fira Code</option>
+                  <option value="Cascadia Code">Cascadia Code</option>
+                  <option value="monospace">System Monospace</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Main Content */}
       <div className="flex flex-1 min-h-0">
         {/* File Tree - Left Side */}
         <div className="w-72 border-r border-border flex-shrink-0 overflow-hidden">
-          <FileTree onFileSelect={handleFileSelect} basePath={globalWorkingDir} />
+          <FileTree onFileSelect={handleFileSelect} basePath={globalWorkingDir} maxDepth={viewerSettings.maxDepth} />
         </div>
 
         {/* File Viewer - Right Side */}
@@ -187,7 +252,10 @@ export default function FilesSection() {
         {/* Tab Bar */}
         {openFiles.length > 0 && (
           <div className="flex items-center border-b border-border bg-card/50 overflow-x-auto">
-            {openFiles.map(file => (
+            {openFiles.map(file => {
+              const fileType = getFileTypeAndLanguage(file.path).type
+              const FileIcon = file.isImage ? ImageIcon : fileType === 'markdown' ? FileText : Code
+              return (
               <div
                 key={file.id}
                 className={`flex items-center gap-2 px-3 py-2 border-r border-border cursor-pointer hover:bg-muted/50 ${
@@ -195,7 +263,7 @@ export default function FilesSection() {
                 }`}
                 onClick={() => setActiveFileId(file.id)}
               >
-                {file.isImage ? <ImageIcon className="w-4 h-4" /> : <Code className="w-4 h-4" />}
+                <FileIcon className="w-4 h-4" />
                 <span className="text-sm truncate max-w-32">{file.name}</span>
                 <button
                   onClick={(e) => { e.stopPropagation(); closeFile(file.id) }}
@@ -204,7 +272,7 @@ export default function FilesSection() {
                   <X className="w-3 h-3" />
                 </button>
               </div>
-            ))}
+            )})}
           </div>
         )}
 
@@ -223,10 +291,82 @@ export default function FilesSection() {
               {activeFile.error}
             </div>
           ) : activeFile.isImage ? (
-            <div className="flex items-center justify-center h-full p-4">
-              <img src={activeFile.imageDataUri} alt={activeFile.name} className="max-w-full max-h-full object-contain" />
+            <div className="h-full flex flex-col">
+              {/* Image Toolbar */}
+              <div className="flex items-center gap-2 p-2 border-b border-border bg-card/50">
+                <div className="flex items-center gap-1 border-r border-border pr-2">
+                  <button
+                    onClick={() => setImageZoom('fit')}
+                    className={`flex items-center gap-1 px-2 py-1 text-sm rounded ${imageZoom === 'fit' ? 'bg-primary/20 text-primary' : 'hover:bg-muted'}`}
+                    title="Fit to view"
+                  >
+                    <Maximize className="w-4 h-4" /> Fit
+                  </button>
+                  <button
+                    onClick={() => setImageZoom(100)}
+                    className={`flex items-center gap-1 px-2 py-1 text-sm rounded ${imageZoom === 100 ? 'bg-primary/20 text-primary' : 'hover:bg-muted'}`}
+                    title="Actual size"
+                  >
+                    100%
+                  </button>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setImageZoom(prev => Math.max(25, (typeof prev === 'number' ? prev : 100) - 25))}
+                    className="p-1.5 hover:bg-muted rounded"
+                    title="Zoom out"
+                  >
+                    <ZoomOut className="w-4 h-4" />
+                  </button>
+                  <span className="text-sm text-muted-foreground w-12 text-center">
+                    {imageZoom === 'fit' ? 'Fit' : `${imageZoom}%`}
+                  </span>
+                  <button
+                    onClick={() => setImageZoom(prev => Math.min(400, (typeof prev === 'number' ? prev : 100) + 25))}
+                    className="p-1.5 hover:bg-muted rounded"
+                    title="Zoom in"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </button>
+                </div>
+                <a
+                  href={activeFile.imageDataUri}
+                  download={activeFile.name}
+                  className="flex items-center gap-1 px-2 py-1 text-sm hover:bg-muted rounded ml-2"
+                  title="Download image"
+                >
+                  <Download className="w-4 h-4" /> Download
+                </a>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {imageDimensions && `${imageDimensions.width} × ${imageDimensions.height}`}
+                  {activeFile.path && <span className="ml-2">{activeFile.path}</span>}
+                </span>
+              </div>
+              {/* Image Display */}
+              <div className="flex-1 overflow-auto flex items-center justify-center p-4 bg-[#1a1a1a]">
+                <img
+                  src={activeFile.imageDataUri}
+                  alt={activeFile.name}
+                  onLoad={(e) => {
+                    const img = e.target as HTMLImageElement
+                    setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight })
+                  }}
+                  style={imageZoom === 'fit' ? {
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain'
+                  } : {
+                    width: `${(imageDimensions?.width || 100) * (imageZoom / 100)}px`,
+                    height: 'auto'
+                  }}
+                />
+              </div>
             </div>
-          ) : (
+          ) : (() => {
+            const { type, language } = getFileTypeAndLanguage(activeFile.path)
+            const isMarkdown = type === 'markdown'
+
+            return (
             <div className="h-full flex flex-col">
               {/* Toolbar */}
               <div className="flex items-center gap-2 p-2 border-b border-border bg-card/50">
@@ -238,12 +378,91 @@ export default function FilesSection() {
                 </button>
                 <span className="ml-auto text-xs text-muted-foreground">{activeFile.path}</span>
               </div>
-              {/* Code Content */}
-              <pre className="flex-1 overflow-auto p-4 text-sm font-mono bg-background/50">
-                <code>{activeFile.content}</code>
-              </pre>
+              {/* Content */}
+              <div className="flex-1 overflow-auto">
+                {isMarkdown ? (
+                  <div
+                    className="file-viewer-markdown"
+                    style={{
+                      fontSize: `${viewerSettings.fontSize}px`,
+                      fontFamily: `${viewerSettings.fontFamily}, monospace`,
+                    }}
+                  >
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        code({ className, children, ...props }: any) {
+                          const match = /language-(\w+)/.exec(className || '')
+                          const codeString = String(children).replace(/\n$/, '')
+
+                          // Inline code
+                          if (!match && !className) {
+                            return <code className={className} {...props}>{children}</code>
+                          }
+
+                          // Code block with syntax highlighting
+                          return (
+                            <SyntaxHighlighter
+                              language={match?.[1] || 'text'}
+                              style={vscDarkPlus}
+                              customStyle={{
+                                margin: 0,
+                                padding: '1rem',
+                                background: 'rgba(0, 0, 0, 0.4)',
+                                borderRadius: '8px',
+                                fontSize: `${viewerSettings.fontSize}px`,
+                                fontFamily: `${viewerSettings.fontFamily}, monospace`,
+                              }}
+                              codeTagProps={{
+                                style: {
+                                  fontSize: `${viewerSettings.fontSize}px`,
+                                  fontFamily: `${viewerSettings.fontFamily}, monospace`,
+                                }
+                              }}
+                            >
+                              {codeString}
+                            </SyntaxHighlighter>
+                          )
+                        }
+                      }}
+                    >
+                      {activeFile.content || ''}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <SyntaxHighlighter
+                    language={language || 'text'}
+                    style={vscDarkPlus}
+                    showLineNumbers
+                    wrapLines
+                    lineNumberStyle={{
+                      minWidth: '3em',
+                      paddingRight: '1em',
+                      color: 'rgba(255,255,255,0.3)',
+                      userSelect: 'none',
+                      fontSize: `${viewerSettings.fontSize}px`,
+                    }}
+                    customStyle={{
+                      margin: 0,
+                      padding: '1rem',
+                      background: 'transparent',
+                      fontSize: `${viewerSettings.fontSize}px`,
+                      fontFamily: `${viewerSettings.fontFamily}, monospace`,
+                    }}
+                    codeTagProps={{
+                      style: {
+                        fontSize: `${viewerSettings.fontSize}px`,
+                        fontFamily: `${viewerSettings.fontFamily}, monospace`,
+                      }
+                    }}
+                  >
+                    {activeFile.content || ''}
+                  </SyntaxHighlighter>
+                )}
+              </div>
             </div>
-          )}
+            )
+          })()}
         </div>
       </div>
       </div>

@@ -1,6 +1,6 @@
 # Files Section for TabzChrome Dashboard
 
-## Status: Phase 1 & 2 Complete ✅
+## Status: Phase 1, 2 & 3 Complete ✅
 
 **Completed:** 2025-12-22
 **Source:** Adapted from Opustrator's FileTree component
@@ -16,7 +16,8 @@ Add a "Files" section to the dashboard for browsing and viewing files with synta
 | Edit mode | Read-only + "Open in Editor" | Security focused, use terminal editors |
 | Split view | Optional 2-pane toggle | For ultrawide screens |
 | Working dir | Shared via `useWorkingDirectory` hook | Syncs with Profiles section |
-| Syntax highlighting | Basic (Prism.js planned) | Phase 3 enhancement |
+| Syntax highlighting | react-syntax-highlighter + vscDarkPlus | 50+ languages supported |
+| Markdown | ReactMarkdown + remark-gfm | GFM tables, code blocks |
 
 ## Layout
 
@@ -44,6 +45,8 @@ Add a "Files" section to the dashboard for browsing and viewing files with synta
 | `extension/dashboard/sections/Files.tsx` | Main section - layout, tabs, viewer | ✅ Done |
 | `extension/dashboard/components/files/FileTree.tsx` | Left sidebar tree navigation | ✅ Done |
 | `extension/dashboard/App.tsx` | Added "files" to Section type, navItems | ✅ Done |
+| `extension/dashboard/utils/fileTypeUtils.ts` | Extension to language mapping | ✅ Done |
+| `extension/dashboard/hooks/useFileViewerSettings.ts` | Font size/family settings hook | ✅ Done |
 | `backend/routes/files.js` | Added tilde (~) expansion | ✅ Done |
 
 ## Implementation Phases
@@ -69,14 +72,24 @@ Add a "Files" section to the dashboard for browsing and viewing files with synta
 - [x] Working directory dropdown (shared with Profiles)
 - [x] Syncs with `useWorkingDirectory` hook
 
-### Phase 3: Polish (Future)
+### Phase 3: Polish ✅
 
-- [ ] Prism.js syntax highlighting
-- [ ] Split view toggle (2-pane mode)
-- [ ] Line numbers
-- [ ] File size/modified date display
+- [x] Syntax highlighting (react-syntax-highlighter + vscDarkPlus theme)
+- [x] Markdown rendering (ReactMarkdown + remark-gfm for GFM support)
+- [x] Line numbers for code files
+- [x] Font size/family settings (in Files header dropdown)
+- [x] File tree depth setting (in Settings page)
+- [x] Image viewer with zoom controls (Fit, 100%, +/- zoom)
+- [x] Image download button
+- [x] Image dimensions display
+- [x] Uses $EDITOR env var for "Open in Editor" (fallback: nano)
+
+### Phase 4: Future Enhancements
+
+- [ ] Split view toggle (2-pane mode for ultrawide)
 - [ ] Keyboard navigation in tree
 - [ ] Context menu (right-click)
+- [ ] File size/modified date display in tree
 
 ## Backend APIs Used
 
@@ -112,11 +125,13 @@ const { globalWorkingDir, setGlobalWorkingDir, recentDirs } = useWorkingDirector
 
 ## Open in Editor
 
+Uses `$EDITOR` environment variable with fallback to `nano`:
+
 ```typescript
 chrome.runtime?.sendMessage({
   type: 'SPAWN_TERMINAL',
   name: `Edit: ${activeFile.name}`,
-  command: `nano "${activeFile.path}"`,
+  command: `${EDITOR:-nano} "${activeFile.path}"`,
   workingDir: dir,
 })
 ```

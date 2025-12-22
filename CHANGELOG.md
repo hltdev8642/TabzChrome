@@ -15,6 +15,24 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.2.1] - 2025-12-22
+
+### Added
+- **Files section enhancements:**
+  - **Syntax highlighting** - react-syntax-highlighter with vscDarkPlus theme (50+ languages)
+  - **Markdown rendering** - ReactMarkdown with GFM support (tables, code blocks, lists)
+  - **Line numbers** for code files
+  - **Font settings** in Files header - adjustable font size (12-24px) and family
+  - **File tree depth** setting in Settings page (1-10 levels)
+  - **Image viewer controls** - Fit/100%/zoom buttons, dimensions display, download button
+  - Uses `$EDITOR` environment variable for "Open in Editor" (fallback: nano)
+
+### Fixed
+- **TTS reliability** - Fixed edge-tts special character handling with file input, added 3000 char truncation
+- **Voice sync** - Added Davis & Amber voices to settings, synced 12 voices between backend and frontend
+
+---
+
 ## [1.2.0] - 2025-12-22
 
 ### Changed

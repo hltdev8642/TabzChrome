@@ -28,11 +28,12 @@ interface FileTreeProps {
   onFileSelect?: (path: string) => void
   basePath?: string
   showHidden?: boolean
+  maxDepth?: number
 }
 
 const API_BASE = "http://localhost:8129"
 
-export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenProp = false }: FileTreeProps) {
+export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenProp = false, maxDepth = 5 }: FileTreeProps) {
   const [fileTree, setFileTree] = useState<FileNode | null>(null)
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
@@ -57,7 +58,7 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
       const response = await fetch(
         `${API_BASE}/api/files/tree?${new URLSearchParams({
           path: targetPath,
-          depth: "5",
+          depth: maxDepth.toString(),
           showHidden: showHidden.toString(),
         })}`
       )
@@ -79,7 +80,7 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
     } finally {
       setLoading(false)
     }
-  }, [currentPath, showHidden])
+  }, [currentPath, showHidden, maxDepth])
 
   useEffect(() => {
     fetchFileTree()
