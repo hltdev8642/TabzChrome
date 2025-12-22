@@ -25,9 +25,9 @@
 | `tabz_click` | `page.click()` | `chrome.scripting.executeScript()` | [x] |
 | `tabz_fill` | `page.type()` | `chrome.scripting.executeScript()` | [x] |
 | `tabz_get_element` | `page.evaluate()` | `chrome.scripting.executeScript()` | [x] |
-| `tabz_enable_network_capture` | CDP Network domain | `chrome.webRequest` API | [ ] |
-| `tabz_get_network_requests` | CDP Network domain | `chrome.webRequest` API | [ ] |
-| `tabz_get_api_response` | CDP `Network.getResponseBody` | `chrome.webRequest` + fetch intercept | [ ] |
+| `tabz_enable_network_capture` | CDP Network domain | `chrome.webRequest` API | [x] |
+| `tabz_get_network_requests` | CDP Network domain | `chrome.webRequest` API | [x] |
+| `tabz_get_api_response` | CDP `Network.getResponseBody` | CDP only (browser security) | N/A |
 
 ### Implementation Order (Suggested)
 1. **Open URL** - Simple, just `chrome.tabs.create()`

@@ -1172,20 +1172,23 @@ export interface ElementInfo {
 
 import type { NetworkRequest, NetworkRequestsResponse, NetworkResponseResult } from "./types.js";
 
-// Network request storage (in-memory, per-page)
+// Network request storage (in-memory, for CDP fallback)
 const networkRequests: Map<string, NetworkRequest> = new Map();
 const MAX_STORED_REQUESTS = 500;
 const REQUEST_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_BODY_SIZE = 100 * 1024; // 100KB max response body
 
-// Track which pages have network monitoring enabled
+// Track which pages have network monitoring enabled (CDP mode)
 const networkEnabledPages: Set<string> = new Set();
 
-// CDP session cache for network monitoring
+// Track if Extension API capture is active (preferred method)
+let extensionNetworkCaptureActive = false;
+
+// CDP session cache for network monitoring (fallback for response bodies)
 let networkCdpSession: Awaited<ReturnType<typeof import('puppeteer-core').Page.prototype.createCDPSession>> | null = null;
 
 /**
- * Clean up old network requests
+ * Clean up old network requests (for CDP fallback)
  */
 function cleanupOldRequests(): void {
   const now = Date.now();
@@ -1212,14 +1215,36 @@ function cleanupOldRequests(): void {
 }
 
 /**
- * Enable network monitoring for the current page
- * Must be called before requests will be captured
+ * Enable network monitoring via Extension API (no CDP required)
+ * Falls back to CDP if extension is unavailable
  */
 export async function enableNetworkCapture(tabId?: number): Promise<{ success: boolean; error?: string }> {
+  // Try Extension API first (no CDP required)
+  try {
+    const response = await axios.post<{ success: boolean; error?: string }>(
+      `${BACKEND_URL}/api/browser/network-capture/enable`,
+      { tabId },
+      { timeout: 10000 }
+    );
+
+    if (response.data.success) {
+      extensionNetworkCaptureActive = true;
+      console.error('[Network] Capture enabled via Extension API');
+      return { success: true };
+    }
+
+    if (response.data.error) {
+      console.error('[Network] Extension API failed:', response.data.error);
+    }
+  } catch (extError) {
+    console.error('[Network] Extension API failed, trying CDP:', extError instanceof Error ? extError.message : extError);
+  }
+
+  // Fallback to CDP
   try {
     const page = await getPageByTabId(tabId);
     if (!page) {
-      return { success: false, error: 'No active page found. Make sure Chrome is running with --remote-debugging-port=9222' };
+      return { success: false, error: 'Neither Extension API nor CDP available. Make sure Chrome extension is installed or Chrome is running with --remote-debugging-port=9222' };
     }
 
     const pageUrl = page.url();
@@ -1279,7 +1304,7 @@ export async function enableNetworkCapture(tabId?: number): Promise<{ success: b
     });
 
     networkEnabledPages.add(pageUrl);
-    console.error(`[Network] Monitoring enabled for: ${pageUrl}`);
+    console.error(`[Network] Monitoring enabled via CDP for: ${pageUrl}`);
 
     return { success: true };
   } catch (error) {
@@ -1291,11 +1316,12 @@ export async function enableNetworkCapture(tabId?: number): Promise<{ success: b
  * Check if network capture is currently active
  */
 export function isNetworkCaptureActive(): boolean {
-  return networkEnabledPages.size > 0;
+  return extensionNetworkCaptureActive || networkEnabledPages.size > 0;
 }
 
 /**
- * Get captured network requests with optional filtering
+ * Get captured network requests via Extension API (preferred)
+ * Falls back to local CDP storage if extension unavailable
  */
 export async function getNetworkRequests(options: {
   urlPattern?: string;
@@ -1307,7 +1333,34 @@ export async function getNetworkRequests(options: {
   offset?: number;
   tabId?: number;
 }): Promise<NetworkRequestsResponse> {
-  // Clean up old requests first
+  // Try Extension API first
+  if (extensionNetworkCaptureActive) {
+    try {
+      const response = await axios.post<NetworkRequestsResponse>(
+        `${BACKEND_URL}/api/browser/network-requests`,
+        {
+          urlPattern: options.urlPattern,
+          method: options.method,
+          statusMin: options.statusMin,
+          statusMax: options.statusMax,
+          resourceType: options.resourceType,
+          limit: options.limit,
+          offset: options.offset,
+          tabId: options.tabId
+        },
+        { timeout: 10000 }
+      );
+
+      if (response.data.requests) {
+        return response.data;
+      }
+    } catch (extError) {
+      console.error('[Network] Extension API get requests failed:', extError instanceof Error ? extError.message : extError);
+      // Fall through to CDP storage
+    }
+  }
+
+  // Fallback to local CDP storage
   cleanupOldRequests();
 
   let requests = [...networkRequests.values()];
@@ -1364,8 +1417,39 @@ export async function getNetworkRequests(options: {
 
 /**
  * Get response body for a specific request
+ * NOTE: This requires CDP - Extension API cannot capture response bodies
+ * Falls back gracefully with helpful error message
  */
 export async function getNetworkResponseBody(requestId: string): Promise<NetworkResponseResult> {
+  // First check if we have the request in Extension API storage
+  // (we can't get body, but we can return metadata)
+  if (extensionNetworkCaptureActive) {
+    try {
+      const response = await axios.post<NetworkRequestsResponse>(
+        `${BACKEND_URL}/api/browser/network-requests`,
+        { limit: 500 },
+        { timeout: 10000 }
+      );
+
+      const extRequest = response.data.requests?.find(r => r.requestId === requestId);
+      if (extRequest) {
+        // Found the request but can't get body without CDP
+        if (!networkCdpSession) {
+          return {
+            success: false,
+            error: 'Response body retrieval requires Chrome to be running with --remote-debugging-port=9222. ' +
+                   'The Extension API can capture request metadata but not response bodies. ' +
+                   'Start Chrome with: chrome --remote-debugging-port=9222',
+            request: extRequest
+          };
+        }
+      }
+    } catch {
+      // Extension API not available, continue to CDP
+    }
+  }
+
+  // Check local CDP storage
   const request = networkRequests.get(requestId);
 
   if (!request) {
@@ -1380,7 +1464,10 @@ export async function getNetworkResponseBody(requestId: string): Promise<Network
   // Try to get the body via CDP
   try {
     if (!networkCdpSession) {
-      return { success: false, error: 'Network session not available. Enable network capture first.' };
+      return {
+        success: false,
+        error: 'Response body retrieval requires CDP. Start Chrome with --remote-debugging-port=9222'
+      };
     }
 
     const response = await networkCdpSession.send('Network.getResponseBody', {
@@ -1427,6 +1514,14 @@ export async function getNetworkResponseBody(requestId: string): Promise<Network
  * Clear all captured network requests
  */
 export function clearNetworkRequests(): void {
+  // Try Extension API first
+  if (extensionNetworkCaptureActive) {
+    axios.post(`${BACKEND_URL}/api/browser/network-requests/clear`, {}, { timeout: 5000 })
+      .then(() => console.error('[Network] Cleared requests via Extension API'))
+      .catch(() => { /* Ignore errors */ });
+  }
+
+  // Also clear local CDP storage
   networkRequests.clear();
   console.error('[Network] Cleared all captured requests');
 }

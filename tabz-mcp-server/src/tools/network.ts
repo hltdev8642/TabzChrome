@@ -180,12 +180,14 @@ Workflow:
   4. Call tabz_get_api_response with a requestId to see response body
 
 Notes:
+  - Uses Chrome Extension API by default (no special Chrome flags needed)
+  - Falls back to CDP if extension is unavailable
   - Capture persists until MCP server restarts
   - Requests older than 5 minutes are automatically cleaned up
   - Maximum 500 requests stored (oldest removed first)
 
 Error Handling:
-  - "CDP not available": Chrome not running with --remote-debugging-port=9222
+  - "Extension API failed": Chrome extension may not be connected
   - "No active page": No browser tab is open`,
     EnableNetworkCaptureSchema.shape,
     async (params: EnableNetworkCaptureInput) => {
@@ -219,7 +221,7 @@ Network monitoring is now active for the current tab.
 
 **Error:** ${result.error}
 
-Make sure Chrome is running with \`--remote-debugging-port=9222\``
+Make sure the Chrome extension is installed and connected.`
             }],
             isError: true
           };
@@ -284,9 +286,13 @@ Examples:
   - GraphQL: urlPattern="graphql", method="POST"
   - Successful only: statusMin=200, statusMax=299
 
+Notes:
+  - Uses Chrome Extension API by default (no special Chrome flags needed)
+  - Request metadata (URL, headers, status) captured via Extension API
+  - Falls back to CDP storage if extension unavailable
+
 Error Handling:
-  - "Capture not active": Call tabz_enable_network_capture first
-  - "CDP not available": Chrome not running with --remote-debugging-port=9222`,
+  - "Capture not active": Call tabz_enable_network_capture first`,
     GetNetworkRequestsSchema.shape,
     async (params: GetNetworkRequestsInput) => {
       try {
@@ -350,6 +356,9 @@ No network requests have been captured yet.
 Use the requestId from tabz_get_network_requests to retrieve the full response body.
 This is useful for inspecting API responses, JSON data, HTML content, etc.
 
+IMPORTANT: Response body retrieval requires Chrome to be running with --remote-debugging-port=9222.
+The Extension API can capture request metadata but NOT response bodies (browser security limitation).
+
 Args:
   - requestId (required): The request ID from tabz_get_network_requests
   - response_format: 'markdown' (default) or 'json'
@@ -364,6 +373,10 @@ Returns:
 Examples:
   - Get response: requestId="12345.67"
 
+Requirements:
+  - Chrome must be started with: chrome --remote-debugging-port=9222
+  - This is the ONLY network tool that requires CDP
+
 Limitations:
   - Response bodies may not be available for:
     - Redirects (3xx status)
@@ -374,7 +387,7 @@ Limitations:
 Error Handling:
   - "Request not found": The requestId doesn't exist or has expired
   - "Response body no longer available": Page navigated away
-  - "Network session not available": Call tabz_enable_network_capture first`,
+  - "Response body retrieval requires CDP": Start Chrome with --remote-debugging-port=9222`,
     GetApiResponseSchema.shape,
     async (params: GetApiResponseInput) => {
       try {

@@ -1219,6 +1219,39 @@ wss.on('connection', (ws, req) => {
           break;
 
         // ============================================
+        // NETWORK CAPTURE RESPONSES - From Chrome extension
+        // ============================================
+        case 'browser-enable-network-capture-result':
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              error: data.error
+            });
+          }
+          break;
+
+        case 'browser-get-network-requests-result':
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              requests: data.requests,
+              total: data.total,
+              hasMore: data.hasMore,
+              nextOffset: data.nextOffset,
+              captureActive: data.captureActive
+            });
+          }
+          break;
+
+        case 'browser-clear-network-requests-result':
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              error: data.error
+            });
+          }
+          break;
+
+        // ============================================
         // QUEUE_COMMAND - Forward to Chrome extension
         // ============================================
         case 'QUEUE_COMMAND':

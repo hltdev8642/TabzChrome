@@ -1441,6 +1441,167 @@ router.post('/bookmarks/delete', async (req, res) => {
   }
 });
 
+// ============================================
+// NETWORK CAPTURE ROUTES
+// ============================================
+
+// POST /api/browser/network-capture/enable - Enable network request monitoring
+router.post('/network-capture/enable', async (req, res) => {
+  const { tabId } = req.body;
+
+  log.debug('POST /network-capture/enable', { tabId });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const requestId = `browser-${++requestIdCounter}`;
+
+    const resultPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.delete(requestId);
+        reject(new Error('Request timed out'));
+      }, 10000);
+
+      pendingRequests.set(requestId, {
+        resolve: (data) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          resolve(data);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          reject(error);
+        }
+      });
+    });
+
+    broadcast({
+      type: 'browser-enable-network-capture',
+      requestId,
+      tabId
+    });
+
+    const result = await resultPromise;
+    res.json(result);
+  } catch (error) {
+    log.error('enable-network-capture error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/browser/network-requests - Get captured network requests (with filtering)
+router.post('/network-requests', async (req, res) => {
+  const { urlPattern, method, statusMin, statusMax, resourceType, limit, offset, tabId } = req.body;
+
+  log.debug('POST /network-requests', { urlPattern, method, statusMin, statusMax, resourceType, limit });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const requestId = `browser-${++requestIdCounter}`;
+
+    const resultPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.delete(requestId);
+        reject(new Error('Request timed out'));
+      }, 10000);
+
+      pendingRequests.set(requestId, {
+        resolve: (data) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          resolve(data);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          reject(error);
+        }
+      });
+    });
+
+    broadcast({
+      type: 'browser-get-network-requests',
+      requestId,
+      urlPattern,
+      method,
+      statusMin,
+      statusMax,
+      resourceType,
+      limit: limit || 50,
+      offset: offset || 0,
+      tabId
+    });
+
+    const result = await resultPromise;
+    res.json(result);
+  } catch (error) {
+    log.error('get-network-requests error:', error);
+    res.json({ requests: [], total: 0, captureActive: false, error: error.message });
+  }
+});
+
+// POST /api/browser/network-requests/clear - Clear all captured network requests
+router.post('/network-requests/clear', async (req, res) => {
+  log.debug('POST /network-requests/clear');
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const requestId = `browser-${++requestIdCounter}`;
+
+    const resultPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.delete(requestId);
+        reject(new Error('Request timed out'));
+      }, 10000);
+
+      pendingRequests.set(requestId, {
+        resolve: (data) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          resolve(data);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          reject(error);
+        }
+      });
+    });
+
+    broadcast({
+      type: 'browser-clear-network-requests',
+      requestId
+    });
+
+    const result = await resultPromise;
+    res.json(result);
+  } catch (error) {
+    log.error('clear-network-requests error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
 module.exports.addConsoleLog = addConsoleLog;
 module.exports.getConsoleLogs = getConsoleLogs;
