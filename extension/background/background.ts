@@ -816,6 +816,139 @@ async function handleBrowserCaptureImage(message: {
   }
 }
 
+// Handle save page request from backend (MCP server)
+// Uses pageCapture API to save page as MHTML
+async function handleBrowserSavePage(message: {
+  requestId: string
+  tabId?: number
+  filename?: string
+}) {
+  try {
+    // Get target tab
+    const tabs = message.tabId
+      ? [{ id: message.tabId }]
+      : await chrome.tabs.query({ active: true, lastFocusedWindow: true })
+
+    const targetTab = tabs[0]
+    if (!targetTab?.id) {
+      throw new Error('No active tab found')
+    }
+
+    // Check if tab URL is capturable (not chrome://, chrome-extension://, etc.)
+    const tabInfo = await chrome.tabs.get(targetTab.id)
+    if (tabInfo.url?.startsWith('chrome://') || tabInfo.url?.startsWith('chrome-extension://')) {
+      throw new Error('Cannot capture chrome:// or extension pages. Navigate to a regular webpage first.')
+    }
+
+    // Capture the page as MHTML
+    const mhtmlBlob = await new Promise<Blob>((resolve, reject) => {
+      chrome.pageCapture.saveAsMHTML({ tabId: targetTab.id! }, (blob) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message))
+        } else if (!blob) {
+          reject(new Error('Failed to capture page - no data returned'))
+        } else {
+          resolve(blob)
+        }
+      })
+    })
+
+    // Generate filename from page title or custom name
+    const pageTitle = tabInfo.title || 'page'
+    const sanitizedTitle = pageTitle.replace(/[<>:"/\\|?*]/g, '-').substring(0, 100)
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19)
+    const baseFilename = message.filename
+      ? message.filename.replace(/\.mhtml$/i, '')
+      : `${sanitizedTitle}-${timestamp}`
+    const filename = `${baseFilename}.mhtml`
+
+    // Convert blob to data URL (service workers don't support URL.createObjectURL)
+    const arrayBuffer = await mhtmlBlob.arrayBuffer()
+    const uint8Array = new Uint8Array(arrayBuffer)
+    let binary = ''
+    for (let i = 0; i < uint8Array.length; i++) {
+      binary += String.fromCharCode(uint8Array[i])
+    }
+    const base64 = btoa(binary)
+    const dataUrl = `data:multipart/related;base64,${base64}`
+
+    // Download the MHTML file
+    const downloadId = await new Promise<number>((resolve, reject) => {
+      chrome.downloads.download({
+        url: dataUrl,
+        filename: filename,
+        conflictAction: 'uniquify'
+      }, (id) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message))
+        } else if (id === undefined) {
+          reject(new Error('Download failed to start'))
+        } else {
+          resolve(id)
+        }
+      })
+    })
+
+    // Wait for download to complete
+    const downloadResult = await new Promise<{
+      success: boolean
+      filename?: string
+      windowsPath?: string
+      wslPath?: string
+      fileSize?: number
+      mimeType?: string
+      error?: string
+    }>((resolve) => {
+      const timeout = setTimeout(() => {
+        resolve({ success: false, error: 'Download timed out' })
+      }, 30000) // 30s timeout for MHTML (can be large)
+
+      const checkDownload = () => {
+        chrome.downloads.search({ id: downloadId }, (results) => {
+          if (results.length === 0) {
+            clearTimeout(timeout)
+            resolve({ success: false, error: 'Download not found' })
+            return
+          }
+
+          const download = results[0]
+          if (download.state === 'complete') {
+            clearTimeout(timeout)
+            const windowsPath = download.filename
+            resolve({
+              success: true,
+              filename: windowsPath.split(/[/\\]/).pop() || filename,
+              windowsPath: windowsPath,
+              wslPath: windowsToWslPath(windowsPath),
+              fileSize: download.fileSize,
+              mimeType: 'multipart/related'
+            })
+          } else if (download.state === 'interrupted') {
+            clearTimeout(timeout)
+            resolve({ success: false, error: download.error || 'Download interrupted' })
+          } else {
+            setTimeout(checkDownload, 200)
+          }
+        })
+      }
+      setTimeout(checkDownload, 100)
+    })
+
+    sendToWebSocket({
+      type: 'browser-save-page-result',
+      requestId: message.requestId,
+      ...downloadResult
+    })
+  } catch (err) {
+    sendToWebSocket({
+      type: 'browser-save-page-result',
+      requestId: message.requestId,
+      success: false,
+      error: (err as Error).message
+    })
+  }
+}
+
 // ============================================
 // BOOKMARK HANDLERS
 // ============================================
@@ -1283,6 +1416,10 @@ async function connectWebSocket() {
         // Capture image via canvas (works for blob URLs / AI-generated images)
         console.log('📸 Browser MCP: capture-image request', message.requestId, message.selector)
         handleBrowserCaptureImage(message)
+      } else if (message.type === 'browser-save-page') {
+        // Save page as MHTML using pageCapture API
+        console.log('📄 Browser MCP: save-page request', message.requestId, message.tabId)
+        handleBrowserSavePage(message)
       }
       // ============================================
       // BROWSER MCP - Bookmark handlers
@@ -2228,6 +2365,17 @@ function setupContextMenus() {
       }
     })
 
+    // Context menu for page - save as MHTML
+    chrome.contextMenus.create({
+      id: 'save-page-mhtml',
+      title: 'Save Page as MHTML',
+      contexts: ['page'],
+    }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('Error creating save-page-mhtml menu:', chrome.runtime.lastError.message)
+      }
+    })
+
     console.log('✅ Context menus setup complete')
   })
 }
@@ -2374,6 +2522,63 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       }
     } catch (err) {
       console.error('Failed to call TTS endpoint:', err)
+    }
+  }
+
+  if (menuId === 'save-page-mhtml' && tab?.id) {
+    // Save page as MHTML directly (no MCP/WebSocket needed)
+    console.log('📄 Saving page as MHTML:', tab.title)
+
+    try {
+      // Check if tab URL is capturable
+      if (tab.url?.startsWith('chrome://') || tab.url?.startsWith('chrome-extension://')) {
+        console.error('Cannot save chrome:// or extension pages')
+        return
+      }
+
+      // Capture the page as MHTML
+      const mhtmlBlob = await new Promise<Blob>((resolve, reject) => {
+        chrome.pageCapture.saveAsMHTML({ tabId: tab.id! }, (blob) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message))
+          } else if (!blob) {
+            reject(new Error('Failed to capture page'))
+          } else {
+            resolve(blob)
+          }
+        })
+      })
+
+      // Generate filename from page title
+      const pageTitle = tab.title || 'page'
+      const sanitizedTitle = pageTitle.replace(/[<>:"/\\|?*]/g, '-').substring(0, 100)
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19)
+      const filename = `${sanitizedTitle}-${timestamp}.mhtml`
+
+      // Convert blob to data URL (service workers don't support URL.createObjectURL)
+      const arrayBuffer = await mhtmlBlob.arrayBuffer()
+      const uint8Array = new Uint8Array(arrayBuffer)
+      let binary = ''
+      for (let i = 0; i < uint8Array.length; i++) {
+        binary += String.fromCharCode(uint8Array[i])
+      }
+      const base64 = btoa(binary)
+      const dataUrl = `data:multipart/related;base64,${base64}`
+
+      // Download the file
+      chrome.downloads.download({
+        url: dataUrl,
+        filename: filename,
+        conflictAction: 'uniquify'
+      }, (downloadId) => {
+        if (chrome.runtime.lastError) {
+          console.error('Download failed:', chrome.runtime.lastError.message)
+        } else {
+          console.log('✅ Page saved, download ID:', downloadId)
+        }
+      })
+    } catch (err) {
+      console.error('Failed to save page:', err)
     }
   }
 })

@@ -1059,6 +1059,21 @@ wss.on('connection', (ws, req) => {
           }
           break;
 
+        case 'browser-save-page-result':
+          // Receive save page (MHTML) result from Chrome extension
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              filename: data.filename,
+              windowsPath: data.windowsPath,
+              wslPath: data.wslPath,
+              fileSize: data.fileSize,
+              mimeType: data.mimeType,
+              error: data.error
+            });
+          }
+          break;
+
         case 'browser-capture-image-result':
           // Receive image capture result from Chrome extension
           if (data.requestId) {

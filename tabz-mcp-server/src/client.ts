@@ -1402,6 +1402,35 @@ export async function cancelDownload(downloadId: number): Promise<CancelDownload
   }
 }
 
+// =====================================
+// Page Capture Operations
+// =====================================
+
+import type { SavePageResult } from "./types.js";
+
+/**
+ * Save the current page as MHTML
+ * Uses Chrome's pageCapture API to bundle HTML + CSS + images into a single file
+ */
+export async function savePage(options: {
+  tabId?: number;
+  filename?: string;
+}): Promise<SavePageResult> {
+  try {
+    const response = await axios.post<SavePageResult>(
+      `${BACKEND_URL}/api/browser/save-page`,
+      {
+        tabId: options.tabId,
+        filename: options.filename
+      },
+      { timeout: 60000 } // 60s timeout for large pages
+    );
+    return response.data;
+  } catch (error) {
+    return { success: false, error: handleApiError(error, "Failed to save page").message };
+  }
+}
+
 /**
  * Capture an image from the page via canvas (extension-based, no CDP required)
  * Works for blob URLs and AI-generated images (ChatGPT, Copilot, DALL-E, etc.)

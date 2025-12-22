@@ -391,6 +391,60 @@ router.post('/cancel-download', async (req, res) => {
   }
 });
 
+// POST /api/browser/save-page - Save page as MHTML using pageCapture API
+router.post('/save-page', async (req, res) => {
+  const { tabId, filename } = req.body;
+
+  log.debug('POST /save-page', { tabId, filename });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available - backend not fully initialized'
+    });
+  }
+
+  try {
+    const requestId = `browser-${++requestIdCounter}`;
+
+    // Create promise that will be resolved by WebSocket response
+    const resultPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.delete(requestId);
+        reject(new Error('Page save timed out - large pages may take longer'));
+      }, 60000); // 60 second timeout for large pages
+
+      pendingRequests.set(requestId, {
+        resolve: (data) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          resolve(data);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          reject(error);
+        }
+      });
+    });
+
+    // Send request to extension via WebSocket
+    broadcast({
+      type: 'browser-save-page',
+      requestId,
+      tabId,
+      filename
+    });
+
+    const result = await resultPromise;
+    res.json(result);
+  } catch (error) {
+    log.error('save-page error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
 // POST /api/browser/capture-image - Capture image via canvas (works for blob URLs)
 // This is the preferred method for AI-generated images (ChatGPT, Copilot, DALL-E, etc.)
 router.post('/capture-image', async (req, res) => {

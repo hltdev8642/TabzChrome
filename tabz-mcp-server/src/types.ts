@@ -164,3 +164,14 @@ export interface BookmarkDeleteResult {
   success: boolean;
   error?: string;
 }
+
+// Page capture types
+export interface SavePageResult {
+  success: boolean;
+  filename?: string;
+  windowsPath?: string;
+  wslPath?: string;
+  fileSize?: number;
+  mimeType?: string;
+  error?: string;
+}

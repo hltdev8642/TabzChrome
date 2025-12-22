@@ -26,6 +26,7 @@ Quick reference for the browser MCP tools available to Claude Code.
 | `tabz_download_file` | "download file", "download URL", "save file" | Download any URL to disk (returns Windows + WSL paths) |
 | `tabz_get_downloads` | "list downloads", "download status", "recent downloads" | List recent downloads with status and progress |
 | `tabz_cancel_download` | "cancel download", "stop download" | Cancel an in-progress download |
+| `tabz_save_page` | "save page", "archive page", "save as MHTML" | Save complete page as MHTML (HTML + CSS + images bundled) |
 | `tabz_get_bookmark_tree` | "show bookmarks", "bookmark folders", "bookmark hierarchy" | Get bookmark folder structure |
 | `tabz_search_bookmarks` | "find bookmark", "search bookmarks" | Find bookmarks by title or URL |
 | `tabz_save_bookmark` | "save bookmark", "add bookmark", "bookmark this" | Save URL to bookmarks |
@@ -771,6 +772,54 @@ List of downloads with ID, filename, status, size, and paths.
 
 **Returns:**
 Confirmation of cancellation.
+
+---
+
+## tabz_save_page
+
+**Purpose:** Save the current browser page as an MHTML file for offline analysis.
+
+**Trigger phrases:**
+- "Save this page"
+- "Archive this documentation"
+- "Save page for offline"
+- "Capture page as MHTML"
+
+**Parameters:**
+- `tabId` (optional): Tab ID to save. Defaults to active tab.
+- `filename` (optional): Custom filename without extension. Defaults to page title + timestamp.
+- `response_format`: `markdown` (default) or `json`
+
+**Returns:**
+- `filename`: Name of saved file
+- `windowsPath`: Full Windows path to saved file
+- `wslPath`: WSL-compatible path (use with Read tool)
+- `fileSize`: File size in bytes
+- `mimeType`: `multipart/related` (MHTML format)
+
+**What is MHTML?**
+MHTML (MIME HTML) bundles the complete webpage into a single file:
+- Full HTML content
+- CSS stylesheets (embedded)
+- Images (embedded as base64)
+- JavaScript files
+- Fonts and other resources
+
+**Use cases:**
+- Archive documentation for offline reference
+- Capture dynamic/JS-rendered content that WebFetch can't fully get
+- Preserve page state before it changes
+- Save pages that require authentication
+
+**Workflow:**
+```
+1. tabz_save_page → saves page, returns paths
+2. Read tool with wslPath → analyze the MHTML content
+```
+
+**Limitations:**
+- Cannot capture `chrome://` or `chrome-extension://` pages
+- MHTML files can only be opened in a browser from the local filesystem
 
 ---
 

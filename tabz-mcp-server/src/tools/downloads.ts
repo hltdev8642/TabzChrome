@@ -7,7 +7,7 @@
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { downloadFile, getDownloads, cancelDownload } from "../client.js";
+import { downloadFile, getDownloads, cancelDownload, savePage } from "../client.js";
 import { ResponseFormat, type DownloadItem } from "../types.js";
 
 // Input schema for tabz_download_file
@@ -354,6 +354,135 @@ Download ID ${params.downloadId} has been cancelled.`;
 **Error:** ${result.error}
 
 The download may have already completed or been cancelled.`;
+        }
+
+        return {
+          content: [{ type: "text", text: resultText }],
+          isError: !result.success
+        };
+      } catch (error) {
+        return {
+          content: [{
+            type: "text",
+            text: `Error: ${error instanceof Error ? error.message : String(error)}`
+          }],
+          isError: true
+        };
+      }
+    }
+  );
+
+  // Save page as MHTML tool
+  const SavePageSchema = z.object({
+    tabId: z.number()
+      .int()
+      .optional()
+      .describe("Tab ID to save. If not specified, saves the currently active tab."),
+    filename: z.string()
+      .optional()
+      .describe("Custom filename (without extension). Defaults to page title + timestamp. Extension will be .mhtml."),
+    response_format: z.nativeEnum(ResponseFormat)
+      .default(ResponseFormat.MARKDOWN)
+      .describe("Output format: 'markdown' (default) or 'json'")
+  }).strict();
+
+  type SavePageInput = z.infer<typeof SavePageSchema>;
+
+  server.tool(
+    "tabz_save_page",
+    `Save the current browser tab as an MHTML file for offline analysis.
+
+MHTML (MIME HTML) bundles the complete webpage into a single file:
+- Full HTML content
+- CSS stylesheets
+- Images (embedded as base64)
+- JavaScript files
+- Fonts and other resources
+
+This is useful for:
+- Archiving documentation pages for offline reference
+- Capturing dynamic/JS-rendered content that WebFetch can't fully get
+- Preserving page state before it changes
+- Saving pages that require authentication
+
+IMPORTANT for WSL2 users: Returns BOTH paths for cross-platform compatibility:
+- windowsPath: Original Windows path (e.g., "C:\\Users\\matt\\Downloads\\page.mhtml")
+- wslPath: Converted WSL path (e.g., "/mnt/c/Users/matt/Downloads/page.mhtml")
+
+Use the wslPath with Claude's Read tool to analyze the saved page.
+
+Args:
+  - tabId (optional): Tab ID to save. Defaults to active tab.
+  - filename (optional): Custom filename without extension. Defaults to page title + timestamp.
+  - response_format: 'markdown' (default) or 'json'
+
+Returns:
+  For JSON format:
+  {
+    "success": boolean,
+    "filename": string,
+    "windowsPath": string,
+    "wslPath": string,
+    "fileSize": number,
+    "mimeType": "multipart/related",
+    "error": string
+  }
+
+Examples:
+  - Save current tab: (no args)
+  - Save specific tab: tabId=123456789
+  - Custom name: filename="react-docs-2024"
+
+Workflow:
+  1. tabz_save_page to save the page
+  2. Use Read tool with returned wslPath to analyze the content
+
+Note: MHTML files can only be opened in a browser from the local filesystem.
+For security, browsers won't load MHTML files from web origins.`,
+    SavePageSchema.shape,
+    async (params: SavePageInput) => {
+      try {
+        const result = await savePage({
+          tabId: params.tabId,
+          filename: params.filename
+        });
+
+        let resultText: string;
+
+        if (params.response_format === ResponseFormat.JSON) {
+          resultText = JSON.stringify(result, null, 2);
+        } else {
+          if (result.success && result.wslPath) {
+            resultText = `## Page Saved
+
+**File:** ${result.filename}
+**Size:** ${result.fileSize ? formatBytes(result.fileSize) : 'Unknown'}
+**Format:** MHTML (complete page archive)
+
+### File Paths
+
+**WSL Path (use with Read tool):**
+\`\`\`
+${result.wslPath}
+\`\`\`
+
+**Windows Path:**
+\`\`\`
+${result.windowsPath}
+\`\`\`
+
+To analyze the saved page, use the Read tool with the WSL path above.
+The MHTML file contains the complete page content including embedded images and styles.`;
+          } else {
+            resultText = `## Save Failed
+
+**Error:** ${result.error}
+
+**Troubleshooting:**
+- Ensure the tab is not a chrome:// or chrome-extension:// page
+- Check that Chrome has permission to save to the Downloads folder
+- Try saving a different tab`;
+          }
         }
 
         return {

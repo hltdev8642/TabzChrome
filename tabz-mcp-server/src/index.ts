@@ -11,7 +11,7 @@
  * - navigation: tabz_open_url
  * - console: tabz_get_console_logs, tabz_execute_script
  * - network: tabz_enable_network_capture, tabz_get_network_requests, tabz_get_api_response, tabz_clear_network_requests
- * - downloads: tabz_download_file, tabz_get_downloads, tabz_cancel_download
+ * - downloads: tabz_download_file, tabz_get_downloads, tabz_cancel_download, tabz_save_page
  * - bookmarks: tabz_get_bookmark_tree, tabz_search_bookmarks, tabz_save_bookmark, tabz_create_folder, tabz_move_bookmark, tabz_delete_bookmark
  * - cookies: (future) tabz_check_auth, tabz_get_cookies
  * - history: (future) tabz_search_history
@@ -68,9 +68,9 @@ const TOOL_GROUPS: Record<string, ToolGroupRegistrar> = {
   network: (server) => {
     registerNetworkTools(server);     // tabz_enable_network_capture, tabz_get_network_requests, tabz_get_api_response, tabz_clear_network_requests
   },
-  // Download tools (Chrome downloads API)
+  // Download tools (Chrome downloads + pageCapture API)
   downloads: (server) => {
-    registerDownloadTools(server);    // tabz_download_file, tabz_get_downloads, tabz_cancel_download
+    registerDownloadTools(server);    // tabz_download_file, tabz_get_downloads, tabz_cancel_download, tabz_save_page
   },
   // Bookmark tools (Chrome bookmarks API)
   bookmarks: (server) => {

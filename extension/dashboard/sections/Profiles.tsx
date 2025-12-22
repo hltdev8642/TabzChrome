@@ -429,26 +429,28 @@ export default function ProfilesSection() {
       </div>
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-3xl font-bold terminal-glow">Profiles</h1>
-          <p className="text-muted-foreground mt-1">
-            {profiles.length} profiles in {categories.length} categories
+      <div className="flex items-start sm:items-center justify-between gap-4 mb-6">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold terminal-glow truncate">Profiles</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {profiles.length} profile{profiles.length !== 1 ? 's' : ''} · {categories.length} categor{categories.length !== 1 ? 'ies' : 'y'}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {/* View Toggle */}
-          <div className="flex border border-border rounded-lg overflow-hidden">
+          <div className="flex bg-muted/50 rounded-lg p-0.5">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 ${viewMode === 'grid' ? 'bg-primary/20 text-primary' : 'hover:bg-muted'}`}
+              className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+              title="Grid view"
             >
               <Grid className="w-4 h-4" />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 ${viewMode === 'list' ? 'bg-primary/20 text-primary' : 'hover:bg-muted'}`}
+              className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+              title="List view"
             >
               <List className="w-4 h-4" />
             </button>
@@ -457,7 +459,8 @@ export default function ProfilesSection() {
           <button
             onClick={fetchProfiles}
             disabled={loading}
-            className="p-2 rounded-lg border border-border hover:bg-muted disabled:opacity-50"
+            className="p-2 rounded-lg bg-muted/50 hover:bg-muted disabled:opacity-50 transition-colors"
+            title="Refresh profiles"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -465,53 +468,60 @@ export default function ProfilesSection() {
       </div>
 
       {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <div className="flex flex-col gap-4 mb-6">
+        {/* Search - always full width */}
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search profiles..."
-            className="w-full pl-10 pr-4 py-2 rounded-lg bg-card border border-border focus:border-primary focus:outline-none"
+            placeholder="Search profiles by name or command..."
+            className="w-full pl-12 pr-12 py-3 rounded-xl bg-card border border-border focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-base transition-all"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
 
-        {/* Category Pills */}
-        <div className="flex flex-wrap gap-2">
+        {/* Category Pills - horizontal scroll on small screens */}
+        <div className="flex gap-2 overflow-x-auto pb-1 -mb-1 scrollbar-thin">
           <button
             onClick={() => setSelectedCategory(null)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex-shrink-0 ${
               !selectedCategory
-                ? 'bg-primary/20 text-primary border border-primary/30'
-                : 'bg-card border border-border hover:bg-muted'
+                ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25'
+                : 'bg-card border border-border hover:bg-muted hover:border-muted-foreground/30'
             }`}
           >
-            All
+            All Profiles
           </button>
           {categories.map((cat) => {
             const catColor = getCategoryColor(cat)
+            const isSelected = selectedCategory === cat
             return (
               <button
                 key={cat}
-                onClick={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                  selectedCategory === cat
-                    ? 'bg-card border-2'
-                    : 'bg-card border border-border hover:bg-muted'
+                onClick={() => setSelectedCategory(isSelected ? null : cat)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 flex-shrink-0 ${
+                  isSelected
+                    ? 'shadow-md'
+                    : 'bg-card border border-border hover:bg-muted hover:border-muted-foreground/30'
                 }`}
-                style={selectedCategory === cat ? { borderColor: catColor, color: catColor } : undefined}
+                style={isSelected ? {
+                  backgroundColor: catColor + '20',
+                  borderColor: catColor,
+                  color: catColor,
+                  boxShadow: `0 4px 12px ${catColor}25`
+                } : undefined}
               >
                 <span
-                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                   style={{ backgroundColor: catColor }}
                 />
                 {cat}
@@ -578,7 +588,7 @@ export default function ProfilesSection() {
 
               {/* Grid View */}
               {viewMode === 'grid' ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+                <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                   {categoryProfiles.map(({ profile, originalIndex }) => (
                     <ProfileCard
                       key={profile.id}
@@ -695,8 +705,8 @@ function ProfileCard({
       onDragEnd={onDragEnd}
       onClick={onClick}
       className={`
-        group relative flex flex-col items-center p-4 rounded-xl border transition-all overflow-hidden cursor-pointer
-        ${isDragging ? 'opacity-50 border-primary' : 'border-border hover:border-primary/50'}
+        group relative flex flex-col rounded-xl border transition-all overflow-hidden cursor-pointer
+        ${isDragging ? 'opacity-50 border-primary scale-95' : 'border-border hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10'}
       `}
       style={themeGradient ? { background: themeGradient } : undefined}
     >
@@ -709,62 +719,76 @@ function ProfileCard({
         <div className="absolute -right-[3px] top-0 bottom-0 w-[3px] bg-green-500 rounded-full shadow-[0_0_8px_#22c55e] z-50" />
       )}
 
-      {/* Default badge - top left */}
-      {isDefault && (
-        <div className="absolute top-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/20 text-primary text-[10px] font-medium">
-          <Star className="w-2.5 h-2.5 fill-current" />
-          Default
-        </div>
-      )}
-
-      {/* Drag handle - top left (only show if not default) */}
-      {!isDefault && (
-        <div
-          className="absolute top-2 left-2 p-1 cursor-grab active:cursor-grabbing text-white/30 hover:text-white/60 opacity-0 group-hover:opacity-100 transition-all"
-          title="Drag to reorder"
-        >
-          <GripVertical className="w-3.5 h-3.5" />
-        </div>
-      )}
-
-      {/* Copy button - top right */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          navigator.clipboard.writeText(profile.command || 'bash')
-        }}
-        onMouseDown={(e) => e.stopPropagation()}
-        className="absolute top-2 right-8 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-all z-10"
-        title="Copy command"
-      >
-        <Copy className="w-3.5 h-3.5 text-white/50 hover:text-white/80" />
-      </button>
-
-      {/* Edit button - top right corner */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onEdit() }}
-        onMouseDown={(e) => e.stopPropagation()}
-        className="absolute top-2 right-2 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-all z-10"
-        title="Edit profile"
-      >
-        <Settings className="w-3.5 h-3.5 text-white/50 hover:text-white/80" />
-      </button>
-
-      {/* Card content */}
-      <div className="flex flex-col items-center w-full pointer-events-none">
-        <div className="w-12 h-12 flex items-center justify-center mb-2 rounded-lg bg-white/10 text-2xl group-hover:scale-110 transition-transform">
-          {emoji || <Terminal className="w-6 h-6 text-white/80" />}
-        </div>
-        <span className="text-sm font-medium text-center line-clamp-2 text-white">{displayName}</span>
-        {truncatedDir && (
-          <span className="text-[10px] text-white/50 mt-0.5 font-mono">{truncatedDir}</span>
+      {/* Main card content area */}
+      <div className="flex flex-col items-center p-5 pt-6 pb-4">
+        {/* Default badge - inline above icon */}
+        {isDefault && (
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-medium mb-2">
+            <Star className="w-2.5 h-2.5 fill-current" />
+            Default
+          </div>
         )}
+
+        {/* Icon */}
+        <div className="w-14 h-14 flex items-center justify-center mb-3 rounded-xl bg-white/10 text-3xl group-hover:scale-105 transition-transform">
+          {emoji || <Terminal className="w-7 h-7 text-white/80" />}
+        </div>
+
+        {/* Name */}
+        <span className="text-sm font-semibold text-center line-clamp-2 text-white leading-tight">
+          {displayName}
+        </span>
+
+        {/* Working directory */}
+        {truncatedDir && (
+          <span className="text-[11px] text-white/50 mt-1 font-mono">{truncatedDir}</span>
+        )}
+
+        {/* Command preview */}
         {profile.command && (
-          <span className="text-xs text-white/50 mt-1 font-mono truncate max-w-full">
-            {profile.command.length > 15 ? profile.command.slice(0, 15) + '...' : profile.command}
+          <span className="text-xs text-white/40 mt-1.5 font-mono truncate max-w-full px-2">
+            {profile.command.length > 20 ? profile.command.slice(0, 20) + '…' : profile.command}
           </span>
         )}
-        <Play className="w-4 h-4 text-white/80 mt-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
+
+      {/* Action bar - appears on hover at bottom */}
+      <div className="flex items-center justify-center gap-1 px-2 py-2 bg-black/20 backdrop-blur-sm border-t border-white/10 opacity-0 group-hover:opacity-100 transition-all">
+        <button
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onMouseUp={onDragStart}
+          className="p-1.5 rounded-md hover:bg-white/10 cursor-grab active:cursor-grabbing transition-colors"
+          title="Drag to reorder"
+        >
+          <GripVertical className="w-4 h-4 text-white/50" />
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            navigator.clipboard.writeText(profile.command || 'bash')
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="p-1.5 rounded-md hover:bg-white/10 transition-colors"
+          title="Copy command"
+        >
+          <Copy className="w-4 h-4 text-white/50" />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onEdit() }}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="p-1.5 rounded-md hover:bg-white/10 transition-colors"
+          title="Edit profile"
+        >
+          <Settings className="w-4 h-4 text-white/50" />
+        </button>
+        <button
+          onClick={onClick}
+          className="p-1.5 rounded-md bg-white/10 hover:bg-white/20 transition-colors"
+          title="Launch"
+        >
+          <Play className="w-4 h-4 text-white/70" />
+        </button>
       </div>
     </div>
   )

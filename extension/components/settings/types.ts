@@ -32,10 +32,11 @@ export const MCP_TOOLS: McpTool[] = [
   { id: 'tabz_get_network_requests', name: 'Network Requests', desc: 'List captured XHR/fetch requests', tokens: 1400 },
   { id: 'tabz_get_api_response', name: 'API Response', desc: 'Get response body for a request', tokens: 1100 },
   { id: 'tabz_clear_network_requests', name: 'Clear Network', desc: 'Clear captured requests', tokens: 400 },
-  // Downloads (chrome.downloads API)
+  // Downloads (chrome.downloads + pageCapture API)
   { id: 'tabz_download_file', name: 'Download File', desc: 'Download any URL to disk', tokens: 1200 },
   { id: 'tabz_get_downloads', name: 'List Downloads', desc: 'List recent downloads with status', tokens: 1000 },
   { id: 'tabz_cancel_download', name: 'Cancel Download', desc: 'Cancel in-progress download', tokens: 500 },
+  { id: 'tabz_save_page', name: 'Save Page', desc: 'Save page as MHTML for offline analysis', tokens: 1300 },
   // Bookmarks (chrome.bookmarks API)
   { id: 'tabz_get_bookmark_tree', name: 'Bookmark Tree', desc: 'Get bookmark folder hierarchy', tokens: 1200 },
   { id: 'tabz_search_bookmarks', name: 'Search Bookmarks', desc: 'Find bookmarks by title/URL', tokens: 900 },

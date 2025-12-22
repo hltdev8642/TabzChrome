@@ -40,6 +40,7 @@ const MCP_TOOLS: McpTool[] = [
   { id: 'tabz_download_file', name: 'Download File', desc: 'Download any URL to disk', tokens: 1200, category: 'Downloads' },
   { id: 'tabz_get_downloads', name: 'List Downloads', desc: 'List recent downloads with status', tokens: 1000, category: 'Downloads' },
   { id: 'tabz_cancel_download', name: 'Cancel Download', desc: 'Cancel in-progress download', tokens: 500, category: 'Downloads' },
+  { id: 'tabz_save_page', name: 'Save Page', desc: 'Save page as MHTML for offline analysis', tokens: 1300, category: 'Downloads' },
   // Bookmarks
   { id: 'tabz_get_bookmark_tree', name: 'Bookmark Tree', desc: 'Get bookmark folder hierarchy', tokens: 1200, category: 'Bookmarks' },
   { id: 'tabz_search_bookmarks', name: 'Search Bookmarks', desc: 'Find bookmarks by title/URL', tokens: 900, category: 'Bookmarks' },

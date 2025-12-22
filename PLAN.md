@@ -41,12 +41,12 @@
 | `tabz_move_bookmark` | Move bookmark to different folder | Done |
 | `tabz_delete_bookmark` | Remove a bookmark | Done |
 
-#### `chrome.downloads` - Page Saving
-**Permission**: `"downloads"` (already have)
+#### `chrome.pageCapture` - Page Saving
+**Permission**: `"pageCapture"`
 
 | Tool | Description | Status |
 |------|-------------|--------|
-| `tabz_save_page` | Save page as HTML/MHTML for offline analysis | Planned |
+| `tabz_save_page` | Save page as MHTML for offline analysis | Done |
 
 ### Priority 2: Medium Value
 
