@@ -13,7 +13,10 @@ import {
   FileCode,
   Home,
   Minimize2,
+  Video,
+  Table,
 } from "lucide-react"
+import { useFilesContext } from "../../contexts/FilesContext"
 
 interface FileNode {
   name: string
@@ -29,12 +32,15 @@ interface FileTreeProps {
   basePath?: string
   showHidden?: boolean
   maxDepth?: number
+  waitForLoad?: boolean  // Don't fetch until this becomes false
 }
 
 const API_BASE = "http://localhost:8129"
 
-export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenProp = false, maxDepth = 5 }: FileTreeProps) {
-  const [fileTree, setFileTree] = useState<FileNode | null>(null)
+export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenProp = false, maxDepth = 5, waitForLoad = false }: FileTreeProps) {
+  // Use context for caching file tree across tab switches
+  const { fileTree, setFileTree, fileTreePath, setFileTreePath } = useFilesContext()
+
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -42,17 +48,37 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPath, setCurrentPath] = useState(basePath)
   const [showHidden, setShowHidden] = useState(showHiddenProp)
+  const [hasInitialized, setHasInitialized] = useState(false)
 
-  // Sync currentPath when basePath prop changes
+  // Only sync currentPath to basePath on initial load (when waitForLoad becomes false)
+  // After that, user navigation controls currentPath
   useEffect(() => {
-    setCurrentPath(basePath)
-  }, [basePath])
+    if (!waitForLoad && !hasInitialized) {
+      // If basePath is still "~" but we have a cached non-home path, use that instead
+      // This prevents overwriting a project path with home on reload
+      const pathToUse = (basePath === "~" && fileTreePath && fileTreePath !== "~")
+        ? fileTreePath
+        : basePath
+      setCurrentPath(pathToUse)
+      setHasInitialized(true)
+    }
+  }, [basePath, waitForLoad, hasInitialized, fileTreePath])
 
-  // Fetch file tree
-  const fetchFileTree = useCallback(async (path?: string) => {
+  // Fetch file tree (with caching via context)
+  const fetchFileTree = useCallback(async (path?: string, forceRefresh = false) => {
+    const targetPath = path || currentPath
+
+    // Use cached tree if available and path matches what we want
+    if (!forceRefresh && fileTree && fileTreePath === targetPath) {
+      // Just expand root if needed
+      if (fileTree && expandedFolders.size === 0) {
+        setExpandedFolders(new Set([fileTree.path]))
+      }
+      return
+    }
+
     setLoading(true)
     setError(null)
-    const targetPath = path || currentPath
 
     try {
       const response = await fetch(
@@ -70,6 +96,7 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
 
       const data = await response.json()
       setFileTree(data)
+      setFileTreePath(targetPath)
 
       // Expand root folder
       if (data) {
@@ -80,24 +107,33 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
     } finally {
       setLoading(false)
     }
-  }, [currentPath, showHidden, maxDepth])
+  }, [currentPath, showHidden, maxDepth, fileTree, fileTreePath, expandedFolders.size, setFileTree, setFileTreePath])
 
+  // Fetch when basePath changes (from working directory) or settings change
+  // Wait for working directory to load before fetching
   useEffect(() => {
+    // Don't fetch if we're waiting for working dir to load
+    if (waitForLoad) {
+      return
+    }
     fetchFileTree()
-  }, [fetchFileTree])
+  }, [currentPath, showHidden, maxDepth, waitForLoad])
 
   // Get file icon based on extension
   const getFileIcon = (fileName: string) => {
     const ext = fileName.split(".").pop()?.toLowerCase()
     const codeExts = ["js", "jsx", "ts", "tsx", "py", "java", "cpp", "c", "h", "css", "scss", "html", "vue", "rs", "go"]
     const docExts = ["md", "txt", "doc", "docx", "pdf", "rtf"]
-    const imageExts = ["png", "jpg", "jpeg", "gif", "svg", "ico", "webp"]
+    const imageExts = ["png", "jpg", "jpeg", "gif", "svg", "ico", "webp", "bmp"]
     const jsonExts = ["json", "jsonc", "json5"]
+    const videoExts = ["mp4", "webm", "ogg", "ogv", "mov", "avi", "mkv", "m4v"]
 
     if (codeExts.includes(ext || "")) return <FileCode className="w-4 h-4 text-green-400" />
     if (docExts.includes(ext || "")) return <FileText className="w-4 h-4 text-blue-400" />
     if (imageExts.includes(ext || "")) return <Image className="w-4 h-4 text-yellow-400" />
     if (jsonExts.includes(ext || "")) return <FileJson className="w-4 h-4 text-orange-400" />
+    if (videoExts.includes(ext || "")) return <Video className="w-4 h-4 text-purple-400" />
+    if (ext === "csv") return <Table className="w-4 h-4 text-emerald-400" />
     return <File className="w-4 h-4" />
   }
 
@@ -153,13 +189,13 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
   const navigateUp = useCallback(() => {
     const parentPath = currentPath.split("/").slice(0, -1).join("/") || "/"
     setCurrentPath(parentPath)
-    fetchFileTree(parentPath)
+    fetchFileTree(parentPath, true)
   }, [currentPath, fetchFileTree])
 
   // Navigate home
   const navigateHome = useCallback(() => {
     setCurrentPath(basePath)
-    fetchFileTree(basePath)
+    fetchFileTree(basePath, true)
   }, [basePath, fetchFileTree])
 
   // Collapse all
@@ -216,7 +252,7 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
           <button onClick={navigateUp} className="p-1.5 hover:bg-muted rounded text-lg font-bold" title="Up">
             ↑
           </button>
-          <button onClick={() => fetchFileTree()} className="p-1.5 hover:bg-muted rounded" title="Refresh">
+          <button onClick={() => fetchFileTree(undefined, true)} className="p-1.5 hover:bg-muted rounded" title="Refresh">
             <RefreshCw className="w-4 h-4" />
           </button>
           <button

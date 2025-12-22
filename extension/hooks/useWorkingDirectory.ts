@@ -8,6 +8,7 @@ export interface UseWorkingDirectoryReturn {
   recentDirs: string[]
   setRecentDirs: React.Dispatch<React.SetStateAction<string[]>>
   addToRecentDirs: (dir: string) => void
+  isLoaded: boolean  // true once initial load from storage is complete
 }
 
 /**
@@ -19,6 +20,7 @@ export interface UseWorkingDirectoryReturn {
 export function useWorkingDirectory(): UseWorkingDirectoryReturn {
   const [globalWorkingDir, setGlobalWorkingDir] = useState<string>('~')
   const [recentDirs, setRecentDirs] = useState<string[]>(['~'])
+  const [isLoaded, setIsLoaded] = useState(false)
 
   // Track if component is mounted to avoid state updates after unmount
   const isMountedRef = useRef(true)
@@ -56,6 +58,13 @@ export function useWorkingDirectory(): UseWorkingDirectoryReturn {
       if (isMountedRef.current) {
         setGlobalWorkingDir(localDir)
         setRecentDirs(localRecent)
+
+        // Mark as loaded in next microtask to ensure state has propagated
+        queueMicrotask(() => {
+          if (isMountedRef.current) {
+            setIsLoaded(true)
+          }
+        })
 
         // Push merged data back to backend (keeps dashboard in sync)
         // This ensures Chrome storage dirs get synced to backend
@@ -141,5 +150,6 @@ export function useWorkingDirectory(): UseWorkingDirectoryReturn {
     recentDirs,
     setRecentDirs,
     addToRecentDirs,
+    isLoaded,
   }
 }

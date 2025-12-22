@@ -4,27 +4,78 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { FileTree } from '../components/files/FileTree'
-import { X, Copy, ExternalLink, Code, Image as ImageIcon, ChevronDown, Folder, Trash2, FileText, Settings, ZoomIn, ZoomOut, Maximize, Download } from 'lucide-react'
+import { X, Copy, ExternalLink, Code, Image as ImageIcon, ChevronDown, Folder, Trash2, FileText, FileJson, Settings, ZoomIn, ZoomOut, Maximize, Download, Video, Table } from 'lucide-react'
 import { useWorkingDirectory } from '../../hooks/useWorkingDirectory'
 import { useFileViewerSettings } from '../hooks/useFileViewerSettings'
-import { getFileTypeAndLanguage } from '../utils/fileTypeUtils'
+import { getFileTypeAndLanguage, FileType } from '../utils/fileTypeUtils'
+import { useFilesContext } from '../contexts/FilesContext'
 
-interface OpenFile {
-  id: string
-  path: string
-  name: string
-  content: string | null
-  isImage: boolean
-  imageDataUri?: string
-  loading: boolean
-  error?: string
+// Get icon color class based on file type (matches FileTree.tsx colors)
+const getIconColorClass = (fileType: FileType): string => {
+  switch (fileType) {
+    case 'image': return 'text-yellow-400'
+    case 'video': return 'text-purple-400'
+    case 'csv': return 'text-emerald-400'
+    case 'markdown': return 'text-blue-400'
+    case 'json': return 'text-orange-400'
+    case 'code': return 'text-green-400'
+    default: return ''
+  }
 }
 
-const API_BASE = "http://localhost:8129"
+// Get icon component based on file type
+const getFileIcon = (fileType: FileType) => {
+  switch (fileType) {
+    case 'image': return ImageIcon
+    case 'video': return Video
+    case 'csv': return Table
+    case 'markdown': return FileText
+    case 'json': return FileJson
+    default: return Code
+  }
+}
+
+// Simple CSV parser
+const parseCSV = (content: string): { headers: string[], rows: string[][] } => {
+  const lines = content.trim().split('\n')
+  if (lines.length === 0) return { headers: [], rows: [] }
+
+  // Simple CSV parsing (handles basic cases, not full RFC 4180)
+  const parseLine = (line: string): string[] => {
+    const result: string[] = []
+    let current = ''
+    let inQuotes = false
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i]
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"'
+          i++
+        } else {
+          inQuotes = !inQuotes
+        }
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim())
+        current = ''
+      } else {
+        current += char
+      }
+    }
+    result.push(current.trim())
+    return result
+  }
+
+  const headers = parseLine(lines[0])
+  const rows = lines.slice(1).map(parseLine)
+
+  return { headers, rows }
+}
 
 export default function FilesSection() {
-  const [openFiles, setOpenFiles] = useState<OpenFile[]>([])
-  const [activeFileId, setActiveFileId] = useState<string | null>(null)
+  // Use context for persistent state across tab switches
+  const { openFiles, activeFileId, setActiveFileId, openFile, closeFile } = useFilesContext()
+
   const [showDirDropdown, setShowDirDropdown] = useState(false)
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false)
   const [imageZoom, setImageZoom] = useState<'fit' | number>('fit')
@@ -33,7 +84,7 @@ export default function FilesSection() {
   const settingsRef = useRef<HTMLDivElement>(null)
 
   // Share working directory with rest of dashboard
-  const { globalWorkingDir, setGlobalWorkingDir, recentDirs, setRecentDirs } = useWorkingDirectory()
+  const { globalWorkingDir, setGlobalWorkingDir, recentDirs, setRecentDirs, isLoaded: workingDirLoaded } = useWorkingDirectory()
 
   // File viewer settings (font size, family, max depth)
   const { settings: viewerSettings, setFontSize, setFontFamily } = useFileViewerSettings()
@@ -53,50 +104,6 @@ export default function FilesSection() {
   }, [])
 
   const activeFile = openFiles.find(f => f.id === activeFileId)
-
-  const handleFileSelect = async (path: string) => {
-    // Check if already open
-    const existing = openFiles.find(f => f.path === path)
-    if (existing) {
-      setActiveFileId(existing.id)
-      return
-    }
-
-    const id = `file-${Date.now()}`
-    const name = path.split('/').pop() || path
-    const isImage = /\.(png|jpg|jpeg|gif|svg|ico|webp)$/i.test(name)
-
-    // Add file in loading state
-    const newFile: OpenFile = { id, path, name, content: null, isImage, loading: true }
-    setOpenFiles(prev => [...prev, newFile])
-    setActiveFileId(id)
-
-    try {
-      if (isImage) {
-        const res = await fetch(`${API_BASE}/api/files/image?path=${encodeURIComponent(path)}`)
-        const data = await res.json()
-        if (data.dataUri) {
-          setOpenFiles(prev => prev.map(f => f.id === id ? { ...f, imageDataUri: data.dataUri, loading: false } : f))
-        } else {
-          throw new Error('No image data')
-        }
-      } else {
-        const res = await fetch(`${API_BASE}/api/files/content?path=${encodeURIComponent(path)}`)
-        const data = await res.json()
-        setOpenFiles(prev => prev.map(f => f.id === id ? { ...f, content: data.content, loading: false } : f))
-      }
-    } catch (err: any) {
-      setOpenFiles(prev => prev.map(f => f.id === id ? { ...f, error: err.message, loading: false } : f))
-    }
-  }
-
-  const closeFile = (id: string) => {
-    setOpenFiles(prev => prev.filter(f => f.id !== id))
-    if (activeFileId === id) {
-      const remaining = openFiles.filter(f => f.id !== id)
-      setActiveFileId(remaining.length > 0 ? remaining[remaining.length - 1].id : null)
-    }
-  }
 
   const copyContent = async () => {
     if (activeFile?.content) {
@@ -244,7 +251,7 @@ export default function FilesSection() {
       <div className="flex flex-1 min-h-0">
         {/* File Tree - Left Side */}
         <div className="w-72 border-r border-border flex-shrink-0 overflow-hidden">
-          <FileTree onFileSelect={handleFileSelect} basePath={globalWorkingDir} maxDepth={viewerSettings.maxDepth} />
+          <FileTree onFileSelect={openFile} basePath={globalWorkingDir} maxDepth={viewerSettings.maxDepth} waitForLoad={!workingDirLoaded} />
         </div>
 
         {/* File Viewer - Right Side */}
@@ -253,8 +260,8 @@ export default function FilesSection() {
         {openFiles.length > 0 && (
           <div className="flex items-center border-b border-border bg-card/50 overflow-x-auto">
             {openFiles.map(file => {
-              const fileType = getFileTypeAndLanguage(file.path).type
-              const FileIcon = file.isImage ? ImageIcon : fileType === 'markdown' ? FileText : Code
+              const FileIcon = getFileIcon(file.fileType)
+              const iconColor = getIconColorClass(file.fileType)
               return (
               <div
                 key={file.id}
@@ -263,7 +270,7 @@ export default function FilesSection() {
                 }`}
                 onClick={() => setActiveFileId(file.id)}
               >
-                <FileIcon className="w-4 h-4" />
+                <FileIcon className={`w-4 h-4 ${iconColor}`} />
                 <span className="text-sm truncate max-w-32">{file.name}</span>
                 <button
                   onClick={(e) => { e.stopPropagation(); closeFile(file.id) }}
@@ -290,7 +297,7 @@ export default function FilesSection() {
             <div className="flex items-center justify-center h-full text-red-400">
               {activeFile.error}
             </div>
-          ) : activeFile.isImage ? (
+          ) : activeFile.fileType === 'image' ? (
             <div className="h-full flex flex-col">
               {/* Image Toolbar */}
               <div className="flex items-center gap-2 p-2 border-b border-border bg-card/50">
@@ -330,7 +337,7 @@ export default function FilesSection() {
                   </button>
                 </div>
                 <a
-                  href={activeFile.imageDataUri}
+                  href={activeFile.mediaDataUri}
                   download={activeFile.name}
                   className="flex items-center gap-1 px-2 py-1 text-sm hover:bg-muted rounded ml-2"
                   title="Download image"
@@ -345,7 +352,7 @@ export default function FilesSection() {
               {/* Image Display */}
               <div className="flex-1 overflow-auto flex items-center justify-center p-4 bg-[#1a1a1a]">
                 <img
-                  src={activeFile.imageDataUri}
+                  src={activeFile.mediaDataUri}
                   alt={activeFile.name}
                   onLoad={(e) => {
                     const img = e.target as HTMLImageElement
@@ -360,6 +367,75 @@ export default function FilesSection() {
                     height: 'auto'
                   }}
                 />
+              </div>
+            </div>
+          ) : activeFile.fileType === 'video' ? (
+            <div className="h-full flex flex-col">
+              {/* Video Toolbar */}
+              <div className="flex items-center gap-2 p-2 border-b border-border bg-card/50">
+                <a
+                  href={activeFile.mediaDataUri}
+                  download={activeFile.name}
+                  className="flex items-center gap-1 px-2 py-1 text-sm hover:bg-muted rounded"
+                  title="Download video"
+                >
+                  <Download className="w-4 h-4" /> Download
+                </a>
+                <span className="ml-auto text-xs text-muted-foreground">{activeFile.path}</span>
+              </div>
+              {/* Video Player */}
+              <div className="flex-1 overflow-auto flex items-center justify-center p-4 bg-[#1a1a1a]">
+                <video
+                  src={activeFile.mediaDataUri}
+                  controls
+                  className="max-w-full max-h-full"
+                  style={{ maxHeight: 'calc(100vh - 200px)' }}
+                >
+                  Your browser does not support video playback.
+                </video>
+              </div>
+            </div>
+          ) : activeFile.fileType === 'csv' ? (
+            <div className="h-full flex flex-col">
+              {/* CSV Toolbar */}
+              <div className="flex items-center gap-2 p-2 border-b border-border bg-card/50">
+                <button onClick={copyContent} className="flex items-center gap-1 px-2 py-1 text-sm hover:bg-muted rounded">
+                  <Copy className="w-4 h-4" /> Copy
+                </button>
+                <button onClick={openInEditor} className="flex items-center gap-1 px-2 py-1 text-sm hover:bg-muted rounded">
+                  <ExternalLink className="w-4 h-4" /> Open in Editor
+                </button>
+                <span className="ml-auto text-xs text-muted-foreground">{activeFile.path}</span>
+              </div>
+              {/* CSV Table */}
+              <div className="flex-1 overflow-auto p-4">
+                {(() => {
+                  const { headers, rows } = parseCSV(activeFile.content || '')
+                  return (
+                    <table className="w-full border-collapse text-sm" style={{ fontFamily: `${viewerSettings.fontFamily}, monospace`, fontSize: `${viewerSettings.fontSize}px` }}>
+                      <thead>
+                        <tr className="bg-muted/50 sticky top-0">
+                          {headers.map((header, i) => (
+                            <th key={i} className="border border-border px-3 py-2 text-left font-semibold whitespace-nowrap">
+                              {header}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map((row, rowIndex) => (
+                          <tr key={rowIndex} className="hover:bg-muted/30">
+                            {row.map((cell, cellIndex) => (
+                              <td key={cellIndex} className="border border-border px-3 py-1.5 whitespace-nowrap">
+                                {cell}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )
+                })()}
               </div>
             </div>
           ) : (() => {
@@ -391,6 +467,46 @@ export default function FilesSection() {
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
+                        a({ href, children, ...props }: any) {
+                          // Check if it's a relative file link (not http/https/mailto/etc)
+                          const isRelativeFile = href && !href.match(/^(https?:|mailto:|#|\/\/)/)
+
+                          if (isRelativeFile && activeFile) {
+                            // Resolve relative path based on current file's directory
+                            const currentDir = activeFile.path.split('/').slice(0, -1).join('/')
+                            const resolvedPath = href.startsWith('/')
+                              ? href
+                              : `${currentDir}/${href}`.replace(/\/\.\//g, '/') // handle ./
+
+                            return (
+                              <a
+                                href="#"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  openFile(resolvedPath)
+                                }}
+                                className="text-primary hover:underline cursor-pointer"
+                                title={`Open: ${resolvedPath}`}
+                                {...props}
+                              >
+                                {children}
+                              </a>
+                            )
+                          }
+
+                          // External links - open in new tab
+                          return (
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline"
+                              {...props}
+                            >
+                              {children}
+                            </a>
+                          )
+                        },
                         code({ className, children, ...props }: any) {
                           const match = /language-(\w+)/.exec(className || '')
                           const codeString = String(children).replace(/\n$/, '')

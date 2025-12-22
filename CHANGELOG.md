@@ -15,6 +15,33 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.2.2] - 2025-12-22
+
+### Added
+- **Video file support** - View mp4, webm, mov, avi, mkv files with native browser controls
+  - New `/api/files/video` backend endpoint (100MB limit)
+  - Purple icon color for video files in tree and tabs
+- **CSV table viewer** - View CSV files as formatted tables
+  - Proper quote/comma parsing (handles `"quoted, fields"`)
+  - Sticky header row, hover highlighting on rows
+  - Uses viewer font settings (size/family)
+  - Emerald icon color for CSV files
+- **Markdown link navigation** - Relative links in `.md` files now open in file viewer
+  - Click `[changelog](CHANGELOG.md)` to open in new tab
+  - External links still open in browser
+- **Dashboard section persistence** - Active section saved to localStorage
+  - Remembers which page you were on after refresh
+  - Sidebar collapsed state also persisted
+- **Files section caching** - New `FilesContext` for persistent state
+  - Open files and active tab preserved across dashboard tab switches
+  - File tree cached (only refetches on path change or manual refresh)
+
+### Changed
+- Tab icons now use colored icons matching file tree (green=code, blue=md, orange=json, yellow=image, purple=video, emerald=csv)
+- `useWorkingDirectory` hook now exports `isLoaded` flag for timing coordination
+
+---
+
 ## [1.2.1] - 2025-12-22
 
 ### Added

@@ -26,6 +26,9 @@ import FilesSection from './sections/Files'
 // Components
 import CaptureViewer from './components/CaptureViewer'
 
+// Contexts
+import { FilesProvider } from './contexts/FilesContext'
+
 // Types for capture viewer
 interface CaptureData {
   content: string
@@ -57,10 +60,24 @@ const navItems: NavItem[] = [
 ]
 
 export default function App() {
-  const [activeSection, setActiveSection] = useState<Section>('home')
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [activeSection, setActiveSection] = useState<Section>(() => {
+    const saved = localStorage.getItem('tabz-dashboard-section')
+    return (saved as Section) || 'home'
+  })
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('tabz-dashboard-sidebar-collapsed') === 'true'
+  })
   const [connected, setConnected] = useState<boolean | null>(null) // null = checking
   const [captureData, setCaptureData] = useState<CaptureData | null>(null)
+
+  // Persist section and sidebar state
+  useEffect(() => {
+    localStorage.setItem('tabz-dashboard-section', activeSection)
+  }, [activeSection])
+
+  useEffect(() => {
+    localStorage.setItem('tabz-dashboard-sidebar-collapsed', String(sidebarCollapsed))
+  }, [sidebarCollapsed])
 
   // Check for capture query param on mount
   useEffect(() => {
@@ -153,6 +170,7 @@ export default function App() {
   }
 
   return (
+    <FilesProvider>
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
       <aside
@@ -239,6 +257,7 @@ export default function App() {
         <CaptureViewer capture={captureData} onClose={handleCloseCapture} onRefresh={handleRefreshCapture} />
       )}
     </div>
+    </FilesProvider>
   )
 }
 

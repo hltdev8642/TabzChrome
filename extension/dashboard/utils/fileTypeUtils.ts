@@ -1,6 +1,6 @@
 // File type detection utilities for syntax highlighting
 
-export type FileType = "markdown" | "code" | "text" | "json" | "image"
+export type FileType = "markdown" | "code" | "text" | "json" | "image" | "video" | "csv"
 
 export interface FileTypeInfo {
   type: FileType
@@ -91,8 +91,18 @@ export const getFileTypeAndLanguage = (filePath: string): FileTypeInfo => {
   }
 
   // Image files (handled separately in Files.tsx)
-  if (["png", "jpg", "jpeg", "gif", "svg", "webp", "ico"].includes(ext)) {
+  if (["png", "jpg", "jpeg", "gif", "svg", "webp", "ico", "bmp"].includes(ext)) {
     return { type: "image" }
+  }
+
+  // Video files
+  if (["mp4", "webm", "ogg", "ogv", "mov", "avi", "mkv", "m4v"].includes(ext)) {
+    return { type: "video" }
+  }
+
+  // CSV files
+  if (ext === "csv") {
+    return { type: "csv" }
   }
 
   // Code files with syntax highlighting

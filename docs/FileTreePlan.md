@@ -1,6 +1,6 @@
 # Files Section for TabzChrome Dashboard
 
-## Status: Phase 1, 2 & 3 Complete ✅
+## Status: Phase 1, 2, 3 & 3.5 Complete ✅
 
 **Completed:** 2025-12-22
 **Source:** Adapted from Opustrator's FileTree component
@@ -44,10 +44,12 @@ Add a "Files" section to the dashboard for browsing and viewing files with synta
 |------|---------|--------|
 | `extension/dashboard/sections/Files.tsx` | Main section - layout, tabs, viewer | ✅ Done |
 | `extension/dashboard/components/files/FileTree.tsx` | Left sidebar tree navigation | ✅ Done |
-| `extension/dashboard/App.tsx` | Added "files" to Section type, navItems | ✅ Done |
-| `extension/dashboard/utils/fileTypeUtils.ts` | Extension to language mapping | ✅ Done |
+| `extension/dashboard/contexts/FilesContext.tsx` | Persistent state for caching | ✅ Done |
+| `extension/dashboard/App.tsx` | Added "files" to Section type, navItems, section persistence | ✅ Done |
+| `extension/dashboard/utils/fileTypeUtils.ts` | Extension to language/type mapping | ✅ Done |
 | `extension/dashboard/hooks/useFileViewerSettings.ts` | Font size/family settings hook | ✅ Done |
-| `backend/routes/files.js` | Added tilde (~) expansion | ✅ Done |
+| `extension/hooks/useWorkingDirectory.ts` | Added `isLoaded` flag for timing | ✅ Done |
+| `backend/routes/files.js` | Tree, content, image, video endpoints | ✅ Done |
 
 ## Implementation Phases
 
@@ -84,6 +86,16 @@ Add a "Files" section to the dashboard for browsing and viewing files with synta
 - [x] Image dimensions display
 - [x] Uses $EDITOR env var for "Open in Editor" (fallback: nano)
 
+### Phase 3.5: Media & Caching ✅
+
+- [x] **Video file support** - mp4, webm, mov, avi, mkv with native player controls
+- [x] **CSV table viewer** - Parsed with proper quote handling, sticky headers, hover rows
+- [x] **Markdown link navigation** - Relative links (e.g., `[changelog](CHANGELOG.md)`) open in file viewer
+- [x] **Icon colors in tabs** - Tab icons match file tree colors (green=code, blue=md, orange=json, purple=video, emerald=csv)
+- [x] **FilesContext for caching** - Open files and file tree persist across dashboard tab switches
+- [x] **Dashboard section persistence** - Active section saved to localStorage, survives page refresh
+- [x] **Sidebar collapsed state** - Also persisted to localStorage
+
 ### Phase 4: Future Enhancements
 
 - [ ] Split view toggle (2-pane mode for ultrawide)
@@ -97,30 +109,33 @@ Add a "Files" section to the dashboard for browsing and viewing files with synta
 GET /api/files/tree?path=X&depth=5&showHidden=false  → FileNode tree
 GET /api/files/content?path=X                        → { content, fileName, fileSize }
 GET /api/files/image?path=X                          → { dataUri, mimeType, size }
+GET /api/files/video?path=X                          → { dataUri, mimeType, size } (100MB limit)
 ```
 
-**Backend Enhancement:** Added tilde expansion in `/api/files/tree` to support `~` as home directory.
+**Backend Enhancements:**
+- Added tilde expansion in `/api/files/tree` to support `~` as home directory
+- Added `/api/files/video` endpoint for base64 video serving (mp4, webm, mov, avi, mkv, m4v)
 
 ## State Structure
 
 ```typescript
-// Files.tsx
+// FilesContext.tsx - Persistent state across tab switches
 interface OpenFile {
   id: string
   path: string
   name: string
   content: string | null
-  isImage: boolean
-  imageDataUri?: string
+  fileType: FileType  // 'code' | 'markdown' | 'json' | 'image' | 'video' | 'csv' | 'text'
+  mediaDataUri?: string  // for images and videos
   loading: boolean
   error?: string
 }
 
-const [openFiles, setOpenFiles] = useState<OpenFile[]>([])
-const [activeFileId, setActiveFileId] = useState<string | null>(null)
+// From FilesContext (persists across dashboard tab switches)
+const { openFiles, activeFileId, openFile, closeFile, fileTree, fileTreePath } = useFilesContext()
 
-// Shared working directory
-const { globalWorkingDir, setGlobalWorkingDir, recentDirs } = useWorkingDirectory()
+// Shared working directory (persists to Chrome storage)
+const { globalWorkingDir, setGlobalWorkingDir, recentDirs, isLoaded } = useWorkingDirectory()
 ```
 
 ## Open in Editor

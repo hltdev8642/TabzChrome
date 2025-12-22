@@ -365,6 +365,73 @@ router.get('/image', async (req, res) => {
   }
 });
 
+// Serve video files as base64
+router.get('/video', async (req, res) => {
+  try {
+    const filePath = req.query.path;
+
+    if (!filePath) {
+      return res.status(400).json({ error: 'File path is required' });
+    }
+
+    const resolvedPath = path.resolve(filePath);
+
+    // For local development, allow filesystem exploration (configurable)
+    const restrictToHome = process.env.RESTRICT_TO_HOME === 'true';
+
+    if (restrictToHome) {
+      const homeDir = process.env.HOME || process.env.USERPROFILE;
+      if (!resolvedPath.startsWith(homeDir)) {
+        return res.status(403).json({ error: 'Access denied: Path is outside home directory' });
+      }
+    }
+
+    // Check if file exists
+    try {
+      await fs.access(resolvedPath);
+    } catch {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    // Check file size (limit to 100MB for videos)
+    const stats = await fs.stat(resolvedPath);
+    if (stats.size > 100 * 1024 * 1024) {
+      return res.status(400).json({ error: 'Video too large (max 100MB)' });
+    }
+
+    // Read the file and convert to base64
+    const fileBuffer = await fs.readFile(resolvedPath);
+    const ext = path.extname(resolvedPath).toLowerCase().slice(1);
+
+    // Map file extensions to MIME types
+    const mimeTypes = {
+      'mp4': 'video/mp4',
+      'webm': 'video/webm',
+      'ogg': 'video/ogg',
+      'ogv': 'video/ogg',
+      'mov': 'video/quicktime',
+      'avi': 'video/x-msvideo',
+      'mkv': 'video/x-matroska',
+      'm4v': 'video/mp4'
+    };
+
+    const mimeType = mimeTypes[ext] || 'video/mp4';
+    const base64 = fileBuffer.toString('base64');
+    const dataUri = `data:${mimeType};base64,${base64}`;
+
+    res.json({
+      dataUri,
+      mimeType,
+      size: fileBuffer.length,
+      path: resolvedPath
+    });
+
+  } catch (error) {
+    console.error('Error serving video:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get widget documentation for a terminal type
 router.get('/widget-docs/:widgetName', async (req, res) => {
   try {
