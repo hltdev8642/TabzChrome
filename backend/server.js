@@ -216,9 +216,9 @@ app.post('/api/audio/generate', audioRateLimiter, async (req, res) => {
   const fs = require('fs');
   const crypto = require('crypto');
 
-  const {
+  let {
     text,
-    voice = 'en-US-AndrewMultilingualNeural',
+    voice: requestedVoice = 'en-US-AndrewMultilingualNeural',
     rate = '+0%',   // e.g., "+30%", "-10%"
     pitch = '+0Hz'  // e.g., "+50Hz", "-20Hz" (higher = more urgent/alert)
   } = req.body;
@@ -226,6 +226,36 @@ app.post('/api/audio/generate', audioRateLimiter, async (req, res) => {
   if (!text || typeof text !== 'string') {
     return res.status(400).json({ success: false, error: 'Missing text parameter' });
   }
+
+  // Truncate very long text - Microsoft TTS has ~3000 char limit per request
+  const MAX_TEXT_LENGTH = 3000;
+  if (text.length > MAX_TEXT_LENGTH) {
+    const truncateAt = text.lastIndexOf('.', MAX_TEXT_LENGTH);
+    text = text.slice(0, truncateAt > MAX_TEXT_LENGTH / 2 ? truncateAt + 1 : MAX_TEXT_LENGTH);
+    console.log(`[Audio] Text truncated to ${text.length} chars`);
+  }
+
+  // Handle 'random' voice selection - matches TTS_VOICES in extension settings
+  const VOICE_OPTIONS = [
+    // US Voices
+    'en-US-AndrewMultilingualNeural',
+    'en-US-EmmaMultilingualNeural',
+    'en-US-BrianMultilingualNeural',
+    'en-US-AriaNeural',
+    'en-US-GuyNeural',
+    'en-US-JennyNeural',
+    'en-US-DavisNeural',
+    'en-US-AmberNeural',
+    // UK Voices
+    'en-GB-SoniaNeural',
+    'en-GB-RyanNeural',
+    // AU Voices
+    'en-AU-NatashaNeural',
+    'en-AU-WilliamNeural',
+  ];
+  const voice = requestedVoice === 'random'
+    ? VOICE_OPTIONS[Math.floor(Math.random() * VOICE_OPTIONS.length)]
+    : requestedVoice;
 
   // Validate voice parameter (alphanumeric, hyphens, underscores only)
   if (!/^[a-zA-Z0-9_-]+$/.test(voice)) {
@@ -282,15 +312,10 @@ app.post('/api/audio/generate', audioRateLimiter, async (req, res) => {
       args.push('--pitch', pitch);
     }
 
-    // For long text (> 5000 chars), use file input to avoid command-line limits
-    const TEXT_THRESHOLD = 5000;
-    if (text.length > TEXT_THRESHOLD) {
-      tempTextFile = path.join(audioDir, `${cacheKey}.txt`);
-      fs.writeFileSync(tempTextFile, text, 'utf8');
-      args.push('-f', tempTextFile);
-    } else {
-      args.push('-t', text);
-    }
+    // Always use file input - special characters (backticks, etc.) break -t flag
+    tempTextFile = path.join(audioDir, `${cacheKey}.txt`);
+    fs.writeFileSync(tempTextFile, text, 'utf8');
+    args.push('-f', tempTextFile);
     // Specify full path with extension - edge-tts uses the exact filename given
     args.push('--write-media', cacheFile);
 
@@ -315,6 +340,10 @@ app.post('/api/audio/generate', audioRateLimiter, async (req, res) => {
     // Only log non-network errors (timeouts are expected and noisy)
     if (!err.message?.includes('ETIMEDOUT') && !err.message?.includes('ENETUNREACH')) {
       console.error('[Audio] edge-tts error:', err.message);
+      // Log stderr if available (contains actual edge-tts error)
+      if (err.stderr) {
+        console.error('[Audio] edge-tts stderr:', err.stderr);
+      }
     }
     res.status(500).json({ success: false, error: 'TTS generation failed' });
   } finally {
@@ -332,9 +361,9 @@ app.post('/api/audio/speak', async (req, res) => {
   const { promisify } = require('util');
   const execFileAsync = promisify(execFile);
 
-  const {
+  let {
     text,
-    voice = 'en-US-AndrewMultilingualNeural',
+    voice: requestedVoice = 'en-US-AndrewMultilingualNeural',
     rate = '+0%',
     pitch = '+0Hz',
     volume = 0.7,
@@ -344,6 +373,36 @@ app.post('/api/audio/speak', async (req, res) => {
   if (!text || typeof text !== 'string') {
     return res.status(400).json({ success: false, error: 'Missing text parameter' });
   }
+
+  // Truncate very long text - Microsoft TTS has ~3000 char limit per request
+  const MAX_TEXT_LENGTH = 3000;
+  if (text.length > MAX_TEXT_LENGTH) {
+    const truncateAt = text.lastIndexOf('.', MAX_TEXT_LENGTH);
+    text = text.slice(0, truncateAt > MAX_TEXT_LENGTH / 2 ? truncateAt + 1 : MAX_TEXT_LENGTH);
+    console.log(`[Audio] Text truncated to ${text.length} chars`);
+  }
+
+  // Handle 'random' voice selection - matches TTS_VOICES in extension settings
+  const VOICE_OPTIONS = [
+    // US Voices
+    'en-US-AndrewMultilingualNeural',
+    'en-US-EmmaMultilingualNeural',
+    'en-US-BrianMultilingualNeural',
+    'en-US-AriaNeural',
+    'en-US-GuyNeural',
+    'en-US-JennyNeural',
+    'en-US-DavisNeural',
+    'en-US-AmberNeural',
+    // UK Voices
+    'en-GB-SoniaNeural',
+    'en-GB-RyanNeural',
+    // AU Voices
+    'en-AU-NatashaNeural',
+    'en-AU-WilliamNeural',
+  ];
+  const voice = requestedVoice === 'random'
+    ? VOICE_OPTIONS[Math.floor(Math.random() * VOICE_OPTIONS.length)]
+    : requestedVoice;
 
   // Validate voice parameter (alphanumeric, hyphens, underscores only)
   if (!/^[a-zA-Z0-9_-]+$/.test(voice)) {
@@ -397,15 +456,10 @@ app.post('/api/audio/speak', async (req, res) => {
         args.push('--pitch', pitch);
       }
 
-      // For long text (> 5000 chars), use file input to avoid command-line limits
-      const TEXT_THRESHOLD = 5000;
-      if (text.length > TEXT_THRESHOLD) {
-        tempTextFile = path.join(audioDir, `${cacheKey}.txt`);
-        fs.writeFileSync(tempTextFile, text, 'utf8');
-        args.push('-f', tempTextFile);
-      } else {
-        args.push('-t', text);
-      }
+      // Always use file input - special characters (backticks, etc.) break -t flag
+      tempTextFile = path.join(audioDir, `${cacheKey}.txt`);
+      fs.writeFileSync(tempTextFile, text, 'utf8');
+      args.push('-f', tempTextFile);
       // Specify full path with extension - edge-tts uses the exact filename given
       args.push('--write-media', cacheFile);
 
@@ -421,6 +475,9 @@ app.post('/api/audio/speak', async (req, res) => {
       }
     } catch (err) {
       console.error('[Audio] edge-tts error:', err.message);
+      if (err.stderr) {
+        console.error('[Audio] edge-tts stderr:', err.stderr);
+      }
       return res.status(500).json({ success: false, error: 'TTS generation failed' });
     } finally {
       // Clean up temp text file

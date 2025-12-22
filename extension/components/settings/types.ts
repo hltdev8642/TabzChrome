@@ -127,14 +127,19 @@ export const getAvailableFonts = () =>
 
 // Audio types
 export const TTS_VOICES = [
+  // US Voices
   { label: 'Andrew (US Male)', value: 'en-US-AndrewMultilingualNeural' },
   { label: 'Emma (US Female)', value: 'en-US-EmmaMultilingualNeural' },
   { label: 'Brian (US Male)', value: 'en-US-BrianMultilingualNeural' },
   { label: 'Aria (US Female)', value: 'en-US-AriaNeural' },
   { label: 'Guy (US Male)', value: 'en-US-GuyNeural' },
   { label: 'Jenny (US Female)', value: 'en-US-JennyNeural' },
+  { label: 'Davis (US Male)', value: 'en-US-DavisNeural' },
+  { label: 'Amber (US Female)', value: 'en-US-AmberNeural' },
+  // UK Voices
   { label: 'Sonia (UK Female)', value: 'en-GB-SoniaNeural' },
   { label: 'Ryan (UK Male)', value: 'en-GB-RyanNeural' },
+  // AU Voices
   { label: 'Natasha (AU Female)', value: 'en-AU-NatashaNeural' },
   { label: 'William (AU Male)', value: 'en-AU-WilliamNeural' },
 ]
