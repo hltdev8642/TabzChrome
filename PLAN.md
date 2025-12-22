@@ -102,11 +102,7 @@
   - `tui-expert.md` - TUI tool specialist
 - [x] **Conductor reads state files** - Can check worker context % before assigning work
 - [x] **Prompt tips in conductor.md** - @ file references, capability triggers documented
-
-### Remaining
-
-- [ ] Add `subagent_count` display to Tmuxplexer TUI
-- [ ] Show context % in Tmuxplexer session list
+- [x] **Show context % in Tmuxplexer session list**
 
 ---
 
