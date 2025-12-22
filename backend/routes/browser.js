@@ -812,6 +812,186 @@ router.get('/profiles', async (req, res) => {
 });
 
 // ============================================
+// INTERACTION ROUTES (Click, Fill, Get Element)
+// ============================================
+
+// POST /api/browser/click-element - Click an element by CSS selector
+router.post('/click-element', async (req, res) => {
+  const { selector, tabId, waitTimeout } = req.body;
+
+  if (!selector) {
+    return res.status(400).json({ success: false, error: 'selector is required' });
+  }
+
+  log.debug('POST /click-element', { selector, tabId, waitTimeout });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available - backend not fully initialized'
+    });
+  }
+
+  try {
+    const requestId = `browser-${++requestIdCounter}`;
+
+    const resultPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.delete(requestId);
+        reject(new Error('Click operation timed out - element may not exist'));
+      }, 15000); // 15 second timeout
+
+      pendingRequests.set(requestId, {
+        resolve: (data) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          resolve(data);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          reject(error);
+        }
+      });
+    });
+
+    broadcast({
+      type: 'browser-click-element',
+      requestId,
+      selector,
+      tabId,
+      waitTimeout: waitTimeout || 5000
+    });
+
+    const result = await resultPromise;
+    res.json(result);
+  } catch (error) {
+    log.error('click-element error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/browser/fill-input - Fill an input field with text
+router.post('/fill-input', async (req, res) => {
+  const { selector, value, tabId, waitTimeout } = req.body;
+
+  if (!selector) {
+    return res.status(400).json({ success: false, error: 'selector is required' });
+  }
+  if (value === undefined) {
+    return res.status(400).json({ success: false, error: 'value is required' });
+  }
+
+  log.debug('POST /fill-input', { selector, valueLength: value.length, tabId });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available - backend not fully initialized'
+    });
+  }
+
+  try {
+    const requestId = `browser-${++requestIdCounter}`;
+
+    const resultPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.delete(requestId);
+        reject(new Error('Fill operation timed out - element may not exist'));
+      }, 15000); // 15 second timeout
+
+      pendingRequests.set(requestId, {
+        resolve: (data) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          resolve(data);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          reject(error);
+        }
+      });
+    });
+
+    broadcast({
+      type: 'browser-fill-input',
+      requestId,
+      selector,
+      value,
+      tabId,
+      waitTimeout: waitTimeout || 5000
+    });
+
+    const result = await resultPromise;
+    res.json(result);
+  } catch (error) {
+    log.error('fill-input error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/browser/get-element-info - Get detailed information about an element
+router.post('/get-element-info', async (req, res) => {
+  const { selector, tabId, includeStyles, styleProperties } = req.body;
+
+  if (!selector) {
+    return res.status(400).json({ success: false, error: 'selector is required' });
+  }
+
+  log.debug('POST /get-element-info', { selector, tabId, includeStyles });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available - backend not fully initialized'
+    });
+  }
+
+  try {
+    const requestId = `browser-${++requestIdCounter}`;
+
+    const resultPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.delete(requestId);
+        reject(new Error('Get element info timed out'));
+      }, 10000); // 10 second timeout
+
+      pendingRequests.set(requestId, {
+        resolve: (data) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          resolve(data);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          reject(error);
+        }
+      });
+    });
+
+    broadcast({
+      type: 'browser-get-element-info',
+      requestId,
+      selector,
+      tabId,
+      includeStyles: includeStyles !== false, // default true
+      styleProperties: styleProperties || null
+    });
+
+    const result = await resultPromise;
+    res.json(result);
+  } catch (error) {
+    log.error('get-element-info error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
 // BOOKMARK ROUTES
 // ============================================
 

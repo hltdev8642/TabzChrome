@@ -1103,6 +1103,47 @@ wss.on('connection', (ws, req) => {
           break;
 
         // ============================================
+        // INTERACTION RESPONSES - From Chrome extension
+        // ============================================
+        case 'browser-click-element-result':
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              tagName: data.tagName,
+              error: data.error
+            });
+          }
+          break;
+
+        case 'browser-fill-input-result':
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              tagName: data.tagName,
+              error: data.error
+            });
+          }
+          break;
+
+        case 'browser-get-element-info-result':
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              html: data.html,
+              outerHTML: data.outerHTML,
+              innerText: data.innerText,
+              tagName: data.tagName,
+              attributes: data.attributes,
+              bounds: data.bounds,
+              styles: data.styles,
+              parentSelector: data.parentSelector,
+              childCount: data.childCount,
+              error: data.error
+            });
+          }
+          break;
+
+        // ============================================
         // BOOKMARK RESPONSES - From Chrome extension
         // ============================================
         case 'browser-bookmarks-tree-result':

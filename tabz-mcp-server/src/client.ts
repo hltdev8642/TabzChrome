@@ -1033,14 +1033,31 @@ export async function openUrl(options: {
 }
 
 /**
- * Click an element via CDP
+ * Click an element via Chrome Extension API (no CDP required)
+ * Falls back to CDP if extension is unavailable
  */
 export async function clickElement(selector: string, tabId?: number): Promise<{ success: boolean; error?: string }> {
+  // Try Extension API first (no CDP required)
+  try {
+    const response = await axios.post<{ success: boolean; tagName?: string; error?: string }>(
+      `${BACKEND_URL}/api/browser/click-element`,
+      { selector, tabId },
+      { timeout: 20000 }
+    );
+    if (response.data.success || response.data.error) {
+      return response.data;
+    }
+  } catch (extError) {
+    // Extension API failed, try CDP fallback
+    console.error('[click] Extension API failed, trying CDP:', extError instanceof Error ? extError.message : extError);
+  }
+
+  // Fallback to CDP
   try {
     const page = await getPageByTabId(tabId);
 
     if (!page) {
-      return { success: false, error: 'No active page found. Make sure Chrome is running with --remote-debugging-port=9222' };
+      return { success: false, error: 'Neither Extension API nor CDP available. Make sure Chrome extension is installed or Chrome is running with --remote-debugging-port=9222' };
     }
 
     // Wait for element and click
@@ -1054,14 +1071,31 @@ export async function clickElement(selector: string, tabId?: number): Promise<{ 
 }
 
 /**
- * Fill an input field via CDP
+ * Fill an input field via Chrome Extension API (no CDP required)
+ * Falls back to CDP if extension is unavailable
  */
 export async function fillInput(selector: string, value: string, tabId?: number): Promise<{ success: boolean; error?: string }> {
+  // Try Extension API first (no CDP required)
+  try {
+    const response = await axios.post<{ success: boolean; tagName?: string; error?: string }>(
+      `${BACKEND_URL}/api/browser/fill-input`,
+      { selector, value, tabId },
+      { timeout: 20000 }
+    );
+    if (response.data.success || response.data.error) {
+      return response.data;
+    }
+  } catch (extError) {
+    // Extension API failed, try CDP fallback
+    console.error('[fill] Extension API failed, trying CDP:', extError instanceof Error ? extError.message : extError);
+  }
+
+  // Fallback to CDP
   try {
     const page = await getPageByTabId(tabId);
 
     if (!page) {
-      return { success: false, error: 'No active page found. Make sure Chrome is running with --remote-debugging-port=9222' };
+      return { success: false, error: 'Neither Extension API nor CDP available. Make sure Chrome extension is installed or Chrome is running with --remote-debugging-port=9222' };
     }
 
     // Wait for element, clear it, and type
@@ -1513,6 +1547,10 @@ export async function captureImage(options: {
   }
 }
 
+/**
+ * Get detailed information about an element via Chrome Extension API (no CDP required)
+ * Falls back to CDP if extension is unavailable
+ */
 export async function getElementInfo(
   selector: string,
   options: {
@@ -1521,11 +1559,32 @@ export async function getElementInfo(
     tabId?: number;
   } = {}
 ): Promise<ElementInfo> {
+  // Try Extension API first (no CDP required)
+  try {
+    const response = await axios.post<ElementInfo>(
+      `${BACKEND_URL}/api/browser/get-element-info`,
+      {
+        selector,
+        tabId: options.tabId,
+        includeStyles: options.includeStyles,
+        styleProperties: options.styleProperties
+      },
+      { timeout: 15000 }
+    );
+    if (response.data.success || response.data.error) {
+      return response.data;
+    }
+  } catch (extError) {
+    // Extension API failed, try CDP fallback
+    console.error('[getElementInfo] Extension API failed, trying CDP:', extError instanceof Error ? extError.message : extError);
+  }
+
+  // Fallback to CDP
   try {
     const page = await getPageByTabId(options.tabId);
 
     if (!page) {
-      return { success: false, error: 'No active page found. Make sure Chrome is running with --remote-debugging-port=9222' };
+      return { success: false, error: 'Neither Extension API nor CDP available. Make sure Chrome extension is installed or Chrome is running with --remote-debugging-port=9222' };
     }
 
     // Default style properties to extract (most useful for recreation)

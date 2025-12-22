@@ -22,9 +22,9 @@
 | `tabz_open_url` | `browser.newPage()` / `page.goto()` | `chrome.tabs.create()` / `chrome.tabs.update()` | [x] |
 | `tabz_screenshot` | `page.screenshot()` | `chrome.tabs.captureVisibleTab()` | [ ] |
 | `tabz_screenshot_full` | `page.screenshot({fullPage})` | Content script scroll + stitch | [ ] |
-| `tabz_click` | `page.click()` | `chrome.scripting.executeScript()` | [ ] |
-| `tabz_fill` | `page.type()` | `chrome.scripting.executeScript()` | [ ] |
-| `tabz_get_element` | `page.evaluate()` | `chrome.scripting.executeScript()` | [ ] |
+| `tabz_click` | `page.click()` | `chrome.scripting.executeScript()` | [x] |
+| `tabz_fill` | `page.type()` | `chrome.scripting.executeScript()` | [x] |
+| `tabz_get_element` | `page.evaluate()` | `chrome.scripting.executeScript()` | [x] |
 | `tabz_enable_network_capture` | CDP Network domain | `chrome.webRequest` API | [ ] |
 | `tabz_get_network_requests` | CDP Network domain | `chrome.webRequest` API | [ ] |
 | `tabz_get_api_response` | CDP `Network.getResponseBody` | `chrome.webRequest` + fetch intercept | [ ] |
