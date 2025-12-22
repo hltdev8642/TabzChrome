@@ -345,6 +345,103 @@ async function handleBrowserGetActiveTab(message: { requestId: string }) {
 }
 
 // ============================================
+// BROWSER MCP - Open URL Handler
+// ============================================
+
+/**
+ * Open a URL in a new or existing tab
+ * Replaces CDP-based URL opening with Chrome Extension API
+ */
+async function handleBrowserOpenUrl(message: {
+  requestId: string
+  url: string
+  newTab: boolean
+  background: boolean
+  reuseExisting: boolean
+}) {
+  try {
+    const { url, newTab, background, reuseExisting } = message
+
+    // If reuseExisting, check if URL is already open
+    if (reuseExisting) {
+      const allTabs = await chrome.tabs.query({})
+      const existingTab = allTabs.find(tab => {
+        if (!tab.url) return false
+        // Check for exact match or match without trailing slash
+        return tab.url === url ||
+               tab.url === url + '/' ||
+               tab.url + '/' === url
+      })
+
+      if (existingTab && existingTab.id) {
+        // Tab already exists - switch to it
+        await chrome.tabs.update(existingTab.id, { active: true })
+        if (existingTab.windowId) {
+          await chrome.windows.update(existingTab.windowId, { focused: true })
+        }
+
+        sendToWebSocket({
+          type: 'browser-open-url-result',
+          requestId: message.requestId,
+          success: true,
+          tabId: existingTab.id,
+          url: existingTab.url || url,
+          reused: true
+        })
+        return
+      }
+    }
+
+    let resultTabId: number
+    let resultUrl: string
+
+    if (newTab) {
+      // Open in new tab
+      const tab = await chrome.tabs.create({
+        url,
+        active: !background
+      })
+      resultTabId = tab.id || -1
+      resultUrl = tab.url || url
+
+      // If not background, focus the window
+      if (!background && tab.windowId) {
+        await chrome.windows.update(tab.windowId, { focused: true })
+      }
+    } else {
+      // Navigate current tab
+      const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
+      if (activeTab && activeTab.id) {
+        const tab = await chrome.tabs.update(activeTab.id, { url })
+        resultTabId = tab?.id || activeTab.id
+        resultUrl = url
+      } else {
+        // No active tab, create new one
+        const tab = await chrome.tabs.create({ url, active: true })
+        resultTabId = tab.id || -1
+        resultUrl = tab.url || url
+      }
+    }
+
+    sendToWebSocket({
+      type: 'browser-open-url-result',
+      requestId: message.requestId,
+      success: true,
+      tabId: resultTabId,
+      url: resultUrl,
+      reused: false
+    })
+  } catch (err) {
+    sendToWebSocket({
+      type: 'browser-open-url-result',
+      requestId: message.requestId,
+      success: false,
+      error: (err as Error).message
+    })
+  }
+}
+
+// ============================================
 // BROWSER MCP - Profile Handler
 // ============================================
 
@@ -1388,6 +1485,10 @@ async function connectWebSocket() {
         // Get the currently active tab
         console.log('📑 Browser MCP: get-active-tab request', message.requestId)
         handleBrowserGetActiveTab(message)
+      } else if (message.type === 'browser-open-url') {
+        // Open a URL in new or existing tab
+        console.log('📑 Browser MCP: open-url request', message.requestId, message.url)
+        handleBrowserOpenUrl(message)
       } else if (message.type === 'browser-get-profiles') {
         // Get all terminal profiles
         console.log('📋 Browser MCP: get-profiles request', message.requestId)

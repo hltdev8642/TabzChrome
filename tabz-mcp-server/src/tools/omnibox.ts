@@ -6,7 +6,7 @@
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getCdpBrowser, getCurrentTabId, setCurrentTabId } from "../client.js";
+import { openUrl, getCurrentTabId } from "../client.js";
 
 // URL settings cache (loaded from backend)
 interface UrlSettings {
@@ -280,7 +280,7 @@ Examples:
 
 Error Handling:
   - "URL not allowed": Domain not in whitelist
-  - "CDP not available": Chrome not running with --remote-debugging-port=9222
+  - "Extension not available": Backend not running or extension not connected
 
 Security:
   Only whitelisted domains can be opened to prevent abuse.
@@ -327,20 +327,25 @@ Please provide a URL from one of the allowed domains, or add custom domains in S
 
         const normalizedUrl = validation.normalizedUrl;
 
-        // Open URL via CDP
-        const browser = await getCdpBrowser();
-        if (!browser) {
+        // Open URL via Chrome Extension API (no CDP required)
+        const result = await openUrl({
+          url: normalizedUrl,
+          newTab: params.newTab,
+          background: params.background,
+          reuseExisting: params.reuseExisting
+        });
+
+        if (!result.success) {
           return {
             content: [{
               type: "text",
-              text: `## CDP Not Available
+              text: `## Failed to Open URL
 
-Cannot open URL without Chrome DevTools Protocol.
+**Error:** ${result.error || 'Unknown error'}
 
 **Make sure:**
-1. Chrome is running
-2. Chrome was started with: \`--remote-debugging-port=9222\`
-3. WSL2 bridge is running (if on WSL2)
+1. TabzChrome backend is running
+2. Chrome extension is installed and connected
 
 **Attempted URL:** ${normalizedUrl}`
             }],
@@ -348,88 +353,21 @@ Cannot open URL without Chrome DevTools Protocol.
           };
         }
 
-        const allPages = await browser.pages();
-        // Filter out chrome://, chrome-extension://, and chrome-error:// pages
-        const pages = allPages.filter(p => {
-          const url = p.url();
-          return !url.startsWith('chrome://') &&
-                 !url.startsWith('chrome-extension://') &&
-                 !url.startsWith('chrome-error://');
-        });
-
-        // Check if URL is already open (if reuseExisting is true)
-        if (params.reuseExisting) {
-          const existingPageIndex = pages.findIndex(p => {
-            const pageUrl = p.url();
-            // Check for exact match or match without trailing slash
-            return pageUrl === normalizedUrl ||
-                   pageUrl === normalizedUrl + '/' ||
-                   pageUrl + '/' === normalizedUrl;
-          });
-
-          if (existingPageIndex !== -1) {
-            // Tab already exists - switch to it instead of opening new
-            const existingPage = pages[existingPageIndex];
-            await existingPage.bringToFront();
-
-            // Update Claude's current tab tracker (1-based)
-            const newTabId = existingPageIndex + 1;
-            setCurrentTabId(newTabId);
-
-            return {
-              content: [{
-                type: "text",
-                text: `## Switched to Existing Tab
+        // Handle reused tab case
+        if (result.reused) {
+          return {
+            content: [{
+              type: "text",
+              text: `## Switched to Existing Tab
 
 **URL already open!** Switched to existing tab instead of opening a new one.
 
-**URL:** ${normalizedUrl}
-**Tab ID:** ${newTabId} (now Claude's current target)
+**URL:** ${result.url || normalizedUrl}
+**Tab ID:** ${result.tabId} (now Claude's current target)
 
 Use \`tabz_list_tabs\` to see all tabs, or \`reuseExisting=false\` to force a new tab.`
-              }]
-            };
-          }
-        }
-
-        let newTabId: number;
-
-        if (params.newTab) {
-          // Open in new tab
-          const newPage = await browser.newPage();
-          await newPage.goto(normalizedUrl, { waitUntil: 'domcontentloaded' });
-
-          if (!params.background) {
-            // Bring to front if not background
-            await newPage.bringToFront();
-          }
-
-          // Calculate new tab ID (it's the last tab in the filtered list)
-          // Re-fetch pages to get updated list
-          const updatedPages = (await browser.pages()).filter(p => {
-            const url = p.url();
-            return !url.startsWith('chrome://') &&
-                   !url.startsWith('chrome-extension://') &&
-                   !url.startsWith('chrome-error://');
-          });
-          newTabId = updatedPages.length; // New tab is at the end
-        } else {
-          // Navigate current tab
-          const currentPage = pages[0];
-          if (currentPage) {
-            await currentPage.goto(normalizedUrl, { waitUntil: 'domcontentloaded' });
-            newTabId = 1; // First tab
-          } else {
-            // No page available, create new one
-            const newPage = await browser.newPage();
-            await newPage.goto(normalizedUrl, { waitUntil: 'domcontentloaded' });
-            newTabId = 1;
-          }
-        }
-
-        // Update Claude's current tab tracker
-        if (!params.background) {
-          setCurrentTabId(newTabId);
+            }]
+          };
         }
 
         return {
@@ -439,8 +377,8 @@ Use \`tabz_list_tabs\` to see all tabs, or \`reuseExisting=false\` to force a ne
 
 **Success!** Opened ${params.newTab ? 'in new tab' : 'in current tab'}${params.background ? ' (background)' : ''}.
 
-**URL:** ${normalizedUrl}
-**Tab ID:** ${newTabId}${!params.background ? ' (now Claude\'s current target)' : ''}
+**URL:** ${result.url || normalizedUrl}
+**Tab ID:** ${result.tabId}${!params.background ? ' (now Claude\'s current target)' : ''}
 
 Use \`tabz_list_tabs\` to see all tabs with the "← CURRENT" marker.`
           }]

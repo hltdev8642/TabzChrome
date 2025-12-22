@@ -318,6 +318,7 @@ async function executeScriptViaCdp(code: string, tabId?: number): Promise<Script
 
 /**
  * Get page info via CDP
+ * Returns the REAL Chrome tab ID (not CDP array index) for consistency with listTabs
  */
 async function getPageInfoViaCdp(tabId?: number): Promise<PageInfo | null> {
   try {
@@ -327,14 +328,13 @@ async function getPageInfoViaCdp(tabId?: number): Promise<PageInfo | null> {
       return { url: '', title: '', tabId: -1, error: 'No active page' };
     }
 
-    // Find the index of this page in the non-chrome pages list
-    const pages = await getNonChromePages();
-    const pageIndex = pages?.findIndex(p => p === page) ?? -1;
-
+    // Return the actual Chrome tab ID, not the CDP array index
+    // currentTabId is updated by getPageByTabId when it syncs via extension API
+    // This ensures consistency with tabz_list_tabs which returns real Chrome tab IDs
     return {
       url: page.url(),
       title: await page.title(),
-      tabId: pageIndex >= 0 ? pageIndex + 1 : -1 // 1-based for user clarity
+      tabId: currentTabId
     };
   } catch {
     return null;
@@ -982,6 +982,53 @@ export async function getActiveTab(): Promise<{ tab?: { tabId: number; url: stri
     return { error: response.data.error || 'Failed to get active tab' };
   } catch (error) {
     return { error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
+ * Open URL result type
+ */
+export interface OpenUrlResult {
+  success: boolean;
+  tabId?: number;
+  url?: string;
+  reused?: boolean;
+  error?: string;
+}
+
+/**
+ * Open a URL via Chrome Extension API (no CDP required)
+ * This is the preferred method - works without --remote-debugging-port
+ */
+export async function openUrl(options: {
+  url: string;
+  newTab?: boolean;
+  background?: boolean;
+  reuseExisting?: boolean;
+}): Promise<OpenUrlResult> {
+  try {
+    const response = await axios.post<OpenUrlResult>(
+      `${BACKEND_URL}/api/browser/open-url`,
+      {
+        url: options.url,
+        newTab: options.newTab !== false, // default true
+        background: options.background === true, // default false
+        reuseExisting: options.reuseExisting !== false // default true
+      },
+      { timeout: 30000 }
+    );
+
+    // Update current tab tracking if successful and not background
+    if (response.data.success && response.data.tabId && !options.background) {
+      currentTabId = response.data.tabId;
+      if (response.data.url) {
+        currentTabUrl = response.data.url;
+      }
+    }
+
+    return response.data;
+  } catch (error) {
+    return { success: false, error: handleApiError(error, "Failed to open URL").message };
   }
 }
 

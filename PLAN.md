@@ -1,7 +1,53 @@
 # PLAN.md - TabzChrome Roadmap
 
-**Last Updated**: December 21, 2025
-**Current Version**: 1.1.18
+**Last Updated**: December 22, 2025
+**Current Version**: 1.1.21
+
+---
+
+## Priority 0: Remove CDP Dependency
+
+**Goal**: Migrate all MCP tools from Chrome DevTools Protocol (CDP/Puppeteer) to Chrome Extension APIs. Eliminates the need for `--remote-debugging-port=9222`.
+
+### Why Remove CDP?
+- Requires Chrome launch flag (`--remote-debugging-port=9222`)
+- Security concern (exposes debugging port)
+- Claude's browser extension works without it
+- Extension APIs are more reliable and consistent
+
+### Migration Checklist
+
+| Tool | Current (CDP) | Target (Extension API) | Status |
+|------|---------------|------------------------|--------|
+| `tabz_open_url` | `browser.newPage()` / `page.goto()` | `chrome.tabs.create()` / `chrome.tabs.update()` | [x] |
+| `tabz_screenshot` | `page.screenshot()` | `chrome.tabs.captureVisibleTab()` | [ ] |
+| `tabz_screenshot_full` | `page.screenshot({fullPage})` | Content script scroll + stitch | [ ] |
+| `tabz_click` | `page.click()` | `chrome.scripting.executeScript()` | [ ] |
+| `tabz_fill` | `page.type()` | `chrome.scripting.executeScript()` | [ ] |
+| `tabz_get_element` | `page.evaluate()` | `chrome.scripting.executeScript()` | [ ] |
+| `tabz_enable_network_capture` | CDP Network domain | `chrome.webRequest` API | [ ] |
+| `tabz_get_network_requests` | CDP Network domain | `chrome.webRequest` API | [ ] |
+| `tabz_get_api_response` | CDP `Network.getResponseBody` | `chrome.webRequest` + fetch intercept | [ ] |
+
+### Implementation Order (Suggested)
+1. **Open URL** - Simple, just `chrome.tabs.create()`
+2. **Click/Fill** - Already have `execute-script` infrastructure
+3. **Get Element** - Same as above
+4. **Screenshot** - `captureVisibleTab()` is straightforward
+5. **Full Page Screenshot** - More complex, needs scroll logic
+6. **Network** - Most complex, may need `chrome.debugger` or different approach
+
+### Files to Modify
+- `tabz-mcp-server/src/client.ts` - Remove puppeteer, add extension API calls
+- `backend/routes/browser.js` - Add new WebSocket message types
+- `extension/background/background.ts` - Add Chrome API handlers
+- `tabz-mcp-server/src/tools/*.ts` - Update tool descriptions (remove CDP references)
+
+### After Migration
+- [ ] Remove `puppeteer-core` dependency from `tabz-mcp-server/package.json`
+- [ ] Remove CDP connection code from `client.ts`
+- [ ] Update README to remove `--remote-debugging-port` instructions
+- [ ] Update tool descriptions to remove CDP error messages
 
 ---
 

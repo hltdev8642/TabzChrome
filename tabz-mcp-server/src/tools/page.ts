@@ -31,6 +31,8 @@ export function registerPageTools(server: McpServer, backendUrl: string): void {
     `Get information about the current browser page.
 
 Returns the URL, title, tab ID, and favicon of the active browser tab.
+Syncs Claude's target to the user's ACTUAL focused tab (like tabz_list_tabs).
+
 Useful for:
 - Understanding what page the user is looking at
 - Getting context before executing scripts
@@ -43,12 +45,15 @@ Args:
 Returns:
   - url: Full URL of the page
   - title: Page title (from <title> tag)
-  - tabId: Chrome tab identifier
+  - tabId: Chrome tab identifier (same IDs as tabz_list_tabs)
   - favIconUrl: URL of the page favicon
+
+IMPORTANT: For reliable multi-tab operations, prefer tabz_list_tabs which shows
+ALL tabs with their active status. Use tabz_get_page_info for quick single-page context.
 
 Examples:
   - Get current page: (no args needed)
-  - Get specific tab: tabId=123
+  - Get specific tab: tabId=1762556601
 
 Error Handling:
   - "No active tab": No browser window is focused

@@ -608,6 +608,64 @@ router.post('/switch-tab', async (req, res) => {
   }
 });
 
+// POST /api/browser/open-url - Open a URL in a new or existing tab
+router.post('/open-url', async (req, res) => {
+  const { url, newTab, background, reuseExisting } = req.body;
+
+  if (!url) {
+    return res.status(400).json({ success: false, error: 'url is required' });
+  }
+
+  log.debug('POST /open-url', { url, newTab, background, reuseExisting });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const requestId = `browser-${++requestIdCounter}`;
+
+    const resultPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.delete(requestId);
+        reject(new Error('Request timed out'));
+      }, 30000); // 30s timeout for navigation
+
+      pendingRequests.set(requestId, {
+        resolve: (data) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          resolve(data);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          reject(error);
+        }
+      });
+    });
+
+    broadcast({
+      type: 'browser-open-url',
+      requestId,
+      url,
+      newTab: newTab !== false, // default true
+      background: background === true, // default false
+      reuseExisting: reuseExisting !== false // default true
+    });
+
+    const result = await resultPromise;
+    res.json(result);
+  } catch (error) {
+    log.error('open-url error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
 // GET /api/browser/active-tab - Get the currently active tab
 router.get('/active-tab', async (req, res) => {
   log.debug('GET /active-tab');

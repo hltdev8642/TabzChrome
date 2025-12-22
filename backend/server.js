@@ -999,6 +999,19 @@ wss.on('connection', (ws, req) => {
           }
           break;
 
+        case 'browser-open-url-result':
+          // Receive open URL result from Chrome extension
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              tabId: data.tabId,
+              url: data.url,
+              reused: data.reused,
+              error: data.error
+            });
+          }
+          break;
+
         case 'browser-profiles-result':
           // Receive profiles from Chrome extension
           if (data.requestId) {
