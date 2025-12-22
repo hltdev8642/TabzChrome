@@ -19,6 +19,11 @@ export interface ClaudeStatus {
   }
 }
 
+export interface StatusHistoryEntry {
+  text: string          // Display text (e.g., "📖 Read: settings.tsx")
+  timestamp: number     // When this status was recorded
+}
+
 interface TerminalInfo {
   id: string
   sessionName?: string  // tmux session name
@@ -30,6 +35,60 @@ interface TerminalInfo {
 // At 3s polling, 3 misses = 9 seconds of grace period before tab stops showing status
 const MISS_THRESHOLD = 3
 
+// Maximum number of history entries to keep per terminal
+const MAX_HISTORY_ENTRIES = 12
+
+/**
+ * Generate concise status text for history display
+ * Similar to getStatusText but optimized for history entries
+ */
+function getStatusTextForHistory(status: ClaudeStatus): string {
+  // Skip idle/awaiting_input as they're not interesting for history
+  if (status.status === 'idle' || status.status === 'awaiting_input') {
+    return ''
+  }
+
+  const toolEmojis: Record<string, string> = {
+    'Read': '📖', 'Write': '📝', 'Edit': '✏️', 'Bash': '🔺',
+    'Glob': '🔍', 'Grep': '🔎', 'Task': '🤖', 'WebFetch': '🌐',
+    'WebSearch': '🔍', 'TodoWrite': '📋', 'NotebookEdit': '📓',
+    'AskUserQuestion': '❓'
+  }
+
+  const emoji = status.current_tool ? (toolEmojis[status.current_tool] || '🔧') : '⏳'
+
+  if (status.current_tool && status.details?.args) {
+    const args = status.details.args
+    // Skip internal Claude files
+    if (args.file_path?.includes('/.claude/')) return ''
+
+    if (args.file_path) {
+      const parts = args.file_path.split('/')
+      return `${emoji} ${status.current_tool}: ${parts[parts.length - 1]}`
+    } else if (args.description) {
+      // Truncate long descriptions
+      const desc = args.description.length > 30 ? args.description.slice(0, 30) + '…' : args.description
+      return `${emoji} ${status.current_tool}: ${desc}`
+    } else if (args.command) {
+      const cmd = args.command.length > 30 ? args.command.slice(0, 30) + '…' : args.command
+      return `${emoji} ${status.current_tool}: ${cmd}`
+    } else if (args.pattern) {
+      return `${emoji} ${status.current_tool}: ${args.pattern}`
+    }
+    return `${emoji} ${status.current_tool}`
+  }
+
+  if (status.status === 'processing') return '⏳ Processing'
+  if (status.status === 'working') return '⚙️ Working'
+
+  return ''
+}
+
+export interface ClaudeStatusResult {
+  statuses: Map<string, ClaudeStatus>
+  history: Map<string, StatusHistoryEntry[]>
+}
+
 /**
  * Hook to track Claude Code status for terminals
  * Polls the backend API to check if Claude is running and its current status
@@ -38,11 +97,15 @@ const MISS_THRESHOLD = 3
  * multiple consecutive "unknown" responses (prevents flicker during tool use)
  *
  * Returns a Map of terminal IDs to their Claude status (only for terminals where Claude is detected)
+ * Also returns a history of recent status changes per terminal
  */
-export function useClaudeStatus(terminals: TerminalInfo[]): Map<string, ClaudeStatus> {
+export function useClaudeStatus(terminals: TerminalInfo[]): ClaudeStatusResult {
   const [statuses, setStatuses] = useState<Map<string, ClaudeStatus>>(new Map())
+  const [history, setHistory] = useState<Map<string, StatusHistoryEntry[]>>(new Map())
   // Track consecutive "unknown" responses per terminal to prevent flashing
   const missCountsRef = useRef<Map<string, number>>(new Map())
+  // Track last status text to avoid duplicate history entries
+  const lastStatusTextRef = useRef<Map<string, string>>(new Map())
 
   // Memoize terminals to prevent useEffect re-running on every render
   // The parent component passes a new array reference each render (sessions.map(...))
@@ -160,6 +223,36 @@ export function useClaudeStatus(terminals: TerminalInfo[]): Map<string, ClaudeSt
 
         return newStatuses
       })
+
+      // Update history for terminals with new status changes
+      setHistory(prevHistory => {
+        const newHistory = new Map(prevHistory)
+
+        for (const result of results) {
+          if (result.success && result.status) {
+            // Generate status text for history
+            const statusText = getStatusTextForHistory(result.status)
+            const lastText = lastStatusTextRef.current.get(result.id)
+
+            // Only add to history if status text changed (avoid duplicates)
+            if (statusText && statusText !== lastText) {
+              lastStatusTextRef.current.set(result.id, statusText)
+
+              const terminalHistory = newHistory.get(result.id) || []
+              const newEntry: StatusHistoryEntry = {
+                text: statusText,
+                timestamp: Date.now()
+              }
+
+              // Add to front, keep max entries
+              const updatedHistory = [newEntry, ...terminalHistory].slice(0, MAX_HISTORY_ENTRIES)
+              newHistory.set(result.id, updatedHistory)
+            }
+          }
+        }
+
+        return newHistory
+      })
     }
 
     // Initial check
@@ -171,7 +264,7 @@ export function useClaudeStatus(terminals: TerminalInfo[]): Map<string, ClaudeSt
     return () => clearInterval(interval)
   }, [terminalsKey])  // Use stable key instead of array reference to prevent re-running on every render
 
-  return statuses
+  return { statuses, history }
 }
 
 /**
@@ -373,5 +466,17 @@ export function getContextColor(contextPct: number | undefined): string {
   if (contextPct < 50) return '#00ff88'  // Tabz green
   if (contextPct < 75) return '#fbbf24'  // Amber/yellow
   return '#ef4444'  // Red
+}
+
+/**
+ * Get color for status text
+ * Green checkmark when ready/idle, default otherwise
+ */
+export function getStatusColor(status: ClaudeStatus | undefined): string {
+  if (!status) return ''
+  if (status.status === 'idle' || status.status === 'awaiting_input') {
+    return '#00ff88'  // Tabz green for ready state
+  }
+  return ''  // Default color for other states
 }
 

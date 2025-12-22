@@ -11,7 +11,7 @@ import { WorkingDirDropdown } from '../components/WorkingDirDropdown'
 import { ChatInputBar } from '../components/ChatInputBar'
 import { connectToBackground, sendMessage } from '../shared/messaging'
 import { setupConsoleForwarding } from '../shared/consoleForwarder'
-import { useClaudeStatus, getStatusEmoji, getStatusText, getFullStatusText, getRobotEmojis, getContextColor } from '../hooks/useClaudeStatus'
+import { useClaudeStatus, getStatusEmoji, getStatusText, getFullStatusText, getRobotEmojis, getContextColor, getStatusColor } from '../hooks/useClaudeStatus'
 import { useCommandHistory } from '../hooks/useCommandHistory'
 import { useOrphanedSessions } from '../hooks/useOrphanedSessions'
 import { useWorkingDirectory } from '../hooks/useWorkingDirectory'
@@ -60,6 +60,10 @@ function SidePanelTerminal() {
   const [isDark, setIsDark] = useState(true)  // Global dark/light mode toggle
   const [useWebGL, setUseWebGL] = useState(false)  // Canvas default (supports light/dark), WebGL optional
   const audioUnlockedRef = useRef(false)  // Track if audio has been unlocked by user interaction
+
+  // Tab tooltip state
+  const [hoveredTab, setHoveredTab] = useState<{ id: string; rect: DOMRect } | null>(null)
+  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Unlock audio on first user interaction (Chrome autoplay policy workaround)
   useEffect(() => {
@@ -143,7 +147,7 @@ function SidePanelTerminal() {
 
   // Claude status tracking - polls for Claude Code status in each terminal
   // Only terminals with "claude" in their profile command or API command will be polled
-  const claudeStatuses = useClaudeStatus(
+  const { statuses: claudeStatuses, history: statusHistory } = useClaudeStatus(
     sessions.map(s => ({
       id: s.id,
       sessionName: s.sessionName,
@@ -976,10 +980,20 @@ function SidePanelTerminal() {
                     } : undefined}
                     onClick={() => switchToSession(session.id)}
                     onContextMenu={(e) => handleTabContextMenu(e, session.id)}
-                    title={claudeStatuses.has(session.id)
-                      ? `${session.name}\n${getFullStatusText(claudeStatuses.get(session.id))}${claudeStatuses.get(session.id)?.context_pct != null ? `\nContext: ${claudeStatuses.get(session.id)?.context_pct}%` : ''}`
-                      : session.name
-                    }
+                    onMouseEnter={(e) => {
+                      if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current)
+                      const rect = e.currentTarget.getBoundingClientRect()  // Capture rect immediately
+                      tooltipTimeoutRef.current = setTimeout(() => {
+                        setHoveredTab({ id: session.id, rect })
+                      }, 400)  // Small delay before showing tooltip
+                    }}
+                    onMouseLeave={() => {
+                      if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current)
+                      // Delay hiding so user can move mouse to tooltip
+                      tooltipTimeoutRef.current = setTimeout(() => {
+                        setHoveredTab(null)
+                      }, 150)
+                    }}
                   >
                     {/* Tab content: show Claude status if detected, otherwise session name */}
                     {/* Using consistent structure to prevent DOM thrashing */}
@@ -988,7 +1002,10 @@ function SidePanelTerminal() {
                       {claudeStatuses.has(session.id) && (
                         <span className="flex-shrink-0">{getRobotEmojis(claudeStatuses.get(session.id))}</span>
                       )}
-                      <span className="flex-1 min-w-0 truncate">
+                      <span
+                        className="flex-1 min-w-0 truncate"
+                        style={{ color: getStatusColor(claudeStatuses.get(session.id)) || undefined }}
+                      >
                         {claudeStatuses.has(session.id)
                           ? getStatusText(claudeStatuses.get(session.id), session.profile?.name || session.name)
                           : session.name
@@ -1305,6 +1322,103 @@ function SidePanelTerminal() {
         onOpenIn3D={handleOpenIn3D}
         onClose={() => setContextMenu({ show: false, x: 0, y: 0, terminalId: null })}
       />
+
+      {/* Tab Tooltip - styled hover info */}
+      {hoveredTab && (() => {
+        const session = sessions.find(s => s.id === hoveredTab.id)
+        if (!session) return null
+        const claudeStatus = claudeStatuses.get(session.id)
+        const history = statusHistory.get(session.id) || []
+        const rawWorkingDir = session.workingDir || session.profile?.workingDir || globalWorkingDir
+        // Replace /home/<username> with ~ for cleaner display
+        const workingDir = rawWorkingDir?.replace(/^\/home\/[^/]+/, '~')
+
+        // Helper to format relative time
+        const formatRelativeTime = (timestamp: number) => {
+          const seconds = Math.floor((Date.now() - timestamp) / 1000)
+          if (seconds < 60) return `${seconds}s ago`
+          const minutes = Math.floor(seconds / 60)
+          if (minutes < 60) return `${minutes}m ago`
+          return `${Math.floor(minutes / 60)}h ago`
+        }
+
+        // Helper to replace /home/username with ~
+        const shortenPath = (text: string) => text.replace(/\/home\/[^/]+/g, '~')
+
+        return (
+          <div
+            className="fixed z-50 animate-in fade-in-0 zoom-in-95 duration-150"
+            style={{
+              left: Math.min(hoveredTab.rect.left, window.innerWidth - 470),
+              top: hoveredTab.rect.bottom + 8,
+            }}
+            onMouseEnter={() => {
+              // Cancel any pending hide when mouse enters tooltip
+              if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current)
+            }}
+            onMouseLeave={() => {
+              // Hide tooltip when mouse leaves it
+              if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current)
+              setHoveredTab(null)
+            }}
+          >
+            <div className="bg-[#1a1a1a] border border-[#333] rounded-lg shadow-xl px-4 py-3 min-w-[320px] max-w-[450px]">
+              {/* Session Name */}
+              <div className="text-[15px] font-semibold text-white mb-2">
+                {session.name}
+              </div>
+
+              {/* Working Directory - truncate from start to show end of path */}
+              {workingDir && (
+                <div className="flex items-center gap-2 mb-2 overflow-hidden">
+                  <span className="text-[#00ff88] text-sm flex-shrink-0">📁</span>
+                  <span
+                    className="text-[13px] text-[#00ff88] font-mono truncate"
+                    title={rawWorkingDir}
+                  >
+                    {workingDir.length > 40 ? '…' + workingDir.slice(-39) : workingDir}
+                  </span>
+                </div>
+              )}
+
+              {/* Claude Status (if present) */}
+              {claudeStatus && (
+                <div className="flex items-center gap-2 pt-2 border-t border-[#333]">
+                  <span className="text-sm">{getRobotEmojis(claudeStatus)}</span>
+                  <span className="text-[13px] text-gray-300">
+                    {getFullStatusText(claudeStatus)}
+                  </span>
+                  {claudeStatus.context_pct != null && (
+                    <span
+                      className="text-[12px] font-medium ml-auto"
+                      style={{ color: getContextColor(claudeStatus.context_pct) }}
+                    >
+                      {claudeStatus.context_pct}%
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Status History */}
+              {history.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-[#333]">
+                  <div className="text-[11px] text-[#00ff88]/60 mb-1.5">Recent activity</div>
+                  <div className="space-y-1 max-h-[180px] overflow-y-auto">
+                    {history.map((entry, i) => (
+                      <div key={i} className="flex items-start gap-2 text-[12px]">
+                        <span className="text-gray-300 flex-1 line-clamp-2">{shortenPath(entry.text)}</span>
+                        <span className="text-[#00ff88]/50 text-[10px] flex-shrink-0 pt-0.5">
+                          {formatRelativeTime(entry.timestamp)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
 
     </div>
   )
