@@ -475,7 +475,8 @@ export interface ScreenshotResult {
 }
 
 /**
- * Take a screenshot via CDP
+ * Take a screenshot via Chrome Extension API (no CDP required)
+ * Falls back to CDP if extension is unavailable
  */
 export async function takeScreenshot(options: {
   selector?: string;
@@ -483,11 +484,31 @@ export async function takeScreenshot(options: {
   outputPath?: string;
   tabId?: number;
 }): Promise<ScreenshotResult> {
+  // Try Extension API first (no CDP required)
+  try {
+    const endpoint = options.fullPage ? '/api/browser/screenshot-full' : '/api/browser/screenshot';
+    const response = await axios.post<ScreenshotResult>(
+      `${BACKEND_URL}${endpoint}`,
+      {
+        tabId: options.tabId,
+        selector: options.selector
+      },
+      { timeout: options.fullPage ? 65000 : 35000 }
+    );
+    if (response.data.success || response.data.error) {
+      return response.data;
+    }
+  } catch (extError) {
+    // Extension API failed, try CDP fallback
+    console.error('[screenshot] Extension API failed, trying CDP:', extError instanceof Error ? extError.message : extError);
+  }
+
+  // Fallback to CDP
   try {
     const page = await getPageByTabId(options.tabId);
 
     if (!page) {
-      return { success: false, error: 'No active page found. Make sure Chrome is running with --remote-debugging-port=9222' };
+      return { success: false, error: 'Neither Extension API nor CDP available. Make sure Chrome extension is installed or Chrome is running with --remote-debugging-port=9222' };
     }
 
     // Clean up old screenshots before taking new one

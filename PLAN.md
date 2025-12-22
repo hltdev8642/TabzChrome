@@ -20,8 +20,8 @@
 | Tool | Current (CDP) | Target (Extension API) | Status |
 |------|---------------|------------------------|--------|
 | `tabz_open_url` | `browser.newPage()` / `page.goto()` | `chrome.tabs.create()` / `chrome.tabs.update()` | [x] |
-| `tabz_screenshot` | `page.screenshot()` | `chrome.tabs.captureVisibleTab()` | [ ] |
-| `tabz_screenshot_full` | `page.screenshot({fullPage})` | Content script scroll + stitch | [ ] |
+| `tabz_screenshot` | `page.screenshot()` | `chrome.tabs.captureVisibleTab()` | [x] |
+| `tabz_screenshot_full` | `page.screenshot({fullPage})` | Content script scroll + stitch | [x] |
 | `tabz_click` | `page.click()` | `chrome.scripting.executeScript()` | [x] |
 | `tabz_fill` | `page.type()` | `chrome.scripting.executeScript()` | [x] |
 | `tabz_get_element` | `page.evaluate()` | `chrome.scripting.executeScript()` | [x] |

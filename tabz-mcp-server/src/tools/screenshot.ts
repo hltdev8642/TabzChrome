@@ -65,12 +65,13 @@ export function registerScreenshotTools(server: McpServer): void {
 Use this tool when you need to see "what I see", "my current view", or "the visible area".
 For capturing an entire scrollable page, use tabz_screenshot_full instead.
 
-This tool captures screenshots via Chrome DevTools Protocol (CDP). Screenshots are saved
-to ~/ai-images/ by default, and the file path is returned so Claude can view it with the Read tool.
+This tool captures screenshots via Chrome Extension API (chrome.tabs.captureVisibleTab).
+Screenshots are saved to Chrome's Downloads folder and the file path is returned so
+Claude can view it with the Read tool.
 
 Args:
   - selector (optional): CSS selector to screenshot a specific element instead of the viewport
-  - outputPath (optional): Custom save path (default: ~/ai-images/screenshot-{timestamp}.png)
+  - outputPath (optional): Custom save path (default: Downloads/screenshot-{timestamp}.png)
 
 Returns:
   - success: Whether the screenshot was captured
@@ -88,9 +89,9 @@ When to use tabz_screenshot_full instead:
   - "I want to see the whole page" → use tabz_screenshot_full
 
 Error Handling:
-  - "CDP not available": Chrome not running with --remote-debugging-port=9222
-  - "No active page": No browser tab is open
+  - "No active tab": No browser tab is open
   - "Element not found": Selector doesn't match any element
+  - "Cannot capture chrome://": Cannot screenshot internal Chrome pages
 
 After capturing, use the Read tool with the returned filePath to view the screenshot.`,
     ScreenshotViewportSchema.shape,
@@ -152,11 +153,12 @@ For capturing only what's currently visible, use tabz_screenshot instead.
 This is the recommended tool when exploring a webpage for the first time, as it shows all content
 without needing to scroll and take multiple screenshots.
 
-This tool captures screenshots via Chrome DevTools Protocol (CDP). Screenshots are saved
-to ~/ai-images/ by default, and the file path is returned so Claude can view it with the Read tool.
+This tool captures screenshots via Chrome Extension API by scrolling through the page and
+stitching viewport captures together. Screenshots are saved to Chrome's Downloads folder
+and the file path is returned so Claude can view it with the Read tool.
 
 Args:
-  - outputPath (optional): Custom save path (default: ~/ai-images/screenshot-{timestamp}.png)
+  - outputPath (optional): Custom save path (default: Downloads/screenshot-full-{timestamp}.png)
 
 Returns:
   - success: Whether the screenshot was captured
@@ -175,8 +177,8 @@ When to use tabz_screenshot instead:
   - "Screenshot that button" → use tabz_screenshot with selector
 
 Error Handling:
-  - "CDP not available": Chrome not running with --remote-debugging-port=9222
-  - "No active page": No browser tab is open
+  - "No active tab": No browser tab is open
+  - "Cannot capture chrome://": Cannot screenshot internal Chrome pages
 
 After capturing, use the Read tool with the returned filePath to view the screenshot.`,
     ScreenshotFullSchema.shape,

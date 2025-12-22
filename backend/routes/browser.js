@@ -992,6 +992,115 @@ router.post('/get-element-info', async (req, res) => {
 });
 
 // ============================================
+// SCREENSHOT ROUTES
+// ============================================
+
+// POST /api/browser/screenshot - Capture screenshot of current viewport
+router.post('/screenshot', async (req, res) => {
+  const { tabId, selector } = req.body;
+
+  log.debug('POST /screenshot', { tabId, selector });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available - backend not fully initialized'
+    });
+  }
+
+  try {
+    const requestId = `browser-${++requestIdCounter}`;
+
+    const resultPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.delete(requestId);
+        reject(new Error('Screenshot timed out'));
+      }, 30000); // 30 second timeout
+
+      pendingRequests.set(requestId, {
+        resolve: (data) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          resolve(data);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          reject(error);
+        }
+      });
+    });
+
+    broadcast({
+      type: 'browser-screenshot',
+      requestId,
+      tabId,
+      selector,
+      fullPage: false
+    });
+
+    const result = await resultPromise;
+    res.json(result);
+  } catch (error) {
+    log.error('screenshot error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/browser/screenshot-full - Capture full page screenshot (scroll + stitch)
+router.post('/screenshot-full', async (req, res) => {
+  const { tabId } = req.body;
+
+  log.debug('POST /screenshot-full', { tabId });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available - backend not fully initialized'
+    });
+  }
+
+  try {
+    const requestId = `browser-${++requestIdCounter}`;
+
+    const resultPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.delete(requestId);
+        reject(new Error('Full page screenshot timed out'));
+      }, 60000); // 60 second timeout for full page
+
+      pendingRequests.set(requestId, {
+        resolve: (data) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          resolve(data);
+        },
+        reject: (error) => {
+          clearTimeout(timeout);
+          pendingRequests.delete(requestId);
+          reject(error);
+        }
+      });
+    });
+
+    broadcast({
+      type: 'browser-screenshot',
+      requestId,
+      tabId,
+      fullPage: true
+    });
+
+    const result = await resultPromise;
+    res.json(result);
+  } catch (error) {
+    log.error('screenshot-full error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
 // BOOKMARK ROUTES
 // ============================================
 

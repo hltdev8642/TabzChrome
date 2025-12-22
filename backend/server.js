@@ -1102,6 +1102,19 @@ wss.on('connection', (ws, req) => {
           }
           break;
 
+        case 'browser-screenshot-result':
+          // Receive screenshot result from Chrome extension
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              filePath: data.filePath,
+              windowsPath: data.windowsPath,
+              wslPath: data.wslPath,
+              error: data.error
+            });
+          }
+          break;
+
         // ============================================
         // INTERACTION RESPONSES - From Chrome extension
         // ============================================
