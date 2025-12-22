@@ -40,6 +40,10 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 - Tab icons now use colored icons matching file tree (green=code, blue=md, orange=json, yellow=image, purple=video, emerald=csv)
 - `useWorkingDirectory` hook now exports `isLoaded` flag for timing coordination
 
+### Fixed
+- **File tree loading home directory on refresh** - Fixed path mismatch between tilde (`~/projects/X`) and expanded (`/home/user/projects/X`) paths that caused cache misses and duplicate fetches
+- **Working directory persistence race condition** - Added `isLoaded` guards to prevent stale `~` from being written to Chrome storage during initial load
+
 ---
 
 ## [1.2.1] - 2025-12-22
