@@ -49,6 +49,13 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 - **Updated error messages** - Removed CDP references, now reference TabzChrome extension
 - **Synced skills** - `.claude/skills/tabz-guide/` synced from `plugins/`
 
+### Documentation
+- Updated tool count from 20/26 to 29 across README.md, PLUGIN.md, mcp-tools.html
+- Updated version badge from 1.1.8 to 1.2.8
+- Removed outdated CDP setup instructions from PLUGIN.md
+- Updated CLAUDE.md architecture diagram to reflect new modular structure
+- Added dashboard section to architecture diagram
+
 ### Fixed
 - **DOM tree returning empty** - Handle document nodeType 9 (was filtering out root node)
 - **Coverage tool timeout** - Fixed duplicate `type` property overwriting message type with coverage type
