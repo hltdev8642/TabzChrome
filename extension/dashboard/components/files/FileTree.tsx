@@ -61,37 +61,60 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPath, setCurrentPath] = useState(basePath)
   const [showHidden, setShowHidden] = useState(showHiddenProp)
-  const [hasInitialized, setHasInitialized] = useState(false)
+  // Track which basePath we initialized with (not just boolean)
+  const [initializedWithPath, setInitializedWithPath] = useState<string | null>(null)
 
-  // Only sync currentPath to basePath on initial load (when waitForLoad becomes false)
-  // After that, user navigation controls currentPath
+  // Sync currentPath when basePath changes (after working directory loads)
+  // Re-run when basePath changes to a real project path
   useEffect(() => {
-    if (!waitForLoad && !hasInitialized) {
-      // If basePath is still "~" but we have a cached tree for a real project, use that
-      // fileTreePath is now always expanded (e.g., /home/matt/projects/X), not tilde
-      const isBasePathHome = basePath === "~" || basePath === "/home/matt"
-      const hasCachedProject = fileTreePath && !fileTreePath.endsWith("/matt") && fileTreePath !== "~"
-
-      const pathToUse = (isBasePathHome && hasCachedProject)
-        ? fileTreePath  // Use cached project path
-        : basePath
-      setCurrentPath(pathToUse)
-      setHasInitialized(true)
+    if (waitForLoad) {
+      return // Still waiting for working directory to load
     }
-  }, [basePath, waitForLoad, hasInitialized, fileTreePath])
+
+    const isBasePathHome = basePath === "~" || basePath === "/home/matt"
+    const wasInitializedWithHome = initializedWithPath === "~" || initializedWithPath === "/home/matt"
+
+    // Case 1: First initialization
+    if (initializedWithPath === null) {
+      setCurrentPath(basePath)
+      setInitializedWithPath(basePath)
+      return
+    }
+
+    // Case 2: basePath changed from home to a real project - update!
+    if (wasInitializedWithHome && !isBasePathHome && basePath !== initializedWithPath) {
+      setCurrentPath(basePath)
+      setInitializedWithPath(basePath)
+      // Clear cached tree since we're switching to a new project
+      if (fileTree && fileTreePath && !fileTreePath.startsWith(basePath)) {
+        setFileTree(null)
+        setFileTreePath(null)
+      }
+      return
+    }
+
+    // Case 3: basePath changed to a different project
+    if (!isBasePathHome && basePath !== initializedWithPath) {
+      setCurrentPath(basePath)
+      setInitializedWithPath(basePath)
+      return
+    }
+  }, [basePath, waitForLoad, initializedWithPath, fileTree, fileTreePath, setFileTree, setFileTreePath])
 
   // Fetch file tree (with caching via context)
   const fetchFileTree = useCallback(async (path?: string, forceRefresh = false) => {
     const targetPath = path || currentPath
 
+    // Don't use cache if target is home directory - always fetch fresh
+    // This prevents stale ~ cache from blocking real project loads
+    const isTargetHome = targetPath === "~" || targetPath === "/home/matt"
+
     // Use cached tree if available and path matches what we want
-    if (!forceRefresh && fileTree && fileTree.path) {
-      // fileTreePath is the expanded path from last fetch
-      // Check if target matches either the cached expanded path or if it's the same tilde path
+    if (!forceRefresh && !isTargetHome && fileTree && fileTree.path) {
+      // Strict matching: cached tree must be for the same path (expanded)
       const targetMatchesCached =
-        fileTree.path === targetPath ||  // Exact match (both expanded)
-        fileTreePath === targetPath ||   // Request path match
-        (targetPath.startsWith("~") && fileTree.path.endsWith(targetPath.slice(1)))  // ~/foo matches /home/user/foo
+        fileTree.path === targetPath ||  // Exact match (both expanded paths)
+        fileTreePath === targetPath      // Request path matches stored path
 
       if (targetMatchesCached) {
         // Just expand root if needed

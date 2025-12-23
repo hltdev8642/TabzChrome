@@ -5,7 +5,9 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { FileTree } from '../components/files/FileTree'
 import { FilteredFileList } from '../components/files/FilteredFileList'
-import { X, Copy, ExternalLink, Code, Image as ImageIcon, FileText, FileJson, Settings, ZoomIn, ZoomOut, Maximize, Download, Video, Table, Star, Pin, Send, Terminal, ChevronDown } from 'lucide-react'
+import { PromptyViewer } from '../components/files/PromptyViewer'
+import { isPromptyFile } from '../utils/promptyUtils'
+import { X, Copy, ExternalLink, Code, Image as ImageIcon, FileText, FileJson, Settings, ZoomIn, ZoomOut, Maximize, Download, Video, Table, Star, Pin, Send, Terminal, ChevronDown, AtSign } from 'lucide-react'
 import { useWorkingDirectory } from '../../hooks/useWorkingDirectory'
 import { useFileViewerSettings } from '../hooks/useFileViewerSettings'
 import { getFileTypeAndLanguage, FileType } from '../utils/fileTypeUtils'
@@ -224,6 +226,12 @@ export default function FilesSection() {
   const copyContent = async () => {
     if (activeFile?.content) {
       await navigator.clipboard.writeText(activeFile.content)
+    }
+  }
+
+  const copyPath = async () => {
+    if (activeFile?.path) {
+      await navigator.clipboard.writeText(`@${activeFile.path}`)
     }
   }
 
@@ -511,8 +519,11 @@ export default function FilesSection() {
             <div className="h-full flex flex-col">
               {/* CSV Toolbar */}
               <div className="flex items-center gap-2 p-2 border-b border-border bg-card/50">
-                <button onClick={copyContent} className="flex items-center gap-1 px-2 py-1 text-sm hover:bg-muted rounded">
+                <button onClick={copyContent} className="flex items-center gap-1 px-2 py-1 text-sm hover:bg-muted rounded" title="Copy file content">
                   <Copy className="w-4 h-4" /> Copy
+                </button>
+                <button onClick={copyPath} className="flex items-center gap-1 px-2 py-1 text-sm hover:bg-muted rounded" title="Copy @path to clipboard">
+                  <AtSign className="w-4 h-4" /> Path
                 </button>
                 <button
                   onClick={() => toggleFavorite(activeFile.path)}
@@ -566,6 +577,19 @@ export default function FilesSection() {
                 })()}
               </div>
             </div>
+          ) : isPromptyFile(activeFile.path) ? (
+            <PromptyViewer
+              content={activeFile.content || ''}
+              path={activeFile.path}
+              name={activeFile.name}
+              fontSize={viewerSettings.fontSize}
+              fontFamily={viewerSettings.fontFamily}
+              pinned={activeFile.pinned}
+              isFavorite={isFavorite(activeFile.path)}
+              onToggleFavorite={() => toggleFavorite(activeFile.path)}
+              onPin={() => pinFile(activeFile.id)}
+              onOpenInEditor={openInEditor}
+            />
           ) : (() => {
             const { type, language } = getFileTypeAndLanguage(activeFile.path)
             const isMarkdown = type === 'markdown'
@@ -574,8 +598,11 @@ export default function FilesSection() {
             <div className="h-full flex flex-col">
               {/* Toolbar */}
               <div className="flex items-center gap-2 p-2 border-b border-border bg-card/50">
-                <button onClick={copyContent} className="flex items-center gap-1 px-2 py-1 text-sm hover:bg-muted rounded">
+                <button onClick={copyContent} className="flex items-center gap-1 px-2 py-1 text-sm hover:bg-muted rounded" title="Copy file content">
                   <Copy className="w-4 h-4" /> Copy
+                </button>
+                <button onClick={copyPath} className="flex items-center gap-1 px-2 py-1 text-sm hover:bg-muted rounded" title="Copy @path to clipboard">
+                  <AtSign className="w-4 h-4" /> Path
                 </button>
                 <button
                   onClick={() => toggleFavorite(activeFile.path)}

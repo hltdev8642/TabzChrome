@@ -83,7 +83,14 @@ export function FilesProvider({ children }: { children: ReactNode }) {
   // File tree cache - persist path to localStorage for reload persistence
   const [fileTree, setFileTree] = useState<FileNode | null>(null)
   const [fileTreePath, setFileTreePathState] = useState<string | null>(() => {
-    return localStorage.getItem('tabz-files-tree-path')
+    const stored = localStorage.getItem('tabz-files-tree-path')
+    // Don't restore stale home directory paths - they cause race conditions
+    // Only restore actual project paths
+    if (stored === '~' || stored === '/home/matt' || stored?.endsWith('/matt')) {
+      localStorage.removeItem('tabz-files-tree-path')
+      return null
+    }
+    return stored
   })
 
   // Wrapper to also save to localStorage

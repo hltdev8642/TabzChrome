@@ -1,6 +1,6 @@
 # Files Section for TabzChrome Dashboard
 
-## Status: Phase 1, 2, 3, 3.5, 4, 4.5 & 4.6 Complete ✅
+## Status: Phase 1, 2, 3, 3.5, 4, 4.5, 4.6 & 4.7 Complete ✅
 
 **Completed:** 2025-12-22
 **Source:** Adapted from Opustrator's FileTree component
@@ -155,6 +155,24 @@ Add a "Files" section to the dashboard for browsing and viewing files with synta
   - Claude sessions highlighted with 🤖
   - "Send + Enter" option for Claude sessions (auto-submit)
   - Uses `TMUX_SESSION_SEND` for reliable Claude delivery
+
+### Phase 4.7: Prompty File Support ✅
+
+- [x] **Copy @Path button** - New toolbar button copies `@/path/to/file` to clipboard
+- [x] **Frontmatter parsing** - YAML frontmatter (name, description) extracted and displayed in header
+- [x] **Inline fillable fields** - Variables like `{{file}}` rendered as clickable inline badges
+  - Click to edit in place
+  - Tab/Shift+Tab navigates between fields
+  - Enter saves, Escape cancels
+  - Empty fields show dashed border, filled show solid
+- [x] **Progress indicator** - Shows "2/5 filled" with checkmark when complete
+- [x] **Smart copy/send** - Frontmatter stripped, variables substituted before copying or sending
+- [x] **Hint syntax support** - `{{variable:hint text}}` shows hint as placeholder
+
+**Files created:**
+- `extension/dashboard/components/files/InlineField.tsx` - Clickable badge/input component
+- `extension/dashboard/components/files/PromptyViewer.tsx` - Full prompty file viewer
+- `extension/dashboard/utils/promptyUtils.ts` - Parsing and substitution utilities
 
 ### Phase 5: Future Enhancements
 

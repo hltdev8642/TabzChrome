@@ -15,6 +15,27 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.2.6] - 2025-12-22
+
+### Added
+- **Copy @Path button** - New toolbar button in file viewer copies `@/path/to/file` to clipboard (useful for Claude references)
+- **Prompty file viewer** - Full support for `.prompty` template files:
+  - **Frontmatter display** - YAML frontmatter (name, description) shown in pink header
+  - **Inline fillable fields** - Variables like `{{file}}` render as clickable inline badges
+  - Click badge to edit in place, Tab/Shift+Tab navigates between fields
+  - Empty fields show dashed pink border, filled fields show solid
+  - **Progress indicator** - Shows "2/5 filled" with checkmark when complete
+  - **Hint syntax** - `{{variable:hint text}}` shows hint as placeholder
+  - **Smart copy/send** - Frontmatter stripped, variables substituted before copying or sending to terminal
+
+### Fixed
+- **File tree stuck on home directory** - Fixed race condition where file tree would load `~` instead of project directory on first dashboard load:
+  - Changed `hasInitialized` boolean to track which path was initialized
+  - Made cache validation stricter (never use cache for home directory)
+  - Clear stale home paths from localStorage on mount
+
+---
+
 ## [1.2.5] - 2025-12-22
 
 ### Added
