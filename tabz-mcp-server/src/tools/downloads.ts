@@ -9,6 +9,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { downloadFile, getDownloads, cancelDownload, savePage } from "../client.js";
 import { ResponseFormat, type DownloadItem } from "../types.js";
+import { formatBytes } from "../utils.js";
 
 // Input schema for tabz_download_file
 const DownloadFileSchema = z.object({
@@ -54,16 +55,6 @@ const CancelDownloadSchema = z.object({
 }).strict();
 
 type CancelDownloadInput = z.infer<typeof CancelDownloadSchema>;
-
-/**
- * Format file size for display
- */
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-}
 
 /**
  * Format download progress

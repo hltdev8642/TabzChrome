@@ -13,6 +13,7 @@ import {
   isNetworkCaptureActive
 } from "../client.js";
 import { ResponseFormat, type NetworkRequest } from "../types.js";
+import { formatBytes } from "../utils.js";
 
 // Input schema for tabz_enable_network_capture
 const EnableNetworkCaptureSchema = z.object({
@@ -122,15 +123,6 @@ function getStatusEmoji(status?: number): string {
 function truncateUrl(url: string, maxLen: number): string {
   if (url.length <= maxLen) return url;
   return url.slice(0, maxLen - 3) + "...";
-}
-
-/**
- * Format bytes for human readability
- */
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
 /**
