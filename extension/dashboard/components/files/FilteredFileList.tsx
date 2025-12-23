@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import {
   ChevronRight,
   ChevronDown,
@@ -13,8 +13,12 @@ import {
   Terminal,
   Plug,
   FileJson,
+  Star,
 } from 'lucide-react'
 import { FileFilter, ClaudeFileType, claudeFileColors, getClaudeFileType } from '../../utils/claudeFileTypes'
+import { FileTreeContextMenu } from './FileTreeContextMenu'
+import { useFilesContext } from '../../contexts/FilesContext'
+import { sendMessage } from '../../../shared/messaging'
 
 interface TreeNode {
   name: string
@@ -129,6 +133,9 @@ function MiniTree({
   toggleExpand,
   onFileSelect,
   selectedPath,
+  onContextMenu,
+  isFavorite,
+  toggleFavorite,
 }: {
   node: TreeNode
   depth: number
@@ -136,16 +143,20 @@ function MiniTree({
   toggleExpand: (path: string) => void
   onFileSelect: (path: string) => void
   selectedPath: string | null
+  onContextMenu: (e: React.MouseEvent, node: TreeNode) => void
+  isFavorite: (path: string) => boolean
+  toggleFavorite: (path: string) => void
 }) {
   const isExpanded = expandedPaths.has(node.path)
   const isSelected = selectedPath === node.path
   const isDirectory = node.type === 'directory'
   const textColorClass = getTextColorClass(node.name, node.path, isDirectory)
+  const isNodeFavorite = isFavorite(node.path)
 
   return (
     <div>
       <div
-        className={`flex items-center py-1 px-2 cursor-pointer hover:bg-muted/50 rounded ${
+        className={`group flex items-center py-1 px-2 cursor-pointer hover:bg-muted/50 rounded ${
           isSelected ? 'bg-primary/20 text-primary' : ''
         }`}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
@@ -156,6 +167,7 @@ function MiniTree({
             onFileSelect(node.path)
           }
         }}
+        onContextMenu={(e) => onContextMenu(e, node)}
         title={node.path}
       >
         <span className="w-4 h-4 flex items-center justify-center mr-1 text-muted-foreground">
@@ -166,9 +178,22 @@ function MiniTree({
             ? getFolderIcon(node.name, node.path, isExpanded)
             : getFileIcon(node.name, node.path)}
         </span>
-        <span className={`text-sm truncate ${isDirectory ? 'font-medium' : ''} ${textColorClass}`}>
+        <span className={`text-sm truncate flex-1 ${isDirectory ? 'font-medium' : ''} ${textColorClass}`}>
           {node.name}
         </span>
+        {/* Favorite star - visible on hover or if favorited */}
+        <button
+          className={`p-0.5 rounded hover:bg-muted/50 ${isNodeFavorite ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
+          onClick={(e) => {
+            e.stopPropagation()
+            toggleFavorite(node.path)
+          }}
+          title={isNodeFavorite ? "Remove from favorites" : "Add to favorites"}
+        >
+          <Star
+            className={`w-3 h-3 ${isNodeFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
+          />
+        </button>
       </div>
       {isDirectory && isExpanded && node.children && (
         <div>
@@ -181,6 +206,9 @@ function MiniTree({
               toggleExpand={toggleExpand}
               onFileSelect={onFileSelect}
               selectedPath={selectedPath}
+              onContextMenu={onContextMenu}
+              isFavorite={isFavorite}
+              toggleFavorite={toggleFavorite}
             />
           ))}
         </div>
@@ -195,11 +223,17 @@ function TreeSection({
   onFileSelect,
   selectedPath,
   startCollapsed = false,
+  onContextMenu,
+  isFavorite,
+  toggleFavorite,
 }: {
   source: FilteredTree
   onFileSelect: (path: string) => void
   selectedPath: string | null
   startCollapsed?: boolean
+  onContextMenu: (e: React.MouseEvent, node: TreeNode) => void
+  isFavorite: (path: string) => boolean
+  toggleFavorite: (path: string) => void
 }) {
   const [isCollapsed, setIsCollapsed] = useState(startCollapsed)
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => {
@@ -245,6 +279,9 @@ function TreeSection({
               toggleExpand={toggleExpand}
               onFileSelect={onFileSelect}
               selectedPath={selectedPath}
+              onContextMenu={onContextMenu}
+              isFavorite={isFavorite}
+              toggleFavorite={toggleFavorite}
             />
           ))}
           {/* If root has no children but is a file itself */}
@@ -256,6 +293,9 @@ function TreeSection({
               toggleExpand={toggleExpand}
               onFileSelect={onFileSelect}
               selectedPath={selectedPath}
+              onContextMenu={onContextMenu}
+              isFavorite={isFavorite}
+              toggleFavorite={toggleFavorite}
             />
           )}
         </div>
@@ -266,11 +306,63 @@ function TreeSection({
 
 export function FilteredFileList({ filter, filteredFiles, loading, onFileSelect }: FilteredFileListProps) {
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
+  const { toggleFavorite, isFavorite, openFile, pinFile } = useFilesContext()
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    show: boolean
+    x: number
+    y: number
+    node: TreeNode | null
+  }>({ show: false, x: 0, y: 0, node: null })
 
   const handleFileSelect = (path: string) => {
     setSelectedPath(path)
     onFileSelect(path)
   }
+
+  // Context menu handlers
+  const handleContextMenu = useCallback((e: React.MouseEvent, node: TreeNode) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({ show: true, x: e.clientX, y: e.clientY, node })
+    setSelectedPath(node.path)
+  }, [])
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(prev => ({ ...prev, show: false }))
+  }, [])
+
+  const handleCopyPath = useCallback(() => {
+    if (contextMenu.node) {
+      navigator.clipboard.writeText(contextMenu.node.path)
+    }
+  }, [contextMenu.node])
+
+  const handleCopyAtPath = useCallback(() => {
+    if (contextMenu.node) {
+      navigator.clipboard.writeText(`@${contextMenu.node.path}`)
+    }
+  }, [contextMenu.node])
+
+  const handlePin = useCallback(() => {
+    if (contextMenu.node && contextMenu.node.type === 'file') {
+      openFile(contextMenu.node.path, true) // Open as pinned
+    }
+  }, [contextMenu.node, openFile])
+
+  const handleOpenInEditor = useCallback(() => {
+    if (!contextMenu.node || contextMenu.node.type !== 'file') return
+    const dir = contextMenu.node.path.split('/').slice(0, -1).join('/')
+    const fileName = contextMenu.node.name
+
+    sendMessage({
+      type: 'SPAWN_TERMINAL',
+      name: `Edit: ${fileName}`,
+      command: `\${EDITOR:-nano} "${contextMenu.node.path}"`,
+      workingDir: dir,
+    })
+  }, [contextMenu.node])
 
   if (loading) {
     return (
@@ -327,6 +419,9 @@ export function FilteredFileList({ filter, filteredFiles, loading, onFileSelect 
             onFileSelect={handleFileSelect}
             selectedPath={selectedPath}
             startCollapsed={filter === 'favorites'}
+            onContextMenu={handleContextMenu}
+            isFavorite={isFavorite}
+            toggleFavorite={toggleFavorite}
           />
         ))}
 
@@ -356,6 +451,21 @@ export function FilteredFileList({ filter, filteredFiles, loading, onFileSelect 
           </div>
         ))}
       </div>
+
+      {/* Context Menu */}
+      <FileTreeContextMenu
+        show={contextMenu.show}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        node={contextMenu.node}
+        isFavorite={contextMenu.node ? isFavorite(contextMenu.node.path) : false}
+        onClose={closeContextMenu}
+        onCopy={handleCopyPath}
+        onCopyAtPath={handleCopyAtPath}
+        onToggleFavorite={() => contextMenu.node && toggleFavorite(contextMenu.node.path)}
+        onPin={handlePin}
+        onOpenInEditor={handleOpenInEditor}
+      />
     </div>
   )
 }
