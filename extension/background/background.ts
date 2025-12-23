@@ -3658,8 +3658,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       // Handle random voice selection
       const TTS_VOICE_VALUES = [
         'en-US-AndrewMultilingualNeural', 'en-US-EmmaMultilingualNeural', 'en-US-BrianMultilingualNeural',
-        'en-US-AriaNeural', 'en-US-GuyNeural', 'en-US-JennyNeural',
-        'en-GB-SoniaNeural', 'en-GB-RyanNeural', 'en-AU-NatashaNeural', 'en-AU-WilliamNeural'
+        'en-US-AriaNeural', 'en-US-GuyNeural', 'en-US-JennyNeural', 'en-US-ChristopherNeural', 'en-US-AvaNeural',
+        'en-GB-SoniaNeural', 'en-GB-RyanNeural', 'en-AU-NatashaNeural', 'en-AU-WilliamMultilingualNeural'
       ]
       let voice = audioSettings.voice || 'en-US-AndrewMultilingualNeural'
       if (voice === 'random') {

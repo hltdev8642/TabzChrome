@@ -244,14 +244,14 @@ app.post('/api/audio/generate', audioRateLimiter, async (req, res) => {
     'en-US-AriaNeural',
     'en-US-GuyNeural',
     'en-US-JennyNeural',
-    'en-US-DavisNeural',
-    'en-US-AmberNeural',
+    'en-US-ChristopherNeural',
+    'en-US-AvaNeural',
     // UK Voices
     'en-GB-SoniaNeural',
     'en-GB-RyanNeural',
     // AU Voices
     'en-AU-NatashaNeural',
-    'en-AU-WilliamNeural',
+    'en-AU-WilliamMultilingualNeural',
   ];
   const voice = requestedVoice === 'random'
     ? VOICE_OPTIONS[Math.floor(Math.random() * VOICE_OPTIONS.length)]
@@ -391,14 +391,14 @@ app.post('/api/audio/speak', async (req, res) => {
     'en-US-AriaNeural',
     'en-US-GuyNeural',
     'en-US-JennyNeural',
-    'en-US-DavisNeural',
-    'en-US-AmberNeural',
+    'en-US-ChristopherNeural',
+    'en-US-AvaNeural',
     // UK Voices
     'en-GB-SoniaNeural',
     'en-GB-RyanNeural',
     // AU Voices
     'en-AU-NatashaNeural',
-    'en-AU-WilliamNeural',
+    'en-AU-WilliamMultilingualNeural',
   ];
   const voice = requestedVoice === 'random'
     ? VOICE_OPTIONS[Math.floor(Math.random() * VOICE_OPTIONS.length)]

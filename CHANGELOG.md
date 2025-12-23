@@ -15,6 +15,17 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.2.7] - 2025-12-23
+
+### Fixed
+- **Deprecated Edge TTS voices** - Replaced voices that Microsoft removed:
+  - `en-US-AmberNeural` → `en-US-AvaNeural` (Expressive, Caring female)
+  - `en-US-DavisNeural` → `en-US-ChristopherNeural` (Reliable, Authority male)
+  - `en-AU-WilliamNeural` → `en-AU-WilliamMultilingualNeural`
+- **Content script extension context errors** - Added `isExtensionValid()` guard to prevent "Cannot read properties of undefined (reading 'sendMessage')" errors when extension context is invalidated after reload
+
+---
+
 ## [1.2.6] - 2025-12-22
 
 ### Added

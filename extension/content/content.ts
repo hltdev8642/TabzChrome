@@ -1,6 +1,11 @@
 // Content script - Runs on all web pages
 // Provides page-specific integrations (GitHub, error detection, etc.)
 
+// Guard for extension context validity
+function isExtensionValid(): boolean {
+  return !!(chrome.runtime?.id)
+}
+
 console.log('Terminal Tabs content script loaded')
 
 // Detect GitHub repository pages
@@ -42,6 +47,7 @@ function setupContextMenus() {
 
     // Add clone action to context menu
     document.addEventListener('contextmenu', (e) => {
+      if (!isExtensionValid()) return
       chrome.runtime.sendMessage({
         type: 'ADD_CONTEXT_MENU',
         items: [
@@ -65,6 +71,7 @@ function setupContextMenus() {
     console.log('GitLab repo detected:', gitlabRepo.fullName)
 
     document.addEventListener('contextmenu', (e) => {
+      if (!isExtensionValid()) return
       chrome.runtime.sendMessage({
         type: 'ADD_CONTEXT_MENU',
         items: [
@@ -230,6 +237,7 @@ function detectCustomCommands() {
 
     // Add click handler
     element.addEventListener('click', (e) => {
+      if (!isExtensionValid()) return
       e.preventDefault()
       e.stopPropagation()
 
@@ -265,6 +273,7 @@ function detectCustomCommands() {
 // Setup keyboard shortcut listener (Cmd/Ctrl+K to open popup)
 function setupKeyboardShortcuts() {
   document.addEventListener('keydown', (e) => {
+    if (!isExtensionValid()) return
     // Cmd+K (Mac) or Ctrl+K (Windows/Linux)
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
       e.preventDefault()
@@ -506,6 +515,7 @@ function setupGitHubFAB() {
   })
 
   cloneBtn.addEventListener('click', () => {
+    if (!isExtensionValid()) return
     const command = `git clone https://github.com/${repo.fullName}.git && cd ${repo.repo}`
     chrome.runtime.sendMessage({
       type: 'QUEUE_COMMAND',
@@ -523,6 +533,7 @@ function setupGitHubFAB() {
   })
 
   forkBtn.addEventListener('click', () => {
+    if (!isExtensionValid()) return
     chrome.runtime.sendMessage({
       type: 'OPEN_TAB',
       url: `https://github.com/${repo.fullName}/fork`,
@@ -557,6 +568,10 @@ function cleanupGitHubFAB() {
 
 // Initialize content script
 function init() {
+  if (!isExtensionValid()) {
+    console.log('Terminal Tabs: Extension context invalid, skipping init')
+    return
+  }
   setupConsoleCapture()  // Browser MCP - capture console logs
   setupContextMenus()
   setupErrorMonitoring()
