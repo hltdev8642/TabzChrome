@@ -67,9 +67,10 @@ Voice pitch in Hz. Format: `+NHz` or `-NHz`
 
 Range: -200Hz to +300Hz (wider range for noticeable difference)
 
-**Context alerts auto-elevate pitch + rate for distinct urgency:**
-- 50% warning: `+100Hz` pitch, `+15%` rate, "Warning!" prefix
-- 75% critical: `+200Hz` pitch, `+30%` rate, "Alert!" prefix
+**Voice modifications for distinct audio cues:**
+- **Subagents**: `+50Hz` pitch, `+15%` rate - "chipmunk voice" so you can tell subagent activity by ear
+- **50% warning**: `+15Hz` pitch, `+5%` rate, "Warning!" prefix
+- **75% critical**: `+25Hz` pitch, `+10%` rate, "Alert!" prefix
 
 ### Volume
 
@@ -139,16 +140,22 @@ curl -X POST http://localhost:8129/api/audio/speak \
     "voice": "en-US-EmmaMultilingualNeural",
     "rate": "+10%",
     "pitch": "+20Hz",
-    "volume": 0.8
+    "volume": 0.8,
+    "priority": "high"
   }'
 ```
 
-**Additional parameter:**
+**Additional parameters:**
 | Param | Default | Description |
 |-------|---------|-------------|
 | volume | 0.7 | Playback volume (0.0-1.0) |
+| priority | `low` | `high` for summaries/handoffs (interrupts other audio), `low` for status updates (skipped if high playing) |
 
-Broadcasts WebSocket message `{ type: 'audio-speak', url, volume, text }` to all connected clients.
+**Priority system:**
+- `high`: Used by `/ctthandoff`, `/page-reader:read-page`. Interrupts any playing audio and blocks low-priority audio until complete.
+- `low`: Used by Claude status updates (tool announcements, ready, etc.). Skipped if high-priority audio is playing.
+
+Broadcasts WebSocket message `{ type: 'audio-speak', url, volume, priority, text }` to all connected clients.
 
 ## Caching
 

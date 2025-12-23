@@ -56,7 +56,7 @@ For full API documentation, read `references/api-endpoints.md`.
 
 ### MCP Tools
 
-20 tools for browser automation: screenshots, clicks, downloads, network capture.
+29 tools for browser automation: screenshots, clicks, downloads, network capture, debugger.
 
 **Quick example:**
 ```bash
@@ -70,6 +70,11 @@ mcp-cli call tabz/tabz_screenshot '{}'  # Capture viewport
 | Screenshots | `screenshot`, `screenshot_full` |
 | Interaction | `click`, `fill`, `execute_script` |
 | Downloads | `download_image`, `download_file`, `cancel_download` |
+| Debugger | `get_dom_tree`, `profile_performance`, `get_coverage` |
+
+**Visual Feedback:** Elements glow when tools interact (🟢 click, 🔵 fill, 🟣 inspect).
+
+**Getting Selectors:** Right-click any element → "Send Element to Chat" for unique CSS selector.
 
 For complete tool reference, read `references/mcp-tools.md`.
 
@@ -111,10 +116,10 @@ For voice codes, parameters, and API details, read `references/audio-tts.md`.
 
 | Version | Key Feature |
 |---------|-------------|
+| 1.2.8 | Send Element to Chat, MCP visual feedback, debugger tools |
 | 1.1.16 | tabz-guide plugin, tui-expert agent |
 | 1.1.15 | Context window % on tabs, audio alerts |
 | 1.1.14 | 3D Focus Mode |
-| 1.1.13 | View as Text |
 
 For full changelog, read `references/changelog.md`.
 
