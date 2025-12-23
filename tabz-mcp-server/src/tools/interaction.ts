@@ -72,7 +72,7 @@ Examples:
 
 Error Handling:
   - "Element not found": Selector doesn't match any element within 5 seconds
-  - "CDP not available": Chrome not running with --remote-debugging-port=9222
+  - "Cannot connect": Ensure TabzChrome extension is installed and backend is running at localhost:8129
 
 After clicking, use tabz_get_page_info to check if page changed,
 or tabz_execute_script to verify the result.`,
@@ -152,7 +152,7 @@ Examples:
 
 Error Handling:
   - "Element not found": Selector doesn't match any input within 5 seconds
-  - "CDP not available": Chrome not running with --remote-debugging-port=9222
+  - "Cannot connect": Ensure TabzChrome extension is installed and backend is running at localhost:8129
 
 After filling, you may want to:
 - Click a submit button: tabz_click with selector="button[type='submit']"

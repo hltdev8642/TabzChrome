@@ -173,7 +173,7 @@ Use Cases:
 
 Error Handling:
   - "Element not found": Selector doesn't match any element
-  - "CDP not available": Chrome not running with --remote-debugging-port=9222`,
+  - "Cannot connect": Ensure TabzChrome extension is installed and backend is running at localhost:8129`,
     GetElementSchema.shape,
     async (params: GetElementInput) => {
       try {

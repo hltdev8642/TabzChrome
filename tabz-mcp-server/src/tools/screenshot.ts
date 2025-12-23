@@ -120,7 +120,7 @@ Read file: ${result.filePath}
 **Error:** ${result.error}
 
 Troubleshooting:
-- Ensure Chrome is running with: --remote-debugging-port=9222
+- Ensure TabzChrome extension is installed and backend is running at localhost:8129
 - Check that a webpage (not chrome://) is open
 - Verify the selector matches an element on the page`;
         }
@@ -206,7 +206,7 @@ Read file: ${result.filePath}
 **Error:** ${result.error}
 
 Troubleshooting:
-- Ensure Chrome is running with: --remote-debugging-port=9222
+- Ensure TabzChrome extension is installed and backend is running at localhost:8129
 - Check that a webpage (not chrome://) is open`;
         }
 
@@ -231,7 +231,7 @@ Troubleshooting:
     "tabz_download_image",
     `Download an image from the browser page and save to local disk.
 
-This tool extracts and downloads images via Chrome DevTools Protocol (CDP). It can download
+This tool extracts and downloads images via Chrome Extension API. It can download
 images by CSS selector (from <img> tags or background-image) or by direct URL.
 
 Args:
@@ -251,7 +251,7 @@ Examples:
   - Custom path: outputPath="/tmp/downloaded.jpg"
 
 Error Handling:
-  - "CDP not available": Chrome not running with --remote-debugging-port=9222
+  - "Cannot connect": Ensure TabzChrome extension is installed and backend is running at localhost:8129
   - "Could not find image URL": Selector doesn't point to an image element
   - "Either selector or url required": Must provide one parameter
 
@@ -281,7 +281,7 @@ Read file: ${result.filePath}
 **Error:** ${result.error}
 
 Troubleshooting:
-- Ensure Chrome is running with: --remote-debugging-port=9222
+- Ensure TabzChrome extension is installed and backend is running at localhost:8129
 - Check that the selector points to an <img> element or element with background-image
 - Verify the image URL is accessible`;
         }

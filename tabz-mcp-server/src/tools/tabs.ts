@@ -81,7 +81,7 @@ Use tabz_switch_tab with the tabId to switch to a specific tab.
 Use tabz_rename_tab to assign stable custom names for easier identification.
 
 Error Handling:
-  - "Extension not available": Backend/WebSocket not connected - uses CDP fallback
+  - "Cannot connect": Ensure TabzChrome extension is installed and backend is running at localhost:8129
   - Empty list: No web pages open (only chrome:// pages)`,
     ListTabsSchema.shape,
     async (params: ListTabsInput) => {
@@ -184,7 +184,7 @@ stored by URL and persist even if tab IDs change.
 
 Error Handling:
   - "Invalid tab ID": tabId doesn't exist (use tabz_list_tabs to see valid IDs)
-  - "Extension not available": Uses CDP fallback (less reliable)`,
+  - "Cannot connect": Ensure TabzChrome extension is installed and backend is running at localhost:8129`,
     SwitchTabSchema.shape,
     async (params: SwitchTabInput) => {
       try {
