@@ -42,6 +42,13 @@ Both accept optional `tabId` for background tab capture without switching focus.
 | `tabz_get_element` | Get element details by selector |
 | `tabz_execute_script` | Run JavaScript in page context |
 
+**Visual Feedback:** Elements glow when interacted with:
+- 🟢 Green glow on `tabz_click`
+- 🔵 Blue glow on `tabz_fill`
+- 🟣 Purple glow on `tabz_get_element`
+
+**Getting Selectors:** User can right-click any element → "Send Element to Chat" to capture unique CSS selectors for use with these tools.
+
 ### Debugging
 
 | Tool | Purpose |
@@ -50,6 +57,11 @@ Both accept optional `tabId` for background tab capture without switching focus.
 | `tabz_enable_network_capture` | Start capturing network requests |
 | `tabz_get_network_requests` | Get captured requests |
 | `tabz_clear_network_requests` | Clear captured requests |
+| `tabz_get_dom_tree` | Full DOM tree via chrome.debugger |
+| `tabz_profile_performance` | Timing, memory, DOM metrics |
+| `tabz_get_coverage` | JS/CSS code coverage analysis |
+
+> **Note:** Debugger tools (DOM tree, performance, coverage) trigger Chrome's "debugging" banner while running.
 
 ### Downloads
 

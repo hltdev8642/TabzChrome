@@ -25,6 +25,16 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 - Tools use Chrome DevTools Protocol via chrome.debugger API
 - User sees "debugging" banner in Chrome while tools run (auto-detaches after operation)
 - **MCP Settings UI** - New "Debugger" category in MCP settings (sidebar + dashboard)
+- **"Send Element to Chat" context menu** - Right-click any element on any webpage to capture its info:
+  - Generates unique CSS selectors (uses `:nth-of-type()` for sibling disambiguation)
+  - Captures tag, ID, classes, text content, and useful attributes (`data-testid`, `aria-label`, `role`, etc.)
+  - Element info appears in sidebar chat as formatted code block
+  - Works on all URLs (content script scope expanded from specific sites to `<all_urls>`)
+- **MCP Tool Visual Feedback** - Elements now glow when MCP tools interact with them:
+  - 🟣 Purple glow for `tabz_get_element` (inspect)
+  - 🟢 Green glow for `tabz_click` (action completed)
+  - 🔵 Blue glow for `tabz_fill` (input focused)
+  - Pulsing animation (2 pulses over 1.6s), auto-scrolls element into view
 
 ### Fixed
 - **DOM tree returning empty** - Handle document nodeType 9 (was filtering out root node)

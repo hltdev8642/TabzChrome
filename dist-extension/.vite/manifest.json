@@ -1,19 +1,19 @@
 {
   "../../../../../@crx/manifest": {
-    "file": "assets/crx-manifest.js-QtfKJEIw.js",
+    "file": "assets/crx-manifest.js-DKb9Bxam.js",
     "name": "crx-manifest.js",
     "src": "../../../../../@crx/manifest",
     "isEntry": true
   },
   "3d/3d-focus.html": {
-    "file": "assets/3d-focus-CRJv2IKH.js",
+    "file": "assets/3d-focus-C27UCCgK.js",
     "name": "3d-focus",
     "src": "3d/3d-focus.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_themes-Dxk98ACV.js",
-      "_globals-JKUsV7FI.js",
+      "_globals-H2oLgT-f.js",
       "_extends-CF3RwP-h.js"
     ]
   },
@@ -22,17 +22,17 @@
     "name": "extends"
   },
   "_globals-!~{008}~.js": {
-    "file": "assets/globals-BNsGdIuO.css",
+    "file": "assets/globals-xSBCT62Z.css",
     "src": "_globals-!~{008}~.js"
   },
-  "_globals-JKUsV7FI.js": {
-    "file": "assets/globals-JKUsV7FI.js",
+  "_globals-H2oLgT-f.js": {
+    "file": "assets/globals-H2oLgT-f.js",
     "name": "globals",
     "imports": [
       "_themes-Dxk98ACV.js"
     ],
     "css": [
-      "assets/globals-BNsGdIuO.css"
+      "assets/globals-xSBCT62Z.css"
     ]
   },
   "_modulepreload-polyfill-B5Qt9EMX.js": {
@@ -51,19 +51,19 @@
     ]
   },
   "background/background.ts": {
-    "file": "assets/background.ts-CoPGOruC.js",
+    "file": "assets/background.ts-DhrfmH5m.js",
     "name": "background.ts",
     "src": "background/background.ts",
     "isEntry": true
   },
   "content/content.ts": {
-    "file": "assets/content.ts-DBi0gqX4.js",
+    "file": "assets/content.ts-BdKEkwYV.js",
     "name": "content.ts",
     "src": "content/content.ts",
     "isEntry": true
   },
   "dashboard/index.html": {
-    "file": "assets/dashboard-Csm86Koi.js",
+    "file": "assets/dashboard-BbniNtQn.js",
     "name": "dashboard",
     "src": "dashboard/index.html",
     "isEntry": true,
@@ -74,7 +74,7 @@
       "_extends-CF3RwP-h.js"
     ],
     "css": [
-      "assets/dashboard-pCOOSfRA.css"
+      "assets/dashboard-B8q9Rxmo.css"
     ]
   },
   "devtools/devtools.html": {
@@ -87,14 +87,14 @@
     ]
   },
   "sidepanel/sidepanel.html": {
-    "file": "assets/sidepanel.html-C2VF9EZh.js",
+    "file": "assets/sidepanel.html-Dt_85g8d.js",
     "name": "sidepanel.html",
     "src": "sidepanel/sidepanel.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_themes-Dxk98ACV.js",
-      "_globals-JKUsV7FI.js",
+      "_globals-H2oLgT-f.js",
       "_useWorkingDirectory-Cfe08W2h.js"
     ]
   }

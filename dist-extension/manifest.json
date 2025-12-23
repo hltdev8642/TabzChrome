@@ -118,15 +118,12 @@
   "content_scripts": [
     {
       "js": [
-        "assets/content.ts-DBi0gqX4.js"
+        "assets/content.ts-BdKEkwYV.js"
       ],
       "matches": [
-        "https://github.com/*",
-        "https://gitlab.com/*",
-        "https://ggprompts.github.io/*",
-        "http://localhost/*",
-        "http://127.0.0.1/*"
-      ]
+        "<all_urls>"
+      ],
+      "run_at": "document_idle"
     }
   ],
   "icons": {
@@ -146,8 +143,16 @@
       "resources": [
         "spawn-options.json",
         "profiles.json",
-        "icons/tabz-logo-light.png",
-        "assets/content.ts-DBi0gqX4.js"
+        "icons/tabz-logo-light.png"
+      ],
+      "use_dynamic_url": false
+    },
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "resources": [
+        "assets/content.ts-BdKEkwYV.js"
       ],
       "use_dynamic_url": false
     }

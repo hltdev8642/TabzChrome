@@ -401,8 +401,11 @@ Right-click anywhere on a webpage to access terminal actions:
 | **Send to Tabz** | Text selected | **Chat input bar** - review/edit, then pick terminal |
 | **Paste to Terminal** | Text selected | **Active terminal** - at cursor position, like typing |
 | **Read Aloud** | Text selected | **TTS playback** - speaks the selected text through the sidebar |
+| **Send Element to Chat** | Always | **Chat input bar** - captures element's CSS selector, attributes, and metadata for browser automation |
 
 Neither "Send to Tabz" nor "Paste to Terminal" auto-executes - press Enter to run the command. "Send to Tabz" lets you choose which terminal; "Paste to Terminal" goes to whichever tab is currently active.
+
+**Send Element to Chat** is useful for browser automation workflows - right-click any element to capture its unique CSS selector (including `:nth-of-type()` for lists), then use it with MCP tools like `tabz_click` or `tabz_fill`.
 
 **Read Aloud** uses your configured audio settings (Settings → Audio tab) including voice, rate, and volume. If you have "Random" voice selected, each read-aloud will use a different voice.
 
@@ -470,6 +473,11 @@ Tabz includes an **MCP server** with 20 tools that let Claude Code control your 
 | `tabz_download_file` | Download any URL to disk |
 | `tabz_get_downloads` | List recent downloads with status |
 | `tabz_cancel_download` | Cancel in-progress download |
+
+**Visual Feedback:** When MCP tools interact with elements, they glow briefly:
+- 🟣 **Purple** - `tabz_get_element` (inspecting)
+- 🟢 **Green** - `tabz_click` (action completed)
+- 🔵 **Blue** - `tabz_fill` (input focused)
 
 ### Configure in Settings
 

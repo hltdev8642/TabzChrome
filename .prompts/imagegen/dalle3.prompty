@@ -1,0 +1,105 @@
+---
+name: DALL-E 3 Image Generation
+description: Generate images using ChatGPT's DALL-E 3 via browser automation
+tags: [imagegen, dalle, chatgpt, automation]
+---
+
+# DALL-E 3 Image Generation via ChatGPT
+
+Generate images using browser automation with TabzChrome MCP tools.
+
+## Quick Start
+
+```
+Generate a {{subject:robot avatar}} in {{style:digital art|photorealistic|digital art|watercolor|oil painting|3D render|pixel art|minimalist|anime}} style, {{aspect:square|square|wide|portrait}}
+```
+
+## Fillable Fields
+
+| Field | Options | Notes |
+|-------|---------|-------|
+| `{{subject}}` | (free text) | What to generate |
+| `{{style}}` | photorealistic, digital art, watercolor, oil painting, 3D render, pixel art, minimalist, anime | Art style |
+| `{{aspect}}` | square, wide, portrait | Image dimensions |
+| `{{mood}}` | bright, dark, moody, warm, cool, vibrant | Lighting/color tone |
+
+## Workflow
+
+### 1. Open ChatGPT DALL-E 3
+```bash
+mcp-cli call tabz/tabz_open_url '{"url": "https://chatgpt.com/g/g-iLoR8U3iA-dall-e3"}'
+```
+Direct URL to DALL-E 3 GPT - skips navigation!
+
+### 2. Wait for page load, then fill prompt
+```bash
+# Wait 2-3 seconds for page to load
+mcp-cli call tabz/tabz_fill '{"selector": "#prompt-textarea", "value": "{{prompt}}"}'
+```
+
+### 3. Submit
+```bash
+mcp-cli call tabz/tabz_click '{"selector": "button[data-testid=\"send-button\"]"}'
+```
+
+### 4. Wait and capture result (15-30 seconds for generation)
+```bash
+mcp-cli call tabz/tabz_screenshot '{}'
+```
+
+### 5. Save generated image
+Download or save images to:
+```
+.prompts/AI_Images/
+```
+Create folder if it doesn't exist. Contents are gitignored (your images stay local).
+
+## Key Selectors
+
+| Element | Selector |
+|---------|----------|
+| Prompt input | `#prompt-textarea` |
+| Send button | `button[data-testid="send-button"]` |
+| Model selector | `button.group.flex.cursor-pointer` |
+| DALL-E in sidebar | `a[href*="dall-e"]` |
+
+## Multiple Images
+
+DALL-E 3 now supports generating multiple images at once! Include quantity in your prompt:
+
+```
+"Generate 4 variations of a friendly robot avatar with different color schemes"
+```
+
+Or be specific:
+```
+"Create 3 images: 1) robot waving, 2) robot thinking, 3) robot celebrating"
+```
+
+## Example Prompts
+
+### Avatar
+```
+A friendly robot avatar with a round head, glowing blue eyes, silver metallic body,
+and a warm smile. Digital art style, suitable for a profile picture, clean background.
+```
+
+### Logo
+```
+Minimalist logo for a tech startup called "TabzChrome", featuring a stylized
+browser tab with terminal cursor. Modern, clean, vector style.
+```
+
+### Scene
+```
+Cozy home office at night, multiple monitors showing code, warm lamp light,
+rain on the window, lo-fi aesthetic, digital painting style.
+```
+
+## Tips
+
+1. **Direct URL** - Use the direct GPT URL to skip navigation
+2. **Be specific** - DALL-E 3 responds well to detailed prompts
+3. **Style keywords** - Add "digital art", "photorealistic", "minimalist", etc.
+4. **Aspect ratio** - Mention "square", "wide", "portrait" for specific shapes
+5. **Multiple images** - Ask for variations or numbered list of scenes

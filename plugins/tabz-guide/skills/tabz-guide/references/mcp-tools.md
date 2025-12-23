@@ -1,6 +1,6 @@
 # TabzChrome MCP Tools Reference
 
-TabzChrome provides 26 MCP tools for browser automation via Chrome Extension APIs.
+TabzChrome provides 29 MCP tools for browser automation via Chrome Extension APIs.
 
 ## Tool Categories
 
@@ -13,6 +13,26 @@ TabzChrome provides 26 MCP tools for browser automation via Chrome Extension API
 | **Bookmarks** | `tabz_get_bookmark_tree`, `tabz_search_bookmarks`, `tabz_save_bookmark`, `tabz_create_folder`, `tabz_move_bookmark`, `tabz_delete_bookmark` | Organize bookmarks, save URLs |
 | **Network** | `tabz_enable_network_capture`, `tabz_get_network_requests`, `tabz_clear_network_requests` | Monitor API calls |
 | **Inspection** | `tabz_get_element`, `tabz_get_console_logs`, `tabz_get_page_info` | Debug, inspect HTML/CSS |
+| **Debugger** | `tabz_get_dom_tree`, `tabz_profile_performance`, `tabz_get_coverage` | DOM tree, metrics, code coverage (uses chrome.debugger) |
+
+## Visual Feedback
+
+Interaction tools show visual feedback when targeting elements:
+
+| Tool | Glow Color |
+|------|------------|
+| `tabz_click` | 🟢 Green (action completed) |
+| `tabz_fill` | 🔵 Blue (input focused) |
+| `tabz_get_element` | 🟣 Purple (inspecting) |
+
+Elements pulse twice and auto-scroll into view.
+
+## Getting Selectors
+
+Right-click any element on a webpage → **"Send Element to Chat"** to capture:
+- Unique CSS selector (with `:nth-of-type()` for siblings)
+- Tag, ID, classes, text content
+- Useful attributes (`data-testid`, `aria-label`, `role`)
 
 ---
 

@@ -1,0 +1,128 @@
+---
+name: Sora Video Generation
+description: Generate AI videos using OpenAI Sora via browser automation
+tags: [video, sora, openai, automation]
+---
+
+# Sora Video Generation via Browser Automation
+
+Generate AI videos using TabzChrome MCP tools.
+
+## Quick Start
+
+```
+Generate a {{duration:10s|10s|15s}} video of {{subject:a cozy coding scene}}
+```
+
+## Fillable Fields
+
+| Field | Options | Notes |
+|-------|---------|-------|
+| `{{duration}}` | 10s, 15s | 15s uses more credits |
+| `{{aspect}}` | 16:9, 9:16, 1:1 | Landscape, portrait, square |
+| `{{style}}` | cinematic, anime, realistic, artistic | Add to prompt |
+| `{{subject}}` | (free text) | Main subject of video |
+
+## Workflow
+
+### 1. Open Sora Drafts Page (has prompt input + shows your videos)
+```bash
+mcp-cli call tabz/tabz_open_url '{"url": "https://sora.chatgpt.com/drafts"}'
+```
+
+### 2. Wait for page load, then fill prompt
+```bash
+# Wait 2-3 seconds for page to load
+mcp-cli call tabz/tabz_fill '{"selector": "textarea", "value": "{{prompt}}"}'
+```
+
+### 3. Submit (Click Create video)
+```bash
+mcp-cli call tabz/tabz_click '{"selector": "div.absolute.bottom-2 button.inline-flex:last-child"}'
+```
+
+### 4. Wait for generation (60-120 seconds)
+Videos appear in "Drafts" section when complete.
+
+```bash
+# Check for completion notification or thumbnail change
+mcp-cli call tabz/tabz_screenshot '{}'
+```
+
+### 5. Save generated video
+Download videos to:
+```
+.prompts/AI_Videos/
+```
+Create folder if it doesn't exist. Contents are gitignored (your videos stay local).
+
+## Key Selectors
+
+| Element | Selector |
+|---------|----------|
+| Prompt textarea | `textarea` |
+| Create video button | `div.absolute.bottom-2 button.inline-flex:last-child` |
+| Settings button | `button#radix-:rj:` (near textarea) |
+| Profile link | `div.flex.flex-col.items-center a:last-of-type` |
+| Drafts card (on profile) | `a.relative.block.h-full.w-full.overflow-hidden` |
+| Video thumbnail | `video` |
+
+## URLs
+
+| Page | URL | Notes |
+|------|-----|-------|
+| Drafts | `sora.chatgpt.com/drafts` | **Start here** - has prompt + your videos |
+| Profile | `sora.chatgpt.com/profile` | Shows drafts card (blurred preview) |
+| Explore | `sora.chatgpt.com/explore` | Community videos feed |
+
+## First-Time Setup
+
+On first video creation, Sora shows a **Media Upload Agreement** modal:
+1. Check all 4 checkboxes: `[role=checkbox]`
+2. Click Accept button
+
+After accepting once, it won't show again.
+
+## Duration Options
+
+Sora supports:
+- **10 seconds** - Standard (default)
+- **15 seconds** - Longer scenes (uses more credits)
+
+Access via Settings button near the prompt input.
+
+## Example Prompts
+
+### Developer/Tech Scene (TabzChrome vibe)
+```
+A developer working late at night, their screen glowing in a dark room.
+They open a Chrome browser sidebar revealing multiple terminal windows.
+The camera zooms into the screen showing colorful terminal output scrolling,
+then they type a command and AI-generated text appears.
+Cozy lo-fi aesthetic, soft desk lamp light, rain on window.
+```
+
+### Product Demo
+```
+Smooth screen recording style video showing a browser extension sidebar
+opening from the right side of Chrome. Multiple terminal tabs appear
+with colorful text. A cursor clicks between tabs. Modern, clean UI,
+soft shadows, professional product demo aesthetic.
+```
+
+### Abstract/Artistic
+```
+Digital streams of code flowing through a neon-lit cyberpunk cityscape.
+Binary rain falls past glowing terminal windows floating in space.
+Camera slowly pushes through layers of holographic UI elements.
+Blade Runner meets Matrix aesthetic, moody blue and orange lighting.
+```
+
+## Tips
+
+1. **Start from Drafts** - Has prompt input + shows all your generated videos
+2. **Be cinematic** - Describe camera movements: "camera zooms", "slowly pans", "tracking shot"
+3. **Mention lighting** - "soft lamp light", "neon glow", "golden hour"
+4. **Add atmosphere** - "rain on window", "dust particles in light", "lens flare"
+5. **Reference styles** - "lo-fi aesthetic", "cinematic", "product demo style"
+6. **Multiple videos** - Queue several prompts, they generate in parallel

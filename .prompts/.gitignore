@@ -1,0 +1,7 @@
+# Ignore generated AI content (user-specific)
+AI_Images/*
+AI_Videos/*
+
+# Keep the folders (with .gitkeep)
+!AI_Images/.gitkeep
+!AI_Videos/.gitkeep

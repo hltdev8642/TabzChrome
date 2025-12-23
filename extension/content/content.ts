@@ -6,6 +6,202 @@ function isExtensionValid(): boolean {
   return !!(chrome.runtime?.id)
 }
 
+// ============================================
+// Element Capture for "Send Element to Chat"
+// ============================================
+
+// Track the element that was right-clicked
+let lastContextMenuTarget: Element | null = null
+
+// ============================================
+// MCP Tool Visual Feedback - Element Highlighting
+// ============================================
+
+// Inject highlight styles once
+let highlightStylesInjected = false
+
+function injectHighlightStyles() {
+  if (highlightStylesInjected) return
+  highlightStylesInjected = true
+
+  const style = document.createElement('style')
+  style.id = 'tabz-highlight-styles'
+  style.textContent = `
+    @keyframes tabz-glow-pulse {
+      0%, 100% {
+        box-shadow: 0 0 8px 2px rgba(139, 92, 246, 0.6),
+                    0 0 16px 4px rgba(139, 92, 246, 0.4),
+                    inset 0 0 4px rgba(139, 92, 246, 0.2);
+      }
+      50% {
+        box-shadow: 0 0 12px 4px rgba(139, 92, 246, 0.8),
+                    0 0 24px 8px rgba(139, 92, 246, 0.5),
+                    inset 0 0 8px rgba(139, 92, 246, 0.3);
+      }
+    }
+
+    .tabz-highlight {
+      outline: 2px solid rgba(139, 92, 246, 0.9) !important;
+      outline-offset: 2px !important;
+      animation: tabz-glow-pulse 0.8s ease-in-out 2 !important;
+      transition: outline 0.2s ease-out !important;
+    }
+
+    .tabz-highlight-click {
+      outline-color: rgba(34, 197, 94, 0.9) !important;
+      animation-name: tabz-glow-click !important;
+    }
+
+    @keyframes tabz-glow-click {
+      0%, 100% {
+        box-shadow: 0 0 8px 2px rgba(34, 197, 94, 0.6),
+                    0 0 16px 4px rgba(34, 197, 94, 0.4);
+      }
+      50% {
+        box-shadow: 0 0 12px 4px rgba(34, 197, 94, 0.8),
+                    0 0 24px 8px rgba(34, 197, 94, 0.5);
+      }
+    }
+
+    .tabz-highlight-fill {
+      outline-color: rgba(59, 130, 246, 0.9) !important;
+      animation-name: tabz-glow-fill !important;
+    }
+
+    @keyframes tabz-glow-fill {
+      0%, 100% {
+        box-shadow: 0 0 8px 2px rgba(59, 130, 246, 0.6),
+                    0 0 16px 4px rgba(59, 130, 246, 0.4);
+      }
+      50% {
+        box-shadow: 0 0 12px 4px rgba(59, 130, 246, 0.8),
+                    0 0 24px 8px rgba(59, 130, 246, 0.5);
+      }
+    }
+  `
+  document.head.appendChild(style)
+}
+
+// Highlight an element with a glowing effect
+function highlightElement(selector: string, type: 'inspect' | 'click' | 'fill' = 'inspect', duration = 1600) {
+  injectHighlightStyles()
+
+  const el = document.querySelector(selector)
+  if (!el) return false
+
+  // Remove any existing highlight
+  document.querySelectorAll('.tabz-highlight').forEach(e => {
+    e.classList.remove('tabz-highlight', 'tabz-highlight-click', 'tabz-highlight-fill')
+  })
+
+  // Add highlight class
+  el.classList.add('tabz-highlight')
+  if (type === 'click') el.classList.add('tabz-highlight-click')
+  if (type === 'fill') el.classList.add('tabz-highlight-fill')
+
+  // Scroll into view smoothly
+  el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
+
+  // Remove after duration
+  setTimeout(() => {
+    el.classList.remove('tabz-highlight', 'tabz-highlight-click', 'tabz-highlight-fill')
+  }, duration)
+
+  return true
+}
+
+document.addEventListener("contextmenu", (e) => {
+  lastContextMenuTarget = e.target as Element
+})
+
+// Generate a unique CSS selector for an element
+function generateUniqueSelector(el: Element): string {
+  // If element has an ID, use it
+  if (el.id) return `#${el.id}`
+
+  const path: string[] = []
+  let current: Element | null = el
+
+  while (current && current !== document.body) {
+    let selector = current.tagName.toLowerCase()
+
+    // If we find an ID, prepend and stop
+    if (current.id) {
+      selector = `#${current.id}`
+      path.unshift(selector)
+      break
+    }
+
+    // Add meaningful classes (skip dynamic/generated ones)
+    if (current.className && typeof current.className === "string") {
+      const classes = current.className
+        .trim()
+        .split(/\s+/)
+        .filter(c => c && !c.includes(":") && !c.match(/^[a-z]{1,2}-[a-f0-9]+$/i)) // Skip hash-like classes
+        .slice(0, 2)
+      if (classes.length) {
+        selector += `.${classes.join(".")}`
+      }
+    }
+
+    // Add :nth-of-type if there are siblings of the same type
+    const parent = current.parentElement
+    if (parent) {
+      const siblings = Array.from(parent.children).filter(
+        child => child.tagName === current!.tagName
+      )
+      if (siblings.length > 1) {
+        const index = siblings.indexOf(current) + 1
+        selector += `:nth-of-type(${index})`
+      }
+    }
+
+    path.unshift(selector)
+    current = current.parentElement
+  }
+
+  // Return last 4-5 parts for reasonable specificity
+  return path.slice(-5).join(" > ")
+}
+
+// Listen for messages from background script
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  // Highlight element for MCP tool visual feedback
+  if (msg.type === "HIGHLIGHT_ELEMENT") {
+    const success = highlightElement(msg.selector, msg.highlightType || 'inspect', msg.duration || 1600)
+    sendResponse({ success })
+    return true
+  }
+
+  // Get context menu element info
+  if (msg.type === "GET_CONTEXT_ELEMENT") {
+    if (lastContextMenuTarget) {
+      const el = lastContextMenuTarget
+      const response = {
+        tag: el.tagName.toLowerCase(),
+        id: el.id || null,
+        classes: Array.from(el.classList).slice(0, 5),
+        text: el.textContent?.trim().slice(0, 100) || null,
+        selector: generateUniqueSelector(el),
+        attributes: {
+          href: el.getAttribute("href"),
+          src: el.getAttribute("src"),
+          type: el.getAttribute("type"),
+          name: el.getAttribute("name"),
+          placeholder: el.getAttribute("placeholder"),
+          "data-testid": el.getAttribute("data-testid"),
+          "aria-label": el.getAttribute("aria-label"),
+          role: el.getAttribute("role"),
+        }
+      }
+      sendResponse(response)
+    } else {
+      sendResponse(null)
+    }
+    return true // Keep channel open for async response
+  }
+})
+
 console.log('Terminal Tabs content script loaded')
 
 // Detect GitHub repository pages

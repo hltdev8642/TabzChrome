@@ -1756,6 +1756,15 @@ async function handleBrowserClickElement(message: {
       tagName: result?.tagName,
       error: result?.error
     })
+
+    // Trigger visual highlight on success
+    if (result?.success) {
+      chrome.tabs.sendMessage(targetTabId, {
+        type: 'HIGHLIGHT_ELEMENT',
+        selector: message.selector,
+        highlightType: 'click'
+      }).catch(() => {}) // Ignore if content script not loaded
+    }
   } catch (err) {
     sendToWebSocket({
       type: 'browser-click-element-result',
@@ -1852,6 +1861,15 @@ async function handleBrowserFillInput(message: {
       tagName: result?.tagName,
       error: result?.error
     })
+
+    // Trigger visual highlight on success
+    if (result?.success) {
+      chrome.tabs.sendMessage(targetTabId, {
+        type: 'HIGHLIGHT_ELEMENT',
+        selector: message.selector,
+        highlightType: 'fill'
+      }).catch(() => {}) // Ignore if content script not loaded
+    }
   } catch (err) {
     sendToWebSocket({
       type: 'browser-fill-input-result',
@@ -2007,6 +2025,13 @@ async function handleBrowserGetElementInfo(message: {
       parentSelector: result.parentSelector,
       childCount: result.childCount
     })
+
+    // Trigger visual highlight for inspection
+    chrome.tabs.sendMessage(targetTabId, {
+      type: 'HIGHLIGHT_ELEMENT',
+      selector: message.selector,
+      highlightType: 'inspect'
+    }).catch(() => {}) // Ignore if content script not loaded
   } catch (err) {
     sendToWebSocket({
       type: 'browser-get-element-info-result',
@@ -4070,6 +4095,17 @@ function setupContextMenus() {
       }
     })
 
+    // Context menu for any element - send element info to chat
+    chrome.contextMenus.create({
+      id: 'send-element-to-chat',
+      title: 'Send Element to Chat',
+      contexts: ['all'],
+    }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('Error creating send-element-to-chat menu:', chrome.runtime.lastError.message)
+      }
+    })
+
     // Context menu for page - save as MHTML
     chrome.contextMenus.create({
       id: 'save-page-mhtml',
@@ -4187,6 +4223,57 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         // Sidebar may already be open but not connected yet, or gesture context lost
         console.debug('[Background] Could not open sidebar:', err)
       }
+    }
+  }
+
+  // Send element info to chat for browser automation workflows
+  if (menuId === 'send-element-to-chat' && tab?.id) {
+    try {
+      // Get element info from content script
+      const response = await chrome.tabs.sendMessage(tab.id, { type: 'GET_CONTEXT_ELEMENT' })
+
+      if (response) {
+        // Format element info as code block
+        const lines = ['```']
+        lines.push(`Element: <${response.tag}>`)
+        lines.push(`Selector: ${response.selector}`)
+        if (response.id) lines.push(`ID: #${response.id}`)
+        if (response.classes?.length) lines.push(`Classes: .${response.classes.join(', .')}`)
+        if (response.text) lines.push(`Text: "${response.text}"`)
+        // Add useful attributes
+        if (response.attributes?.['data-testid']) lines.push(`data-testid: ${response.attributes['data-testid']}`)
+        if (response.attributes?.['aria-label']) lines.push(`aria-label: ${response.attributes['aria-label']}`)
+        if (response.attributes?.role) lines.push(`role: ${response.attributes.role}`)
+        if (response.attributes?.href) lines.push(`href: ${response.attributes.href}`)
+        if (response.attributes?.type) lines.push(`type: ${response.attributes.type}`)
+        if (response.attributes?.name) lines.push(`name: ${response.attributes.name}`)
+        if (response.attributes?.placeholder) lines.push(`placeholder: ${response.attributes.placeholder}`)
+        lines.push('```')
+
+        const formatted = lines.join('\n')
+        console.log('🎯 Sending element to chat:', response.selector)
+
+        // If sidebar is already open, broadcast immediately
+        if (connectedClients.size > 0) {
+          broadcastToClients({
+            type: 'QUEUE_COMMAND',
+            command: formatted,
+          })
+        } else {
+          // Store for when sidebar connects, then try to open it
+          pendingQueueCommand = formatted
+          try {
+            const windowId = await getValidWindowId()
+            if (windowId) {
+              await chrome.sidePanel.open({ windowId })
+            }
+          } catch (err) {
+            console.debug('[Background] Could not open sidebar:', err)
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error getting element info:', err)
     }
   }
 

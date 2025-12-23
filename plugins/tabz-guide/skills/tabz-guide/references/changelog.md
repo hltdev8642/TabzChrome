@@ -1,5 +1,21 @@
 # TabzChrome Recent Changes
 
+## 1.2.8 (Dec 23, 2025)
+
+**Chrome Debugger MCP Tools:**
+- `tabz_get_dom_tree` - Full DOM tree including shadow DOM
+- `tabz_profile_performance` - Page timing, memory, DOM metrics
+- `tabz_get_coverage` - JS/CSS code coverage analysis
+
+**Browser Automation UX:**
+- **"Send Element to Chat"** - Right-click any element to capture unique CSS selector
+- **Visual Feedback** - Elements glow when MCP tools interact:
+  - 🟢 Green for `tabz_click`
+  - 🔵 Blue for `tabz_fill`
+  - 🟣 Purple for `tabz_get_element`
+
+---
+
 ## 1.1.16 (Dec 21, 2025)
 
 **New plugins and agents:**
