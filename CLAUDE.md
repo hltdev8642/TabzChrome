@@ -15,17 +15,35 @@ A **Windows Terminal-style Chrome extension** for managing bash terminals in you
 ## Architecture
 
 ```
-extension/                      backend/
-├── sidepanel/sidepanel.tsx     ├── server.js (Express + WebSocket)
-├── components/                 ├── modules/
-│   ├── Terminal.tsx            │   ├── pty-handler.js
-│   └── SettingsModal.tsx       │   ├── terminal-registry.js
-├── hooks/                      │   └── tmux-session-manager.js
-│   ├── useTerminalSessions.ts  └── routes/
-│   ├── useProfiles.ts              ├── api.js
-│   └── useClaudeStatus.ts          └── browser.js (MCP)
-├── 3d/FocusScene.tsx           (3D Focus Mode - Three.js)
-├── background/background.ts
+extension/                          backend/
+├── sidepanel/sidepanel.tsx         ├── server.js (Express + WebSocket)
+├── components/                     ├── modules/
+│   ├── Terminal.tsx                │   ├── pty-handler.js
+│   └── SettingsModal.tsx           │   ├── terminal-registry.js
+├── hooks/                          │   └── tmux-session-manager.js
+│   ├── useTerminalSessions.ts      └── routes/
+│   ├── useProfiles.ts                  ├── api.js
+│   └── useClaudeStatus.ts              └── browser.js (MCP)
+├── background/
+│   ├── index.ts                    tabz-mcp-server/src/
+│   ├── websocket.ts                ├── index.ts (MCP server entry)
+│   ├── messageHandlers.ts          ├── client/
+│   ├── browserMcp/                 │   ├── core.ts (tab management)
+│   │   ├── tabs.ts                 │   ├── screenshot.ts
+│   │   ├── screenshots.ts          │   ├── interaction.ts
+│   │   └── ...                     │   └── ...
+│   └── ...                         └── tools/ (MCP tool definitions)
+├── dashboard/
+│   ├── App.tsx                     (Full-page dashboard UI)
+│   ├── sections/
+│   │   ├── Profiles.tsx            (Profile management)
+│   │   ├── Files.tsx               (File browser)
+│   │   ├── Terminals.tsx           (Terminal management)
+│   │   ├── McpPlayground.tsx       (MCP tool testing)
+│   │   └── Settings.tsx
+│   ├── components/files/           (File tree, viewers)
+│   └── contexts/                   (React contexts)
+├── 3d/FocusScene.tsx
 └── shared/messaging.ts
 ```
 
@@ -133,8 +151,12 @@ See `docs/API.md` for full API documentation.
 | `extension/components/Terminal.tsx` | xterm.js terminal + resize handling |
 | `extension/hooks/useTerminalSessions.ts` | Session lifecycle, Chrome storage sync |
 | `extension/hooks/useProfiles.ts` | Profile CRUD and persistence |
-| `extension/background/background.ts` | Service worker, WebSocket management |
+| `extension/background/index.ts` | Service worker entry point |
+| `extension/background/websocket.ts` | WebSocket connection management |
+| `extension/background/messageHandlers.ts` | Chrome runtime message handlers |
+| `extension/background/browserMcp/` | Browser MCP handlers (tabs, screenshots, etc.) |
 | `extension/3d/FocusScene.tsx` | 3D Focus Mode (Three.js + React Three Fiber) |
+| `tabz-mcp-server/src/client/` | MCP client modules (core, screenshot, interaction, etc.) |
 | `backend/modules/pty-handler.js` | PTY spawning, tmux integration |
 | `backend/routes/api.js` | REST endpoints including spawn API |
 
