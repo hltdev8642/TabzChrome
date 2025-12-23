@@ -36,6 +36,19 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
   - 🔵 Blue glow for `tabz_fill` (input focused)
   - Pulsing animation (2 pulses over 1.6s), auto-scrolls element into view
 
+### Refactored
+- **Split `background.ts`** (4,537 lines → 13 modules):
+  - Core: `index.ts`, `state.ts`, `utils.ts`, `websocket.ts`, `alarms.ts`
+  - Features: `consoleCapture.ts`, `networkCapture.ts`, `messageHandlers.ts`, `contextMenus.ts`, `omnibox.ts`, `keyboard.ts`
+  - Browser MCP handlers: `browserMcp/` subdirectory with 9 domain-specific modules
+  - Extracted duplicated helpers: `getValidWindowId`, `tryOpenSidebar`, `windowsToWslPath`
+- **Split `client.ts`** in MCP server (1,041 lines → 8 modules):
+  - `client/core.ts`, `screenshot.ts`, `bookmarks.ts`, `downloads.ts`, `interaction.ts`, `network.ts`, `debugger.ts`, `index.ts`
+  - Consolidated `formatBytes()` into shared `utils.ts`
+  - Removed dead code: `cleanupScreenshots()`, `convertPathForWSL()`, `isRunningInWSL()`
+- **Updated error messages** - Removed CDP references, now reference TabzChrome extension
+- **Synced skills** - `.claude/skills/tabz-guide/` synced from `plugins/`
+
 ### Fixed
 - **DOM tree returning empty** - Handle document nodeType 9 (was filtering out root node)
 - **Coverage tool timeout** - Fixed duplicate `type` property overwriting message type with coverage type
