@@ -1393,9 +1393,9 @@ function SidePanelTerminal() {
 
               {/* Claude Status (if present) */}
               {claudeStatus && (
-                <div className="flex items-center gap-2 pt-2 border-t border-[#333]">
-                  <span className="text-sm">{getRobotEmojis(claudeStatus)}</span>
-                  <span className="text-[13px] text-gray-300">
+                <div className="flex items-center gap-2 pt-2 border-t border-[#333] overflow-hidden">
+                  <span className="text-sm flex-shrink-0">{getRobotEmojis(claudeStatus)}</span>
+                  <span className="text-[13px] text-gray-300 truncate min-w-0" title={getFullStatusText(claudeStatus)}>
                     {getFullStatusText(claudeStatus)}
                   </span>
                   {claudeStatus.context_pct != null && (
