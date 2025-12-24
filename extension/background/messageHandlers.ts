@@ -47,6 +47,7 @@ export function setupMessageHandlers(): void {
             profile: message.profile,
             isChrome: true,
             isDark: message.isDark,
+            pasteOnly: message.pasteOnly || false,
           },
           requestId,
         })
@@ -395,6 +396,7 @@ export function setupMessageHandlers(): void {
             useTmux: true,
             name: message.name || message.command?.split(' ')[0] || 'Terminal',
             isChrome: true,
+            pasteOnly: message.pasteOnly || false,
           },
           requestId,
         })

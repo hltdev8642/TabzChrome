@@ -301,6 +301,7 @@ class TmuxSessionManager {
             currentTool: cachedState.current_tool || null,
             lastUpdated: cachedState.last_updated,
             context_pct: cachedState.context_pct,
+            details: cachedState.details || null,
           };
         }
       }

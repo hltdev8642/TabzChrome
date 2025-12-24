@@ -81,6 +81,7 @@ export interface Profile {
   themeName: string  // Theme family name (high-contrast, dracula, ocean, etc.)
   audioOverrides?: ProfileAudioOverrides  // Optional per-profile audio settings
   category?: string  // Optional category for grouping (e.g., "Claude Code", "TUI Tools")
+  reference?: string  // Optional reference URL or file path (shows paperclip on tab)
 }
 
 // Category settings stored separately from profiles

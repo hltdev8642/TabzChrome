@@ -1295,6 +1295,21 @@ function SidePanelTerminal() {
           setEditProfileId(profileId)
           setIsSettingsOpen(true)
         }}
+        onOpenReference={(() => {
+          const terminal = sessions.find(t => t.id === contextMenu.terminalId)
+          const reference = terminal?.profile?.reference
+          if (!reference) return undefined
+          return () => {
+            if (reference.startsWith('http://') || reference.startsWith('https://')) {
+              // Open URL in new Chrome tab
+              chrome.tabs.create({ url: reference })
+            } else {
+              // Open file in dashboard Files section
+              const dashboardUrl = chrome.runtime.getURL(`dashboard/index.html#/files?path=${encodeURIComponent(reference)}`)
+              chrome.tabs.create({ url: dashboardUrl })
+            }
+          }
+        })()}
         onRename={handleContextRename}
         onCopyId={() => {
           const terminal = sessions.find(t => t.id === contextMenu.terminalId)

@@ -12,6 +12,7 @@ export async function spawnTerminal(options: {
   command?: string
   workingDir?: string
   profile?: Profile
+  pasteOnly?: boolean // If true, paste command without executing
 }) {
   const message: SpawnTerminalMessage = {
     type: 'SPAWN_TERMINAL',
@@ -20,6 +21,7 @@ export async function spawnTerminal(options: {
     workingDir: options.workingDir,
     profile: options.profile,
     useTmux: true,
+    pasteOnly: options.pasteOnly,
   }
 
   return sendMessage(message)

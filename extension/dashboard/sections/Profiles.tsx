@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Grid, Grid3X3, List, Search, Play, RefreshCw, Terminal, Folder, X, Settings, GripVertical, Star, Copy } from 'lucide-react'
+import { Grid, Grid3X3, List, Search, Play, RefreshCw, Terminal, Folder, X, Settings, GripVertical, Star, Copy, ClipboardType } from 'lucide-react'
 import { spawnTerminal, getProfiles } from '../hooks/useDashboard'
 import { useWorkingDirectory } from '../../hooks/useWorkingDirectory'
 import type { Profile } from '../../components/SettingsModal'
@@ -134,6 +134,24 @@ export default function ProfilesSection() {
       })
     } catch (err) {
       console.error('Launch error:', err)
+    }
+  }
+
+  // Launch profile but paste command without executing (for TUIs/CLIs with flags)
+  const launchProfilePasteOnly = async (profile: Profile) => {
+    try {
+      const effectiveWorkingDir = (profile.workingDir && profile.workingDir !== '~')
+        ? profile.workingDir
+        : globalWorkingDir
+      await spawnTerminal({
+        name: profile.name,
+        command: profile.command,
+        workingDir: effectiveWorkingDir,
+        profile: { ...profile, workingDir: effectiveWorkingDir },
+        pasteOnly: true,
+      })
+    } catch (err) {
+      console.error('Paste-only launch error:', err)
     }
   }
 
@@ -491,6 +509,7 @@ export default function ProfilesSection() {
                       themeGradient={themes[profile.themeName]?.dark.backgroundGradient}
                       category={category}
                       onClick={() => launchProfile(profile)}
+                      onPasteOnly={() => launchProfilePasteOnly(profile)}
                       onEdit={() => editProfile(profile.id)}
                       isDragging={draggedIndex === originalIndex}
                       isDragOver={dragOverIndex === originalIndex}
@@ -515,6 +534,7 @@ export default function ProfilesSection() {
                       themeGradient={themes[profile.themeName]?.dark.backgroundGradient}
                       category={category}
                       onClick={() => launchProfile(profile)}
+                      onPasteOnly={() => launchProfilePasteOnly(profile)}
                       onEdit={() => editProfile(profile.id)}
                       isDragging={draggedIndex === originalIndex}
                       isDragOver={dragOverIndex === originalIndex}
@@ -551,6 +571,7 @@ interface ProfileCardProps {
   themeGradient?: string
   category: string
   onClick: () => void
+  onPasteOnly: () => void
   onEdit: () => void
   isDragging: boolean
   isDragOver: boolean
@@ -568,6 +589,7 @@ function ProfileCard({
   themeGradient,
   category,
   onClick,
+  onPasteOnly,
   onEdit,
   isDragging,
   isDragOver,
@@ -667,6 +689,16 @@ function ProfileCard({
         >
           <Copy className="w-4 h-4 text-white/50" />
         </button>
+        {profile.command && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onPasteOnly() }}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="p-1.5 rounded-md hover:bg-white/10 transition-colors"
+            title="Paste command without running (edit flags first)"
+          >
+            <ClipboardType className="w-4 h-4 text-white/50" />
+          </button>
+        )}
         <button
           onClick={(e) => { e.stopPropagation(); onEdit() }}
           onMouseDown={(e) => e.stopPropagation()}
@@ -694,6 +726,7 @@ interface ProfileListItemProps {
   themeGradient?: string
   category: string
   onClick: () => void
+  onPasteOnly: () => void
   onEdit: () => void
   isDragging: boolean
   isDragOver: boolean
@@ -711,6 +744,7 @@ function ProfileListItem({
   themeGradient,
   category,
   onClick,
+  onPasteOnly,
   onEdit,
   isDragging,
   isDragOver,
@@ -796,6 +830,16 @@ function ProfileListItem({
       >
         <Copy className="w-4 h-4 text-white/50 hover:text-white/80" />
       </button>
+      {profile.command && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onPasteOnly() }}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-all flex-shrink-0 z-10"
+          title="Paste command without running (edit flags first)"
+        >
+          <ClipboardType className="w-4 h-4 text-white/50 hover:text-white/80" />
+        </button>
+      )}
       <button
         onClick={(e) => { e.stopPropagation(); onEdit() }}
         onMouseDown={(e) => e.stopPropagation()}

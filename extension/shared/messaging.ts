@@ -73,6 +73,7 @@ export interface SpawnTerminalMessage extends BaseMessage {
   name?: string; // Friendly name for the tab
   profile?: Profile; // Profile settings (fontSize, fontFamily, theme, workingDir)
   isDark?: boolean; // Global dark/light mode for COLORFGBG env var
+  pasteOnly?: boolean; // If true, paste command without executing (no Enter)
 }
 
 export interface CloseSessionMessage extends BaseMessage {

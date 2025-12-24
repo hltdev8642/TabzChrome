@@ -37,6 +37,8 @@ interface SessionContextMenuProps {
   onResetFontSize?: () => void
   /** Callback to edit the profile for this terminal */
   onEditProfile?: () => void
+  /** Callback to open the reference URL or file */
+  onOpenReference?: () => void
   /** Callback to rename the terminal tab */
   onRename: () => void
   /** Callback to copy the session ID to clipboard */
@@ -78,6 +80,7 @@ export function SessionContextMenu({
   onDecreaseFontSize,
   onResetFontSize,
   onEditProfile,
+  onOpenReference,
   onRename,
   onCopyId,
   onViewAsText,
@@ -166,6 +169,17 @@ export function SessionContextMenu({
           }}
         >
           ⚙️ Edit Profile...
+        </button>
+      )}
+      {onOpenReference && (
+        <button
+          className="context-menu-item"
+          onClick={() => {
+            onOpenReference()
+            onClose()
+          }}
+        >
+          📎 Open Reference
         </button>
       )}
       <button

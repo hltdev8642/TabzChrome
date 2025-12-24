@@ -383,7 +383,10 @@ class PTYHandler extends EventEmitter {
     // This helps with mouse support, scrollback, and other terminal features
     const delay = 1200; // Standardized delay for all terminal types
 
-    log.debug(`Setting up auto-execute for ${terminalType} with ${delay}ms delay`);
+    // Check if we should only paste without executing (no Enter key)
+    const pasteOnly = terminalConfig?.pasteOnly || false;
+
+    log.debug(`Setting up auto-execute for ${terminalType} with ${delay}ms delay (pasteOnly: ${pasteOnly})`);
 
     // Delay to ensure PTY is ready
     setTimeout(() => {
@@ -395,7 +398,8 @@ class PTYHandler extends EventEmitter {
           terminalConfig.commands.forEach(raw => {
             const cmd = typeof raw === 'string' ? raw : ''
             if (cmd !== undefined) {
-              const toWrite = cmd.endsWith('\n') ? cmd : (cmd + '\n')
+              // If pasteOnly, don't add newline; otherwise execute normally
+              const toWrite = pasteOnly ? cmd : (cmd.endsWith('\n') ? cmd : (cmd + '\n'))
               // Don't log command content - may contain escape sequences!
               ptyProcess.write(toWrite);
             }
@@ -406,8 +410,9 @@ class PTYHandler extends EventEmitter {
         // Check for single command string (ALLOW for all types including AI terminals!)
         if (terminalConfig && terminalConfig.command && typeof terminalConfig.command === 'string') {
           const cmd = terminalConfig.command;
-          const toWrite = cmd.endsWith('\n') ? cmd : (cmd + '\n')
-          log.debug(`Executing custom command for ${terminalType}`);
+          // If pasteOnly, just paste the command without Enter; otherwise execute it
+          const toWrite = pasteOnly ? cmd : (cmd.endsWith('\n') ? cmd : (cmd + '\n'))
+          log.debug(`${pasteOnly ? 'Pasting' : 'Executing'} custom command for ${terminalType}`);
           // Don't log command content - may contain escape sequences!
           ptyProcess.write(toWrite);
           return;
@@ -421,21 +426,23 @@ class PTYHandler extends EventEmitter {
 
         // Build commands with optional prompts for AI terminals
         // Don't pass the command name itself as an argument (e.g., avoid "claude claude")
+        // Note: Don't include \n here - we add it based on pasteOnly below
         const commands = {
-          'claude-code': prompt && prompt !== 'claude' ? `claude "${prompt}"\n` : 'claude\n',
-          'opencode': prompt && prompt !== 'opencode' ? `opencode "${prompt}"\n` : 'opencode\n',
-          'codex': prompt && prompt !== 'codex' ? `codex "${prompt}"\n` : 'codex\n',
-          'orchestrator': 'echo "Orchestrator terminal ready"\n', // Fixed: orchestrator shouldn't run claude
-          'gemini': prompt && prompt !== 'gemini' ? `gemini "${prompt}"\n` : 'gemini\n',
-          'docker-ai': 'docker.exe ai\n'  // Fixed: Use docker.exe for WSL/Windows
+          'claude-code': prompt && prompt !== 'claude' ? `claude "${prompt}"` : 'claude',
+          'opencode': prompt && prompt !== 'opencode' ? `opencode "${prompt}"` : 'opencode',
+          'codex': prompt && prompt !== 'codex' ? `codex "${prompt}"` : 'codex',
+          'orchestrator': 'echo "Orchestrator terminal ready"',
+          'gemini': prompt && prompt !== 'gemini' ? `gemini "${prompt}"` : 'gemini',
+          'docker-ai': 'docker.exe ai'
           // bash, dashboard, script - no commands needed, interactive flag handles prompt
         };
-        
+
         const command = commands[terminalType];
         if (command) {
-          log.debug(`Auto-executing ${terminalType} startup command`);
-          // Don't log command content - it's just the command name but let's be consistent
-          ptyProcess.write(command);
+          // If pasteOnly, just paste the command without Enter; otherwise execute it
+          const toWrite = pasteOnly ? command : (command + '\n');
+          log.debug(`${pasteOnly ? 'Pasting' : 'Auto-executing'} ${terminalType} startup command`);
+          ptyProcess.write(toWrite);
           log.debug(`Startup command sent to PTY for ${terminalType}`);
         } else {
           log.debug(`No auto-command for terminal type: ${terminalType}`);

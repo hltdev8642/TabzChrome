@@ -13,6 +13,7 @@ import {
   getAvailableFonts,
   TTS_VOICES,
 } from './types'
+import { CategoryCombobox } from './CategoryCombobox'
 
 interface ProfilesTabProps {
   profiles: Profile[]
@@ -503,33 +504,29 @@ export function ProfilesTab({
           {/* Category */}
           <div>
             <label className="block text-xs text-gray-400 mb-1">Category (optional)</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={formData.category || ''}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                placeholder="e.g., Claude Code, TUI Tools"
-                list={`category-suggestions-${editingIndex !== null ? `edit-${editingIndex}` : 'add'}`}
-                className="flex-1 px-3 py-2 bg-black/50 border border-gray-700 rounded text-white text-sm focus:border-[#00ff88] focus:outline-none"
-              />
-              <datalist id={`category-suggestions-${editingIndex !== null ? `edit-${editingIndex}` : 'add'}`}>
-                {getUniqueCategories().map(cat => (
-                  <option key={cat} value={cat} />
-                ))}
-              </datalist>
-              {formData.category && (
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, category: '' })}
-                  className="px-2 py-1 text-gray-400 hover:text-gray-200 transition-colors"
-                  title="Clear category"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+            <CategoryCombobox
+              value={formData.category || ''}
+              onChange={(category) => setFormData({ ...formData, category })}
+              categories={getUniqueCategories()}
+              placeholder="Select or create category..."
+            />
             <p className="text-xs text-gray-400 mt-1">
               Group profiles together and color-code terminal tabs
+            </p>
+          </div>
+
+          {/* Reference */}
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Reference (optional)</label>
+            <input
+              type="text"
+              value={formData.reference || ''}
+              onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
+              placeholder="https://docs.example.com or ~/docs/flags.md"
+              className="w-full px-3 py-2 bg-black/50 border border-gray-700 rounded text-white text-sm font-mono focus:border-[#00ff88] focus:outline-none"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              URL or file path for docs/flags - shows paperclip icon on tab
             </p>
           </div>
 

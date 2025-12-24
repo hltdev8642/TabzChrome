@@ -15,6 +15,31 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.2.13] - 2025-12-24
+
+### Added
+- **Dashboard Active Terminals table UI** - Complete redesign of the terminals list:
+  - Proper table layout with resizable columns (drag column edges to resize)
+  - Columns: Status, Name, Activity, Context %, Path, Branch, Created, Actions
+  - Rich Claude activity display showing tool + file details (e.g., "✏️ Edit: settings.tsx")
+  - Context % properly centered and color-coded
+- **Hover tooltip on terminal rows** - Hover for ~400ms to see detailed info:
+  - Terminal name, session ID with copy button, working directory, git branch
+  - Current Claude status with context percentage
+  - Recent activity history (last 12 tool uses with timestamps)
+  - Created time
+- **Right-click context menu** - Right-click terminal rows for quick actions:
+  - Copy Session ID (for conductor/tmux workflows)
+  - Open in 3D Focus
+- **3D Focus button in Actions** - New cube icon to open terminal in 3D Focus mode
+- **Copy session ID in tooltip** - Small copy icon next to session name for quick access
+
+### Changed
+- Backend now returns `details` field in claudeState for rich tool information
+- Activity column shows file names being edited, commands being run, patterns being searched
+
+---
+
 ## [1.2.12] - 2025-12-24
 
 ### Added
@@ -23,6 +48,19 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
   - Works in file viewer toolbar and via right-click on file tabs
   - TTS loading indicator shows spinner while generating audio for long files
 - **Send to Chat in toolbar** - Quick icon button to send file content to sidebar chat
+- **Category dropdown for profiles** - New combobox-style category selector when editing profiles
+  - Shows all existing categories in a dropdown menu
+  - "Create new category..." option for adding custom categories
+  - Filters existing categories as you type when creating
+  - Replaces the old datalist input that only showed suggestions while typing
+- **Paste-only launch for profiles** - New clipboard icon on dashboard profile cards/list
+  - Spawns terminal and types the command without pressing Enter
+  - Useful for TUIs and AI CLIs where you want to add flags before running
+  - Only appears on profiles that have a start command
+- **Profile reference links** - Add a URL or file path to any profile for quick access to docs
+  - Set in profile edit form (Reference field)
+  - Right-click terminal tab → "Open Reference" to open
+  - URLs open in new Chrome tab, file paths open in dashboard Files section
 
 ### Changed
 - **Cleaner file viewer toolbar** - Now shows only Copy and Send icons plus ⋮ menu
