@@ -113,10 +113,9 @@ interface Terminal3DWrapperProps {
   themeName?: string
   fontSize?: number
   fontFamily?: string
-  useWebGL?: boolean
 }
 
-function Terminal3DWrapper({ sessionName, terminalId, width = 1200, height = 800, themeName = 'high-contrast', fontSize = 16, fontFamily = 'monospace', useWebGL = true }: Terminal3DWrapperProps) {
+function Terminal3DWrapper({ sessionName, terminalId, width = 1200, height = 800, themeName = 'high-contrast', fontSize = 16, fontFamily = 'monospace' }: Terminal3DWrapperProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useTerminal3DMouseFix(containerRef, true)
@@ -127,7 +126,7 @@ function Terminal3DWrapper({ sessionName, terminalId, width = 1200, height = 800
       style={{
         width: `${width}px`,
         height: `${height}px`,
-        background: useWebGL ? '#000000' : 'transparent',
+        background: 'transparent',
         borderRadius: '8px',
         overflow: 'hidden',
         pointerEvents: 'auto',
@@ -143,12 +142,11 @@ function Terminal3DWrapper({ sessionName, terminalId, width = 1200, height = 800
       }}
     >
       <Terminal
-        key={`${terminalId}-${useWebGL ? 'webgl' : 'canvas'}`}
+        key={terminalId}
         terminalId={terminalId}
         sessionName={sessionName}
         isActive={true}
         onClose={() => window.close()}
-        useWebGL={useWebGL}
         themeName={themeName}
         fontSize={fontSize}
         fontFamily={fontFamily}
@@ -164,10 +162,9 @@ interface TerminalDisplayProps {
   themeName?: string
   fontSize?: number
   fontFamily?: string
-  useWebGL?: boolean
 }
 
-function TerminalDisplay({ sessionName, terminalId, themeName, fontSize, fontFamily, useWebGL }: TerminalDisplayProps) {
+function TerminalDisplay({ sessionName, terminalId, themeName, fontSize, fontFamily }: TerminalDisplayProps) {
   const terminalWidth = 1200
   const terminalHeight = 800
 
@@ -191,7 +188,6 @@ function TerminalDisplay({ sessionName, terminalId, themeName, fontSize, fontFam
           themeName={themeName}
           fontSize={fontSize}
           fontFamily={fontFamily}
-          useWebGL={useWebGL}
         />
       </Html>
     </group>
@@ -206,7 +202,6 @@ export default function FocusScene() {
   const [themeName, setThemeName] = useState<string>('high-contrast')
   const [fontSize, setFontSize] = useState<number>(16)
   const [fontFamily, setFontFamily] = useState<string>('monospace')
-  const [useWebGL, setUseWebGL] = useState<boolean>(true)
 
   useEffect(() => {
     // Get session info from URL params
@@ -219,14 +214,12 @@ export default function FocusScene() {
     const theme = params.get('theme') || 'high-contrast'
     const size = parseInt(params.get('fontSize') || '16', 10)
     const family = params.get('fontFamily') || 'monospace'
-    const webgl = params.get('useWebGL') !== 'false' // Default true for 3D mode
 
     setSessionName(session)
     setTerminalId(id)
     setThemeName(theme)
     setFontSize(size)
     setFontFamily(family)
-    setUseWebGL(webgl)
 
     // Set page title
     document.title = session ? `3D Focus: ${session}` : '3D Focus Mode'
@@ -260,29 +253,6 @@ export default function FocusScene() {
       window.removeEventListener('beforeunload', handleClose)
       handleClose() // Also call on unmount
     }
-  }, [])
-
-  // Sync useWebGL with Chrome storage (bidirectional)
-  const isInitialMount = useRef(true)
-  useEffect(() => {
-    // Don't save on initial mount (we just read from URL params)
-    if (isInitialMount.current) {
-      isInitialMount.current = false
-      return
-    }
-    // Save to Chrome storage when toggled in 3D mode
-    chrome.storage.local.set({ useWebGL })
-  }, [useWebGL])
-
-  // Listen for Chrome storage changes (from sidebar toggle)
-  useEffect(() => {
-    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
-      if (changes.useWebGL && typeof changes.useWebGL.newValue === 'boolean') {
-        setUseWebGL(changes.useWebGL.newValue)
-      }
-    }
-    chrome.storage.onChanged.addListener(handleStorageChange)
-    return () => chrome.storage.onChanged.removeListener(handleStorageChange)
   }, [])
 
   if (!sessionName) {
@@ -320,7 +290,7 @@ export default function FocusScene() {
         <Stars radius={100} depth={50} count={2000} factor={4} fade speed={1} />
 
         {/* Terminal */}
-        <TerminalDisplay sessionName={sessionName} terminalId={terminalId} themeName={themeName} fontSize={fontSize} fontFamily={fontFamily} useWebGL={useWebGL} />
+        <TerminalDisplay sessionName={sessionName} terminalId={terminalId} themeName={themeName} fontSize={fontSize} fontFamily={fontFamily} />
 
         {/* Camera controller */}
         <FocusedCameraController locked={cameraLocked} onToggleLock={() => setCameraLocked(l => !l)} />
@@ -363,25 +333,6 @@ export default function FocusScene() {
         display: 'flex',
         gap: 8,
       }}>
-        {/* WebGL toggle */}
-        <button
-          onClick={() => setUseWebGL(v => !v)}
-          style={{
-            background: useWebGL ? 'rgba(0, 255, 0, 0.2)' : 'rgba(255, 255, 0, 0.1)',
-            border: `1px solid ${useWebGL ? 'rgba(0, 255, 0, 0.4)' : 'rgba(255, 255, 0, 0.3)'}`,
-            color: useWebGL ? '#00ff00' : '#ffff00',
-            padding: '8px 12px',
-            borderRadius: 6,
-            fontFamily: 'monospace',
-            fontSize: '11px',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-          }}
-          title={useWebGL ? 'Using WebGL renderer - click for Canvas' : 'Using Canvas renderer - click for WebGL'}
-        >
-          {useWebGL ? 'WebGL' : 'Canvas'}
-        </button>
-
         {/* Return to Sidebar button */}
         <button
           onClick={() => window.close()}

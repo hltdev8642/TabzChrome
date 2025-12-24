@@ -27,6 +27,16 @@ interface SessionContextMenuProps {
   y: number
   /** Terminal session to show menu for */
   terminal: TerminalSession | null
+  /** Current font size offset for this terminal */
+  fontSizeOffset?: number
+  /** Callback to increase font size for this terminal */
+  onIncreaseFontSize?: () => void
+  /** Callback to decrease font size for this terminal */
+  onDecreaseFontSize?: () => void
+  /** Callback to reset font size to default */
+  onResetFontSize?: () => void
+  /** Callback to edit the profile for this terminal */
+  onEditProfile?: () => void
   /** Callback to rename the terminal tab */
   onRename: () => void
   /** Callback to copy the session ID to clipboard */
@@ -63,6 +73,11 @@ export function SessionContextMenu({
   x,
   y,
   terminal,
+  fontSizeOffset,
+  onIncreaseFontSize,
+  onDecreaseFontSize,
+  onResetFontSize,
+  onEditProfile,
   onRename,
   onCopyId,
   onViewAsText,
@@ -76,6 +91,13 @@ export function SessionContextMenu({
   // All ctt-* terminals have tmux sessions (the ID is the session name)
   const isTmuxSession = terminal.id?.startsWith('ctt-') || terminal.sessionName
 
+  // Font size offset bounds
+  const MIN_FONT_OFFSET = -4
+  const MAX_FONT_OFFSET = 8
+  const currentOffset = fontSizeOffset || 0
+  const canIncrease = currentOffset < MAX_FONT_OFFSET
+  const canDecrease = currentOffset > MIN_FONT_OFFSET
+
   return (
     <div
       className="tab-context-menu"
@@ -87,6 +109,65 @@ export function SessionContextMenu({
       }}
       onClick={(e) => e.stopPropagation()}
     >
+      {/* Font Size Controls - at the top for quick access */}
+      {/* These don't close the menu so users can click multiple times */}
+      {onIncreaseFontSize && onDecreaseFontSize && onResetFontSize && (
+        <>
+          <div className="context-menu-row">
+            <span className="context-menu-label">🔍 Font Size</span>
+            <div className="context-menu-buttons">
+              <button
+                className={`context-menu-btn ${!canDecrease ? 'disabled' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (canDecrease) onDecreaseFontSize()
+                }}
+                disabled={!canDecrease}
+                title="Decrease font size (Ctrl+-)"
+              >
+                −
+              </button>
+              <span className="context-menu-value">
+                {currentOffset > 0 ? `+${currentOffset}` : currentOffset < 0 ? currentOffset : '0'}
+              </span>
+              <button
+                className={`context-menu-btn ${!canIncrease ? 'disabled' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (canIncrease) onIncreaseFontSize()
+                }}
+                disabled={!canIncrease}
+                title="Increase font size (Ctrl+=)"
+              >
+                +
+              </button>
+              <button
+                className={`context-menu-btn reset ${currentOffset === 0 ? 'disabled' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (currentOffset !== 0) onResetFontSize()
+                }}
+                disabled={currentOffset === 0}
+                title="Reset font size (Ctrl+0)"
+              >
+                ↺
+              </button>
+            </div>
+          </div>
+          <div className="context-menu-divider" />
+        </>
+      )}
+      {onEditProfile && (
+        <button
+          className="context-menu-item"
+          onClick={() => {
+            onEditProfile()
+            onClose()
+          }}
+        >
+          ⚙️ Edit Profile...
+        </button>
+      )}
       <button
         className="context-menu-item"
         onClick={() => {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import ReactDOM from 'react-dom/client'
-import { Terminal as TerminalIcon, Settings, Plus, X, ChevronDown, Moon, Sun, Keyboard, Volume2, VolumeX, RefreshCw, LayoutDashboard, Zap, Layers } from 'lucide-react'
+import { Terminal as TerminalIcon, Settings, Plus, X, ChevronDown, Moon, Sun, Keyboard, Volume2, VolumeX, RefreshCw, LayoutDashboard } from 'lucide-react'
 import { Badge } from '../components/ui/badge'
 import { Terminal } from '../components/Terminal'
 import { SettingsModal, type Profile } from '../components/SettingsModal'
@@ -58,7 +58,6 @@ function SidePanelTerminal() {
   const [showDirDropdown, setShowDirDropdown] = useState(false)
   const [customDirInput, setCustomDirInput] = useState('')
   const [isDark, setIsDark] = useState(true)  // Global dark/light mode toggle
-  const [useWebGL, setUseWebGL] = useState(false)  // Canvas default (supports light/dark), WebGL optional
   const audioUnlockedRef = useRef(false)  // Track if audio has been unlocked by user interaction
 
   // Tab tooltip state
@@ -139,6 +138,9 @@ function SidePanelTerminal() {
     currentSessionRef,
     connectionCount,
     handleWebSocketMessage,
+    increaseFontSize,
+    decreaseFontSize,
+    resetFontSize,
   } = useTerminalSessions({
     wsConnected,
     profiles,
@@ -397,19 +399,11 @@ function SidePanelTerminal() {
     }
   }, [contextMenu.show])
 
-  // Load dark mode and renderer preferences from Chrome storage
+  // Load dark mode preference from Chrome storage
   useEffect(() => {
-    chrome.storage.local.get(['isDark', 'useWebGL'], (result) => {
+    chrome.storage.local.get(['isDark'], (result) => {
       if (typeof result.isDark === 'boolean') {
         setIsDark(result.isDark)
-      }
-      if (typeof result.useWebGL === 'boolean') {
-        setUseWebGL(result.useWebGL)
-        // WebGL requires dark mode - enforce on load
-        if (result.useWebGL && result.isDark === false) {
-          setIsDark(true)
-          chrome.storage.local.set({ isDark: true })
-        }
       }
     })
   }, [])
@@ -418,15 +412,6 @@ function SidePanelTerminal() {
   useEffect(() => {
     chrome.storage.local.set({ isDark })
   }, [isDark])
-
-  // Save renderer preference and enforce dark mode when WebGL is enabled
-  useEffect(() => {
-    chrome.storage.local.set({ useWebGL })
-    // WebGL requires dark mode
-    if (useWebGL && !isDark) {
-      setIsDark(true)
-    }
-  }, [useWebGL])
 
   // Close dir dropdown when clicking outside
   useEffect(() => {
@@ -742,7 +727,7 @@ function SidePanelTerminal() {
     const themeName = effectiveProfile?.themeName || 'high-contrast'
     const fontSize = effectiveProfile?.fontSize || 16
     const fontFamily = encodeURIComponent(effectiveProfile?.fontFamily || 'monospace')
-    const url = chrome.runtime.getURL(`3d/3d-focus.html?session=${terminal.sessionName}&id=${terminal.id}&theme=${themeName}&fontSize=${fontSize}&fontFamily=${fontFamily}&useWebGL=${useWebGL}`)
+    const url = chrome.runtime.getURL(`3d/3d-focus.html?session=${terminal.sessionName}&id=${terminal.id}&theme=${themeName}&fontSize=${fontSize}&fontFamily=${fontFamily}`)
     chrome.tabs.create({ url })
 
     setContextMenu({ show: false, x: 0, y: 0, terminalId: null })
@@ -832,38 +817,16 @@ function SidePanelTerminal() {
             />
           )}
 
-          {/* Renderer Toggle (WebGL/Canvas) - auto-refreshes to apply */}
+          {/* Dark/Light Mode Toggle */}
           <button
-            onClick={() => {
-              const newValue = !useWebGL
-              chrome.storage.local.set({ useWebGL: newValue, isDark: newValue ? true : isDark }, () => {
-                setTimeout(() => window.location.reload(), 150)
-              })
-            }}
+            onClick={() => setIsDark(!isDark)}
             className={`p-1.5 rounded-md transition-colors ${
-              useWebGL
-                ? 'bg-[#00ff88]/20 text-[#00ff88] hover:bg-[#00ff88]/30'
-                : 'hover:bg-purple-500/10 text-gray-400 hover:text-purple-400'
+              isDark
+                ? 'hover:bg-[#00ff88]/10 text-gray-400 hover:text-[#00ff88]'
+                : 'hover:bg-orange-500/10 text-gray-400 hover:text-orange-400'
             }`}
-            title={useWebGL ? 'WebGL (dark only, crisp) - click for Canvas' : 'Canvas (light/dark) - click for WebGL'}
-            aria-label={useWebGL ? 'Switch to Canvas renderer' : 'Switch to WebGL renderer'}
-          >
-            {useWebGL ? <Zap className="h-4 w-4" /> : <Layers className="h-4 w-4" />}
-          </button>
-
-          {/* Dark/Light Mode Toggle - disabled when WebGL is on */}
-          <button
-            onClick={() => !useWebGL && setIsDark(!isDark)}
-            className={`p-1.5 rounded-md transition-colors ${
-              useWebGL
-                ? 'text-gray-600 cursor-not-allowed'
-                : isDark
-                  ? 'hover:bg-[#00ff88]/10 text-gray-400 hover:text-[#00ff88]'
-                  : 'hover:bg-orange-500/10 text-gray-400 hover:text-orange-400'
-            }`}
-            title={useWebGL ? 'Light mode disabled (WebGL requires dark mode)' : isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-            disabled={useWebGL}
           >
             {isDark ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
           </button>
@@ -1266,9 +1229,12 @@ function SidePanelTerminal() {
                         fontFamily={effectiveProfile?.fontFamily || 'monospace'}
                         themeName={effectiveProfile?.themeName || 'high-contrast'}
                         isDark={isDark}
-                        useWebGL={useWebGL}
                         isActive={session.id === currentSession}
                         pasteCommand={session.id === currentSession ? pasteCommand : null}
+                        fontSizeOffset={session.fontSizeOffset}
+                        onIncreaseFontSize={() => increaseFontSize(session.id)}
+                        onDecreaseFontSize={() => decreaseFontSize(session.id)}
+                        onResetFontSize={() => resetFontSize(session.id)}
                         onClose={() => {
                           sendMessage({
                             type: 'CLOSE_TERMINAL',
@@ -1318,6 +1284,17 @@ function SidePanelTerminal() {
         x={contextMenu.x}
         y={contextMenu.y}
         terminal={sessions.find(t => t.id === contextMenu.terminalId) || null}
+        fontSizeOffset={sessions.find(t => t.id === contextMenu.terminalId)?.fontSizeOffset}
+        onIncreaseFontSize={() => contextMenu.terminalId && increaseFontSize(contextMenu.terminalId)}
+        onDecreaseFontSize={() => contextMenu.terminalId && decreaseFontSize(contextMenu.terminalId)}
+        onResetFontSize={() => contextMenu.terminalId && resetFontSize(contextMenu.terminalId)}
+        onEditProfile={() => {
+          const terminal = sessions.find(t => t.id === contextMenu.terminalId)
+          // Use terminal's profile ID, or fall back to default profile
+          const profileId = terminal?.profile?.id || defaultProfileId || 'default'
+          setEditProfileId(profileId)
+          setIsSettingsOpen(true)
+        }}
         onRename={handleContextRename}
         onCopyId={() => {
           const terminal = sessions.find(t => t.id === contextMenu.terminalId)

@@ -4,28 +4,9 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { CanvasAddon } from '@xterm/addon-canvas'
-import { WebglAddon } from '@xterm/addon-webgl'
 import '@xterm/xterm/css/xterm.css'
 import { sendMessage, connectToBackground } from '../shared/messaging'
 import { getThemeColors, getBackgroundGradient, ThemeColors } from '../styles/themes'
-
-/**
- * Adjust theme background for WebGL renderer compatibility
- * WebGL renders transparent as black - use slight tint matching gradient.
- * Note: WebGL is dark-mode only (light mode uses Canvas renderer).
- */
-function adjustThemeForWebGL(colors: ThemeColors, useWebGL: boolean): ThemeColors {
-  if (!useWebGL) return colors
-  const hex = colors.black
-  const match = hex.match(/^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})/)
-  if (match) {
-    const r = parseInt(match[1], 16)
-    const g = parseInt(match[2], 16)
-    const b = parseInt(match[3], 16)
-    return { ...colors, background: `rgba(${r}, ${g}, ${b}, 1)` }
-  }
-  return { ...colors, background: colors.black }
-}
 
 /**
  * Props for the Terminal component
@@ -43,7 +24,11 @@ interface TerminalProps {
   isActive?: boolean       // Whether this terminal is currently visible/active
   pasteCommand?: string | null  // Command to paste into terminal input
   onClose?: () => void
-  useWebGL?: boolean       // Use WebGL renderer (crispest text, but requires dark mode)
+  // Per-instance font size offset (temporary zoom, not persisted)
+  fontSizeOffset?: number
+  onIncreaseFontSize?: () => void
+  onDecreaseFontSize?: () => void
+  onResetFontSize?: () => void
 }
 // NOTE: ClaudeStatus interface removed - status polling handled by sidepanel's useClaudeStatus hook
 
@@ -78,7 +63,9 @@ interface TerminalProps {
  * @param props.onClose - Callback when terminal is closed
  * @returns Terminal container with xterm.js instance
  */
-export function Terminal({ terminalId, sessionName, terminalType = 'bash', workingDir, tmuxSession, fontSize = 16, fontFamily = 'monospace', themeName = 'high-contrast', isDark = true, isActive = true, pasteCommand = null, onClose, useWebGL = false }: TerminalProps) {
+export function Terminal({ terminalId, sessionName, terminalType = 'bash', workingDir, tmuxSession, fontSize = 16, fontFamily = 'monospace', themeName = 'high-contrast', isDark = true, isActive = true, pasteCommand = null, onClose, fontSizeOffset = 0, onIncreaseFontSize, onDecreaseFontSize, onResetFontSize }: TerminalProps) {
+  // Compute effective font size (base + offset)
+  const effectiveFontSize = fontSize + (fontSizeOffset || 0)
   const terminalRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const xtermRef = useRef<XTerm | null>(null)
@@ -137,6 +124,14 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
   // (callbacks capture props at creation time, refs give us current value)
   const isActiveRef = useRef(isActive)
   isActiveRef.current = isActive
+
+  // Font size callback refs - needed for keyboard shortcuts since attachCustomKeyEventHandler captures closure
+  const onIncreaseFontSizeRef = useRef(onIncreaseFontSize)
+  const onDecreaseFontSizeRef = useRef(onDecreaseFontSize)
+  const onResetFontSizeRef = useRef(onResetFontSize)
+  onIncreaseFontSizeRef.current = onIncreaseFontSize
+  onDecreaseFontSizeRef.current = onDecreaseFontSize
+  onResetFontSizeRef.current = onResetFontSize
 
   // Safe write function that queues data during resize operations
   // CRITICAL: xterm.js write() is async - data gets queued internally and parsed later
@@ -290,11 +285,11 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     console.log('[Terminal] Initializing xterm for terminal:', terminalId, '(now active)')
 
     // Get theme colors from the new theme system
-    const themeColors = adjustThemeForWebGL(getThemeColors(themeName, isDark), useWebGL)
+    const themeColors = getThemeColors(themeName, isDark)
 
     const xterm = new XTerm({
       cursorBlink: true,
-      fontSize,
+      fontSize: effectiveFontSize,
       fontFamily,
       theme: themeColors,
       allowTransparency: true, // Required for transparent backgrounds (CSS gradient shows through)
@@ -449,42 +444,15 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
         xterm.open(terminalRef.current)
         setIsInitialized(true)
 
-        // Load renderer addon for GPU-accelerated rendering (must be after open())
-        // WebGL = crispest text but requires dark mode (transparent bg issue)
-        // Canvas = supports both light and dark modes
+        // Load Canvas renderer for GPU-accelerated rendering (must be after open())
         let rendererUsed = 'dom'
-        if (useWebGL) {
-          try {
-            const webglAddon = new WebglAddon()
-            webglAddon.onContextLoss(() => {
-              console.warn('[Terminal] WebGL context lost, disposing addon')
-              webglAddon.dispose()
-            })
-            xterm.loadAddon(webglAddon)
-            rendererUsed = 'webgl'
-            console.log('[Terminal] WebGL renderer enabled')
-          } catch (e) {
-            console.warn('[Terminal] WebGL not available, falling back to Canvas:', e)
-            try {
-              const canvasAddon = new CanvasAddon()
-              xterm.loadAddon(canvasAddon)
-              canvasAddonRef.current = canvasAddon
-              rendererUsed = 'canvas'
-              console.log('[Terminal] Canvas renderer enabled (WebGL fallback)')
-            } catch (e2) {
-              console.warn('[Terminal] Canvas also not available, using DOM renderer:', e2)
-            }
-          }
-        } else {
-          try {
-            const canvasAddon = new CanvasAddon()
-            xterm.loadAddon(canvasAddon)
-            canvasAddonRef.current = canvasAddon
-            rendererUsed = 'canvas'
-            console.log('[Terminal] Canvas renderer enabled')
-          } catch (e) {
-            console.warn('[Terminal] Canvas not available, using DOM renderer:', e)
-          }
+        try {
+          const canvasAddon = new CanvasAddon()
+          xterm.loadAddon(canvasAddon)
+          canvasAddonRef.current = canvasAddon
+          rendererUsed = 'canvas'
+        } catch (e) {
+          console.warn('[Terminal] Canvas not available, using DOM renderer:', e)
         }
 
         console.log('[Terminal] xterm opened successfully', {
@@ -507,36 +475,13 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
           xterm.open(terminalRef.current)
           setIsInitialized(true)
 
-          // Load renderer addon (same as main path)
-          if (useWebGL) {
-            try {
-              const webglAddon = new WebglAddon()
-              webglAddon.onContextLoss(() => {
-                console.warn('[Terminal] WebGL context lost (fallback path), disposing addon')
-                webglAddon.dispose()
-              })
-              xterm.loadAddon(webglAddon)
-              console.log('[Terminal] WebGL renderer enabled (fallback path)')
-            } catch (e) {
-              console.warn('[Terminal] WebGL not available (fallback path), using Canvas:', e)
-              try {
-                const canvasAddon = new CanvasAddon()
-                xterm.loadAddon(canvasAddon)
-                canvasAddonRef.current = canvasAddon
-                console.log('[Terminal] Canvas renderer enabled (fallback path)')
-              } catch (e2) {
-                console.warn('[Terminal] Canvas also not available (fallback path):', e2)
-              }
-            }
-          } else {
-            try {
-              const canvasAddon = new CanvasAddon()
-              xterm.loadAddon(canvasAddon)
-              canvasAddonRef.current = canvasAddon
-              console.log('[Terminal] Canvas renderer enabled (fallback path)')
-            } catch (e) {
-              console.warn('[Terminal] Canvas not available (fallback path), using DOM renderer:', e)
-            }
+          // Load Canvas renderer (same as main path)
+          try {
+            const canvasAddon = new CanvasAddon()
+            xterm.loadAddon(canvasAddon)
+            canvasAddonRef.current = canvasAddon
+          } catch (e) {
+            console.warn('[Terminal] Canvas not available (fallback path), using DOM renderer:', e)
           }
 
           initialFit()
@@ -591,7 +536,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
       }, 200)
     }, 1000)
 
-    // Enable Shift+Ctrl+C/V for copy/paste
+    // Enable Shift+Ctrl+C/V for copy/paste and Ctrl/Cmd+=/- for font size
     // Important: Return true to allow all other keys (including tmux Ctrl+B) to pass through
     xterm.attachCustomKeyEventHandler((event) => {
       // Handle Ctrl+Shift+C (copy) - case insensitive
@@ -608,6 +553,31 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
         })
         return false
       }
+
+      // Font size shortcuts - Ctrl/Cmd + =, +, -, 0
+      // Use metaKey for macOS Command key, ctrlKey for Windows/Linux
+      const modifierKey = event.metaKey || event.ctrlKey
+      if (modifierKey && event.type === 'keydown') {
+        // Increase font size: Ctrl/Cmd + = or Ctrl/Cmd + +
+        if (event.key === '=' || event.key === '+') {
+          event.preventDefault()
+          onIncreaseFontSizeRef.current?.()
+          return false
+        }
+        // Decrease font size: Ctrl/Cmd + -
+        if (event.key === '-') {
+          event.preventDefault()
+          onDecreaseFontSizeRef.current?.()
+          return false
+        }
+        // Reset font size: Ctrl/Cmd + 0
+        if (event.key === '0') {
+          event.preventDefault()
+          onResetFontSizeRef.current?.()
+          return false
+        }
+      }
+
       // Allow all other keys to pass through to terminal (including Ctrl+B for tmux)
       return true
     })
@@ -841,14 +811,14 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
 
     // Track if we need a full redraw (font changes require clearing renderer cache)
     const fontChanged = xterm.options.fontFamily !== fontFamily
-    const fontSizeChanged = xterm.options.fontSize !== fontSize
+    const fontSizeChanged = xterm.options.fontSize !== effectiveFontSize
 
     // Store current scroll position before changes
     const currentScrollPos = xterm.buffer.active.viewportY
 
-    // Update font size
+    // Update font size (uses effectiveFontSize = base + offset)
     if (fontSizeChanged) {
-      xterm.options.fontSize = fontSize
+      xterm.options.fontSize = effectiveFontSize
     }
 
     // Update font family
@@ -857,7 +827,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     }
 
     // Update theme colors from the new theme system
-    const themeColors = adjustThemeForWebGL(getThemeColors(themeName, isDark), useWebGL)
+    const themeColors = getThemeColors(themeName, isDark)
     xterm.options.theme = themeColors
 
     // Clear texture atlas after theme change (cached glyphs have old colors)
@@ -914,7 +884,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
         flushWriteQueue()  // Flush any data queued during resize
       }
     }, 100)
-  }, [fontSize, fontFamily, themeName, isDark, terminalId])
+  }, [effectiveFontSize, fontFamily, themeName, isDark, terminalId])
 
   // Handle window resize - use triggerResizeTrick to force tmux to fully recalculate
   // EXPERIMENT: Like the EOL fix for tmux splits, we need CONSISTENT handling.
@@ -1036,7 +1006,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
   return (
     <div
       ref={containerRef}
-      className={`h-full flex flex-col terminal-container${useWebGL ? ' webgl-renderer' : ''}`}
+      className="h-full flex flex-col terminal-container"
       style={{
         background: backgroundGradient,
       }}

@@ -136,6 +136,67 @@
   margin: 4px 0;
 }
 
+/* Font Size Row - inline +/- controls */
+.context-menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  gap: 8px;
+}
+
+.context-menu-label {
+  font-size: 13px;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.context-menu-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.context-menu-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.context-menu-btn:hover:not(.disabled) {
+  background: rgba(0, 255, 136, 0.2);
+  border-color: rgba(0, 255, 136, 0.4);
+  color: #00ff88;
+}
+
+.context-menu-btn.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.context-menu-btn.reset {
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.context-menu-value {
+  min-width: 28px;
+  text-align: center;
+  font-size: 12px;
+  font-family: monospace;
+  color: #00ff88;
+}
+
 /* Submenu Styles (for Phase 2 - window switcher) */
 .context-menu-submenu {
   position: relative;

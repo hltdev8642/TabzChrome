@@ -13,6 +13,7 @@ export interface TerminalSession {
   assignedVoice?: string  // Auto-assigned voice for audio (when no profile override)
   command?: string      // Startup command (for API-spawned terminals without profile)
   focusedIn3D?: boolean // Terminal is currently open in 3D Focus mode
+  fontSizeOffset?: number // Per-instance font size offset (-4 to +8), not persisted
 }
 
 interface UseTerminalSessionsParams {
@@ -31,6 +32,10 @@ interface UseTerminalSessionsReturn {
   currentSessionRef: React.MutableRefObject<string | null>
   connectionCount: number
   handleWebSocketMessage: (data: any) => void
+  // Font size offset functions (per-instance zoom, not persisted)
+  increaseFontSize: (terminalId: string) => void
+  decreaseFontSize: (terminalId: string) => void
+  resetFontSize: (terminalId: string) => void
 }
 
 export function useTerminalSessions({
@@ -379,6 +384,34 @@ export function useTerminalSessions({
     }
   }, [getNextAvailableVoice])
 
+  // Font size offset functions - per-instance zoom, clamped to -4 to +8, NOT persisted
+  const MIN_FONT_OFFSET = -4
+  const MAX_FONT_OFFSET = 8
+
+  const increaseFontSize = useCallback((terminalId: string) => {
+    setSessions(prev => prev.map(s =>
+      s.id === terminalId
+        ? { ...s, fontSizeOffset: Math.min((s.fontSizeOffset || 0) + 1, MAX_FONT_OFFSET) }
+        : s
+    ))
+  }, [])
+
+  const decreaseFontSize = useCallback((terminalId: string) => {
+    setSessions(prev => prev.map(s =>
+      s.id === terminalId
+        ? { ...s, fontSizeOffset: Math.max((s.fontSizeOffset || 0) - 1, MIN_FONT_OFFSET) }
+        : s
+    ))
+  }, [])
+
+  const resetFontSize = useCallback((terminalId: string) => {
+    setSessions(prev => prev.map(s =>
+      s.id === terminalId
+        ? { ...s, fontSizeOffset: 0 }
+        : s
+    ))
+  }, [])
+
   return {
     sessions,
     setSessions,
@@ -389,5 +422,8 @@ export function useTerminalSessions({
     currentSessionRef,
     connectionCount,
     handleWebSocketMessage,
+    increaseFontSize,
+    decreaseFontSize,
+    resetFontSize,
   }
 }
