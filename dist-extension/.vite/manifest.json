@@ -6,14 +6,14 @@
     "isEntry": true
   },
   "3d/3d-focus.html": {
-    "file": "assets/3d-focus-DKBeeOF3.js",
+    "file": "assets/3d-focus-CHycfZpd.js",
     "name": "3d-focus",
     "src": "3d/3d-focus.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_themes-DzCPhdP5.js",
-      "_globals-CEvgif6H.js",
+      "_globals-w8aso5uO.js",
       "_extends-CF3RwP-h.js"
     ]
   },
@@ -22,17 +22,17 @@
     "name": "extends"
   },
   "_globals-!~{008}~.js": {
-    "file": "assets/globals-B9ATe7sn.css",
+    "file": "assets/globals-BpbwxWzq.css",
     "src": "_globals-!~{008}~.js"
   },
-  "_globals-CEvgif6H.js": {
-    "file": "assets/globals-CEvgif6H.js",
+  "_globals-w8aso5uO.js": {
+    "file": "assets/globals-w8aso5uO.js",
     "name": "globals",
     "imports": [
       "_themes-DzCPhdP5.js"
     ],
     "css": [
-      "assets/globals-B9ATe7sn.css"
+      "assets/globals-BpbwxWzq.css"
     ]
   },
   "_modulepreload-polyfill-B5Qt9EMX.js": {
@@ -51,7 +51,7 @@
     ]
   },
   "background/index.ts": {
-    "file": "assets/index.ts-ClkgPw3p.js",
+    "file": "assets/index.ts-EG_Zmtf7.js",
     "name": "index.ts",
     "src": "background/index.ts",
     "isEntry": true
@@ -63,7 +63,7 @@
     "isEntry": true
   },
   "dashboard/index.html": {
-    "file": "assets/dashboard-CmE2n6kp.js",
+    "file": "assets/dashboard-CgxXB0jj.js",
     "name": "dashboard",
     "src": "dashboard/index.html",
     "isEntry": true,
@@ -74,7 +74,7 @@
       "_extends-CF3RwP-h.js"
     ],
     "css": [
-      "assets/dashboard-D4fPDd6T.css"
+      "assets/dashboard-DQN_rbOG.css"
     ]
   },
   "devtools/devtools.html": {
@@ -87,14 +87,14 @@
     ]
   },
   "sidepanel/sidepanel.html": {
-    "file": "assets/sidepanel.html-cFJZls-d.js",
+    "file": "assets/sidepanel.html-B1xhwxPC.js",
     "name": "sidepanel.html",
     "src": "sidepanel/sidepanel.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_themes-DzCPhdP5.js",
-      "_globals-CEvgif6H.js",
+      "_globals-w8aso5uO.js",
       "_useWorkingDirectory-DSiRD0e7.js"
     ]
   }

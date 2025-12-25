@@ -15,6 +15,29 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.2.18] - 2025-12-25
+
+### Added
+- **Reference docs for profiles** - Quick reference cards in `docs/reference/` for TUI tools and AI CLIs:
+  - Claude Code, Gemini CLI, Codex - flags, modes, MCP config
+  - LazyGit, Yazi, btop, lnav - key bindings, common options
+  - Each doc includes `tabz:spawn` and `tabz:paste` buttons for quick launch
+  - Attach to profiles via `reference` field (shows 📎 badge)
+
+### Fixed
+- **Profile import preserves all fields** - Import handler now includes all profile properties:
+  - `backgroundGradient`, `panelColor`, `transparency` - theme customization
+  - `reference` - attached reference doc/URL
+  - Previously these fields were stripped during import
+- **Profiles API returns full data** - `/api/browser/profiles` now returns complete profile objects instead of only id/name/command/workingDir/category
+- **Dashboard file references** - Clicking profile reference (📎) now correctly opens file in dashboard Files section
+
+### Changed
+- **Profile schema documentation** - Updated `discover-profiles.md` with new profile fields
+- **Files API tilde expansion** - Image and video routes now support `~/` paths
+
+---
+
 ## [1.2.17] - 2025-12-25
 
 ### Fixed

@@ -349,8 +349,12 @@ export function SettingsModal({ isOpen, onClose, editProfileId }: SettingsModalP
             fontSize: p.fontSize ?? 16,
             fontFamily: p.fontFamily ?? 'monospace',
             themeName: p.themeName ?? 'high-contrast',
+            backgroundGradient: p.backgroundGradient,
+            panelColor: p.panelColor,
+            transparency: p.transparency,
             category: p.category,
             audioOverrides: p.audioOverrides,
+            reference: p.reference,
           })
         })
 

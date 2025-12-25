@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react'
 import { getFileTypeAndLanguage, FileType } from '../utils/fileTypeUtils'
 import { FileFilter, ClaudeFileType } from '../utils/claudeFileTypes'
 
@@ -342,6 +342,25 @@ export function FilesProvider({ children }: { children: ReactNode }) {
       return remaining
     })
   }, [activeFileId])
+
+  // Check for file path from URL hash (e.g., from "Open Reference" context menu)
+  // URL format: dashboard/index.html#/files?path=/path/to/file
+  useEffect(() => {
+    const hash = window.location.hash
+    if (hash.startsWith('#/files?')) {
+      const queryString = hash.split('?')[1]
+      if (queryString) {
+        const params = new URLSearchParams(queryString)
+        const filePath = params.get('path')
+        if (filePath) {
+          // Clear the hash to prevent re-opening on refresh
+          window.history.replaceState({}, '', window.location.pathname + window.location.search)
+          // Open the file with pin=true so it stays open
+          openFile(filePath, true)
+        }
+      }
+    }
+  }, []) // Run once on mount, openFile is stable
 
   return (
     <FilesContext.Provider value={{

@@ -338,12 +338,12 @@ router.get('/tree', async (req, res) => {
 router.get('/image', async (req, res) => {
   try {
     const filePath = req.query.path;
-    
+
     if (!filePath) {
       return res.status(400).json({ error: 'File path is required' });
     }
-    
-    const resolvedPath = path.resolve(filePath);
+
+    const resolvedPath = path.resolve(expandTilde(filePath));
 
     // For local development, allow filesystem exploration (configurable)
     const restrictToHome = process.env.RESTRICT_TO_HOME === 'true';
@@ -404,7 +404,7 @@ router.get('/video', async (req, res) => {
       return res.status(400).json({ error: 'File path is required' });
     }
 
-    const resolvedPath = path.resolve(filePath);
+    const resolvedPath = path.resolve(expandTilde(filePath));
 
     // For local development, allow filesystem exploration (configurable)
     const restrictToHome = process.env.RESTRICT_TO_HOME === 'true';
@@ -518,13 +518,13 @@ router.get('/widget-docs/:widgetName', async (req, res) => {
 router.get('/content', async (req, res) => {
   try {
     const filePath = req.query.path;
-    
+
     if (!filePath) {
       return res.status(400).json({ error: 'File path is required' });
     }
-    
-    // Security: Resolve the path
-    const resolvedPath = path.resolve(filePath);
+
+    // Security: Expand ~ and resolve the path
+    const resolvedPath = path.resolve(expandTilde(filePath));
 
     // For local development, allow filesystem exploration (configurable)
     const restrictToHome = process.env.RESTRICT_TO_HOME === 'true';

@@ -173,6 +173,10 @@ Each profile has these fields:
   fontSize: number     // Font size (14-20 typical)
   fontFamily: string   // Font family (e.g., "JetBrains Mono, monospace")
   themeName: string    // Theme: "high-contrast", "dracula", "ocean", "neon", "amber", "matrix"
+  backgroundGradient?: string  // Background gradient name (e.g., "midnight", "forest")
+  panelColor?: string  // Panel/chrome color (e.g., "zinc", "slate", "neutral")
+  transparency?: number // Background transparency (0-100)
+  reference?: string   // Reference doc URL or file path (shown as 📎 badge)
   audioOverrides?: {   // Optional per-profile audio settings
     mode?: string      // "default" | "enabled" | "disabled"
     voice?: string     // Voice override

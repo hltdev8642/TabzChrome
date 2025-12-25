@@ -1,0 +1,76 @@
+{
+  "profiles": [
+    {
+      "id": "amber-claude",
+      "name": "🟠 Amber Claude",
+      "command": "claude --dangerously-skip-permissions",
+      "reference": "~/projects/TabzChrome/docs/reference/claude-code.md"
+    },
+    {
+      "id": "🎭-conductor",
+      "name": "🎭 Conductor",
+      "command": "claude --dangerously-skip-permissions --agent conductor:conductor",
+      "reference": "~/projects/TabzChrome/docs/reference/claude-code.md"
+    },
+    {
+      "id": "🫶-tabz-manager",
+      "name": "🫶 Tabz Manager",
+      "command": "claude --dangerously-skip-permissions --agent conductor:tabz-manager",
+      "reference": "~/projects/TabzChrome/docs/reference/claude-code.md"
+    },
+    {
+      "id": "matrixclaude",
+      "name": "💚 MatrixClaude",
+      "command": "claude --dangerously-skip-permissions",
+      "reference": "~/projects/TabzChrome/docs/reference/claude-code.md"
+    },
+    {
+      "id": "claudula",
+      "name": "🧛 Claudula",
+      "command": "claude --dangerously-skip-permissions",
+      "reference": "~/projects/TabzChrome/docs/reference/claude-code.md"
+    },
+    {
+      "id": "contrastclaude",
+      "name": "⚫ ContrastClaude",
+      "command": "claude --dangerously-skip-permissions",
+      "reference": "~/projects/TabzChrome/docs/reference/claude-code.md"
+    },
+    {
+      "id": "codex-📚",
+      "name": "📚 Codex",
+      "command": "codex",
+      "reference": "~/projects/TabzChrome/docs/reference/codex.md"
+    },
+    {
+      "id": "gemini-💎",
+      "name": "💎 Gemini",
+      "command": "gemini",
+      "reference": "~/projects/TabzChrome/docs/reference/gemini-cli.md"
+    },
+    {
+      "id": "btop",
+      "name": "📉 BTop",
+      "command": "btop",
+      "reference": "~/projects/TabzChrome/docs/reference/btop.md"
+    },
+    {
+      "id": "log-navigator",
+      "name": "📜 Log Navigator",
+      "command": "lnav",
+      "reference": "~/projects/TabzChrome/docs/reference/lnav.md"
+    },
+    {
+      "id": "lazygit-a1b2c3",
+      "name": "🌿 LazyGit",
+      "command": "lazygit",
+      "reference": "~/projects/TabzChrome/docs/reference/lazygit.md"
+    },
+    {
+      "id": "yazi-file-browser",
+      "name": "📁 Yazi",
+      "command": "yazi",
+      "reference": "~/projects/TabzChrome/docs/reference/yazi.md"
+    }
+  ]
+}

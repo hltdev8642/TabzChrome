@@ -118,6 +118,23 @@ export default function App() {
     }
   }, [])
 
+  // Check for hash-based navigation (e.g., #/files?path=...)
+  useEffect(() => {
+    const hash = window.location.hash
+    if (hash.startsWith('#/')) {
+      // Parse section from hash (e.g., #/files?path=... -> files)
+      const hashPath = hash.slice(2) // Remove '#/'
+      const [section] = hashPath.split('?')
+
+      // Navigate to the section if valid
+      const validSections: Section[] = ['home', 'profiles', 'terminals', 'files', 'api', 'mcp', 'settings']
+      if (validSections.includes(section as Section)) {
+        setActiveSection(section as Section)
+      }
+      // Note: FilesContext handles the ?path= parameter directly
+    }
+  }, [])
+
   const handleCloseCapture = () => {
     // Get capture ID from URL to clean up localStorage
     const params = new URLSearchParams(window.location.search)

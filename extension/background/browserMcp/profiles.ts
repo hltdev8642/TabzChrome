@@ -12,13 +12,8 @@ import { sendToWebSocket } from '../websocket'
 export async function handleBrowserGetProfiles(message: { requestId: string }): Promise<void> {
   try {
     const result = await chrome.storage.local.get(['profiles', 'defaultProfile', 'globalWorkingDir'])
-    const profiles = (result.profiles || []) as Array<{
-      id: string
-      name: string
-      workingDir?: string
-      command?: string
-      category?: string
-    }>
+    // Return full profile data - don't strip fields
+    const profiles = (result.profiles || []) as Array<Record<string, unknown>>
     const defaultProfileId = result.defaultProfile as string | undefined
     const globalWorkingDir = (result.globalWorkingDir as string) || '~'
 
@@ -26,13 +21,7 @@ export async function handleBrowserGetProfiles(message: { requestId: string }): 
       type: 'browser-profiles-result',
       requestId: message.requestId,
       success: true,
-      profiles: profiles.map(p => ({
-        id: p.id,
-        name: p.name,
-        workingDir: p.workingDir || '',
-        command: p.command || '',
-        category: p.category || ''
-      })),
+      profiles,  // Pass through all profile fields
       defaultProfileId,
       globalWorkingDir
     })
