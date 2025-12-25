@@ -1,11 +1,84 @@
 # PLAN.md - TabzChrome Roadmap
 
-**Last Updated**: December 23, 2025
-**Current Version**: 1.2.8
+**Last Updated**: December 25, 2025
+**Current Version**: 1.2.18
 
 ---
 
-## Current Focus: MCP Tool Expansion
+## Current Focus: Codebase Simplification
+
+**Branch:** `simplify-codebase`
+**Status:** Wave 1 complete, Wave 2-3 pending
+
+### Completed (Wave 1) ✅
+
+| Task | Impact | Status |
+|------|--------|--------|
+| Remove unused dependencies | -221 packages, -2,700 LOC in package-lock | ✅ Done |
+| Extract `useOutsideClick` hook | -90 LOC (7 duplicates removed) | ✅ Done |
+| Extract shared utilities | API_BASE, getEffectiveWorkingDir, compactPath | ✅ Done |
+| Fix bugs & remove dead code | tui-tools.js fix, offline menu scripts deleted | ✅ Done |
+
+### Wave 2: Medium Effort (Pending)
+
+#### Remove MCP Client Layer
+**Impact:** -1,300 LOC | **Effort:** Medium | **Risk:** Low
+
+`tabz-mcp-server/src/client/*.ts` is HTTP wrapper boilerplate. Tools can call backend directly.
+Tab tracking via `currentTabId` is redundant - Chrome API gives accurate active tab on every call.
+
+#### Split useAudioNotifications
+**Impact:** Maintainability | **Effort:** Medium | **Risk:** Medium
+
+544 LOC monolithic hook → 5 focused modules:
+- `useAudioPlayback.ts` - Audio API, debouncing
+- `useStatusTransitions.ts` - Status change detection
+- `useToolAnnouncements.ts` - Tool announcement logic
+- `constants/audioVoices.ts` - VOICE_POOL, thresholds
+- `utils/textFormatting.ts` - stripEmojis, etc.
+
+#### Extract useChromeSetting Hook
+**Impact:** -100 LOC | **Effort:** Low | **Risk:** Low
+
+5+ hooks repeat Chrome storage listener pattern. Extract to reusable hook.
+
+### Wave 3: Larger Refactors (Pending)
+
+#### Consolidate Profile Management
+**Impact:** -800 LOC | **Effort:** Medium-High
+
+Same profile CRUD in 3 places (2,793 LOC total). Create shared `ProfileManager` component.
+Reference: `~/projects/Tabz` for cleaner theme/customization UI.
+
+#### Unify Messaging Systems
+**Impact:** Type safety | **Effort:** Medium
+
+Three overlapping systems (Chrome, WebSocket, Broadcast). Create single transformation layer.
+
+#### Type Storage Access
+**Impact:** Type safety | **Effort:** Low
+
+Expand `StorageData` interface to cover all 10+ storage keys currently accessed without types.
+
+### Wave 4: Nice to Have
+
+- Extract `DropdownBase` component (-200 LOC)
+- Split `browser.js` into domain-specific route files
+- Extract terminal reconciliation to pure testable function
+- Document magic timing values (150ms, 300ms)
+
+### Audit Reference
+
+Detailed analysis in `audit-results/`:
+- `SUMMARY.md` - Executive summary
+- `architecture.md` - Overall architecture
+- `backend-api.md` - API/MCP analysis
+- `components.md` - UI component analysis
+- `hooks-state.md` - State management review
+
+---
+
+## MCP Tool Expansion
 
 **Goal**: With dynamic tool discovery (`mcp-cli`), there's no context cost for having many tools. Expand MCP capabilities using Chrome Extension APIs.
 

@@ -15,6 +15,33 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.2.19] - 2025-12-25 (simplify-codebase branch)
+
+### Changed
+- **Codebase simplification Wave 1** - Comprehensive audit and cleanup:
+  - Removed 221 unused npm packages (@dnd-kit/*, immer, react-resizable, patch-package, happy-dom, vite-plugin-web-extension, jest)
+  - Extracted `useOutsideClick` hook - replaced 7 duplicate useEffect patterns (~90 LOC removed)
+  - Extracted shared utilities to `extension/shared/utils.ts`: `API_BASE`, `getEffectiveWorkingDir()`, `compactPath()`/`expandPath()`
+  - Deleted stale `backend/jest.config.js` (vitest is used instead)
+
+### Fixed
+- **tui-tools.js bug** - Fixed call to non-existent `register()` method
+- **Dead code removal** - Removed unused offline menu system (~60 LOC):
+  - `backend/scripts/offline-menu.js`
+  - `backend/scripts/offline-terminal-menu.go`
+  - `backend/scripts/offline-terminal-ui.js`
+  - `backend/scripts/offline-terminal-simple.sh`
+
+### Added
+- **Audit documentation** - Comprehensive codebase analysis in `audit-results/`:
+  - `SUMMARY.md` - Executive summary and priority rankings
+  - `architecture.md` - Overall architecture assessment
+  - `backend-api.md` - API/MCP duplication analysis
+  - `components.md` - UI component duplication map
+  - `hooks-state.md` - State management review
+
+---
+
 ## [1.2.18] - 2025-12-25
 
 ### Added
