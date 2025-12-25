@@ -15,6 +15,19 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.2.16] - 2025-12-25
+
+### Changed
+- **Simplified light/dark mode for gradients** - Light mode now shows muted/softer versions of the same gradient (not bright white):
+  - Each gradient has a `lightGradient` property - a softer variant that retains the color character
+  - Example: Amber Warmth in light mode becomes a soft brown (#5d4840 → #3a3633) instead of cream
+  - Removed 8 bright light-only gradients (pure-white, soft-cream, paper, etc.)
+  - Light mode is now usable with Claude Code's light syntax highlighting themes
+- **Reduced panel color presets** - Removed bright colors (white, cream, light gray) that don't work well with terminal readability
+- **20 gradient options** (down from 28) - All gradients now work in both light and dark mode
+
+---
+
 ## [1.2.15] - 2025-12-25
 
 ### Added

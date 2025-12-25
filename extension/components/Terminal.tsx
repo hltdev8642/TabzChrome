@@ -1010,7 +1010,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
   // 2. Gradient overlays on top with transparency control
   // If a custom gradient is specified, use it; otherwise use theme default
   const effectiveGradientCSS = backgroundGradient
-    ? getGradientCSS(backgroundGradient)
+    ? getGradientCSS(backgroundGradient, isDark)
     : getThemeBackgroundGradient(themeName, isDark)
 
   // Apply transparency to gradient (0 = solid panel color, 100 = full gradient)

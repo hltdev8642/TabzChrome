@@ -1,19 +1,19 @@
 {
   "../../../../../@crx/manifest": {
-    "file": "assets/crx-manifest.js-Ctta-zQq.js",
+    "file": "assets/crx-manifest.js-CeEeuMfi.js",
     "name": "crx-manifest.js",
     "src": "../../../../../@crx/manifest",
     "isEntry": true
   },
   "3d/3d-focus.html": {
-    "file": "assets/3d-focus-au1dtnFX.js",
+    "file": "assets/3d-focus-Dj55Oft4.js",
     "name": "3d-focus",
     "src": "3d/3d-focus.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_themes-CP1r2qtS.js",
-      "_globals-u3s377y_.js",
+      "_globals-D0vn4kqS.js",
       "_extends-CF3RwP-h.js"
     ]
   },
@@ -25,8 +25,8 @@
     "file": "assets/globals-BpiBakXu.css",
     "src": "_globals-!~{008}~.js"
   },
-  "_globals-u3s377y_.js": {
-    "file": "assets/globals-u3s377y_.js",
+  "_globals-D0vn4kqS.js": {
+    "file": "assets/globals-D0vn4kqS.js",
     "name": "globals",
     "imports": [
       "_themes-CP1r2qtS.js"
@@ -87,14 +87,14 @@
     ]
   },
   "sidepanel/sidepanel.html": {
-    "file": "assets/sidepanel.html-CdxeGOKo.js",
+    "file": "assets/sidepanel.html-DrR3uAfe.js",
     "name": "sidepanel.html",
     "src": "sidepanel/sidepanel.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_themes-CP1r2qtS.js",
-      "_globals-u3s377y_.js",
+      "_globals-D0vn4kqS.js",
       "_useWorkingDirectory-tL_b9MiI.js"
     ]
   }
