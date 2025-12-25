@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Grid, Grid3X3, List, Search, Play, RefreshCw, Terminal, Folder, X, Settings, GripVertical, Star, Copy, ClipboardType } from 'lucide-react'
+import { Grid, Grid3X3, List, Search, Play, RefreshCw, Terminal, Folder, X, Settings, GripVertical, Star, Copy, ClipboardType, Paperclip } from 'lucide-react'
 import { spawnTerminal, getProfiles } from '../hooks/useDashboard'
 import { useWorkingDirectory } from '../../hooks/useWorkingDirectory'
 import type { Profile } from '../../components/SettingsModal'
@@ -636,11 +636,21 @@ function ProfileCard({
 
       {/* Main card content area */}
       <div className="flex flex-col items-center p-5 pt-6 pb-4">
-        {/* Default badge - inline above icon */}
-        {isDefault && (
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-medium mb-2">
-            <Star className="w-2.5 h-2.5 fill-current" />
-            Default
+        {/* Badges row - default and reference */}
+        {(isDefault || profile.reference) && (
+          <div className="flex items-center gap-2 mb-2">
+            {isDefault && (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-medium">
+                <Star className="w-2.5 h-2.5 fill-current" />
+                Default
+              </div>
+            )}
+            {profile.reference && (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-medium" title={profile.reference}>
+                <Paperclip className="w-2.5 h-2.5" />
+                Ref
+              </div>
+            )}
           </div>
         )}
 
@@ -808,6 +818,12 @@ function ProfileListItem({
               <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/20 text-primary text-[10px] font-medium">
                 <Star className="w-2.5 h-2.5 fill-current" />
                 Default
+              </span>
+            )}
+            {profile.reference && (
+              <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[10px] font-medium" title={profile.reference}>
+                <Paperclip className="w-2.5 h-2.5" />
+                Ref
               </span>
             )}
             {truncatedDir && (

@@ -15,6 +15,24 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.2.14] - 2025-12-25
+
+### Added
+- **Markdown terminal buttons** - Interactive `tabz:` links in markdown files viewed in the dashboard:
+  - `tabz:spawn?cmd=npm%20test` - Spawn terminal with command (uses default profile theme)
+  - `tabz:spawn?profile=claude` - Spawn specific profile by name
+  - `tabz:queue?text=git%20status` - Queue text to chat input (user selects terminal)
+  - `tabz:paste?text=pwd` - Paste directly into active terminal
+  - Buttons render with colored text/borders: green (spawn), blue (queue), orange (paste)
+  - Smart profile matching: exact name, emoji-stripped, starts-with
+  - See `docs/terminal-buttons-demo.md` for examples
+- **Profile reference indicators** - Paperclip icon shows which profiles have attached reference docs:
+  - Visible in sidebar Settings → Profiles list
+  - Visible in Dashboard → Profiles section (grid and list views)
+  - Hover to see the full reference URL/path
+
+---
+
 ## [1.2.13] - 2025-12-24
 
 ### Added

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Plus, Edit, Trash2, GripVertical, Palette, Download, Upload, Volume2, Search, X, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react'
+import { Plus, Edit, Trash2, GripVertical, Palette, Download, Upload, Volume2, Search, X, ChevronDown, ChevronUp, ChevronRight, Paperclip } from 'lucide-react'
 import { Terminal as TerminalIcon } from 'lucide-react'
 import { themes, themeNames } from '../../styles/themes'
 import {
@@ -1061,6 +1061,11 @@ export function ProfilesTab({
                           {profile.id === defaultProfile && (
                             <span className="text-xs px-2 py-0.5 rounded bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88]/30">
                               Default
+                            </span>
+                          )}
+                          {profile.reference && (
+                            <span title={profile.reference}>
+                              <Paperclip className="h-3.5 w-3.5 text-blue-400" />
                             </span>
                           )}
                         </div>

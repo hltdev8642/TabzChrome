@@ -1,4 +1,4 @@
-import { sendMessage, type SpawnTerminalMessage } from '../../shared/messaging'
+import { sendMessage, type SpawnTerminalMessage, type QueueCommandMessage, type PasteCommandMessage } from '../../shared/messaging'
 import type { Profile } from '../../components/SettingsModal'
 
 // Backend API base URL - extension pages can access localhost directly
@@ -120,4 +120,26 @@ export async function killTmuxSession(sessionName: string) {
   })
   if (!res.ok) throw new Error('Failed to kill tmux session')
   return res.json()
+}
+
+/**
+ * Queue a command to the chat input (user selects terminal to send to)
+ */
+export async function queueCommand(command: string) {
+  const message: QueueCommandMessage = {
+    type: 'QUEUE_COMMAND',
+    command,
+  }
+  return sendMessage(message)
+}
+
+/**
+ * Paste a command directly into the active terminal
+ */
+export async function pasteCommand(command: string) {
+  const message: PasteCommandMessage = {
+    type: 'PASTE_COMMAND',
+    command,
+  }
+  return sendMessage(message)
 }

@@ -38,6 +38,21 @@ Profiles are templates for spawning terminals with saved settings (theme, font, 
 
 ### Integration
 
+**Markdown Links** - Create runnable buttons in `.md` files viewed in dashboard:
+```markdown
+[Run Tests](tabz:spawn?cmd=npm%20test&name=Tests)
+[Launch Claude](tabz:spawn?profile=claude%20code)
+[Queue to Chat](tabz:queue?text=git%20status)
+[Paste to Terminal](tabz:paste?text=pwd)
+```
+
+| Action | Format | Button Color |
+|--------|--------|--------------|
+| Spawn | `tabz:spawn?cmd=xxx` | Green |
+| Spawn profile | `tabz:spawn?profile=name` | Green |
+| Queue to chat | `tabz:queue?text=xxx` | Blue |
+| Paste to terminal | `tabz:paste?text=xxx` | Orange |
+
 **Spawn API** - Create terminals programmatically:
 ```bash
 TOKEN=$(cat /tmp/tabz-auth-token)
@@ -47,7 +62,7 @@ curl -X POST http://localhost:8129/api/spawn \
   -d '{"name": "Worker", "workingDir": "~/projects", "command": "claude"}'
 ```
 
-**Custom triggers** - Add to any HTML element:
+**HTML triggers** - Add to any web page element:
 ```html
 <button data-terminal-command="npm run dev">Start Dev</button>
 ```

@@ -7,9 +7,10 @@ import { FileTree } from '../components/files/FileTree'
 import { FilteredFileList } from '../components/files/FilteredFileList'
 import { PromptyViewer } from '../components/files/PromptyViewer'
 import { isPromptyFile } from '../utils/promptyUtils'
-import { X, Copy, ExternalLink, Code, Image as ImageIcon, FileText, FileJson, Settings, ZoomIn, ZoomOut, Maximize, Download, Video, Table, Star, Pin, Send, AtSign, FolderOpen, Terminal, Volume2, Square, MoreVertical, Loader2 } from 'lucide-react'
+import { X, Copy, ExternalLink, Code, Image as ImageIcon, FileText, FileJson, Settings, ZoomIn, ZoomOut, Maximize, Download, Video, Table, Star, Pin, Send, AtSign, FolderOpen, Terminal, Volume2, Square, MoreVertical, Loader2, Play, ClipboardPaste, MessageSquare } from 'lucide-react'
 import { FileActionsMenu } from '../components/files/FileActionsMenu'
 import { useWorkingDirectory } from '../../hooks/useWorkingDirectory'
+import { spawnTerminal, queueCommand, pasteCommand, getProfiles } from '../hooks/useDashboard'
 import { useFileViewerSettings } from '../hooks/useFileViewerSettings'
 import { getFileTypeAndLanguage, FileType } from '../utils/fileTypeUtils'
 import { useFilesContext } from '../contexts/FilesContext'
@@ -693,10 +694,104 @@ export default function FilesSection() {
                   >
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
+                      urlTransform={(url) => {
+                        // Allow tabz: protocol through (default sanitizer strips it)
+                        if (url.startsWith('tabz:')) return url
+                        // Default behavior for other URLs
+                        return url
+                      }}
                       components={{
                         a({ href, children, ...props }: any) {
+                          // Handle tabz: protocol links for terminal integration
+                          if (href?.startsWith('tabz:')) {
+                            // Parse tabz:action?params manually (URL constructor doesn't handle custom protocols well)
+                            const withoutProtocol = href.slice(5) // remove 'tabz:'
+                            const [action, queryString] = withoutProtocol.split('?')
+                            const params = new URLSearchParams(queryString || '')
+
+                            const handleClick = async (e: React.MouseEvent) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              try {
+                                if (action === 'spawn') {
+                                  // tabz:spawn?profile=xxx or tabz:spawn?cmd=xxx&name=xxx&dir=xxx
+                                  const profileName = params.get('profile')
+                                  if (profileName) {
+                                    const profiles = await getProfiles()
+                                    const searchLower = profileName.toLowerCase()
+
+                                    // Find profile with priority: exact > emoji-stripped > starts-with > contains
+                                    const profile =
+                                      // 1. Exact match on id
+                                      profiles.find(p => p.id === profileName) ||
+                                      // 2. Exact match on name (case-insensitive)
+                                      profiles.find(p => p.name.toLowerCase() === searchLower) ||
+                                      // 3. Match ignoring emoji prefix (e.g., "🖥️ TFE" matches "tfe")
+                                      profiles.find(p => p.name.toLowerCase().replace(/^\p{Emoji}\s*/u, '') === searchLower) ||
+                                      // 4. Name starts with search term (e.g., "claude" matches "Claude Code")
+                                      profiles.find(p => p.name.toLowerCase().startsWith(searchLower)) ||
+                                      // 5. Emoji-stripped name starts with search term
+                                      profiles.find(p => p.name.toLowerCase().replace(/^\p{Emoji}\s*/u, '').startsWith(searchLower))
+                                    if (profile) {
+                                      await spawnTerminal({ profile, name: profile.name })
+                                    } else {
+                                      console.error(`Profile not found: "${profileName}". Available: ${profiles.map(p => p.name).join(', ')}`)
+                                    }
+                                  } else {
+                                    // No profile specified - use default profile for theme settings
+                                    const profiles = await getProfiles()
+                                    const defaultProfileId = await new Promise<string>(resolve => {
+                                      chrome.storage.local.get(['defaultProfile'], (result: { defaultProfile?: string }) => {
+                                        resolve(result.defaultProfile || profiles[0]?.id || '')
+                                      })
+                                    })
+                                    const defaultProfile = profiles.find(p => p.id === defaultProfileId) || profiles[0]
+
+                                    await spawnTerminal({
+                                      name: params.get('name') || 'Terminal',
+                                      command: params.get('cmd') || undefined,
+                                      workingDir: params.get('dir') || undefined,
+                                      profile: defaultProfile, // Use default profile's theme
+                                    })
+                                  }
+                                } else if (action === 'queue') {
+                                  // tabz:queue?text=xxx - queue to chat input
+                                  const text = params.get('text')
+                                  if (text) await queueCommand(text)
+                                } else if (action === 'paste') {
+                                  // tabz:paste?text=xxx - paste into active terminal
+                                  const text = params.get('text')
+                                  if (text) await pasteCommand(text)
+                                }
+                              } catch (err) {
+                                console.error('Tabz link action failed:', err)
+                              }
+                            }
+
+                            // Determine button style based on action
+                            const buttonStyles: Record<string, { colors: string, icon: React.ReactNode }> = {
+                              spawn: { colors: 'text-green-400 border-green-500/50 hover:border-green-400 hover:bg-green-500/10', icon: <Play className="w-3 h-3" /> },
+                              queue: { colors: 'text-blue-400 border-blue-500/50 hover:border-blue-400 hover:bg-blue-500/10', icon: <MessageSquare className="w-3 h-3" /> },
+                              paste: { colors: 'text-orange-400 border-orange-500/50 hover:border-orange-400 hover:bg-orange-500/10', icon: <ClipboardPaste className="w-3 h-3" /> },
+                            }
+                            const style = buttonStyles[action] || buttonStyles.spawn
+
+                            return (
+                              <button
+                                type="button"
+                                onClick={handleClick}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium border transition-colors ${style.colors}`}
+                                title={href}
+                              >
+                                {style.icon}
+                                {children}
+                              </button>
+                            )
+                          }
+
                           // Check if it's a relative file link (not http/https/mailto/etc)
-                          const isRelativeFile = href && !href.match(/^(https?:|mailto:|#|\/\/)/)
+                          const isRelativeFile = href && !href.match(/^(https?:|mailto:|#|\/\/|tabz:)/)
 
                           if (isRelativeFile && activeFile) {
                             // Resolve relative path based on current file's directory
