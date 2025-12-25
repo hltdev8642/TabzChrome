@@ -111,6 +111,7 @@ const terminalRegistry = require('./modules/terminal-registry');
 const unifiedSpawn = require('./modules/unified-spawn');
 const TUIToolsManager = require('./modules/tui-tools');
 const ptyHandler = require('./modules/pty-handler');
+const audioGenerator = require('./modules/audio-generator');
 // Removed terminal-recovery.js - was causing duplicate terminals and conflicts
 const apiRouter = require('./routes/api');
 const filesRouter = require('./routes/files');
@@ -206,182 +207,36 @@ app.get('/api/audio/list', (req, res) => {
   }
 });
 
-// Helper: Strip markdown formatting for cleaner TTS (backticks cause major slowdowns)
-function stripMarkdown(text) {
-  return text
-    .replace(/```[\s\S]*?```/g, ' code block ')  // Remove code blocks
-    .replace(/`[^`]+`/g, '')                      // Remove inline code
-    .replace(/#{1,6}\s*/g, '')                    // Remove headers
-    .replace(/\*\*([^*]+)\*\*/g, '$1')            // Bold to plain
-    .replace(/\*([^*]+)\*/g, '$1')                // Italic to plain
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')      // Links to just text
-    .replace(/^\s*[-*+]\s+/gm, '')                // Remove list markers
-    .replace(/^\s*\d+\.\s+/gm, '')                // Remove numbered list markers
-    .replace(/\n{3,}/g, '\n\n')                   // Collapse multiple newlines
-    .trim();
-}
-
 // Generate audio using edge-tts (with caching)
 // POST /api/audio/generate { text: string, voice?: string, rate?: string, pitch?: string }
 // Rate limited: 30 requests per minute per IP
 app.post('/api/audio/generate', audioRateLimiter, async (req, res) => {
-  const { execFile } = require('child_process');
-  const { promisify } = require('util');
-  const execFileAsync = promisify(execFile);
-  const fs = require('fs');
-  const crypto = require('crypto');
-
-  let {
+  const {
     text,
-    voice: requestedVoice = 'en-US-AndrewMultilingualNeural',
-    rate = '+0%',   // e.g., "+30%", "-10%"
-    pitch = '+0Hz'  // e.g., "+50Hz", "-20Hz" (higher = more urgent/alert)
+    voice = 'en-US-AndrewMultilingualNeural',
+    rate = '+0%',
+    pitch = '+0Hz'
   } = req.body;
 
   if (!text || typeof text !== 'string') {
     return res.status(400).json({ success: false, error: 'Missing text parameter' });
   }
 
-  // Strip markdown for faster TTS processing
-  text = stripMarkdown(text);
+  const result = await audioGenerator.generateAudio({ text, voice, rate, pitch });
 
-  // Truncate very long text - Microsoft TTS has ~3000 char limit per request
-  const MAX_TEXT_LENGTH = 3000;
-  if (text.length > MAX_TEXT_LENGTH) {
-    const truncateAt = text.lastIndexOf('.', MAX_TEXT_LENGTH);
-    text = text.slice(0, truncateAt > MAX_TEXT_LENGTH / 2 ? truncateAt + 1 : MAX_TEXT_LENGTH);
-    console.log(`[Audio] Text truncated to ${text.length} chars`);
-  }
-
-  // Handle 'random' voice selection - matches TTS_VOICES in extension settings
-  const VOICE_OPTIONS = [
-    // US Voices
-    'en-US-AndrewMultilingualNeural',
-    'en-US-EmmaMultilingualNeural',
-    'en-US-BrianMultilingualNeural',
-    'en-US-AriaNeural',
-    'en-US-GuyNeural',
-    'en-US-JennyNeural',
-    'en-US-ChristopherNeural',
-    'en-US-AvaNeural',
-    // UK Voices
-    'en-GB-SoniaNeural',
-    'en-GB-RyanNeural',
-    // AU Voices
-    'en-AU-NatashaNeural',
-    'en-AU-WilliamMultilingualNeural',
-  ];
-  const voice = requestedVoice === 'random'
-    ? VOICE_OPTIONS[Math.floor(Math.random() * VOICE_OPTIONS.length)]
-    : requestedVoice;
-
-  // Validate voice parameter (alphanumeric, hyphens, underscores only)
-  if (!/^[a-zA-Z0-9_-]+$/.test(voice)) {
-    return res.status(400).json({ success: false, error: 'Invalid voice parameter' });
-  }
-
-  // Validate rate parameter (format: +N% or -N% where N is 0-100)
-  if (!/^[+-]?\d{1,3}%$/.test(rate)) {
-    return res.status(400).json({ success: false, error: 'Invalid rate parameter' });
-  }
-
-  // Validate pitch parameter (format: +NHz or -NHz where N is 0-100)
-  if (!/^[+-]?\d{1,3}Hz$/.test(pitch)) {
-    return res.status(400).json({ success: false, error: 'Invalid pitch parameter' });
-  }
-
-  const audioDir = '/tmp/claude-audio-cache';
-
-  // Ensure directory exists
-  if (!fs.existsSync(audioDir)) {
-    fs.mkdirSync(audioDir, { recursive: true });
-  }
-
-  // Generate cache key from voice + rate + pitch + text
-  const cacheKey = crypto.createHash('md5').update(`${voice}:${rate}:${pitch}:${text}`).digest('hex');
-  const cacheFile = path.join(audioDir, `${cacheKey}.mp3`);
-
-  // Check if cached (ensure file exists and has content)
-  try {
-    const stats = fs.statSync(cacheFile);
-    if (stats.size > 0) {
-      return res.json({
-        success: true,
-        url: `http://localhost:8129/audio/${cacheKey}.mp3`,
-        cached: true
-      });
-    }
-    // Empty file - delete and regenerate
-    fs.unlinkSync(cacheFile);
-  } catch {
-    // File doesn't exist - continue to generate
-  }
-
-  // Generate with edge-tts using execFile (prevents command injection)
-  // execFile passes arguments as array, not through shell
-  let tempTextFile = null;
-  try {
-    // Build args array - no shell interpretation
-    const args = ['-v', voice];
-    if (rate && rate !== '+0%') {
-      args.push('--rate', rate);
-    }
-    if (pitch && pitch !== '+0Hz') {
-      args.push('--pitch', pitch);
-    }
-
-    // Always use file input - special characters (backticks, etc.) break -t flag
-    tempTextFile = path.join(audioDir, `${cacheKey}.txt`);
-    fs.writeFileSync(tempTextFile, text, 'utf8');
-    args.push('-f', tempTextFile);
-    // Specify full path with extension - edge-tts uses the exact filename given
-    args.push('--write-media', cacheFile);
-
-    // Scale timeout with text length: 30s base + 5s per 1000 chars, max 180s
-    const timeoutMs = Math.min(180000, 30000 + Math.floor(text.length / 1000) * 5000);
-    await execFileAsync('edge-tts', args, { timeout: timeoutMs });
-
-    // Verify file was created with content
-    const stats = fs.statSync(cacheFile);
-    if (stats.size > 0) {
-      res.json({
-        success: true,
-        url: `http://localhost:8129/audio/${cacheKey}.mp3`,
-        cached: false
-      });
-    } else {
-      // Empty file - delete and report failure
-      fs.unlinkSync(cacheFile);
-      res.status(500).json({ success: false, error: 'Audio generation produced empty file' });
-    }
-  } catch (err) {
-    // Only log non-network errors (timeouts are expected and noisy)
-    if (!err.message?.includes('ETIMEDOUT') && !err.message?.includes('ENETUNREACH')) {
-      console.error('[Audio] edge-tts error:', err.message);
-      // Log stderr if available (contains actual edge-tts error)
-      if (err.stderr) {
-        console.error('[Audio] edge-tts stderr:', err.stderr);
-      }
-    }
-    res.status(500).json({ success: false, error: 'TTS generation failed' });
-  } finally {
-    // Clean up temp text file
-    if (tempTextFile && fs.existsSync(tempTextFile)) {
-      fs.unlinkSync(tempTextFile);
-    }
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
   }
 });
 
 // POST /api/audio/speak - Generate audio AND broadcast to extension to play it
 // This allows CLI/slash commands to trigger audio playback through the browser
 app.post('/api/audio/speak', async (req, res) => {
-  const { execFile } = require('child_process');
-  const { promisify } = require('util');
-  const execFileAsync = promisify(execFile);
-
-  let {
+  const {
     text,
-    voice: requestedVoice = 'en-US-AndrewMultilingualNeural',
+    voice = 'en-US-AndrewMultilingualNeural',
     rate = '+0%',
     pitch = '+0Hz',
     volume = 0.7,
@@ -392,120 +247,19 @@ app.post('/api/audio/speak', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Missing text parameter' });
   }
 
-  // Strip markdown for faster TTS processing
-  text = stripMarkdown(text);
+  // Generate audio with longer timeouts for speak endpoint (used for longer content)
+  const result = await audioGenerator.generateAudio({
+    text,
+    voice,
+    rate,
+    pitch,
+    baseTimeoutMs: 60000,
+    timeoutPerKb: 30000,
+    maxTimeoutMs: 300000,
+  });
 
-  // Truncate very long text - Microsoft TTS has ~3000 char limit per request
-  const MAX_TEXT_LENGTH = 3000;
-  if (text.length > MAX_TEXT_LENGTH) {
-    const truncateAt = text.lastIndexOf('.', MAX_TEXT_LENGTH);
-    text = text.slice(0, truncateAt > MAX_TEXT_LENGTH / 2 ? truncateAt + 1 : MAX_TEXT_LENGTH);
-    console.log(`[Audio] Text truncated to ${text.length} chars`);
-  }
-
-  // Handle 'random' voice selection - matches TTS_VOICES in extension settings
-  const VOICE_OPTIONS = [
-    // US Voices
-    'en-US-AndrewMultilingualNeural',
-    'en-US-EmmaMultilingualNeural',
-    'en-US-BrianMultilingualNeural',
-    'en-US-AriaNeural',
-    'en-US-GuyNeural',
-    'en-US-JennyNeural',
-    'en-US-ChristopherNeural',
-    'en-US-AvaNeural',
-    // UK Voices
-    'en-GB-SoniaNeural',
-    'en-GB-RyanNeural',
-    // AU Voices
-    'en-AU-NatashaNeural',
-    'en-AU-WilliamMultilingualNeural',
-  ];
-  const voice = requestedVoice === 'random'
-    ? VOICE_OPTIONS[Math.floor(Math.random() * VOICE_OPTIONS.length)]
-    : requestedVoice;
-
-  // Validate voice parameter (alphanumeric, hyphens, underscores only)
-  if (!/^[a-zA-Z0-9_-]+$/.test(voice)) {
-    return res.status(400).json({ success: false, error: 'Invalid voice parameter' });
-  }
-
-  // Validate rate parameter (format: +N% or -N% where N is 0-100)
-  if (!/^[+-]?\d{1,3}%$/.test(rate)) {
-    return res.status(400).json({ success: false, error: 'Invalid rate parameter' });
-  }
-
-  // Validate pitch parameter (format: +NHz or -NHz where N is 0-100)
-  if (!/^[+-]?\d{1,3}Hz$/.test(pitch)) {
-    return res.status(400).json({ success: false, error: 'Invalid pitch parameter' });
-  }
-
-  const audioDir = '/tmp/claude-audio-cache';
-
-  // Ensure directory exists
-  if (!fs.existsSync(audioDir)) {
-    fs.mkdirSync(audioDir, { recursive: true });
-  }
-
-  // Generate cache key from voice + rate + pitch + text
-  const cacheKey = crypto.createHash('md5').update(`${voice}:${rate}:${pitch}:${text}`).digest('hex');
-  const cacheFile = path.join(audioDir, `${cacheKey}.mp3`);
-  const audioUrl = `http://localhost:8129/audio/${cacheKey}.mp3`;
-
-  // Check if cached (with size check), if not generate
-  let needsGeneration = true;
-  try {
-    const stats = fs.statSync(cacheFile);
-    if (stats.size > 0) {
-      needsGeneration = false;
-    } else {
-      // Empty file - delete and regenerate
-      fs.unlinkSync(cacheFile);
-    }
-  } catch {
-    // File doesn't exist - need to generate
-  }
-
-  if (needsGeneration) {
-    let tempTextFile = null;
-    try {
-      const args = ['-v', voice];
-      if (rate && rate !== '+0%') {
-        args.push('--rate', rate);
-      }
-      if (pitch && pitch !== '+0Hz') {
-        args.push('--pitch', pitch);
-      }
-
-      // Always use file input - special characters (backticks, etc.) break -t flag
-      tempTextFile = path.join(audioDir, `${cacheKey}.txt`);
-      fs.writeFileSync(tempTextFile, text, 'utf8');
-      args.push('-f', tempTextFile);
-      // Specify full path with extension - edge-tts uses the exact filename given
-      args.push('--write-media', cacheFile);
-
-      // Scale timeout with text length: 60s base + 30s per 1000 chars, max 300s (5 min)
-      const timeoutMs = Math.min(300000, 60000 + Math.floor(text.length / 1000) * 30000);
-      await execFileAsync('edge-tts', args, { timeout: timeoutMs });
-
-      // Verify file was created with content
-      const stats = fs.statSync(cacheFile);
-      if (stats.size === 0) {
-        fs.unlinkSync(cacheFile);
-        return res.status(500).json({ success: false, error: 'Audio generation produced empty file' });
-      }
-    } catch (err) {
-      console.error('[Audio] edge-tts error:', err.message);
-      if (err.stderr) {
-        console.error('[Audio] edge-tts stderr:', err.stderr);
-      }
-      return res.status(500).json({ success: false, error: 'TTS generation failed' });
-    } finally {
-      // Clean up temp text file
-      if (tempTextFile && fs.existsSync(tempTextFile)) {
-        fs.unlinkSync(tempTextFile);
-      }
-    }
+  if (!result.success) {
+    return res.status(500).json(result);
   }
 
   // Broadcast to all WebSocket clients to play this audio
@@ -513,16 +267,16 @@ app.post('/api/audio/speak', async (req, res) => {
   // Send full text so sidepanel can regenerate with user settings if needed
   broadcast({
     type: 'audio-speak',
-    url: audioUrl,
+    url: result.url,
     volume: Math.max(0, Math.min(1, volume)),
     priority: priority === 'high' ? 'high' : 'low',
-    text: text // Full text for regeneration with user settings
+    text: audioGenerator.stripMarkdown(text) // Full text for regeneration with user settings
   });
 
   res.json({
     success: true,
     message: 'Audio broadcast to extension',
-    url: audioUrl
+    url: result.url
   });
 });
 
