@@ -65,7 +65,7 @@ function SidePanelTerminal() {
 
   // Tab tooltip state
   const [hoveredTab, setHoveredTab] = useState<{ id: string; rect: DOMRect } | null>(null)
-  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const tooltipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Unlock audio on first user interaction (Chrome autoplay policy workaround)
   useEffect(() => {

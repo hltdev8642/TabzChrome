@@ -210,7 +210,7 @@ export function ActiveTerminalsList({
 
   // Hover tooltip state
   const [hoveredTerminal, setHoveredTerminal] = useState<{ id: string; rect: DOMRect } | null>(null)
-  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const tooltipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Status history tracking
   const [statusHistory, setStatusHistory] = useState<Map<string, StatusHistoryEntry[]>>(new Map())
