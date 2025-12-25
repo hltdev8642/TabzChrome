@@ -1362,6 +1362,7 @@ function SidePanelTerminal() {
               fontSize: effectiveProfile?.fontSize,
               fontFamily: effectiveProfile?.fontFamily,
             }}
+            isDark={isDark}
             fontSizeOffset={session.fontSizeOffset}
             onUpdate={updateTerminalAppearance}
             onReset={resetTerminalAppearance}

@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react'
 import { RotateCcw, X } from 'lucide-react'
-import { themes, themeNames } from '../styles/themes'
-import { backgroundGradients, gradientNames, PANEL_COLORS } from '../styles/terminal-backgrounds'
+import { themes, themeNames, getBackgroundGradient as getThemeBackgroundGradient } from '../styles/themes'
+import { backgroundGradients, gradientNames, PANEL_COLORS, getGradientCSS } from '../styles/terminal-backgrounds'
 import { FONT_FAMILIES, getAvailableFonts } from './settings/types'
 import type { TerminalAppearanceOverrides } from '../hooks/useTerminalSessions'
 
@@ -18,6 +18,7 @@ interface TerminalCustomizePopoverProps {
     fontSize?: number
     fontFamily?: string
   }
+  isDark?: boolean  // Global dark/light mode
   // Font size offset (separate from appearance overrides)
   fontSizeOffset?: number
   onUpdate: (sessionId: string, overrides: Partial<TerminalAppearanceOverrides>) => void
@@ -37,6 +38,7 @@ export function TerminalCustomizePopover({
   position,
   currentOverrides,
   profileDefaults,
+  isDark = true,
   fontSizeOffset = 0,
   onUpdate,
   onReset,
@@ -88,6 +90,16 @@ export function TerminalCustomizePopover({
   const effectivePanelColor = currentOverrides?.panelColor ?? profileDefaults.panelColor ?? '#000000'
   const effectiveTransparency = currentOverrides?.transparency ?? profileDefaults.transparency ?? 100
   const effectiveFontFamily = currentOverrides?.fontFamily ?? profileDefaults.fontFamily ?? 'monospace'
+  const effectiveFontSize = profileDefaults.fontSize || 16
+
+  // Compute gradient CSS same as Terminal.tsx
+  const effectiveGradientCSS = effectiveGradient
+    ? getGradientCSS(effectiveGradient, isDark)
+    : getThemeBackgroundGradient(effectiveTheme, isDark)
+  const gradientOpacity = effectiveTransparency / 100
+
+  // Get theme colors for text preview
+  const themeColors = themes[effectiveTheme]?.[isDark ? 'dark' : 'light']?.colors
 
   const hasOverrides = !!(
     currentOverrides?.themeName ||
@@ -126,12 +138,22 @@ export function TerminalCustomizePopover({
   return (
     <div
       ref={popoverRef}
-      className="fixed w-72 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-[10001]"
+      className="fixed w-72 rounded-lg shadow-xl z-[10001] overflow-hidden border border-gray-600/50"
       style={{ left: `${left}px`, top: `${top}px` }}
     >
+      {/* Background layers - same as Terminal.tsx */}
+      <div
+        className="absolute inset-0 z-0"
+        style={{ backgroundColor: effectivePanelColor }}
+      />
+      <div
+        className="absolute inset-0 z-0"
+        style={{ background: effectiveGradientCSS, opacity: gradientOpacity }}
+      />
+
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700">
-        <span className="text-sm font-medium text-white">🎨 Customize</span>
+      <div className="relative z-10 flex items-center justify-between px-3 py-2 border-b border-white/10">
+        <span className="text-sm font-medium" style={{ color: themeColors?.foreground || '#e0e0e0' }}>🎨 Customize</span>
         <div className="flex items-center gap-1">
           {hasOverrides && (
             <button
@@ -139,7 +161,8 @@ export function TerminalCustomizePopover({
                 onReset(sessionId)
                 onResetFontSize()
               }}
-              className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-white transition-colors"
+              className="p-1 hover:bg-white/10 rounded transition-colors"
+              style={{ color: themeColors?.brightBlack || '#888' }}
               title="Reset all to profile defaults"
             >
               <RotateCcw className="h-3.5 w-3.5" />
@@ -147,38 +170,58 @@ export function TerminalCustomizePopover({
           )}
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-white transition-colors"
+            className="p-1 hover:bg-white/10 rounded transition-colors"
+            style={{ color: themeColors?.brightBlack || '#888' }}
           >
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
 
-      <div className="p-3 space-y-4 max-h-80 overflow-y-auto">
+      {/* Font Preview - fixed at top, shows actual terminal styling */}
+      <div className="relative z-10 px-3 pt-3 pb-2">
+        <div
+          className="p-2 rounded border border-white/10 font-mono"
+          style={{
+            fontFamily: effectiveFontFamily,
+            fontSize: `${effectiveFontSize + fontSizeOffset}px`,
+            lineHeight: 1.2,
+          }}
+        >
+          <span style={{ color: themeColors?.foreground || '#e0e0e0' }}>$ </span>
+          <span style={{ color: themeColors?.green || '#5af78e' }}>npm </span>
+          <span style={{ color: themeColors?.cyan || '#00d4ff' }}>test</span>
+          <span style={{ color: themeColors?.brightBlack || '#888' }}> # preview</span>
+        </div>
+      </div>
+
+      <div className="relative z-10 px-3 pb-3 space-y-4 max-h-64 overflow-y-auto">
         {/* Font Size */}
         <div>
-          <label className="block text-xs text-gray-400 mb-1.5">Font Size</label>
+          <label className="block text-xs mb-1.5" style={{ color: themeColors?.brightBlack || '#888' }}>Font Size</label>
           <div className="flex items-center gap-2">
             <button
-              className={`px-2 py-1 rounded border text-sm ${
+              className={`px-2 py-1 rounded border text-sm transition-colors ${
                 canDecrease
-                  ? 'border-gray-600 hover:border-gray-500 text-white'
-                  : 'border-gray-800 text-gray-600 cursor-not-allowed'
+                  ? 'border-white/20 hover:border-white/40'
+                  : 'border-white/10 cursor-not-allowed opacity-50'
               }`}
+              style={{ color: themeColors?.foreground || '#e0e0e0' }}
               onClick={canDecrease ? onDecreaseFontSize : undefined}
               disabled={!canDecrease}
             >
               −
             </button>
-            <span className="text-sm text-white min-w-[3rem] text-center">
-              {profileDefaults.fontSize || 16}{fontSizeOffset !== 0 ? ` ${fontSizeOffset > 0 ? '+' : ''}${fontSizeOffset}` : ''}
+            <span className="text-sm min-w-[3rem] text-center" style={{ color: themeColors?.foreground || '#e0e0e0' }}>
+              {effectiveFontSize}{fontSizeOffset !== 0 ? ` ${fontSizeOffset > 0 ? '+' : ''}${fontSizeOffset}` : ''}
             </span>
             <button
-              className={`px-2 py-1 rounded border text-sm ${
+              className={`px-2 py-1 rounded border text-sm transition-colors ${
                 canIncrease
-                  ? 'border-gray-600 hover:border-gray-500 text-white'
-                  : 'border-gray-800 text-gray-600 cursor-not-allowed'
+                  ? 'border-white/20 hover:border-white/40'
+                  : 'border-white/10 cursor-not-allowed opacity-50'
               }`}
+              style={{ color: themeColors?.foreground || '#e0e0e0' }}
               onClick={canIncrease ? onIncreaseFontSize : undefined}
               disabled={!canIncrease}
             >
@@ -186,7 +229,8 @@ export function TerminalCustomizePopover({
             </button>
             {fontSizeOffset !== 0 && (
               <button
-                className="px-2 py-1 rounded border border-gray-600 hover:border-gray-500 text-gray-400 hover:text-white text-xs"
+                className="px-2 py-1 rounded border border-white/20 hover:border-white/40 text-xs transition-colors"
+                style={{ color: themeColors?.brightBlack || '#888' }}
                 onClick={onResetFontSize}
               >
                 Reset
@@ -197,11 +241,12 @@ export function TerminalCustomizePopover({
 
         {/* Font Family */}
         <div>
-          <label className="block text-xs text-gray-400 mb-1.5">Font Family</label>
+          <label className="block text-xs mb-1.5" style={{ color: themeColors?.brightBlack || '#888' }}>Font Family</label>
           <select
             value={effectiveFontFamily}
             onChange={(e) => onUpdate(sessionId, { fontFamily: e.target.value })}
-            className="w-full px-2 py-1.5 bg-black/50 border border-gray-600 rounded text-white text-sm focus:border-[#00ff88] focus:outline-none"
+            className="w-full px-2 py-1.5 bg-black/30 border border-white/20 rounded text-sm focus:border-[#00ff88] focus:outline-none"
+            style={{ color: themeColors?.foreground || '#e0e0e0' }}
           >
             {availableFonts.map((font) => (
               <option key={font.value} value={font.value}>
@@ -213,11 +258,12 @@ export function TerminalCustomizePopover({
 
         {/* Text Colors */}
         <div>
-          <label className="block text-xs text-gray-400 mb-1.5">Text Colors</label>
+          <label className="block text-xs mb-1.5" style={{ color: themeColors?.brightBlack || '#888' }}>Text Colors</label>
           <select
             value={effectiveTheme}
             onChange={(e) => onUpdate(sessionId, { themeName: e.target.value })}
-            className="w-full px-2 py-1.5 bg-black/50 border border-gray-600 rounded text-white text-sm focus:border-[#00ff88] focus:outline-none"
+            className="w-full px-2 py-1.5 bg-black/30 border border-white/20 rounded text-sm focus:border-[#00ff88] focus:outline-none"
+            style={{ color: themeColors?.foreground || '#e0e0e0' }}
           >
             {themeNames.map((name) => (
               <option key={name} value={name}>
@@ -229,11 +275,12 @@ export function TerminalCustomizePopover({
 
         {/* Background Gradient */}
         <div>
-          <label className="block text-xs text-gray-400 mb-1.5">Background</label>
+          <label className="block text-xs mb-1.5" style={{ color: themeColors?.brightBlack || '#888' }}>Background</label>
           <select
             value={effectiveGradient || ''}
             onChange={(e) => onUpdate(sessionId, { backgroundGradient: e.target.value || undefined })}
-            className="w-full px-2 py-1.5 bg-black/50 border border-gray-600 rounded text-white text-sm focus:border-[#00ff88] focus:outline-none"
+            className="w-full px-2 py-1.5 bg-black/30 border border-white/20 rounded text-sm focus:border-[#00ff88] focus:outline-none"
+            style={{ color: themeColors?.foreground || '#e0e0e0' }}
           >
             <option value="">Theme Default</option>
             {gradientNames.map((name) => (
@@ -246,7 +293,7 @@ export function TerminalCustomizePopover({
 
         {/* Panel Color */}
         <div>
-          <label className="block text-xs text-gray-400 mb-1.5">Panel Color</label>
+          <label className="block text-xs mb-1.5" style={{ color: themeColors?.brightBlack || '#888' }}>Panel Color</label>
           <div className="flex flex-wrap gap-1.5">
             {PANEL_COLORS.map((color) => (
               <button
@@ -256,7 +303,7 @@ export function TerminalCustomizePopover({
                   w-6 h-6 rounded border transition-all
                   ${effectivePanelColor === color.value
                     ? 'border-[#00ff88] scale-110'
-                    : 'border-gray-600 hover:border-gray-500'
+                    : 'border-white/30 hover:border-white/50'
                   }
                 `}
                 style={{ backgroundColor: color.value }}
@@ -268,7 +315,7 @@ export function TerminalCustomizePopover({
 
         {/* Transparency */}
         <div>
-          <label className="block text-xs text-gray-400 mb-1.5">
+          <label className="block text-xs mb-1.5" style={{ color: themeColors?.brightBlack || '#888' }}>
             Gradient Opacity: {effectiveTransparency}%
           </label>
           <input
@@ -278,9 +325,9 @@ export function TerminalCustomizePopover({
             step="5"
             value={effectiveTransparency}
             onChange={(e) => onUpdate(sessionId, { transparency: parseInt(e.target.value) })}
-            className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[#00ff88]"
+            className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-[#00ff88]"
           />
-          <div className="flex justify-between text-xs text-gray-500 mt-0.5">
+          <div className="flex justify-between text-xs mt-0.5" style={{ color: themeColors?.brightBlack || '#888' }}>
             <span>Solid</span>
             <span>Gradient</span>
           </div>
@@ -288,7 +335,7 @@ export function TerminalCustomizePopover({
       </div>
 
       {/* Footer hint */}
-      <div className="px-3 py-2 border-t border-gray-700 text-xs text-gray-500">
+      <div className="relative z-10 px-3 py-2 border-t border-white/10 text-xs" style={{ color: themeColors?.brightBlack || '#888' }}>
         Changes don't save to profile
       </div>
     </div>
