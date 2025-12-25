@@ -56,14 +56,22 @@ function getConsoleLogs(options = {}) {
 }
 
 /**
- * Create a pending request for browser operation
+ * Make a browser request via WebSocket with timeout handling
+ *
+ * @param {Function} broadcast - The broadcast function from app context
+ * @param {string} type - The message type (e.g., 'browser-list-tabs')
+ * @param {Object} payload - Additional payload to send with the message
+ * @param {number} timeout - Timeout in milliseconds (default: 10000)
+ * @param {string} timeoutMessage - Custom timeout error message
+ * @returns {Promise} - Resolves with the response data
  */
-function createPendingRequest(timeout = 30000) {
+async function makeBrowserRequest(broadcast, type, payload = {}, timeout = 10000, timeoutMessage = 'Request timed out') {
   const requestId = `browser-${++requestIdCounter}`;
-  return new Promise((resolve, reject) => {
+
+  const resultPromise = new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       pendingRequests.delete(requestId);
-      reject(new Error('Request timed out - browser may not be responding'));
+      reject(new Error(timeoutMessage));
     }, timeout);
 
     pendingRequests.set(requestId, {
@@ -78,7 +86,10 @@ function createPendingRequest(timeout = 30000) {
         reject(error);
       }
     });
-  }).then(result => ({ requestId, result }));
+  });
+
+  broadcast({ type, requestId, ...payload });
+  return resultPromise;
 }
 
 /**
@@ -118,7 +129,6 @@ router.post('/execute-script', async (req, res) => {
 
   log.debug('POST /execute-script', { codeLength: code.length, tabId, allFrames });
 
-  // Get the broadcast function from server.js
   const broadcast = req.app.get('broadcast');
   if (!broadcast) {
     return res.status(500).json({
@@ -128,39 +138,13 @@ router.post('/execute-script', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    // Create promise that will be resolved by WebSocket response
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out - browser may not be responding'));
-      }, 30000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    // Send request to extension via WebSocket
-    broadcast({
-      type: 'browser-execute-script',
-      requestId,
-      code,
-      tabId,
-      allFrames
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-execute-script',
+      { code, tabId, allFrames },
+      30000,
+      'Request timed out - browser may not be responding'
+    );
     res.json(result);
   } catch (error) {
     log.error('execute-script error:', error);
@@ -182,37 +166,7 @@ router.get('/page-info', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    // Create promise that will be resolved by WebSocket response
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    // Send request to extension via WebSocket
-    broadcast({
-      type: 'browser-get-page-info',
-      requestId,
-      tabId
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-get-page-info', { tabId });
     res.json(result);
   } catch (error) {
     log.error('page-info error:', error);
@@ -243,39 +197,13 @@ router.post('/download-file', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    // Create promise that will be resolved by WebSocket response
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Download timed out - may still be in progress'));
-      }, 60000); // 60 second timeout for downloads
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    // Send request to extension via WebSocket
-    broadcast({
-      type: 'browser-download-file',
-      requestId,
-      url,
-      filename,
-      conflictAction: conflictAction || 'uniquify'
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-download-file',
+      { url, filename, conflictAction: conflictAction || 'uniquify' },
+      60000,
+      'Download timed out - may still be in progress'
+    );
     res.json(result);
   } catch (error) {
     log.error('download-file error:', error);
@@ -299,36 +227,7 @@ router.get('/downloads', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-get-downloads',
-      requestId,
-      limit,
-      state
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-get-downloads', { limit, state });
     res.json(result);
   } catch (error) {
     log.error('get-downloads error:', error);
@@ -355,35 +254,7 @@ router.post('/cancel-download', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-cancel-download',
-      requestId,
-      downloadId
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-cancel-download', { downloadId });
     res.json(result);
   } catch (error) {
     log.error('cancel-download error:', error);
@@ -406,38 +277,13 @@ router.post('/save-page', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    // Create promise that will be resolved by WebSocket response
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Page save timed out - large pages may take longer'));
-      }, 60000); // 60 second timeout for large pages
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    // Send request to extension via WebSocket
-    broadcast({
-      type: 'browser-save-page',
-      requestId,
-      tabId,
-      filename
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-save-page',
+      { tabId, filename },
+      60000,
+      'Page save timed out - large pages may take longer'
+    );
     res.json(result);
   } catch (error) {
     log.error('save-page error:', error);
@@ -461,39 +307,13 @@ router.post('/capture-image', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    // Create promise that will be resolved by WebSocket response
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Image capture timed out'));
-      }, 30000); // 30 second timeout
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    // Send request to extension via WebSocket
-    broadcast({
-      type: 'browser-capture-image',
-      requestId,
-      selector,
-      tabId,
-      outputPath
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-capture-image',
+      { selector, tabId, outputPath },
+      30000,
+      'Image capture timed out'
+    );
     res.json(result);
   } catch (error) {
     log.error('capture-image error:', error);
@@ -518,34 +338,7 @@ router.get('/tabs', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-list-tabs',
-      requestId
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-list-tabs', {});
     res.json(result);
   } catch (error) {
     log.error('list-tabs error:', error);
@@ -572,35 +365,7 @@ router.post('/switch-tab', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-switch-tab',
-      requestId,
-      tabId
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-switch-tab', { tabId });
     res.json(result);
   } catch (error) {
     log.error('switch-tab error:', error);
@@ -627,38 +392,17 @@ router.post('/open-url', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 30000); // 30s timeout for navigation
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-open-url',
-      requestId,
-      url,
-      newTab: newTab !== false, // default true
-      background: background === true, // default false
-      reuseExisting: reuseExisting !== false // default true
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-open-url',
+      {
+        url,
+        newTab: newTab !== false,
+        background: background === true,
+        reuseExisting: reuseExisting !== false
+      },
+      30000
+    );
     res.json(result);
   } catch (error) {
     log.error('open-url error:', error);
@@ -679,34 +423,7 @@ router.get('/active-tab', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-get-active-tab',
-      requestId
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-get-active-tab', {});
     res.json(result);
   } catch (error) {
     log.error('get-active-tab error:', error);
@@ -728,34 +445,7 @@ router.get('/settings', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-get-settings',
-      requestId
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-get-settings', {});
     res.json(result);
   } catch (error) {
     log.error('get-settings error:', error);
@@ -776,34 +466,7 @@ router.get('/profiles', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-get-profiles',
-      requestId
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-get-profiles', {});
     res.json(result);
   } catch (error) {
     log.error('get-profiles error:', error);
@@ -834,37 +497,13 @@ router.post('/click-element', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Click operation timed out - element may not exist'));
-      }, 15000); // 15 second timeout
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-click-element',
-      requestId,
-      selector,
-      tabId,
-      waitTimeout: waitTimeout || 5000
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-click-element',
+      { selector, tabId, waitTimeout: waitTimeout || 5000 },
+      15000,
+      'Click operation timed out - element may not exist'
+    );
     res.json(result);
   } catch (error) {
     log.error('click-element error:', error);
@@ -894,38 +533,13 @@ router.post('/fill-input', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Fill operation timed out - element may not exist'));
-      }, 15000); // 15 second timeout
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-fill-input',
-      requestId,
-      selector,
-      value,
-      tabId,
-      waitTimeout: waitTimeout || 5000
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-fill-input',
+      { selector, value, tabId, waitTimeout: waitTimeout || 5000 },
+      15000,
+      'Fill operation timed out - element may not exist'
+    );
     res.json(result);
   } catch (error) {
     log.error('fill-input error:', error);
@@ -952,38 +566,16 @@ router.post('/get-element-info', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Get element info timed out'));
-      }, 10000); // 10 second timeout
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-get-element-info',
-      requestId,
-      selector,
-      tabId,
-      includeStyles: includeStyles !== false, // default true
-      styleProperties: styleProperties || null
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-get-element-info',
+      {
+        selector,
+        tabId,
+        includeStyles: includeStyles !== false,
+        styleProperties: styleProperties || null
+      }
+    );
     res.json(result);
   } catch (error) {
     log.error('get-element-info error:', error);
@@ -1010,37 +602,13 @@ router.post('/screenshot', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Screenshot timed out'));
-      }, 30000); // 30 second timeout
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-screenshot',
-      requestId,
-      tabId,
-      selector,
-      fullPage: false
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-screenshot',
+      { tabId, selector, fullPage: false },
+      30000,
+      'Screenshot timed out'
+    );
     res.json(result);
   } catch (error) {
     log.error('screenshot error:', error);
@@ -1063,36 +631,13 @@ router.post('/screenshot-full', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Full page screenshot timed out'));
-      }, 60000); // 60 second timeout for full page
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-screenshot',
-      requestId,
-      tabId,
-      fullPage: true
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-screenshot',
+      { tabId, fullPage: true },
+      60000,
+      'Full page screenshot timed out'
+    );
     res.json(result);
   } catch (error) {
     log.error('screenshot-full error:', error);
@@ -1120,36 +665,7 @@ router.get('/bookmarks/tree', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-bookmarks-tree',
-      requestId,
-      folderId,
-      maxDepth
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-bookmarks-tree', { folderId, maxDepth });
     res.json(result);
   } catch (error) {
     log.error('bookmarks-tree error:', error);
@@ -1177,36 +693,7 @@ router.get('/bookmarks/search', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-bookmarks-search',
-      requestId,
-      query,
-      limit
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-bookmarks-search', { query, limit });
     res.json(result);
   } catch (error) {
     log.error('bookmarks-search error:', error);
@@ -1233,38 +720,11 @@ router.post('/bookmarks/create', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-bookmarks-create',
-      requestId,
-      url,
-      title,
-      parentId: parentId || '1',
-      index
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-bookmarks-create',
+      { url, title, parentId: parentId || '1', index }
+    );
     res.json(result);
   } catch (error) {
     log.error('bookmarks-create error:', error);
@@ -1291,37 +751,11 @@ router.post('/bookmarks/create-folder', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-bookmarks-create-folder',
-      requestId,
-      title,
-      parentId: parentId || '1',
-      index
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-bookmarks-create-folder',
+      { title, parentId: parentId || '1', index }
+    );
     res.json(result);
   } catch (error) {
     log.error('bookmarks-create-folder error:', error);
@@ -1348,37 +782,7 @@ router.post('/bookmarks/move', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-bookmarks-move',
-      requestId,
-      id,
-      parentId,
-      index
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-bookmarks-move', { id, parentId, index });
     res.json(result);
   } catch (error) {
     log.error('bookmarks-move error:', error);
@@ -1405,35 +809,7 @@ router.post('/bookmarks/delete', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-bookmarks-delete',
-      requestId,
-      id
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-bookmarks-delete', { id });
     res.json(result);
   } catch (error) {
     log.error('bookmarks-delete error:', error);
@@ -1460,35 +836,7 @@ router.post('/network-capture/enable', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-enable-network-capture',
-      requestId,
-      tabId
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-enable-network-capture', { tabId });
     res.json(result);
   } catch (error) {
     log.error('enable-network-capture error:', error);
@@ -1511,42 +859,20 @@ router.post('/network-requests', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-get-network-requests',
-      requestId,
-      urlPattern,
-      method,
-      statusMin,
-      statusMax,
-      resourceType,
-      limit: limit || 50,
-      offset: offset || 0,
-      tabId
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-get-network-requests',
+      {
+        urlPattern,
+        method,
+        statusMin,
+        statusMax,
+        resourceType,
+        limit: limit || 50,
+        offset: offset || 0,
+        tabId
+      }
+    );
     res.json(result);
   } catch (error) {
     log.error('get-network-requests error:', error);
@@ -1567,34 +893,7 @@ router.post('/network-requests/clear', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-clear-network-requests',
-      requestId
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-clear-network-requests', {});
     res.json(result);
   } catch (error) {
     log.error('clear-network-requests error:', error);
@@ -1621,37 +920,13 @@ router.post('/debugger/dom-tree', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out - debugger operation may still be in progress'));
-      }, 30000); // 30s timeout for debugger operations
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-get-dom-tree',
-      requestId,
-      tabId,
-      maxDepth: maxDepth || 4,
-      selector
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-get-dom-tree',
+      { tabId, maxDepth: maxDepth || 4, selector },
+      30000,
+      'Request timed out - debugger operation may still be in progress'
+    );
     res.json(result);
   } catch (error) {
     log.error('debugger/dom-tree error:', error);
@@ -1674,35 +949,7 @@ router.post('/debugger/performance', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 15000); // 15s timeout
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-profile-performance',
-      requestId,
-      tabId
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-profile-performance', { tabId }, 15000);
     res.json(result);
   } catch (error) {
     log.error('debugger/performance error:', error);
@@ -1725,36 +972,12 @@ router.post('/debugger/coverage', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 20000); // 20s timeout for coverage
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-get-coverage',
-      requestId,
-      tabId,
-      coverageType: type || 'both'
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-get-coverage',
+      { tabId, coverageType: type || 'both' },
+      20000
+    );
     res.json(result);
   } catch (error) {
     log.error('debugger/coverage error:', error);
@@ -1779,34 +1002,7 @@ router.get('/tab-groups', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-list-tab-groups',
-      requestId
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-list-tab-groups', {});
     res.json(result);
   } catch (error) {
     log.error('list-tab-groups error:', error);
@@ -1833,38 +1029,11 @@ router.post('/tab-groups', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-create-tab-group',
-      requestId,
-      tabIds,
-      title,
-      color,
-      collapsed
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-create-tab-group',
+      { tabIds, title, color, collapsed }
+    );
     res.json(result);
   } catch (error) {
     log.error('create-tab-group error:', error);
@@ -1892,38 +1061,11 @@ router.put('/tab-groups/:groupId', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-update-tab-group',
-      requestId,
-      groupId,
-      title,
-      color,
-      collapsed
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-update-tab-group',
+      { groupId, title, color, collapsed }
+    );
     res.json(result);
   } catch (error) {
     log.error('update-tab-group error:', error);
@@ -1955,36 +1097,7 @@ router.post('/tab-groups/:groupId/tabs', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-add-to-tab-group',
-      requestId,
-      groupId,
-      tabIds
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-add-to-tab-group', { groupId, tabIds });
     res.json(result);
   } catch (error) {
     log.error('add-to-tab-group error:', error);
@@ -2011,35 +1124,7 @@ router.post('/ungroup-tabs', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-ungroup-tabs',
-      requestId,
-      tabIds
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-ungroup-tabs', { tabIds });
     res.json(result);
   } catch (error) {
     log.error('ungroup-tabs error:', error);
@@ -2066,35 +1151,7 @@ router.post('/claude-group/add', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-add-to-claude-group',
-      requestId,
-      tabId
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-add-to-claude-group', { tabId });
     res.json(result);
   } catch (error) {
     log.error('add-to-claude-group error:', error);
@@ -2121,35 +1178,7 @@ router.post('/claude-group/remove', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-remove-from-claude-group',
-      requestId,
-      tabId
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-remove-from-claude-group', { tabId });
     res.json(result);
   } catch (error) {
     log.error('remove-from-claude-group error:', error);
@@ -2170,34 +1199,7 @@ router.get('/claude-group/status', async (req, res) => {
   }
 
   try {
-    const requestId = `browser-${++requestIdCounter}`;
-
-    const resultPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingRequests.delete(requestId);
-        reject(new Error('Request timed out'));
-      }, 10000);
-
-      pendingRequests.set(requestId, {
-        resolve: (data) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          resolve(data);
-        },
-        reject: (error) => {
-          clearTimeout(timeout);
-          pendingRequests.delete(requestId);
-          reject(error);
-        }
-      });
-    });
-
-    broadcast({
-      type: 'browser-get-claude-group-status',
-      requestId
-    });
-
-    const result = await resultPromise;
+    const result = await makeBrowserRequest(broadcast, 'browser-get-claude-group-status', {});
     res.json(result);
   } catch (error) {
     log.error('get-claude-group-status error:', error);
