@@ -2,7 +2,7 @@
 
 **Full Linux terminals in your Chrome sidebar**
 
-![Version](https://img.shields.io/badge/version-1.2.9-blue)
+![Version](https://img.shields.io/badge/version-1.2.19-blue)
 ![Chrome](https://img.shields.io/badge/chrome-manifest%20v3-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -52,7 +52,7 @@ TabzChrome is designed to work seamlessly with Claude Code:
 
 ![MCP settings](docs/pages/screenshots/mcp-settings.png)
 
-Using Claude Code's experimental MCP CLI mode, tool schemas are loaded on-demand instead of all 26 definitions into context. Enable with the `ENABLE_EXPERIMENTAL_MCP_CLI=true` environment variable. See the [setup gist](https://gist.github.com/GGPrompts/50e82596b345557656df2fc8d2d54e2c) for details.
+Using Claude Code's experimental MCP CLI mode, tool schemas are loaded on-demand instead of all 37 definitions into context. Enable with the `ENABLE_EXPERIMENTAL_MCP_CLI=true` environment variable. See the [setup gist](https://gist.github.com/GGPrompts/50e82596b345557656df2fc8d2d54e2c) for details.
 
 **🎭 Power Features (Claude Code Integration):**
 
@@ -67,7 +67,7 @@ TabzChrome includes a [Claude Code plugin marketplace](.claude-plugin/marketplac
 | [**state-tracker**](plugins/state-tracker/) | hooks | Live Claude status tracking for terminal tab updates |
 | [**ctthandoff**](plugins/ctthandoff/) | command | Generate handoff summary, copy to clipboard, speak via TTS |
 | [**tabz-integration**](plugins/tabz-integration/) | command | Integration guide for connecting projects to TabzChrome |
-| [**Tabz MCP Server**](tabz-mcp-server/MCP_TOOLS.md) | MCP | 26 browser control tools (screenshots, clicks, bookmarks, network) |
+| [**Tabz MCP Server**](tabz-mcp-server/MCP_TOOLS.md) | MCP | 37 browser control tools (screenshots, clicks, bookmarks, network, tab groups) |
 
 **Quick setup:** Plugins auto-load when you run Claude Code in the TabzChrome directory.
 
@@ -458,7 +458,7 @@ The URL opens in a new tab and the sidebar activates automatically.
 
 ## Tabz MCP Integration
 
-Tabz includes an **MCP server** with 29 tools that let Claude Code control your browser:
+Tabz includes an **MCP server** with 37 tools that let Claude Code control your browser:
 
 ![Claude using MCP tools to control DALL-E in the browser - filling prompts, clicking generate, downloading results](docs/pages/screenshots/mcp-dalle-demo.png)
 
@@ -510,7 +510,7 @@ Install the `tabz-mcp` skill for guided browser automation. The skill dynamicall
 
 ### No Remote Debugging Required
 
-**All 26 MCP tools now work using Chrome Extension APIs only!** No `--remote-debugging-port=9222` flag needed.
+**All 37 MCP tools work using Chrome Extension APIs only!** No `--remote-debugging-port=9222` flag needed.
 
 | Feature | Works Out of the Box |
 |---------|---------------------|

@@ -131,6 +131,7 @@ For voice codes, parameters, and API details, read `references/audio-tts.md`.
 
 | Version | Key Feature |
 |---------|-------------|
+| 1.2.19 | Codebase simplification (MCP client removed, hooks extracted) |
 | 1.2.8 | Send Element to Chat, MCP visual feedback, debugger tools |
 | 1.1.16 | tabz-guide plugin, tui-expert agent |
 | 1.1.15 | Context window % on tabs, audio alerts |

@@ -1355,45 +1355,48 @@ When Claude starts working with a browser tab (e.g., taking screenshots, clickin
 
 ## Architecture
 
+All 37 MCP tools use **Chrome Extension APIs** exclusively (no CDP required since v1.2.0).
+
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                   EXTENSION-BASED TOOLS (Preferred)                  │
-│   tabz_list_tabs, tabz_switch_tab - ACCURATE active tab detection    │
-│   tabz_get_console_logs, tabz_download_file, tabz_get_downloads      │
-│   tabz_cancel_download, tabz_download_image (hybrid)                 │
+│                     EXTENSION-BASED ARCHITECTURE                     │
+│   All 37 tools: tabs, screenshots, clicks, network, bookmarks, etc.  │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
-│  Chrome Browser (Windows)                                            │
-│         ↓ chrome.tabs API (knows REAL focused tab)                   │
-│  Background Worker → WebSocket → Backend (WSL:8129)                  │
-│                                          ↓                           │
-│                              Tabz MCP Server (Windows node.exe)      │
-│                                          ↓                           │
-│                                    Claude Code (WSL2)                │
+│  Chrome Browser                                                      │
+│         │                                                            │
+│         ↓ Chrome Extension APIs                                      │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │  TabzChrome Extension (Background Worker)                    │    │
+│  │  - chrome.tabs, chrome.scripting, chrome.tabGroups           │    │
+│  │  - chrome.downloads, chrome.bookmarks, chrome.debugger       │    │
+│  │  - chrome.webRequest (network capture)                       │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                          │                                           │
+│                          ↓ WebSocket                                 │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │  Backend (localhost:8129)                                    │    │
+│  │  - Routes browser requests to extension                      │    │
+│  │  - Terminal management (tmux sessions)                       │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                          │                                           │
+│                          ↓ HTTP                                      │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │  Tabz MCP Server (stdio)                                     │    │
+│  │  - Tools call backend directly (no client layer)             │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                          │                                           │
+│                          ↓ stdio                                     │
+│                    Claude Code                                       │
 │                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────────┐
-│                      CDP-BASED TOOLS (Fallback)                      │
-│  tabz_screenshot, tabz_screenshot_full, tabz_click, tabz_fill,       │
-│  tabz_get_element, tabz_enable_network_capture, tabz_get_page_info   │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  Chrome (127.0.0.1:9222) ◀─── Tabz MCP Server (Windows node.exe)     │
-│         ↑                              ↑                             │
-│     CDP / WebSocket                    │ stdio                       │
-│     (localhost only)                   ↓                             │
-│                              Claude Code (WSL2)                      │
-│                                                                      │
-│  ⚠️ CDP cannot detect which tab user has focused - only extension can │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 **Key insights:**
-- Chrome binds to `127.0.0.1:9222` only (localhost - secure!)
-- MCP server runs via `run-wsl.sh` (WSL2) or `run.sh` (native) using appropriate node
-- Windows node.exe can access `localhost:9222` directly (no port proxy needed)
-- Claude Code communicates with MCP server via stdio
+- All tools use Chrome Extension APIs - no `--remote-debugging-port` flag needed
+- MCP server runs via `run-wsl.sh` (WSL2) or `run.sh` (native)
+- Tools call backend directly (client layer removed in v1.2.19)
+- Extension provides accurate active tab detection
 
 ## Claude Skill: `tabz-mcp`
 
@@ -1419,9 +1422,9 @@ Install the `tabz-mcp` skill for guided browser automation. The skill **dynamica
 - Testing and debugging MCP functionality
 - Controlling AI tools (Sora, DALL-E, etc.)
 
-## Extension vs CDP Dependencies
+## Extension API Reference
 
-All tools use **Chrome Extension APIs** - no CDP or `--remote-debugging-port=9222` flag required.
+All 37 tools use **Chrome Extension APIs** - no CDP or `--remote-debugging-port=9222` flag required.
 
 | Tool | Needs Extension? | Implementation |
 |------|-----------------|----------------|
@@ -1444,6 +1447,7 @@ All tools use **Chrome Extension APIs** - no CDP or `--remote-debugging-port=922
 | `tabz_download_file` | ✅ Required | Chrome downloads API |
 | `tabz_get_downloads` | ✅ Required | Chrome downloads API |
 | `tabz_cancel_download` | ✅ Required | Chrome downloads API |
+| `tabz_save_page` | ✅ Required | chrome.pageCapture API |
 | `tabz_get_bookmark_tree` | ✅ Required | Chrome bookmarks API |
 | `tabz_search_bookmarks` | ✅ Required | Chrome bookmarks API |
 | `tabz_save_bookmark` | ✅ Required | Chrome bookmarks API |
@@ -1499,7 +1503,6 @@ See [WSL2_SETUP.md](WSL2_SETUP.md) for full platform-specific setup instructions
 
 | Issue | Solution |
 |-------|----------|
-| "CDP not available" | Use Chrome Debug shortcut, verify with `curl.exe http://localhost:9222/json/version` |
 | "Cannot connect to backend" | Start backend: `cd backend && npm start` |
 | "No logs captured" | Open Chrome tabs and interact with pages |
 | "Request timed out" | Check Chrome is open with extension installed |
@@ -1507,14 +1510,16 @@ See [WSL2_SETUP.md](WSL2_SETUP.md) for full platform-specific setup instructions
 | "No active page found" | Open a webpage (not chrome:// pages) |
 | "Element not found" | Check selector matches an element on the page |
 | Screenshots wrong location | Fixed! Paths auto-convert to WSL format (`/mnt/c/...`) |
-| Browser window shrinking | Fixed - was caused by broken CDP connection |
 
 ### Quick Diagnostics
 
 ```bash
-# Check Chrome CDP is available
-powershell.exe -Command "curl.exe http://localhost:9222/json/version"
+# Check backend is running
+curl http://localhost:8129/api/health
 
-# Check what process owns port 9222 (should be chrome.exe)
-powershell.exe -Command "Get-NetTCPConnection -LocalPort 9222 -State Listen | ForEach-Object { Get-Process -Id \$_.OwningProcess }"
+# Check extension is connected (look for WebSocket clients)
+curl http://localhost:8129/api/health | grep -o '"wsClients":[0-9]*'
+
+# List MCP tools available
+mcp-cli tools tabz
 ```

@@ -27,12 +27,12 @@ extension/                          backend/
 ├── background/
 │   ├── index.ts                    tabz-mcp-server/src/
 │   ├── websocket.ts                ├── index.ts (MCP server entry)
-│   ├── messageHandlers.ts          ├── client/
-│   ├── browserMcp/                 │   ├── core.ts (tab management)
-│   │   ├── tabs.ts                 │   ├── screenshot.ts
-│   │   ├── screenshots.ts          │   ├── interaction.ts
-│   │   └── ...                     │   └── ...
-│   └── ...                         └── tools/ (MCP tool definitions)
+│   ├── messageHandlers.ts          └── tools/ (MCP tool definitions,
+│   ├── browserMcp/                           call backend directly)
+│   │   ├── tabs.ts
+│   │   ├── screenshots.ts
+│   │   └── ...
+│   └── ...
 ├── dashboard/
 │   ├── App.tsx                     (Full-page dashboard UI)
 │   ├── sections/
@@ -156,7 +156,7 @@ See `docs/API.md` for full API documentation.
 | `extension/background/messageHandlers.ts` | Chrome runtime message handlers |
 | `extension/background/browserMcp/` | Browser MCP handlers (tabs, screenshots, etc.) |
 | `extension/3d/FocusScene.tsx` | 3D Focus Mode (Three.js + React Three Fiber) |
-| `tabz-mcp-server/src/client/` | MCP client modules (core, screenshot, interaction, etc.) |
+| `tabz-mcp-server/src/tools/` | MCP tool definitions (call backend directly) |
 | `backend/modules/pty-handler.js` | PTY spawning, tmux integration |
 | `backend/routes/api.js` | REST endpoints including spawn API |
 
