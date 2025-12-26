@@ -79,6 +79,9 @@ export const PRESETS = {
 
 export type TabType = 'profiles' | 'mcp' | 'audio'
 
+// Background media type for terminal backgrounds
+export type BackgroundMediaType = 'none' | 'image' | 'video'
+
 // Profile types
 export interface Profile {
   id: string
@@ -91,6 +94,9 @@ export interface Profile {
   backgroundGradient?: string  // Override gradient (undefined = use theme default)
   panelColor?: string  // Base panel color shown through gradient (undefined = #000000)
   transparency?: number  // Gradient opacity 0-100 (undefined = 100)
+  backgroundMedia?: string  // Path to image/video file (e.g., ~/Pictures/space.mp4)
+  backgroundMediaType?: BackgroundMediaType  // 'none' | 'image' | 'video'
+  backgroundMediaOpacity?: number  // 0-100, controls media visibility (default: 50)
   audioOverrides?: ProfileAudioOverrides  // Optional per-profile audio settings
   category?: string  // Optional category for grouping (e.g., "Claude Code", "TUI Tools")
   reference?: string  // Optional reference URL or file path (shows paperclip on tab)

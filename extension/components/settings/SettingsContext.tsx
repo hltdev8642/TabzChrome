@@ -4,9 +4,22 @@ import {
   CategorySettings,
   AudioSettings,
   AudioEventSettings,
+  BackgroundMediaType,
   PRESETS,
   DEFAULT_AUDIO_SETTINGS,
 } from './types'
+
+/** Appearance properties that can be previewed */
+export interface ProfileAppearancePreview {
+  themeName?: string
+  backgroundGradient?: string
+  panelColor?: string
+  transparency?: number
+  fontFamily?: string
+  backgroundMedia?: string
+  backgroundMediaType?: BackgroundMediaType
+  backgroundMediaOpacity?: number
+}
 
 // Context value type
 export interface SettingsContextValue {
@@ -64,6 +77,10 @@ export interface SettingsContextValue {
   setShowTokenHelp: React.Dispatch<React.SetStateAction<boolean>>
   tokenCopied: boolean
   handleCopyToken: () => Promise<void>
+
+  // Live preview callbacks (for profile editing)
+  onPreviewProfileAppearance?: (profileId: string, appearance: ProfileAppearancePreview) => void
+  onClearPreview?: (profileId: string) => void
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null)
@@ -80,9 +97,13 @@ interface SettingsProviderProps {
   isOpen: boolean
   onClose: () => void
   children: React.ReactNode
+  /** Preview profile appearance changes on active terminals */
+  onPreviewProfileAppearance?: (profileId: string, appearance: ProfileAppearancePreview) => void
+  /** Clear preview overrides (on cancel) */
+  onClearPreview?: (profileId: string) => void
 }
 
-export function SettingsProvider({ isOpen, onClose, children }: SettingsProviderProps) {
+export function SettingsProvider({ isOpen, onClose, children, onPreviewProfileAppearance, onClearPreview }: SettingsProviderProps) {
   // Profile state
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [defaultProfile, setDefaultProfile] = useState<string>('default')
@@ -464,6 +485,8 @@ export function SettingsProvider({ isOpen, onClose, children }: SettingsProvider
     setShowTokenHelp,
     tokenCopied,
     handleCopyToken,
+    onPreviewProfileAppearance,
+    onClearPreview,
   }
 
   return (

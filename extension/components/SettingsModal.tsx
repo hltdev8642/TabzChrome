@@ -23,17 +23,35 @@ interface SettingsModalProps {
   isOpen: boolean
   onClose: () => void
   editProfileId?: string | null
+  /** Preview profile appearance changes on active terminals */
+  onPreviewProfileAppearance?: (profileId: string, appearance: {
+    themeName?: string
+    backgroundGradient?: string
+    panelColor?: string
+    transparency?: number
+    fontFamily?: string
+    backgroundMedia?: string
+    backgroundMediaType?: 'none' | 'image' | 'video'
+    backgroundMediaOpacity?: number
+  }) => void
+  /** Clear preview overrides (on cancel) */
+  onClearPreview?: (profileId: string) => void
 }
 
 /**
  * SettingsModal - Main settings interface for Tabz
  * Thin orchestrator that delegates to tab components via SettingsContext
  */
-export function SettingsModal({ isOpen, onClose, editProfileId }: SettingsModalProps) {
+export function SettingsModal({ isOpen, onClose, editProfileId, onPreviewProfileAppearance, onClearPreview }: SettingsModalProps) {
   if (!isOpen) return null
 
   return (
-    <SettingsProvider isOpen={isOpen} onClose={onClose}>
+    <SettingsProvider
+      isOpen={isOpen}
+      onClose={onClose}
+      onPreviewProfileAppearance={onPreviewProfileAppearance}
+      onClearPreview={onClearPreview}
+    >
       <SettingsModalContent onClose={onClose} editProfileId={editProfileId} />
     </SettingsProvider>
   )

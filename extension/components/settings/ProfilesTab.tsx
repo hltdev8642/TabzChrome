@@ -16,6 +16,7 @@ import {
   TTS_VOICES,
 } from './types'
 import { CategoryCombobox } from './CategoryCombobox'
+import { useSettings } from './SettingsContext'
 
 interface ProfilesTabProps {
   profiles: Profile[]
@@ -43,6 +44,9 @@ export function ProfilesTab({
   onImportClick,
   editProfileId,
 }: ProfilesTabProps) {
+  // Get preview callbacks from context
+  const { onPreviewProfileAppearance, onClearPreview } = useSettings()
+
   // Profile state
   const [isAdding, setIsAdding] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -59,6 +63,35 @@ export function ProfilesTab({
     }
   }, [editProfileId, profiles])
   const [formData, setFormData] = useState<Profile>(DEFAULT_PROFILE)
+
+  // Live preview: whenever formData appearance changes while editing, preview on terminals
+  useEffect(() => {
+    if (!onPreviewProfileAppearance || editingIndex === null || !formData.id) return
+
+    // Preview appearance-related fields
+    onPreviewProfileAppearance(formData.id, {
+      themeName: formData.themeName,
+      backgroundGradient: formData.backgroundGradient,
+      panelColor: formData.panelColor,
+      transparency: formData.transparency,
+      fontFamily: formData.fontFamily,
+      backgroundMedia: formData.backgroundMedia,
+      backgroundMediaType: formData.backgroundMediaType,
+      backgroundMediaOpacity: formData.backgroundMediaOpacity,
+    })
+  }, [
+    onPreviewProfileAppearance,
+    editingIndex,
+    formData.id,
+    formData.themeName,
+    formData.backgroundGradient,
+    formData.panelColor,
+    formData.transparency,
+    formData.fontFamily,
+    formData.backgroundMedia,
+    formData.backgroundMediaType,
+    formData.backgroundMediaOpacity,
+  ])
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [dropPosition, setDropPosition] = useState<'above' | 'below' | null>(null)
@@ -84,16 +117,26 @@ export function ProfilesTab({
   const handleAddProfile = () => {
     if (!formData.name || !formData.id) return
 
+    // Clear preview overrides when saving (the profile data will be applied)
+    if (editingIndex !== null && formData.id && onClearPreview) {
+      onClearPreview(formData.id)
+    }
+
+    let updatedProfiles: Profile[]
     if (editingIndex !== null) {
       // Update existing
-      const updated = [...profiles]
-      updated[editingIndex] = formData
-      setProfiles(updated)
+      updatedProfiles = [...profiles]
+      updatedProfiles[editingIndex] = formData
+      setProfiles(updatedProfiles)
       setEditingIndex(null)
     } else {
       // Add new
-      setProfiles([...profiles, formData])
+      updatedProfiles = [...profiles, formData]
+      setProfiles(updatedProfiles)
     }
+
+    // Save to Chrome storage immediately for live updates
+    chrome.storage.local.set({ profiles: updatedProfiles })
 
     // Reset form
     setFormData(DEFAULT_PROFILE)
@@ -118,6 +161,10 @@ export function ProfilesTab({
   }
 
   const handleCancelEdit = () => {
+    // Clear preview overrides when canceling
+    if (editingIndex !== null && formData.id && onClearPreview) {
+      onClearPreview(formData.id)
+    }
     setIsAdding(false)
     setEditingIndex(null)
     setFormData(DEFAULT_PROFILE)

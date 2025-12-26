@@ -622,6 +622,42 @@ function SidePanelTerminal() {
     resetFontSize(sessionId)
   }
 
+  // Handle live preview of profile appearance changes from Settings modal
+  // Updates all sessions using this profile to preview the appearance
+  const handlePreviewProfileAppearance = useCallback((profileId: string, appearance: {
+    themeName?: string
+    backgroundGradient?: string
+    panelColor?: string
+    transparency?: number
+    fontFamily?: string
+    backgroundMedia?: string
+    backgroundMediaType?: 'none' | 'image' | 'video'
+    backgroundMediaOpacity?: number
+  }) => {
+    // Find all sessions using this profile and update their appearance overrides
+    setSessions(prev => prev.map(session => {
+      if (session.profile?.id !== profileId) return session
+      return {
+        ...session,
+        appearanceOverrides: {
+          ...session.appearanceOverrides,
+          ...appearance,
+        },
+      }
+    }))
+  }, [setSessions])
+
+  // Clear preview overrides for all sessions using a profile (on cancel)
+  const handleClearProfilePreview = useCallback((profileId: string) => {
+    setSessions(prev => prev.map(session => {
+      if (session.profile?.id !== profileId) return session
+      return {
+        ...session,
+        appearanceOverrides: undefined,
+      }
+    }))
+  }, [setSessions])
+
   // Handle "Detach Session" from tab menu
   // Removes from registry (so it becomes an orphan) but keeps tmux session alive
   const handleDetachSession = async () => {
@@ -1365,6 +1401,8 @@ function SidePanelTerminal() {
           setEditProfileId(null)  // Clear edit profile ID on close
         }}
         editProfileId={editProfileId}
+        onPreviewProfileAppearance={handlePreviewProfileAppearance}
+        onClearPreview={handleClearProfilePreview}
       />
 
       {/* Tab Context Menu */}
