@@ -1,7 +1,7 @@
 # PLAN.md - TabzChrome Roadmap
 
 **Last Updated**: December 25, 2025
-**Current Version**: 1.2.19
+**Current Version**: 1.2.21
 
 ---
 
@@ -129,9 +129,7 @@ Detailed analysis in `audit-results/`:
 | `tabz_update_window` | Resize, move, maximize, minimize, focus | Done |
 | `tabz_close_window` | Close a window | Done |
 | `tabz_tile_windows` | Auto-arrange windows (horizontal/vertical/grid) | Done |
-| `tabz_popout_terminal` | Pop terminal to standalone popup | Done* |
-
-*Note: `tabz_popout_terminal` works but causes display issues when multiple popouts load the same terminal sessions. See "Terminal Popout System Fix" section for planned fix.
+| `tabz_popout_terminal` | Pop terminal to standalone popup | Done |
 
 ### Priority 3: Lower Value / Complex
 
@@ -280,52 +278,42 @@ Benefits: No infrastructure to build, works from CLI, real-time sync, mobile app
 
 ## Terminal Popout System Fix
 
-**Status**: Planning
-**Priority**: High - Current implementation causes display corruption
+**Status**: ✅ Complete
+**Priority**: High - Fixed display corruption issue
 
-### Problem
+### Problem (Solved)
 
-The `tabz_popout_terminal` tool creates popup windows loading `/sidepanel/sidepanel.html`, but each popout:
-1. Loads ALL terminal sessions (not just one)
-2. Creates duplicate xterm.js instances for the same tmux sessions
-3. Multiple xterm instances fight over the same terminal output → garbled display
+The `tabz_popout_terminal` tool was creating popup windows loading `/sidepanel/sidepanel.html`, but each popout:
+1. Loaded ALL terminal sessions (not just one)
+2. Created duplicate xterm.js instances for the same tmux sessions
+3. Multiple xterm instances fought over the same terminal output → garbled display
 
-### Proposed Solution
+### Solution Implemented
 
-Make popout windows show **only a single terminal** in dedicated mode:
+Popout windows now show **only a single terminal** in dedicated mode:
 
 1. **URL Parameter Detection**
-   - Popout URL: `/sidepanel/sidepanel.html?terminal=ctt-profile-uuid&popout=true`
-   - Sidepanel reads `popout` and `terminal` params on load
+   - Popout URL: `/sidepanel/sidepanel.html?popout=true&terminal=ctt-profile-uuid`
+   - `extension/sidepanel/sidepanel.tsx` parses `popout` and `terminal` params on load
 
-2. **Single Terminal Mode**
-   - When `popout=true`:
-     - Hide terminal tab bar
-     - Only initialize the specified terminal's xterm instance
-     - Don't connect to other sessions' output streams
-     - Cleaner UI (no profile dropdown, maybe minimal header)
+2. **PopoutTerminalView Component** (`extension/components/PopoutTerminalView.tsx`)
+   - Minimal UI: thin header with terminal name + close button
+   - No tab bar, no + button, no chat bar
+   - Only renders ONE Terminal component (the specified terminal)
+   - Only one xterm.js instance created per popout window
 
-3. **Benefits**
+3. **Detach on Close**
+   - When popout window closes, terminal is detached (not killed)
+   - Uses `POST /api/agents/:id/detach` endpoint (for `navigator.sendBeacon`)
+   - Terminal appears as ghost icon in main sidebar
+   - User can reattach from Ghost Badge dropdown
+
+4. **Benefits**
    - No duplicate xterm instances for same tmux session
    - Each popout window = dedicated view of one terminal
    - Can tile multiple terminal windows across monitors
    - Main sidebar remains full-featured
-
-### Implementation Checklist
-
-- [ ] Add URL param parsing in `sidepanel.tsx`
-- [ ] Create `PopoutTerminalView` component (single terminal, minimal UI)
-- [ ] Conditionally render popout vs full sidebar based on `popout` param
-- [ ] Update `tabz_popout_terminal` to always pass `popout=true`
-- [ ] Test: Main sidebar + 3 popouts showing different terminals
-- [ ] Test: Output goes to correct window only
-
-### Alternative: Broadcast Channel Coordination
-
-More complex but allows multiple views of same terminal:
-- Use `BroadcastChannel` API to coordinate which window renders which terminal
-- "Primary" window renders, others show read-only or don't render
-- Probably overkill for this use case
+   - Closing popout preserves terminal (becomes orphan/ghost)
 
 ---
 

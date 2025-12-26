@@ -52,7 +52,10 @@ export type MessageType =
   | 'BROWSER_PAGE_INFO'
   // 3D Focus Mode
   | 'FOCUS_IN_3D'
-  | 'RETURN_FROM_3D';
+  | 'RETURN_FROM_3D'
+  // Popout Mode
+  | 'TERMINAL_POPPED_OUT'
+  | 'TERMINAL_RETURNED_FROM_POPOUT';
 
 export interface BaseMessage {
   type: MessageType;
@@ -313,6 +316,19 @@ export interface ReturnFrom3DMessage extends BaseMessage {
   terminalId: string;
 }
 
+// Popout Mode - notify sidebar when terminal is popped out to standalone window
+export interface TerminalPoppedOutMessage extends BaseMessage {
+  type: 'TERMINAL_POPPED_OUT';
+  terminalId: string;
+  windowId: number;
+}
+
+// Popout Mode - notify sidebar when returning from popout window
+export interface TerminalReturnedFromPopoutMessage extends BaseMessage {
+  type: 'TERMINAL_RETURNED_FROM_POPOUT';
+  terminalId: string;
+}
+
 export type ExtensionMessage =
   | InitialStateMessage
   | OpenSessionMessage
@@ -356,7 +372,10 @@ export type ExtensionMessage =
   | BrowserPageInfoMessage
   // 3D Focus Mode
   | FocusIn3DMessage
-  | ReturnFrom3DMessage;
+  | ReturnFrom3DMessage
+  // Popout Mode
+  | TerminalPoppedOutMessage
+  | TerminalReturnedFromPopoutMessage;
 
 // Helper function to send messages
 export function sendMessage(message: ExtensionMessage): Promise<any> {

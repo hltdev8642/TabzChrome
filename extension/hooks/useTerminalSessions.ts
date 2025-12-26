@@ -22,6 +22,8 @@ export interface TerminalSession {
   assignedVoice?: string  // Auto-assigned voice for audio (when no profile override)
   command?: string      // Startup command (for API-spawned terminals without profile)
   focusedIn3D?: boolean // Terminal is currently open in 3D Focus mode
+  poppedOut?: boolean   // Terminal is in a standalone popup window
+  popoutWindowId?: number // Chrome window ID of the popout
   fontSizeOffset?: number // Per-instance font size offset (-4 to +8), not persisted
   appearanceOverrides?: TerminalAppearanceOverrides  // Temp appearance customization (footer 🎨 button)
 }

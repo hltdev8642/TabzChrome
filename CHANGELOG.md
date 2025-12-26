@@ -15,6 +15,31 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.2.21] - 2025-12-26
+
+### Added
+- **Single-Terminal Popout Mode** - Popout windows now show only one terminal with minimal UI:
+  - No tab bar, no chat bar, no header clutter - just the terminal
+  - Fixes display corruption when multiple windows rendered the same terminal
+  - Each popout is a dedicated view of one terminal
+
+- **Pop Out Context Menu** - Right-click terminal tab → "🪟 Pop Out" option:
+  - Creates standalone popup window for that terminal
+  - Sidebar shows 🪟 placeholder while terminal is popped out
+  - Click tab in sidebar to focus the popout window
+
+- **Popout Window Controls** - Two-button header in popout windows:
+  - ↗️ **Return to sidebar** - Closes popout, terminal stays attached
+  - 👻 **Detach** - Closes popout and detaches terminal (becomes ghost in sidebar)
+
+- **POST /api/agents/:id/detach** - New backend endpoint for `navigator.sendBeacon` on window close
+
+### Fixed
+- **Duplicate xterm instances** - Popouts no longer create conflicting terminal connections
+- **Return to sidebar** - Now properly clears poppedOut state without detaching
+
+---
+
 ## [1.2.20] - 2025-12-25
 
 ### Added

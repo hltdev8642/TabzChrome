@@ -123,6 +123,14 @@ export function setupMessageHandlers(): void {
         })
         break
 
+      case 'TERMINAL_RETURNED_FROM_POPOUT':
+        // Popout window closing via "Return to sidebar" - broadcast to clear poppedOut state
+        broadcastToClients({
+          type: 'TERMINAL_RETURNED_FROM_POPOUT',
+          terminalId: message.terminalId,
+        })
+        break
+
       case 'CLOSE_SESSION':
         sendToWebSocket({
           type: 'close-terminal',

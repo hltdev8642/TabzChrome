@@ -8,6 +8,7 @@ import { SettingsModal, type Profile } from '../components/SettingsModal'
 import { ProfileDropdown } from '../components/ProfileDropdown'
 import { SessionContextMenu } from '../components/SessionContextMenu'
 import { GhostBadgeDropdown } from '../components/GhostBadgeDropdown'
+import { PopoutTerminalView } from '../components/PopoutTerminalView'
 import { WorkingDirDropdown } from '../components/WorkingDirDropdown'
 import { ChatInputBar } from '../components/ChatInputBar'
 import { connectToBackground, sendMessage } from '../shared/messaging'
@@ -50,6 +51,12 @@ setupConsoleForwarding()
  * @returns The complete terminal sidebar UI
  */
 function SidePanelTerminal() {
+  // Parse URL params for popout mode (single terminal, minimal UI)
+  // URL format: /sidepanel/sidepanel.html?popout=true&terminal=ctt-profile-uuid
+  const urlParams = new URLSearchParams(window.location.search)
+  const isPopoutMode = urlParams.get('popout') === 'true'
+  const popoutTerminalId = urlParams.get('terminal')
+
   const [wsConnected, setWsConnected] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [editProfileId, setEditProfileId] = useState<string | null>(null)
@@ -368,6 +375,16 @@ function SidePanelTerminal() {
         // 3D Focus page closed - return terminal to sidebar
         setSessions(prev => prev.map(s =>
           s.id === message.terminalId ? { ...s, focusedIn3D: false } : s
+        ))
+      } else if (message.type === 'TERMINAL_POPPED_OUT') {
+        // Terminal was popped out to standalone window - show placeholder in sidebar
+        setSessions(prev => prev.map(s =>
+          s.id === message.terminalId ? { ...s, poppedOut: true, popoutWindowId: message.windowId } : s
+        ))
+      } else if (message.type === 'TERMINAL_RETURNED_FROM_POPOUT') {
+        // Popout window closed - return terminal to sidebar
+        setSessions(prev => prev.map(s =>
+          s.id === message.terminalId ? { ...s, poppedOut: false, popoutWindowId: undefined } : s
         ))
       }
     })
@@ -750,6 +767,11 @@ function SidePanelTerminal() {
     ))
   }
 
+  // In popout mode, render minimal single-terminal view
+  if (isPopoutMode && popoutTerminalId) {
+    return <PopoutTerminalView terminalId={popoutTerminalId} />
+  }
+
   return (
     <div className="h-screen flex flex-col bg-[#0a0a0a] text-foreground">
       {/* Header - Windows Terminal style */}
@@ -946,7 +968,13 @@ function SidePanelTerminal() {
                       color: 'white',  // White text works on all category colors
                       borderColor: `${categoryColor}60`,  // 60 = ~37% opacity in hex
                     } : undefined}
-                    onClick={() => switchToSession(session.id)}
+                    onClick={() => {
+                      switchToSession(session.id)
+                      // If terminal is popped out, focus the popout window
+                      if (session.poppedOut && session.popoutWindowId) {
+                        chrome.windows.update(session.popoutWindowId, { focused: true })
+                      }
+                    }}
                     onContextMenu={(e) => handleTabContextMenu(e, session.id)}
                     onMouseEnter={(e) => {
                       if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current)
@@ -967,6 +995,9 @@ function SidePanelTerminal() {
                     {/* Using consistent structure to prevent DOM thrashing */}
                     {/* Robot emojis multiply based on active subagent count: 🤖🤖🤖 */}
                     <span className="flex-1 flex items-center gap-1 text-xs min-w-0 overflow-hidden">
+                      {session.poppedOut && (
+                        <span className="flex-shrink-0 opacity-70" title="Click to focus popout window">🪟</span>
+                      )}
                       {claudeStatuses.has(session.id) && (
                         <span className="flex-shrink-0">{getRobotEmojis(claudeStatuses.get(session.id))}</span>
                       )}
@@ -1225,7 +1256,37 @@ function SidePanelTerminal() {
                       zIndex: session.id === currentSession ? 1 : 0,
                     }}
                   >
-                    {session.focusedIn3D ? (
+                    {session.poppedOut ? (
+                      // Show placeholder when terminal is in a popup window
+                      <div className="h-full flex flex-col items-center justify-center bg-gradient-to-b from-[#0a0a0a] to-[#1a1a2e] text-center px-8">
+                        <div className="text-6xl mb-4">🪟</div>
+                        <h2 className="text-xl font-semibold text-[#00ff88] mb-2">Popped Out</h2>
+                        <p className="text-sm text-gray-400 mb-6">
+                          This terminal is in a standalone window
+                        </p>
+                        <button
+                          onClick={async () => {
+                            // Close the popout window and return terminal to sidebar
+                            if (session.popoutWindowId) {
+                              try {
+                                await chrome.windows.remove(session.popoutWindowId)
+                              } catch (e) {
+                                console.warn('[Sidepanel] Could not close popout window:', e)
+                              }
+                            }
+                            setSessions(prev => prev.map(s =>
+                              s.id === session.id ? { ...s, poppedOut: false, popoutWindowId: undefined } : s
+                            ))
+                          }}
+                          className="px-4 py-2 bg-[#00ff88]/20 hover:bg-[#00ff88]/30 text-[#00ff88] border border-[#00ff88]/50 rounded-md transition-colors"
+                        >
+                          Return to Sidebar
+                        </button>
+                        <p className="text-xs text-gray-500 mt-4">
+                          Status and audio notifications still active
+                        </p>
+                      </div>
+                    ) : session.focusedIn3D ? (
                       // Show placeholder when terminal is being viewed in 3D Focus mode
                       <div className="h-full flex flex-col items-center justify-center bg-gradient-to-b from-[#0a0a0a] to-[#1a1a2e] text-center px-8">
                         <div className="text-6xl mb-4">🧊</div>
@@ -1354,6 +1415,20 @@ function SidePanelTerminal() {
         onViewAsText={handleViewAsText}
         onDetach={handleDetachSession}
         onKill={handleKillSession}
+        onPopOut={async () => {
+          const terminal = sessions.find(t => t.id === contextMenu.terminalId)
+          if (!terminal) return
+          try {
+            // Call the backend to create a popout window via MCP
+            await fetch('http://localhost:8129/api/browser/popout-terminal', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ terminalId: terminal.id })
+            })
+          } catch (error) {
+            console.error('[handlePopOut] Error:', error)
+          }
+        }}
         onOpenIn3D={handleOpenIn3D}
         onClose={() => setContextMenu({ show: false, x: 0, y: 0, terminalId: null })}
       />

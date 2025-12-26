@@ -376,6 +376,42 @@ router.delete('/agents/:id', asyncHandler(async (req, res) => {
 }));
 
 /**
+ * POST /api/agents/:id/detach - Detach agent (for sendBeacon on window close)
+ *
+ * This endpoint exists because navigator.sendBeacon only supports POST.
+ * It detaches the terminal (removes from registry) but keeps the tmux session alive.
+ * The terminal will appear as a ghost/orphan in the main sidebar.
+ */
+router.post('/agents/:id/detach', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const terminal = terminalRegistry.getTerminal(id);
+
+  if (!terminal) {
+    // Already detached or doesn't exist - success either way
+    return res.json({ success: true, message: 'Already detached' });
+  }
+
+  // Detach: remove from registry but keep tmux session alive
+  terminalRegistry.closeTerminal(id, false);
+
+  // Broadcast to WebSocket clients so UI removes the tab
+  const broadcast = req.app.get('broadcast');
+  if (broadcast) {
+    broadcast({ type: 'terminal-closed', data: { id } });
+  }
+
+  res.json({
+    success: true,
+    message: `Agent '${terminal.name}' detached (tmux session preserved)`,
+    data: {
+      id: terminal.id,
+      name: terminal.name,
+      detached: true
+    }
+  });
+}));
+
+/**
  * POST /api/agents/:id/command - Send command to agent
  */
 router.post('/agents/:id/command', validateBody(commandSchema), asyncHandler(async (req, res) => {

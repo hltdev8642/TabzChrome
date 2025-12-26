@@ -43,6 +43,8 @@ interface SessionContextMenuProps {
   onDetach: () => void
   /** Callback to kill the session (destroys tmux) */
   onKill: () => void
+  /** Callback to pop out the session to a standalone window */
+  onPopOut?: () => void
   /** Callback to open the session in 3D Focus mode */
   onOpenIn3D: () => void
   /** Callback to close the context menu */
@@ -77,6 +79,7 @@ export function SessionContextMenu({
   onViewAsText,
   onDetach,
   onKill,
+  onPopOut,
   onOpenIn3D,
   onClose,
 }: SessionContextMenuProps) {
@@ -139,6 +142,17 @@ export function SessionContextMenu({
       >
         ✏️ Rename Tab...
       </button>
+      {isTmuxSession && onPopOut && (
+        <button
+          className="context-menu-item"
+          onClick={() => {
+            onPopOut()
+            onClose()
+          }}
+        >
+          🪟 Pop Out
+        </button>
+      )}
       {isTmuxSession && (
         <button
           className="context-menu-item"

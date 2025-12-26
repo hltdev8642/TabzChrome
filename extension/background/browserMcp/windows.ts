@@ -4,6 +4,7 @@
  */
 
 import { sendToWebSocket } from '../websocket'
+import { broadcastToClients } from '../state'
 
 // Window state enum (matches Chrome API)
 type WindowState = 'normal' | 'minimized' | 'maximized' | 'fullscreen'
@@ -422,10 +423,11 @@ export async function handleBrowserPopoutTerminal(message: {
   try {
     const { terminalId, width = 500, height = 700, left, top } = message
 
-    // Build the sidepanel URL, optionally with terminal ID
-    let sidepanelUrl = 'sidepanel/sidepanel.html'
+    // Build the sidepanel URL with popout mode and terminal ID
+    // popout=true triggers single-terminal mode (no tab bar, no chat bar, minimal header)
+    let sidepanelUrl = 'sidepanel/sidepanel.html?popout=true'
     if (terminalId) {
-      sidepanelUrl += `?terminal=${encodeURIComponent(terminalId)}`
+      sidepanelUrl += `&terminal=${encodeURIComponent(terminalId)}`
     }
 
     const createData: chrome.windows.CreateData = {
@@ -449,6 +451,16 @@ export async function handleBrowserPopoutTerminal(message: {
         error: 'Failed to create popup window'
       })
       return
+    }
+
+    // Notify sidepanel that this terminal is now in a popout window
+    // Sidepanel will show a placeholder instead of rendering the terminal
+    if (terminalId && newWindow.id) {
+      broadcastToClients({
+        type: 'TERMINAL_POPPED_OUT',
+        terminalId,
+        windowId: newWindow.id,
+      })
     }
 
     sendToWebSocket({
