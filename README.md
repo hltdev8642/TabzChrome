@@ -67,7 +67,7 @@ TabzChrome includes a [Claude Code plugin marketplace](.claude-plugin/marketplac
 | [**state-tracker**](plugins/state-tracker/) | hooks | Live Claude status tracking for terminal tab updates |
 | [**ctthandoff**](plugins/ctthandoff/) | command | Generate handoff summary, copy to clipboard, speak via TTS |
 | [**tabz-integration**](plugins/tabz-integration/) | command | Integration guide for connecting projects to TabzChrome |
-| [**Tabz MCP Server**](tabz-mcp-server/MCP_TOOLS.md) | MCP | 37 browser control tools (screenshots, clicks, bookmarks, network, tab groups) |
+| [**Tabz MCP Server**](tabz-mcp-server/MCP_TOOLS.md) | MCP | 44 browser control tools (screenshots, clicks, bookmarks, network, tab groups, windows) |
 
 **Quick setup:** Plugins auto-load when you run Claude Code in the TabzChrome directory.
 
@@ -458,7 +458,7 @@ The URL opens in a new tab and the sidebar activates automatically.
 
 ## Tabz MCP Integration
 
-Tabz includes an **MCP server** with 37 tools that let Claude Code control your browser:
+Tabz includes an **MCP server** with 44 tools that let Claude Code control your browser:
 
 ![Claude using MCP tools to control DALL-E in the browser - filling prompts, clicking generate, downloading results](docs/pages/screenshots/mcp-dalle-demo.png)
 
@@ -510,7 +510,7 @@ Install the `tabz-mcp` skill for guided browser automation. The skill dynamicall
 
 ### No Remote Debugging Required
 
-**All 37 MCP tools work using Chrome Extension APIs only!** No `--remote-debugging-port=9222` flag needed.
+**All 44 MCP tools work using Chrome Extension APIs only!** No `--remote-debugging-port=9222` flag needed.
 
 | Feature | Works Out of the Box |
 |---------|---------------------|

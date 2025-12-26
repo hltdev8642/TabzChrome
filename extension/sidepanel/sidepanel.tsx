@@ -551,6 +551,52 @@ function SidePanelTerminal() {
     setContextMenu({ show: false, x: 0, y: 0, terminalId: null })
   }
 
+  // Handle "Save to Profile" from customize popover
+  // Saves the current appearance overrides (and font size) to the profile
+  const handleSaveToProfile = (sessionId: string) => {
+    const session = sessions.find(s => s.id === sessionId)
+    if (!session?.profile) return
+
+    const profileId = session.profile.id
+    const overrides = session.appearanceOverrides || {}
+    const fontSizeOffset = session.fontSizeOffset || 0
+
+    // Get current effective values (override > profile default)
+    const effectiveTheme = overrides.themeName ?? session.profile.themeName ?? 'high-contrast'
+    const effectiveGradient = overrides.backgroundGradient ?? session.profile.backgroundGradient
+    const effectivePanelColor = overrides.panelColor ?? session.profile.panelColor ?? '#000000'
+    const effectiveTransparency = overrides.transparency ?? session.profile.transparency ?? 100
+    const effectiveFontFamily = overrides.fontFamily ?? session.profile.fontFamily ?? 'monospace'
+    const effectiveFontSize = (session.profile.fontSize ?? 16) + fontSizeOffset
+
+    // Update the profile in the profiles array
+    const updatedProfiles = profiles.map(p =>
+      p.id === profileId
+        ? {
+            ...p,
+            themeName: effectiveTheme,
+            backgroundGradient: effectiveGradient,
+            panelColor: effectivePanelColor,
+            transparency: effectiveTransparency,
+            fontFamily: effectiveFontFamily,
+            fontSize: effectiveFontSize,
+          }
+        : p
+    )
+
+    // Save to Chrome storage (useProfiles hook will pick up the change)
+    chrome.storage.local.set({ profiles: updatedProfiles }, () => {
+      console.log('[Sidepanel] Saved appearance to profile:', profileId)
+    })
+
+    // Also update local state immediately for responsiveness
+    setProfiles(updatedProfiles)
+
+    // Clear the session overrides since they're now in the profile
+    resetTerminalAppearance(sessionId)
+    resetFontSize(sessionId)
+  }
+
   // Handle "Detach Session" from tab menu
   // Removes from registry (so it becomes an orphan) but keeps tmux session alive
   const handleDetachSession = async () => {
@@ -1335,6 +1381,7 @@ function SidePanelTerminal() {
             fontSizeOffset={session.fontSizeOffset}
             onUpdate={updateTerminalAppearance}
             onReset={resetTerminalAppearance}
+            onSaveToProfile={session.profile ? handleSaveToProfile : undefined}
             onIncreaseFontSize={() => increaseFontSize(customizePopover.sessionId!)}
             onDecreaseFontSize={() => decreaseFontSize(customizePopover.sessionId!)}
             onResetFontSize={() => resetFontSize(customizePopover.sessionId!)}

@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback } from 'react'
 import { useOutsideClick } from '../hooks/useOutsideClick'
-import { RotateCcw, X } from 'lucide-react'
+import { RotateCcw, X, Save } from 'lucide-react'
 import { themes, themeNames, getBackgroundGradient as getThemeBackgroundGradient } from '../styles/themes'
 import { backgroundGradients, gradientNames, PANEL_COLORS, getGradientCSS, getPanelColor } from '../styles/terminal-backgrounds'
 import { FONT_FAMILIES, getAvailableFonts } from './settings/types'
@@ -24,6 +24,7 @@ interface TerminalCustomizePopoverProps {
   fontSizeOffset?: number
   onUpdate: (sessionId: string, overrides: Partial<TerminalAppearanceOverrides>) => void
   onReset: (sessionId: string) => void
+  onSaveToProfile?: (sessionId: string) => void  // Save current appearance to profile
   onIncreaseFontSize: () => void
   onDecreaseFontSize: () => void
   onResetFontSize: () => void
@@ -43,6 +44,7 @@ export function TerminalCustomizePopover({
   fontSizeOffset = 0,
   onUpdate,
   onReset,
+  onSaveToProfile,
   onIncreaseFontSize,
   onDecreaseFontSize,
   onResetFontSize,
@@ -139,6 +141,19 @@ export function TerminalCustomizePopover({
       <div className="relative z-10 flex items-center justify-between px-3 py-2 border-b border-white/10">
         <span className="text-sm font-medium" style={{ color: themeColors?.foreground || '#e0e0e0' }}>🎨 Customize</span>
         <div className="flex items-center gap-1">
+          {onSaveToProfile && (
+            <button
+              onClick={() => {
+                onSaveToProfile(sessionId)
+                onClose()
+              }}
+              className="p-1 hover:bg-white/10 rounded transition-colors"
+              style={{ color: '#22c55e' }}
+              title="Save appearance to profile"
+            >
+              <Save className="h-3.5 w-3.5" />
+            </button>
+          )}
           {hasOverrides && (
             <button
               onClick={() => {
@@ -353,7 +368,7 @@ export function TerminalCustomizePopover({
 
       {/* Footer hint */}
       <div className="relative z-10 px-3 py-2 border-t border-white/10 text-xs" style={{ color: themeColors?.brightBlack || '#888' }}>
-        Changes don't save to profile
+        {onSaveToProfile ? 'Click 💾 to save to profile' : 'Changes don\'t save to profile'}
       </div>
     </div>
   )

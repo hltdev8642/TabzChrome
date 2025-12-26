@@ -229,3 +229,93 @@ export interface CaptureImageResult {
   height?: number;
   error?: string;
 }
+
+// Window types
+export type WindowState = 'normal' | 'minimized' | 'maximized' | 'fullscreen';
+export type WindowType = 'normal' | 'popup' | 'panel' | 'app' | 'devtools';
+export type TileLayout = 'horizontal' | 'vertical' | 'grid';
+
+export interface WindowInfo {
+  windowId: number;
+  focused: boolean;
+  state: WindowState;
+  type: WindowType;
+  width?: number;
+  height?: number;
+  left?: number;
+  top?: number;
+  incognito: boolean;
+  alwaysOnTop: boolean;
+  tabCount: number;
+}
+
+export interface ListWindowsResult {
+  success: boolean;
+  windows: WindowInfo[];
+  error?: string;
+}
+
+export interface WindowResult {
+  success: boolean;
+  window?: {
+    windowId: number;
+    focused?: boolean;
+    state?: WindowState;
+    type?: WindowType;
+    width?: number;
+    height?: number;
+    left?: number;
+    top?: number;
+    incognito?: boolean;
+    tabCount?: number;
+  };
+  error?: string;
+}
+
+export interface DisplayBounds {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+export interface DisplayInfo {
+  id: string;
+  name: string;
+  isPrimary: boolean;
+  isEnabled: boolean;
+  isInternal: boolean;
+  bounds: DisplayBounds;
+  workArea: DisplayBounds;
+  rotation: number;
+  dpiX: number;
+  dpiY: number;
+}
+
+export interface ListDisplaysResult {
+  success: boolean;
+  displays: DisplayInfo[];
+  error?: string;
+}
+
+export interface TileWindowsResult {
+  success: boolean;
+  results?: Array<{ windowId: number; success: boolean; error?: string }>;
+  layout?: TileLayout;
+  displayId?: string;
+  error?: string;
+}
+
+export interface PopoutTerminalResult {
+  success: boolean;
+  window?: {
+    windowId: number;
+    type?: WindowType;
+    width?: number;
+    height?: number;
+    left?: number;
+    top?: number;
+  };
+  terminalId?: string;
+  error?: string;
+}

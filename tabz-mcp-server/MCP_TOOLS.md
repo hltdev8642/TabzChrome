@@ -43,6 +43,13 @@ Quick reference for the browser MCP tools available to Claude Code.
 | `tabz_claude_group_add` | "mark tab active", "highlight tab" | Add tab to Claude Active group (auto-creates purple group) |
 | `tabz_claude_group_remove` | "unmark tab", "done with tab" | Remove tab from Claude Active group |
 | `tabz_claude_group_status` | "claude group status", "active tabs" | Get status of Claude Active group |
+| `tabz_list_windows` | "list windows", "what windows", "show windows" | List all Chrome windows with dimensions and state |
+| `tabz_create_window` | "new window", "create window", "popup window" | Create new browser window (normal or popup) |
+| `tabz_update_window` | "move window", "resize window", "maximize", "minimize" | Update window position, size, or state |
+| `tabz_close_window` | "close window" | Close a browser window (and all its tabs) |
+| `tabz_get_displays` | "monitors", "displays", "screens", "multi-monitor" | Get display/monitor info for multi-monitor layouts |
+| `tabz_tile_windows` | "tile windows", "arrange windows", "split windows" | Auto-arrange windows in grid/split layouts |
+| `tabz_popout_terminal` | "popout terminal", "terminal window", "detach terminal" | Pop out sidebar terminal to standalone popup window |
 
 > **Note:** Most tools support a `tabId` parameter to target a specific tab. Get tab IDs from `tabz_list_tabs`.
 
@@ -1353,14 +1360,230 @@ When Claude starts working with a browser tab (e.g., taking screenshots, clickin
 
 ---
 
+## tabz_list_windows
+
+**Purpose:** List all Chrome windows with their properties.
+
+**Trigger phrases:**
+- "What windows are open?"
+- "List browser windows"
+- "Show all windows"
+
+**Parameters:**
+- `response_format`: `markdown` (default) or `json`
+
+**Returns:**
+- List of windows with:
+  - `windowId`: Chrome window identifier
+  - `focused`: Whether window is focused
+  - `state`: `normal`, `minimized`, `maximized`, or `fullscreen`
+  - `type`: `normal` or `popup`
+  - `width`, `height`, `left`, `top`: Window dimensions and position
+  - `tabCount`: Number of tabs in window
+
+**Example:**
+```javascript
+{}
+```
+
+---
+
+## tabz_create_window
+
+**Purpose:** Create a new Chrome browser window.
+
+**Trigger phrases:**
+- "Create a new window"
+- "Open a popup window"
+- "New browser window"
+- "Pop out to new window"
+
+**Parameters:**
+- `url` (optional): URL or array of URLs to open. Use `/sidepanel/sidepanel.html` for terminal popout.
+- `type` (optional): `normal` (full browser UI) or `popup` (minimal UI). Default: `normal`.
+- `state` (optional): `normal`, `minimized`, `maximized`, or `fullscreen`. Default: `normal`.
+- `focused` (optional): Focus window on creation. Default: true.
+- `width`, `height` (optional): Window dimensions in pixels.
+- `left`, `top` (optional): Window position (for multi-monitor placement).
+- `incognito` (optional): Create incognito window.
+- `tabId` (optional): Move existing tab to new window.
+
+**Returns:**
+- `windowId`: New window's ID
+- Window properties (type, state, dimensions)
+
+**Examples:**
+```javascript
+// Create a popup terminal window
+{ url: "/sidepanel/sidepanel.html", type: "popup", width: 500, height: 700 }
+
+// Create window on second monitor
+{ url: "https://github.com", left: 1920, top: 0, width: 800, height: 600 }
+```
+
+**Key use case:** Use `url: "/sidepanel/sidepanel.html"` with `type: "popup"` to pop out terminals to standalone windows WITHOUT duplicate extension issues - all windows share the same extension instance.
+
+---
+
+## tabz_update_window
+
+**Purpose:** Update a window's properties (resize, move, change state, focus).
+
+**Trigger phrases:**
+- "Resize the window"
+- "Move window to..."
+- "Maximize the window"
+- "Minimize that window"
+- "Bring window to front"
+
+**Parameters:**
+- `windowId` (required): Window ID from `tabz_list_windows`
+- `state` (optional): `normal`, `minimized`, `maximized`, or `fullscreen`
+- `focused` (optional): Set true to bring window to front
+- `width`, `height` (optional): New dimensions (ignored if maximized/fullscreen)
+- `left`, `top` (optional): New position for multi-monitor placement
+- `drawAttention` (optional): Flash/highlight the window
+
+**Examples:**
+```javascript
+// Maximize a window
+{ windowId: 123, state: "maximized" }
+
+// Move and resize
+{ windowId: 123, width: 800, height: 600, left: 100, top: 100 }
+
+// Focus a window
+{ windowId: 123, focused: true }
+```
+
+---
+
+## tabz_close_window
+
+**Purpose:** Close a Chrome window.
+
+**Trigger phrases:**
+- "Close that window"
+- "Close window 123"
+
+**Parameters:**
+- `windowId` (required): Window ID to close
+
+**Warning:** This closes the entire window including ALL tabs in it!
+
+**Example:**
+```javascript
+{ windowId: 123 }
+```
+
+---
+
+## tabz_get_displays
+
+**Purpose:** Get information about connected monitors/displays.
+
+**Trigger phrases:**
+- "What monitors do I have?"
+- "Show display info"
+- "Multi-monitor setup"
+
+**Parameters:**
+- `response_format`: `markdown` (default) or `json`
+
+**Returns:**
+- List of displays with:
+  - `id`: Display identifier
+  - `name`: Display name
+  - `isPrimary`: Whether primary display
+  - `bounds`: Full display area (`left`, `top`, `width`, `height`)
+  - `workArea`: Usable area excluding taskbar
+
+**Example:**
+```javascript
+{}
+```
+
+**Key insight:** Use display positions with `tabz_create_window` or `tabz_tile_windows`:
+- Primary display usually starts at (0, 0)
+- Second monitor might be at (1920, 0) or (-1920, 0)
+
+---
+
+## tabz_tile_windows
+
+**Purpose:** Auto-arrange windows in a tiled layout.
+
+**Trigger phrases:**
+- "Tile my windows"
+- "Arrange windows side by side"
+- "Split windows"
+- "Grid layout"
+
+**Parameters:**
+- `windowIds` (required): Array of window IDs to tile
+- `layout` (optional): `horizontal` (side by side), `vertical` (stacked), or `grid` (auto). Default: `horizontal`.
+- `displayId` (optional): Target display ID from `tabz_get_displays`. Default: primary.
+- `gap` (optional): Pixels between windows. Default: 0.
+
+**Examples:**
+```javascript
+// Side by side
+{ windowIds: [123, 456], layout: "horizontal" }
+
+// Grid layout with gaps
+{ windowIds: [1, 2, 3, 4], layout: "grid", gap: 10 }
+
+// On second monitor
+{ windowIds: [123, 456], displayId: "1" }
+```
+
+**Layout examples:**
+- `horizontal` (2 windows): `[Left Half] [Right Half]`
+- `vertical` (2 windows): `[Top Half] / [Bottom Half]`
+- `grid` (4 windows): `[1][2] / [3][4]`
+
+---
+
+## tabz_popout_terminal
+
+**Purpose:** Pop out the terminal sidebar to a standalone popup window.
+
+**Trigger phrases:**
+- "Pop out the terminal"
+- "Detach terminal to window"
+- "Terminal in new window"
+
+**Parameters:**
+- `terminalId` (optional): Focus specific terminal in new window
+- `width` (optional): Window width. Default: 500.
+- `height` (optional): Window height. Default: 700.
+- `left`, `top` (optional): Window position
+
+**Example:**
+```javascript
+// Pop out with default settings
+{}
+
+// Pop out specific terminal
+{ terminalId: "ctt-default-abc123", width: 600, height: 800 }
+```
+
+**Key advantages over duplicate extensions:**
+- Single WebSocket connection to backend
+- No terminal session conflicts
+- Shared state and settings
+- Multiple terminal views in different windows
+
+---
+
 ## Architecture
 
-All 37 MCP tools use **Chrome Extension APIs** exclusively (no CDP required since v1.2.0).
+All 44 MCP tools use **Chrome Extension APIs** exclusively (no CDP required since v1.2.0).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     EXTENSION-BASED ARCHITECTURE                     │
-│   All 37 tools: tabs, screenshots, clicks, network, bookmarks, etc.  │
+│   All 44 tools: tabs, screenshots, clicks, network, windows, etc.    │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  Chrome Browser                                                      │
@@ -1370,7 +1593,7 @@ All 37 MCP tools use **Chrome Extension APIs** exclusively (no CDP required sinc
 │  │  TabzChrome Extension (Background Worker)                    │    │
 │  │  - chrome.tabs, chrome.scripting, chrome.tabGroups           │    │
 │  │  - chrome.downloads, chrome.bookmarks, chrome.debugger       │    │
-│  │  - chrome.webRequest (network capture)                       │    │
+│  │  - chrome.webRequest, chrome.windows, chrome.system.display  │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │                          │                                           │
 │                          ↓ WebSocket                                 │
@@ -1424,7 +1647,7 @@ Install the `tabz-mcp` skill for guided browser automation. The skill **dynamica
 
 ## Extension API Reference
 
-All 37 tools use **Chrome Extension APIs** - no CDP or `--remote-debugging-port=9222` flag required.
+All 44 tools use **Chrome Extension APIs** - no CDP or `--remote-debugging-port=9222` flag required.
 
 | Tool | Needs Extension? | Implementation |
 |------|-----------------|----------------|
@@ -1465,6 +1688,13 @@ All 37 tools use **Chrome Extension APIs** - no CDP or `--remote-debugging-port=
 | `tabz_claude_group_add` | ✅ Required | chrome.tabs.group + tabGroups |
 | `tabz_claude_group_remove` | ✅ Required | chrome.tabs.ungroup |
 | `tabz_claude_group_status` | ✅ Required | chrome.tabGroups API |
+| `tabz_list_windows` | ✅ Required | chrome.windows API |
+| `tabz_create_window` | ✅ Required | chrome.windows.create |
+| `tabz_update_window` | ✅ Required | chrome.windows.update |
+| `tabz_close_window` | ✅ Required | chrome.windows.remove |
+| `tabz_get_displays` | ✅ Required | chrome.system.display API |
+| `tabz_tile_windows` | ✅ Required | chrome.windows + system.display |
+| `tabz_popout_terminal` | ✅ Required | chrome.windows.create |
 
 **Summary:**
 - **All tools use Chrome Extension APIs** - no CDP required

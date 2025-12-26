@@ -1,6 +1,6 @@
 # TabzChrome MCP Tools Reference
 
-TabzChrome provides 37 MCP tools for browser automation via Chrome Extension APIs.
+TabzChrome provides 44 MCP tools for browser automation via Chrome Extension APIs.
 
 ## Tool Categories
 
@@ -9,6 +9,8 @@ TabzChrome provides 37 MCP tools for browser automation via Chrome Extension API
 | **Tab Management** | `tabz_list_tabs`, `tabz_switch_tab`, `tabz_rename_tab` | Navigate between tabs, accurate active detection |
 | **Tab Groups** | `tabz_list_groups`, `tabz_create_group`, `tabz_update_group`, `tabz_add_to_group`, `tabz_ungroup_tabs` | Organize tabs into groups |
 | **Claude Group** | `tabz_claude_group_add`, `tabz_claude_group_remove`, `tabz_claude_group_status` | Highlight tabs Claude is working with |
+| **Windows** | `tabz_list_windows`, `tabz_create_window`, `tabz_update_window`, `tabz_close_window` | Manage browser windows (resize, move, minimize, maximize) |
+| **Displays** | `tabz_get_displays`, `tabz_tile_windows`, `tabz_popout_terminal` | Multi-monitor layouts, window tiling, terminal popouts |
 | **Screenshots** | `tabz_screenshot`, `tabz_screenshot_full` | Capture viewport or full scrollable page |
 | **Interaction** | `tabz_click`, `tabz_fill`, `tabz_execute_script` | Click buttons, fill forms, run JS |
 | **Downloads** | `tabz_download_image`, `tabz_download_file`, `tabz_get_downloads`, `tabz_cancel_download` | Download files, track status, cancel downloads |
@@ -76,7 +78,7 @@ mcp-cli call tabz/tabz_switch_tab '{"tabId": 1762556601}'
 
 ### All Tools Use Extension APIs
 
-All 37 tools work using Chrome Extension APIs only - no `--remote-debugging-port=9222` required:
+All 44 tools work using Chrome Extension APIs only - no `--remote-debugging-port=9222` required:
 - Tab management, downloads, bookmarks
 - Screenshots, click/fill, element inspection
 - Network capture, console logs, scripting

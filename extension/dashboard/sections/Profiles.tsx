@@ -8,6 +8,7 @@ import type { CategorySettings } from '../../components/settings/types'
 import { sendMessage } from '../../shared/messaging'
 import { getEffectiveWorkingDir } from '../../shared/utils'
 import { themes } from '../../styles/themes'
+import { getGradientCSS, DEFAULT_PANEL_COLOR, DEFAULT_TRANSPARENCY } from '../../styles/terminal-backgrounds'
 
 const DEFAULT_CATEGORY_COLOR = '#6b7280'
 
@@ -501,7 +502,6 @@ export default function ProfilesSection() {
                       profile={profile}
                       originalIndex={originalIndex}
                       isDefault={profile.id === defaultProfile}
-                      themeGradient={themes[profile.themeName]?.dark.backgroundGradient}
                       category={category}
                       onClick={() => launchProfile(profile)}
                       onPasteOnly={() => launchProfilePasteOnly(profile)}
@@ -526,7 +526,6 @@ export default function ProfilesSection() {
                       profile={profile}
                       originalIndex={originalIndex}
                       isDefault={profile.id === defaultProfile}
-                      themeGradient={themes[profile.themeName]?.dark.backgroundGradient}
                       category={category}
                       onClick={() => launchProfile(profile)}
                       onPasteOnly={() => launchProfilePasteOnly(profile)}
@@ -563,7 +562,6 @@ interface ProfileCardProps {
   profile: Profile
   originalIndex: number
   isDefault: boolean
-  themeGradient?: string
   category: string
   onClick: () => void
   onPasteOnly: () => void
@@ -581,7 +579,6 @@ interface ProfileCardProps {
 function ProfileCard({
   profile,
   isDefault,
-  themeGradient,
   category,
   onClick,
   onPasteOnly,
@@ -605,6 +602,12 @@ function ProfileCard({
     ? './' + profile.workingDir.split('/').filter(Boolean).pop()
     : null
 
+  // Compute effective background (matching Terminal.tsx 3-layer system)
+  const effectiveGradientKey = profile.backgroundGradient ?? themes[profile.themeName]?.dark.backgroundGradient
+  const effectiveGradientCSS = getGradientCSS(effectiveGradientKey, true)
+  const effectivePanelColor = profile.panelColor ?? DEFAULT_PANEL_COLOR
+  const gradientOpacity = (profile.transparency ?? DEFAULT_TRANSPARENCY) / 100
+
   return (
     <div
       draggable
@@ -618,8 +621,17 @@ function ProfileCard({
         group relative flex flex-col rounded-xl border transition-all overflow-hidden cursor-pointer
         ${isDragging ? 'opacity-50 border-primary scale-95' : 'border-border hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10'}
       `}
-      style={themeGradient ? { background: themeGradient } : undefined}
     >
+      {/* Layer 1: Base panel color */}
+      <div
+        className="absolute inset-0 rounded-xl"
+        style={{ backgroundColor: effectivePanelColor }}
+      />
+      {/* Layer 2: Gradient overlay with transparency */}
+      <div
+        className="absolute inset-0 rounded-xl"
+        style={{ background: effectiveGradientCSS, opacity: gradientOpacity }}
+      />
       {/* Drop indicator line - left (for grid layout) */}
       {isDragOver && dropPosition === 'above' && (
         <div className="absolute -left-[3px] top-0 bottom-0 w-[3px] bg-green-500 rounded-full shadow-[0_0_8px_#22c55e] z-50" />
@@ -629,8 +641,8 @@ function ProfileCard({
         <div className="absolute -right-[3px] top-0 bottom-0 w-[3px] bg-green-500 rounded-full shadow-[0_0_8px_#22c55e] z-50" />
       )}
 
-      {/* Main card content area */}
-      <div className="flex flex-col items-center p-5 pt-6 pb-4">
+      {/* Main card content area - Layer 3: Content above background */}
+      <div className="relative z-10 flex flex-col items-center p-5 pt-6 pb-4">
         {/* Badges row - default and reference */}
         {(isDefault || profile.reference) && (
           <div className="flex items-center gap-2 mb-2">
@@ -673,7 +685,7 @@ function ProfileCard({
       </div>
 
       {/* Action bar - appears on hover at bottom */}
-      <div className="flex items-center justify-center gap-1 px-2 py-2 bg-black/20 backdrop-blur-sm border-t border-white/10 opacity-0 group-hover:opacity-100 transition-all">
+      <div className="relative z-10 flex items-center justify-center gap-1 px-2 py-2 bg-black/20 backdrop-blur-sm border-t border-white/10 opacity-0 group-hover:opacity-100 transition-all">
         <button
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
@@ -728,7 +740,6 @@ interface ProfileListItemProps {
   profile: Profile
   originalIndex: number
   isDefault: boolean
-  themeGradient?: string
   category: string
   onClick: () => void
   onPasteOnly: () => void
@@ -746,7 +757,6 @@ interface ProfileListItemProps {
 function ProfileListItem({
   profile,
   isDefault,
-  themeGradient,
   category,
   onClick,
   onPasteOnly,
@@ -769,6 +779,12 @@ function ProfileListItem({
     ? './' + profile.workingDir.split('/').filter(Boolean).pop()
     : null
 
+  // Compute effective background (matching Terminal.tsx 3-layer system)
+  const effectiveGradientKey = profile.backgroundGradient ?? themes[profile.themeName]?.dark.backgroundGradient
+  const effectiveGradientCSS = getGradientCSS(effectiveGradientKey, true)
+  const effectivePanelColor = profile.panelColor ?? DEFAULT_PANEL_COLOR
+  const gradientOpacity = (profile.transparency ?? DEFAULT_TRANSPARENCY) / 100
+
   return (
     <div
       draggable
@@ -782,8 +798,17 @@ function ProfileListItem({
         relative w-full flex items-center gap-4 p-3 rounded-lg border transition-all group overflow-hidden cursor-pointer
         ${isDragging ? 'opacity-50 border-primary' : 'border-border hover:border-primary/50'}
       `}
-      style={themeGradient ? { background: themeGradient } : undefined}
     >
+      {/* Layer 1: Base panel color */}
+      <div
+        className="absolute inset-0 rounded-lg"
+        style={{ backgroundColor: effectivePanelColor }}
+      />
+      {/* Layer 2: Gradient overlay with transparency */}
+      <div
+        className="absolute inset-0 rounded-lg"
+        style={{ background: effectiveGradientCSS, opacity: gradientOpacity }}
+      />
       {/* Drop indicator line - above */}
       {isDragOver && dropPosition === 'above' && (
         <div className="absolute -top-[3px] left-0 right-0 h-[3px] bg-green-500 rounded-full shadow-[0_0_8px_#22c55e] z-50" />
@@ -795,14 +820,14 @@ function ProfileListItem({
 
       {/* Drag handle - pointer-events-none so drag passes to parent */}
       <div
-        className="flex-shrink-0 cursor-grab active:cursor-grabbing text-white/30 hover:text-white/60 transition-colors pointer-events-none"
+        className="relative z-10 flex-shrink-0 cursor-grab active:cursor-grabbing text-white/30 hover:text-white/60 transition-colors pointer-events-none"
         title="Drag to reorder"
       >
         <GripVertical className="w-4 h-4" />
       </div>
 
       {/* Content - pointer-events-none to allow drag through */}
-      <div className="flex items-center gap-4 flex-1 min-w-0 pointer-events-none">
+      <div className="relative z-10 flex items-center gap-4 flex-1 min-w-0 pointer-events-none">
         <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/10 text-xl flex-shrink-0">
           {emoji || <Terminal className="w-5 h-5 text-white/80" />}
         </div>
@@ -836,7 +861,7 @@ function ProfileListItem({
           navigator.clipboard.writeText(profile.command || 'bash')
         }}
         onMouseDown={(e) => e.stopPropagation()}
-        className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-all flex-shrink-0 z-10"
+        className="relative p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-all flex-shrink-0 z-10"
         title="Copy command"
       >
         <Copy className="w-4 h-4 text-white/50 hover:text-white/80" />
@@ -845,7 +870,7 @@ function ProfileListItem({
         <button
           onClick={(e) => { e.stopPropagation(); onPasteOnly() }}
           onMouseDown={(e) => e.stopPropagation()}
-          className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-all flex-shrink-0 z-10"
+          className="relative p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-all flex-shrink-0 z-10"
           title="Paste command without running (edit flags first)"
         >
           <ClipboardType className="w-4 h-4 text-white/50 hover:text-white/80" />
@@ -854,12 +879,12 @@ function ProfileListItem({
       <button
         onClick={(e) => { e.stopPropagation(); onEdit() }}
         onMouseDown={(e) => e.stopPropagation()}
-        className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-all flex-shrink-0 z-10"
+        className="relative p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-all flex-shrink-0 z-10"
         title="Edit profile"
       >
         <Settings className="w-4 h-4 text-white/50 hover:text-white/80" />
       </button>
-      <div className="flex-shrink-0 pointer-events-none">
+      <div className="relative z-10 flex-shrink-0 pointer-events-none">
         <Play className="w-5 h-5 text-white/80 opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
     </div>

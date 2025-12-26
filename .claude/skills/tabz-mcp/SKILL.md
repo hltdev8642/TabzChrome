@@ -45,6 +45,8 @@ Discover tools by running `mcp-cli tools tabz`. Common categories include:
 | Tab Management | `tabz_list_tabs`, `tabz_switch_tab`, `tabz_rename_tab` | Navigate between tabs |
 | Tab Groups | `tabz_list_groups`, `tabz_create_group`, `tabz_update_group`, `tabz_add_to_group`, `tabz_ungroup_tabs` | Organize tabs into groups |
 | Claude Group | `tabz_claude_group_add`, `tabz_claude_group_remove`, `tabz_claude_group_status` | Highlight tabs Claude is working with |
+| Windows | `tabz_list_windows`, `tabz_create_window`, `tabz_update_window`, `tabz_close_window` | Manage browser windows |
+| Displays | `tabz_get_displays`, `tabz_tile_windows`, `tabz_popout_terminal` | Multi-monitor layouts, terminal popouts |
 | Page Info | `tabz_get_page_info`, `tabz_get_element` | Inspect page content |
 | Interaction | `tabz_click`, `tabz_fill` | Interact with elements |
 | Screenshots | `tabz_screenshot*` | Capture page visuals |

@@ -48,7 +48,14 @@ import {
   handleBrowserUngroupTabs,
   handleBrowserAddToClaudeGroup,
   handleBrowserRemoveFromClaudeGroup,
-  handleBrowserGetClaudeGroupStatus
+  handleBrowserGetClaudeGroupStatus,
+  handleBrowserListWindows,
+  handleBrowserCreateWindow,
+  handleBrowserUpdateWindow,
+  handleBrowserCloseWindow,
+  handleBrowserGetDisplays,
+  handleBrowserTileWindows,
+  handleBrowserPopoutTerminal
 } from './browserMcp'
 
 // Forward declaration - will be set by alarms module
@@ -528,6 +535,49 @@ function routeWebSocketMessage(message: any): void {
   if (message.type === 'browser-get-claude-group-status') {
     console.log('Browser MCP: get-claude-group-status request', message.requestId)
     handleBrowserGetClaudeGroupStatus(message)
+    return
+  }
+
+  // Window management handlers
+  if (message.type === 'browser-list-windows') {
+    console.log('Browser MCP: list-windows request', message.requestId)
+    handleBrowserListWindows(message)
+    return
+  }
+
+  if (message.type === 'browser-create-window') {
+    console.log('Browser MCP: create-window request', message.requestId, message.url)
+    handleBrowserCreateWindow(message)
+    return
+  }
+
+  if (message.type === 'browser-update-window') {
+    console.log('Browser MCP: update-window request', message.requestId, message.windowId)
+    handleBrowserUpdateWindow(message)
+    return
+  }
+
+  if (message.type === 'browser-close-window') {
+    console.log('Browser MCP: close-window request', message.requestId, message.windowId)
+    handleBrowserCloseWindow(message)
+    return
+  }
+
+  if (message.type === 'browser-get-displays') {
+    console.log('Browser MCP: get-displays request', message.requestId)
+    handleBrowserGetDisplays(message)
+    return
+  }
+
+  if (message.type === 'browser-tile-windows') {
+    console.log('Browser MCP: tile-windows request', message.requestId, message.windowIds)
+    handleBrowserTileWindows(message)
+    return
+  }
+
+  if (message.type === 'browser-popout-terminal') {
+    console.log('Browser MCP: popout-terminal request', message.requestId, message.terminalId)
+    handleBrowserPopoutTerminal(message)
     return
   }
 

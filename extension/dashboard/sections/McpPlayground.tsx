@@ -60,6 +60,14 @@ const MCP_TOOLS: McpTool[] = [
   { id: 'tabz_claude_group_add', name: 'Claude Add', desc: 'Add tab to Claude Active group', tokens: 900, category: 'Tab Groups' },
   { id: 'tabz_claude_group_remove', name: 'Claude Remove', desc: 'Remove tab from Claude group', tokens: 700, category: 'Tab Groups' },
   { id: 'tabz_claude_group_status', name: 'Claude Status', desc: 'Check Claude Active group', tokens: 800, category: 'Tab Groups' },
+  // Windows (chrome.windows API)
+  { id: 'tabz_list_windows', name: 'List Windows', desc: 'List all browser windows with dimensions', tokens: 1000, category: 'Windows' },
+  { id: 'tabz_create_window', name: 'Create Window', desc: 'Create new popup or normal window', tokens: 1200, category: 'Windows' },
+  { id: 'tabz_update_window', name: 'Update Window', desc: 'Resize, move, minimize, maximize window', tokens: 1000, category: 'Windows' },
+  { id: 'tabz_close_window', name: 'Close Window', desc: 'Close window and all its tabs', tokens: 600, category: 'Windows' },
+  { id: 'tabz_get_displays', name: 'Get Displays', desc: 'Get monitor info for multi-monitor layouts', tokens: 1100, category: 'Windows' },
+  { id: 'tabz_tile_windows', name: 'Tile Windows', desc: 'Auto-arrange windows in grid/splits', tokens: 1300, category: 'Windows' },
+  { id: 'tabz_popout_terminal', name: 'Popout Terminal', desc: 'Pop sidebar to standalone popup window', tokens: 1000, category: 'Windows' },
 ]
 
 const CORE_TOOL_IDS = MCP_TOOLS.filter(t => t.locked).map(t => t.id)

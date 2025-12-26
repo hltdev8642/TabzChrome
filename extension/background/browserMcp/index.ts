@@ -72,3 +72,14 @@ export {
   handleBrowserRemoveFromClaudeGroup,
   handleBrowserGetClaudeGroupStatus
 } from './tabGroups'
+
+// Windows and displays
+export {
+  handleBrowserListWindows,
+  handleBrowserCreateWindow,
+  handleBrowserUpdateWindow,
+  handleBrowserCloseWindow,
+  handleBrowserGetDisplays,
+  handleBrowserTileWindows,
+  handleBrowserPopoutTerminal
+} from './windows'

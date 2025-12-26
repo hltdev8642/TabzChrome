@@ -1207,6 +1207,198 @@ router.get('/claude-group/status', async (req, res) => {
   }
 });
 
+// ============================================
+// WINDOW MANAGEMENT ROUTES
+// ============================================
+
+// GET /api/browser/windows - List all browser windows
+router.get('/windows', async (req, res) => {
+  log.debug('GET /windows');
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-list-windows', {});
+    res.json(result);
+  } catch (error) {
+    log.error('list-windows error:', error);
+    res.json({ success: false, windows: [], error: error.message });
+  }
+});
+
+// POST /api/browser/windows - Create a new browser window
+router.post('/windows', async (req, res) => {
+  const { url, type, state, focused, width, height, left, top, incognito, tabId } = req.body;
+
+  log.debug('POST /windows', { url, type, state, width, height });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-create-window',
+      { url, type, state, focused, width, height, left, top, incognito, tabId },
+      15000,
+      'Window creation timed out'
+    );
+    res.json(result);
+  } catch (error) {
+    log.error('create-window error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/browser/windows/:windowId - Update a window's properties
+router.put('/windows/:windowId', async (req, res) => {
+  const windowId = parseInt(req.params.windowId);
+  const { state, focused, width, height, left, top, drawAttention } = req.body;
+
+  if (isNaN(windowId)) {
+    return res.status(400).json({ success: false, error: 'Invalid windowId' });
+  }
+
+  log.debug('PUT /windows/:windowId', { windowId, state, focused, width, height, left, top });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-update-window',
+      { windowId, state, focused, width, height, left, top, drawAttention }
+    );
+    res.json(result);
+  } catch (error) {
+    log.error('update-window error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/browser/windows/:windowId - Close a window
+router.delete('/windows/:windowId', async (req, res) => {
+  const windowId = parseInt(req.params.windowId);
+
+  if (isNaN(windowId)) {
+    return res.status(400).json({ success: false, error: 'Invalid windowId' });
+  }
+
+  log.debug('DELETE /windows/:windowId', { windowId });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-close-window', { windowId });
+    res.json(result);
+  } catch (error) {
+    log.error('close-window error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/browser/displays - Get display/monitor information
+router.get('/displays', async (req, res) => {
+  log.debug('GET /displays');
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-get-displays', {});
+    res.json(result);
+  } catch (error) {
+    log.error('get-displays error:', error);
+    res.json({ success: false, displays: [], error: error.message });
+  }
+});
+
+// POST /api/browser/windows/tile - Tile windows in a grid layout
+router.post('/windows/tile', async (req, res) => {
+  const { windowIds, layout, displayId, gap } = req.body;
+
+  if (!windowIds || !Array.isArray(windowIds) || windowIds.length === 0) {
+    return res.status(400).json({ success: false, error: 'windowIds array is required' });
+  }
+
+  log.debug('POST /windows/tile', { windowIds, layout, displayId, gap });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-tile-windows',
+      { windowIds, layout, displayId, gap }
+    );
+    res.json(result);
+  } catch (error) {
+    log.error('tile-windows error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/browser/popout-terminal - Pop out sidepanel to standalone window
+router.post('/popout-terminal', async (req, res) => {
+  const { terminalId, width, height, left, top } = req.body;
+
+  log.debug('POST /popout-terminal', { terminalId, width, height, left, top });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-popout-terminal',
+      { terminalId, width, height, left, top }
+    );
+    res.json(result);
+  } catch (error) {
+    log.error('popout-terminal error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
 module.exports.addConsoleLog = addConsoleLog;
 module.exports.getConsoleLogs = getConsoleLogs;

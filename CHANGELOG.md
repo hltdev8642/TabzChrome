@@ -15,6 +15,43 @@ For older versions (2.5.0 and earlier), see [CHANGELOG-archive.md](CHANGELOG-arc
 
 ---
 
+## [1.2.20] - 2025-12-25
+
+### Added
+- **Window Management MCP Tools** - 7 new tools for browser window control (37 → 44 total tools):
+  - `tabz_list_windows` - List all Chrome windows with dimensions and state
+  - `tabz_create_window` - Create new browser windows (normal or popup)
+  - `tabz_update_window` - Resize, move, minimize, maximize, focus windows
+  - `tabz_close_window` - Close a window and all its tabs
+  - `tabz_get_displays` - Get monitor info for multi-monitor layouts
+  - `tabz_tile_windows` - Auto-arrange windows in horizontal/vertical/grid layouts
+  - `tabz_popout_terminal` - Pop out sidebar terminal to standalone popup window
+
+- **Terminal Popout Support** - Run terminals in standalone popup windows without duplicate extension issues:
+  - All popup windows share the same extension instance
+  - Single WebSocket connection to backend
+  - No terminal session conflicts
+  - Use `tabz_create_window` with `url: "/sidepanel/sidepanel.html"` and `type: "popup"`
+
+- **Multi-Monitor Layouts** - Position windows across monitors with `tabz_get_displays` and `tabz_tile_windows`
+
+- **Save to Profile in Customize Popover** - Quick customizations now persist:
+  - Green save icon (💾) in the customize popover header
+  - Saves current appearance (theme, gradient, panel color, transparency, font) to the profile
+  - All future terminals using that profile inherit the saved appearance
+
+### Changed
+- **Extension permissions** - Added `system.display` permission for monitor detection
+- **MCP Settings UI** - Added "Windows" category to MCP Playground and Settings modal
+
+### Fixed
+- **Dashboard Profile Cards** - Cards now match terminal appearance with full theme support:
+  - Uses 3-layer background system (panel color → gradient overlay → content)
+  - Respects `backgroundGradient` override, `panelColor`, and `transparency` settings
+  - Previously only used theme's default gradient, ignoring profile customizations
+
+---
+
 ## [1.2.19] - 2025-12-25 (simplify-codebase branch)
 
 ### Changed
