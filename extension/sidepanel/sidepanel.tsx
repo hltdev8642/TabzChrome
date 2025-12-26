@@ -587,6 +587,9 @@ function SidePanelTerminal() {
     const effectiveTransparency = overrides.transparency ?? session.profile.transparency ?? 100
     const effectiveFontFamily = overrides.fontFamily ?? session.profile.fontFamily ?? 'monospace'
     const effectiveFontSize = (session.profile.fontSize ?? 16) + fontSizeOffset
+    const effectiveBackgroundMedia = overrides.backgroundMedia ?? session.profile.backgroundMedia
+    const effectiveBackgroundMediaType = overrides.backgroundMediaType ?? session.profile.backgroundMediaType
+    const effectiveBackgroundMediaOpacity = overrides.backgroundMediaOpacity ?? session.profile.backgroundMediaOpacity
 
     // Update the profile in the profiles array
     const updatedProfiles = profiles.map(p =>
@@ -599,6 +602,9 @@ function SidePanelTerminal() {
             transparency: effectiveTransparency,
             fontFamily: effectiveFontFamily,
             fontSize: effectiveFontSize,
+            backgroundMedia: effectiveBackgroundMedia,
+            backgroundMediaType: effectiveBackgroundMediaType,
+            backgroundMediaOpacity: effectiveBackgroundMediaOpacity,
           }
         : p
     )
@@ -1315,9 +1321,9 @@ function SidePanelTerminal() {
                           backgroundGradient={session.appearanceOverrides?.backgroundGradient ?? effectiveProfile?.backgroundGradient}
                           panelColor={session.appearanceOverrides?.panelColor ?? effectiveProfile?.panelColor ?? '#000000'}
                           transparency={session.appearanceOverrides?.transparency ?? effectiveProfile?.transparency ?? 100}
-                          backgroundMedia={effectiveProfile?.backgroundMedia}
-                          backgroundMediaType={effectiveProfile?.backgroundMediaType}
-                          backgroundMediaOpacity={effectiveProfile?.backgroundMediaOpacity}
+                          backgroundMedia={session.appearanceOverrides?.backgroundMedia ?? effectiveProfile?.backgroundMedia}
+                          backgroundMediaType={session.appearanceOverrides?.backgroundMediaType ?? effectiveProfile?.backgroundMediaType}
+                          backgroundMediaOpacity={session.appearanceOverrides?.backgroundMediaOpacity ?? effectiveProfile?.backgroundMediaOpacity}
                           onClose={() => {
                             sendMessage({
                               type: 'CLOSE_TERMINAL',
@@ -1445,6 +1451,9 @@ function SidePanelTerminal() {
               transparency: effectiveProfile?.transparency,
               fontSize: effectiveProfile?.fontSize,
               fontFamily: effectiveProfile?.fontFamily,
+              backgroundMedia: effectiveProfile?.backgroundMedia,
+              backgroundMediaType: effectiveProfile?.backgroundMediaType,
+              backgroundMediaOpacity: effectiveProfile?.backgroundMediaOpacity,
             }}
             isDark={isDark}
             fontSizeOffset={session.fontSizeOffset}

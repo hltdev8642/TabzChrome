@@ -1,9 +1,9 @@
-import React, { useEffect, useCallback } from 'react'
+import React, { useEffect, useCallback, useState } from 'react'
 import { useOutsideClick } from '../hooks/useOutsideClick'
-import { RotateCcw, X, Save } from 'lucide-react'
+import { RotateCcw, X, Save, Image, Video, XCircle } from 'lucide-react'
 import { themes, themeNames, getBackgroundGradient as getThemeBackgroundGradient } from '../styles/themes'
 import { backgroundGradients, gradientNames, PANEL_COLORS, getGradientCSS, getPanelColor } from '../styles/terminal-backgrounds'
-import { FONT_FAMILIES, getAvailableFonts } from './settings/types'
+import { FONT_FAMILIES, getAvailableFonts, type BackgroundMediaType } from './settings/types'
 import type { TerminalAppearanceOverrides } from '../hooks/useTerminalSessions'
 
 interface TerminalCustomizePopoverProps {
@@ -18,6 +18,9 @@ interface TerminalCustomizePopoverProps {
     transparency?: number
     fontSize?: number
     fontFamily?: string
+    backgroundMedia?: string
+    backgroundMediaType?: BackgroundMediaType
+    backgroundMediaOpacity?: number
   }
   isDark?: boolean  // Global dark/light mode
   // Font size offset (separate from appearance overrides)
@@ -74,6 +77,9 @@ export function TerminalCustomizePopover({
   const effectiveTransparency = currentOverrides?.transparency ?? profileDefaults.transparency ?? 100
   const effectiveFontFamily = currentOverrides?.fontFamily ?? profileDefaults.fontFamily ?? 'monospace'
   const effectiveFontSize = profileDefaults.fontSize || 16
+  const effectiveBackgroundMedia = currentOverrides?.backgroundMedia ?? profileDefaults.backgroundMedia ?? ''
+  const effectiveBackgroundMediaType = currentOverrides?.backgroundMediaType ?? profileDefaults.backgroundMediaType ?? 'none'
+  const effectiveBackgroundMediaOpacity = currentOverrides?.backgroundMediaOpacity ?? profileDefaults.backgroundMediaOpacity ?? 50
 
   // Compute gradient CSS same as Terminal.tsx
   const effectiveGradientCSS = effectiveGradient
@@ -93,6 +99,9 @@ export function TerminalCustomizePopover({
     currentOverrides?.panelColor !== undefined ||
     currentOverrides?.transparency !== undefined ||
     currentOverrides?.fontFamily ||
+    currentOverrides?.backgroundMedia ||
+    currentOverrides?.backgroundMediaType ||
+    currentOverrides?.backgroundMediaOpacity !== undefined ||
     fontSizeOffset !== 0
   )
 
@@ -364,6 +373,90 @@ export function TerminalCustomizePopover({
             <span>Gradient</span>
           </div>
         </div>
+
+        {/* Background Media Type */}
+        <div>
+          <label className="block text-xs mb-1.5" style={{ color: themeColors?.brightBlack || '#888' }}>Background Media</label>
+          <div className="flex gap-1">
+            <button
+              onClick={() => onUpdate(sessionId, { backgroundMediaType: 'none', backgroundMedia: '' })}
+              className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded border text-xs transition-colors ${
+                effectiveBackgroundMediaType === 'none'
+                  ? 'border-[#00ff88] bg-[#00ff88]/10'
+                  : 'border-white/20 hover:border-white/40'
+              }`}
+              style={{ color: themeColors?.foreground || '#e0e0e0' }}
+            >
+              <XCircle className="h-3 w-3" />
+              None
+            </button>
+            <button
+              onClick={() => onUpdate(sessionId, { backgroundMediaType: 'image' })}
+              className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded border text-xs transition-colors ${
+                effectiveBackgroundMediaType === 'image'
+                  ? 'border-[#00ff88] bg-[#00ff88]/10'
+                  : 'border-white/20 hover:border-white/40'
+              }`}
+              style={{ color: themeColors?.foreground || '#e0e0e0' }}
+            >
+              <Image className="h-3 w-3" />
+              Image
+            </button>
+            <button
+              onClick={() => onUpdate(sessionId, { backgroundMediaType: 'video' })}
+              className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded border text-xs transition-colors ${
+                effectiveBackgroundMediaType === 'video'
+                  ? 'border-[#00ff88] bg-[#00ff88]/10'
+                  : 'border-white/20 hover:border-white/40'
+              }`}
+              style={{ color: themeColors?.foreground || '#e0e0e0' }}
+            >
+              <Video className="h-3 w-3" />
+              Video
+            </button>
+          </div>
+        </div>
+
+        {/* Background Media Path (only show if type is image or video) */}
+        {effectiveBackgroundMediaType !== 'none' && (
+          <div>
+            <label className="block text-xs mb-1.5" style={{ color: themeColors?.brightBlack || '#888' }}>
+              Media Path/URL
+            </label>
+            <input
+              type="text"
+              value={effectiveBackgroundMedia}
+              onChange={(e) => onUpdate(sessionId, { backgroundMedia: e.target.value })}
+              placeholder={effectiveBackgroundMediaType === 'video' ? 'https://... or ~/Videos/bg.mp4' : 'https://... or ~/Pictures/bg.jpg'}
+              className={`w-full px-2 py-1.5 border rounded text-xs focus:border-[#00ff88] focus:outline-none ${
+                isDark ? 'bg-[#1a1a1a] border-white/20' : 'bg-white border-gray-300'
+              }`}
+              style={{ color: themeColors?.foreground || '#e0e0e0' }}
+            />
+          </div>
+        )}
+
+        {/* Background Media Opacity (only show if type is image or video and has path) */}
+        {effectiveBackgroundMediaType !== 'none' && effectiveBackgroundMedia && (
+          <div>
+            <label className="block text-xs mb-1.5" style={{ color: themeColors?.brightBlack || '#888' }}>
+              Media Opacity: {effectiveBackgroundMediaOpacity}%
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={effectiveBackgroundMediaOpacity}
+              onChange={(e) => onUpdate(sessionId, { backgroundMediaOpacity: parseInt(e.target.value) })}
+              className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-[#00ff88]"
+            />
+            <div className="flex justify-between text-xs mt-0.5" style={{ color: themeColors?.brightBlack || '#888' }}>
+              <span>Hidden</span>
+              <span>Full</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer hint */}

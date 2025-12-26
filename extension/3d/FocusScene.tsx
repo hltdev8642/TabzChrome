@@ -290,9 +290,9 @@ export default function FocusScene() {
   const panelColor = targetSession?.appearanceOverrides?.panelColor ?? effectiveProfile?.panelColor ?? '#000000'
   const backgroundGradient = targetSession?.appearanceOverrides?.backgroundGradient ?? effectiveProfile?.backgroundGradient
   const transparency = targetSession?.appearanceOverrides?.transparency ?? effectiveProfile?.transparency ?? 100
-  const backgroundMedia = effectiveProfile?.backgroundMedia
-  const backgroundMediaType = effectiveProfile?.backgroundMediaType
-  const backgroundMediaOpacity = effectiveProfile?.backgroundMediaOpacity
+  const backgroundMedia = targetSession?.appearanceOverrides?.backgroundMedia ?? effectiveProfile?.backgroundMedia
+  const backgroundMediaType = targetSession?.appearanceOverrides?.backgroundMediaType ?? effectiveProfile?.backgroundMediaType
+  const backgroundMediaOpacity = targetSession?.appearanceOverrides?.backgroundMediaOpacity ?? effectiveProfile?.backgroundMediaOpacity
 
   // Connect to background worker for WebSocket messages (needed for session data)
   useEffect(() => {
