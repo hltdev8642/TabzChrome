@@ -6,14 +6,14 @@
     "isEntry": true
   },
   "3d/3d-focus.html": {
-    "file": "assets/3d-focus-BSMm_BRv.js",
+    "file": "assets/3d-focus-BcrK6ylo.js",
     "name": "3d-focus",
     "src": "3d/3d-focus.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_terminal-backgrounds-P64U3As2.js",
-      "_globals-W9Fh2RMR.js",
+      "_globals-2IqJmWy0.js",
       "_extends-CF3RwP-h.js"
     ]
   },
@@ -22,17 +22,17 @@
     "name": "extends"
   },
   "_globals-!~{008}~.js": {
-    "file": "assets/globals-u6dtW2Am.css",
+    "file": "assets/globals-DOXk3JMA.css",
     "src": "_globals-!~{008}~.js"
   },
-  "_globals-W9Fh2RMR.js": {
-    "file": "assets/globals-W9Fh2RMR.js",
+  "_globals-2IqJmWy0.js": {
+    "file": "assets/globals-2IqJmWy0.js",
     "name": "globals",
     "imports": [
       "_terminal-backgrounds-P64U3As2.js"
     ],
     "css": [
-      "assets/globals-u6dtW2Am.css"
+      "assets/globals-DOXk3JMA.css"
     ]
   },
   "_modulepreload-polyfill-B5Qt9EMX.js": {
@@ -63,7 +63,7 @@
     "isEntry": true
   },
   "dashboard/index.html": {
-    "file": "assets/dashboard-Da3RqDia.js",
+    "file": "assets/dashboard-C0Q5-srV.js",
     "name": "dashboard",
     "src": "dashboard/index.html",
     "isEntry": true,
@@ -74,7 +74,7 @@
       "_extends-CF3RwP-h.js"
     ],
     "css": [
-      "assets/dashboard-DtRMX7P8.css"
+      "assets/dashboard-4G4eIIOC.css"
     ]
   },
   "devtools/devtools.html": {
@@ -87,14 +87,14 @@
     ]
   },
   "sidepanel/sidepanel.html": {
-    "file": "assets/sidepanel.html-CX0SwiPb.js",
+    "file": "assets/sidepanel.html-Cj2688Wf.js",
     "name": "sidepanel.html",
     "src": "sidepanel/sidepanel.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_terminal-backgrounds-P64U3As2.js",
-      "_globals-W9Fh2RMR.js",
+      "_globals-2IqJmWy0.js",
       "_useDragDrop-DCb7T_yh.js"
     ]
   }

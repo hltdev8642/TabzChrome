@@ -44,6 +44,8 @@ interface OpenFile {
   loading: boolean
   error?: string
   pinned: boolean  // Pinned tabs stay open, unpinned is preview (gets replaced)
+  lineCount?: number
+  modified?: string  // ISO date string
 }
 
 interface FilesContextType {
@@ -321,7 +323,14 @@ export function FilesProvider({ children }: { children: ReactNode }) {
       } else {
         const res = await fetch(`${API_BASE}/api/files/content?path=${encodeURIComponent(path)}`)
         const data = await res.json()
-        setOpenFiles(prev => prev.map(f => f.id === id ? { ...f, content: data.content, loading: false } : f))
+        const lineCount = data.content ? data.content.split('\n').length : 0
+        setOpenFiles(prev => prev.map(f => f.id === id ? {
+          ...f,
+          content: data.content,
+          loading: false,
+          lineCount,
+          modified: data.modified
+        } : f))
       }
     } catch (err: any) {
       setOpenFiles(prev => prev.map(f => f.id === id ? { ...f, error: err.message, loading: false } : f))

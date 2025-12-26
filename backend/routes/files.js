@@ -553,7 +553,8 @@ router.get('/content', async (req, res) => {
       path: filePath,
       content,
       fileName: path.basename(filePath),
-      fileSize: stats.size
+      fileSize: stats.size,
+      modified: stats.mtime.toISOString()
     });
     
   } catch (error) {

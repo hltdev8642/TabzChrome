@@ -70,6 +70,7 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [folderFilter, setFolderFilter] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPath, setCurrentPath] = useState(basePath)
   const [showHidden, setShowHidden] = useState(showHiddenProp)
@@ -255,24 +256,63 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
       : <Folder className="w-4 h-4 text-yellow-400" />
   }
 
-  // Filter nodes based on search
-  const filterNodes = useCallback((node: FileNode): FileNode | null => {
-    if (!searchQuery) return node
+  // Check if a folder or any of its descendant folders match the folder filter
+  const hasFolderMatch = useCallback((node: FileNode, filter: string): boolean => {
+    if (node.type !== "directory") return false
+    const filterLower = filter.toLowerCase()
+    if (node.name.toLowerCase().includes(filterLower)) return true
+    return node.children?.some(child => hasFolderMatch(child, filter)) ?? false
+  }, [])
 
-    const matches = node.name.toLowerCase().includes(searchQuery.toLowerCase())
+  // Filter nodes based on search (file search) and folder filter
+  const filterNodes = useCallback((node: FileNode, inMatchingFolder = false): FileNode | null => {
+    const hasSearchQuery = searchQuery.length > 0
+    const hasFolderFilter = folderFilter.length > 0
+
+    // No filters active - return node as-is
+    if (!hasSearchQuery && !hasFolderFilter) return node
+
+    const matchesSearch = node.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesFolderFilter = node.name.toLowerCase().includes(folderFilter.toLowerCase())
 
     if (node.type === "file") {
-      return matches ? node : null
+      // If folder filter is active and we're not inside a matching folder subtree, hide the file
+      if (hasFolderFilter && !inMatchingFolder) {
+        return null
+      }
+      // Files: filtered by searchQuery
+      if (hasSearchQuery) {
+        return matchesSearch ? node : null
+      }
+      return node
     }
 
-    const filteredChildren = node.children?.map(filterNodes).filter(Boolean) as FileNode[] | undefined
+    // Directory handling
+    // If this folder matches the filter, all its contents should be visible
+    const thisMatches = matchesFolderFilter
+    const descendantMatches = hasFolderFilter && hasFolderMatch(node, folderFilter)
+    const showContents = inMatchingFolder || thisMatches
 
-    if (matches || (filteredChildren && filteredChildren.length > 0)) {
-      return { ...node, children: filteredChildren }
+    // Filter children, passing down whether we're in a matching folder
+    const filteredChildren = node.children
+      ?.map(child => filterNodes(child, showContents))
+      .filter(Boolean) as FileNode[] | undefined
+
+    const hasVisibleChildren = filteredChildren && filteredChildren.length > 0
+
+    // If folder filter is active: show folder if it matches, has matching descendants, or has visible children
+    if (hasFolderFilter && !thisMatches && !descendantMatches && !hasVisibleChildren) {
+      return null
     }
 
-    return null
-  }, [searchQuery])
+    // If search query is active (no folder filter), use original logic
+    if (hasSearchQuery && !hasFolderFilter && !matchesSearch && !hasVisibleChildren) {
+      return null
+    }
+
+    // Folder should be shown
+    return { ...node, children: filteredChildren }
+  }, [searchQuery, folderFilter, hasFolderMatch])
 
   const filteredTree = useMemo(() => {
     if (!fileTree) return null
@@ -476,12 +516,24 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
         </div>
       </div>
 
-      {/* Path */}
-      <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border truncate">
-        {currentPath}
+      {/* Folder Filter */}
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+        <Folder className="w-4 h-4 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="Filter folders..."
+          value={folderFilter}
+          onChange={(e) => setFolderFilter(e.target.value)}
+          className="flex-1 bg-transparent text-sm outline-none"
+        />
+        {folderFilter && (
+          <button onClick={() => setFolderFilter("")} className="text-muted-foreground hover:text-foreground">
+            ×
+          </button>
+        )}
       </div>
 
-      {/* Search */}
+      {/* File Search */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
         <Search className="w-4 h-4 text-muted-foreground" />
         <input

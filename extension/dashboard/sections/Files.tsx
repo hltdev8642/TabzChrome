@@ -41,6 +41,23 @@ const getFileIcon = (fileType: FileType) => {
   }
 }
 
+// Format relative time (e.g., "2 hours ago", "yesterday")
+const formatRelativeTime = (isoDate: string): string => {
+  const date = new Date(isoDate)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMins < 1) return 'just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffDays === 1) return 'yesterday'
+  if (diffDays < 7) return `${diffDays}d ago`
+  return date.toLocaleDateString()
+}
+
 // Simple CSV parser
 const parseCSV = (content: string): { headers: string[], rows: string[][] } => {
   const lines = content.trim().split('\n')
@@ -595,7 +612,17 @@ export default function FilesSection() {
                 >
                   <MoreVertical className="w-4 h-4" />
                 </button>
-                <span className="ml-auto text-xs text-muted-foreground">{activeFile.path}</span>
+                <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
+                  {activeFile.lineCount !== undefined && (
+                    <span>{activeFile.lineCount} rows</span>
+                  )}
+                  {activeFile.modified && (
+                    <span title={new Date(activeFile.modified).toLocaleString()}>
+                      {formatRelativeTime(activeFile.modified)}
+                    </span>
+                  )}
+                  <span className="truncate max-w-[200px]" title={activeFile.path}>{activeFile.path}</span>
+                </div>
               </div>
               {/* CSV Table */}
               <div className="flex-1 overflow-auto p-4">
@@ -680,7 +707,17 @@ export default function FilesSection() {
                 >
                   <MoreVertical className="w-4 h-4" />
                 </button>
-                <span className="ml-auto text-xs text-muted-foreground">{activeFile.path}</span>
+                <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
+                  {activeFile.lineCount !== undefined && (
+                    <span>{activeFile.lineCount} lines</span>
+                  )}
+                  {activeFile.modified && (
+                    <span title={new Date(activeFile.modified).toLocaleString()}>
+                      {formatRelativeTime(activeFile.modified)}
+                    </span>
+                  )}
+                  <span className="truncate max-w-[200px]" title={activeFile.path}>{activeFile.path}</span>
+                </div>
               </div>
               {/* Content */}
               <div className="flex-1 overflow-auto">
