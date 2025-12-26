@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP Test Pages - Claude Testing Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .selector-hint { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+  <!-- Page Header -->
+  <header id="page-header" class="bg-gray-800 border-b border-gray-700 px-6 py-4">
+    <h1 id="page-title" class="text-2xl font-bold text-purple-400">MCP Test Pages</h1>
+    <p id="page-description" class="text-gray-400 mt-1">Testing ground for Claude's MCP browser automation tools</p>
+  </header>
+
+  <main class="container mx-auto px-6 py-8 max-w-6xl">
+
+    <!-- Quick Start Section -->
+    <section id="quick-start" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-green-400 mb-4">Quick Start for Claude</h2>
+      <div class="space-y-3 text-gray-300">
+        <p><strong>To open this page:</strong></p>
+        <pre class="bg-gray-900 p-3 rounded text-sm overflow-x-auto">tabz_open_url({ url: "localhost:8129/mcp-test/" })</pre>
+
+        <p class="mt-4"><strong>Navigation pattern:</strong></p>
+        <ol class="list-decimal list-inside space-y-1 ml-4">
+          <li>Use <code class="selector-hint bg-gray-700 px-1 rounded">tabz_screenshot</code> to see the page</li>
+          <li>Find elements using the <strong>Selectors Panel</strong> on each page</li>
+          <li>Use <code class="selector-hint bg-gray-700 px-1 rounded">tabz_click</code> or <code class="selector-hint bg-gray-700 px-1 rounded">tabz_fill</code> to interact</li>
+          <li>Verify results visually or check state indicators</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Test Pages Grid -->
+    <section id="test-pages" class="mb-12">
+      <h2 class="text-xl font-semibold text-blue-400 mb-6">Test Pages</h2>
+
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        <!-- Forms Card -->
+        <a href="forms.html"
+           id="nav-forms"
+           data-testid="nav-forms"
+           class="block bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-purple-500 transition-colors">
+          <div class="flex items-center gap-3 mb-3">
+            <span class="text-3xl">📝</span>
+            <h3 class="text-lg font-semibold text-white">Forms</h3>
+          </div>
+          <p class="text-gray-400 text-sm mb-3">Login forms, search inputs, multi-step wizards</p>
+          <div class="text-xs selector-hint text-purple-400">
+            Key: #login-email, #login-submit
+          </div>
+        </a>
+
+        <!-- Buttons Card -->
+        <a href="buttons.html"
+           id="nav-buttons"
+           data-testid="nav-buttons"
+           class="block bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-purple-500 transition-colors">
+          <div class="flex items-center gap-3 mb-3">
+            <span class="text-3xl">🔘</span>
+            <h3 class="text-lg font-semibold text-white">Buttons</h3>
+          </div>
+          <p class="text-gray-400 text-sm mb-3">Click testing, toggles, state indicators</p>
+          <div class="text-xs selector-hint text-purple-400">
+            Key: #btn-primary, #btn-toggle-theme
+          </div>
+        </a>
+
+        <!-- Navigation Card -->
+        <a href="navigation.html"
+           id="nav-navigation"
+           data-testid="nav-navigation"
+           class="block bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-purple-500 transition-colors">
+          <div class="flex items-center gap-3 mb-3">
+            <span class="text-3xl">🧭</span>
+            <h3 class="text-lg font-semibold text-white">Navigation</h3>
+          </div>
+          <p class="text-gray-400 text-sm mb-3">Tabs, dropdowns, modals, pagination</p>
+          <div class="text-xs selector-hint text-purple-400">
+            Key: #tab-settings, #modal-open
+          </div>
+        </a>
+
+        <!-- Data Card -->
+        <a href="data.html"
+           id="nav-data"
+           data-testid="nav-data"
+           class="block bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-purple-500 transition-colors">
+          <div class="flex items-center gap-3 mb-3">
+            <span class="text-3xl">📊</span>
+            <h3 class="text-lg font-semibold text-white">Data Display</h3>
+          </div>
+          <p class="text-gray-400 text-sm mb-3">Tables, lists, cards with selectable items</p>
+          <div class="text-xs selector-hint text-purple-400">
+            Key: #data-table, .card[data-id="1"]
+          </div>
+        </a>
+
+        <!-- Network Card -->
+        <a href="network.html"
+           id="nav-network"
+           data-testid="nav-network"
+           class="block bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-purple-500 transition-colors">
+          <div class="flex items-center gap-3 mb-3">
+            <span class="text-3xl">🌐</span>
+            <h3 class="text-lg font-semibold text-white">Network</h3>
+          </div>
+          <p class="text-gray-400 text-sm mb-3">API calls, request logging, responses</p>
+          <div class="text-xs selector-hint text-purple-400">
+            Key: #btn-fetch-users, #request-log
+          </div>
+        </a>
+
+        <!-- Guide Card -->
+        <a href="CLAUDE-GUIDE.md"
+           id="nav-guide"
+           data-testid="nav-guide"
+           class="block bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-green-500 transition-colors">
+          <div class="flex items-center gap-3 mb-3">
+            <span class="text-3xl">📖</span>
+            <h3 class="text-lg font-semibold text-white">Claude Guide</h3>
+          </div>
+          <p class="text-gray-400 text-sm mb-3">Best practices, tips, error handling</p>
+          <div class="text-xs selector-hint text-green-400">
+            Markdown documentation
+          </div>
+        </a>
+
+      </div>
+    </section>
+
+    <!-- Selector Reference -->
+    <section id="selector-reference" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-yellow-400 mb-4">Universal Selector Patterns</h2>
+      <p class="text-gray-400 mb-4">All test pages follow these consistent patterns:</p>
+
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h3 class="font-semibold text-white mb-2">Primary Selectors (Preferred)</h3>
+          <table class="w-full text-sm">
+            <tr class="border-b border-gray-700">
+              <td class="py-2 selector-hint text-purple-400">#element-id</td>
+              <td class="py-2 text-gray-400">Unique ID (best)</td>
+            </tr>
+            <tr class="border-b border-gray-700">
+              <td class="py-2 selector-hint text-purple-400">[data-testid="x"]</td>
+              <td class="py-2 text-gray-400">Test ID (stable)</td>
+            </tr>
+            <tr class="border-b border-gray-700">
+              <td class="py-2 selector-hint text-purple-400">[data-action="x"]</td>
+              <td class="py-2 text-gray-400">By action type</td>
+            </tr>
+          </table>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-white mb-2">Fallback Selectors</h3>
+          <table class="w-full text-sm">
+            <tr class="border-b border-gray-700">
+              <td class="py-2 selector-hint text-purple-400">.btn-primary</td>
+              <td class="py-2 text-gray-400">By class (less stable)</td>
+            </tr>
+            <tr class="border-b border-gray-700">
+              <td class="py-2 selector-hint text-purple-400">button[type="submit"]</td>
+              <td class="py-2 text-gray-400">By attribute</td>
+            </tr>
+            <tr class="border-b border-gray-700">
+              <td class="py-2 selector-hint text-purple-400">form > button</td>
+              <td class="py-2 text-gray-400">By structure</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- MCP Tools Reference -->
+    <section id="mcp-tools" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-cyan-400 mb-4">MCP Tools Quick Reference</h2>
+
+      <div class="space-y-4">
+        <div class="bg-gray-900 rounded p-4">
+          <h3 class="font-semibold text-white mb-2">tabz_click</h3>
+          <pre class="text-sm text-gray-300 overflow-x-auto">tabz_click({ selector: "#btn-submit" })</pre>
+          <p class="text-gray-500 text-sm mt-1">Click any element by CSS selector</p>
+        </div>
+
+        <div class="bg-gray-900 rounded p-4">
+          <h3 class="font-semibold text-white mb-2">tabz_fill</h3>
+          <pre class="text-sm text-gray-300 overflow-x-auto">tabz_fill({ selector: "#email-input", value: "test@example.com" })</pre>
+          <p class="text-gray-500 text-sm mt-1">Fill input fields, textareas</p>
+        </div>
+
+        <div class="bg-gray-900 rounded p-4">
+          <h3 class="font-semibold text-white mb-2">tabz_get_element</h3>
+          <pre class="text-sm text-gray-300 overflow-x-auto">tabz_get_element({ selector: "#status-message" })</pre>
+          <p class="text-gray-500 text-sm mt-1">Get element info, styles, bounds</p>
+        </div>
+
+        <div class="bg-gray-900 rounded p-4">
+          <h3 class="font-semibold text-white mb-2">tabz_screenshot</h3>
+          <pre class="text-sm text-gray-300 overflow-x-auto">tabz_screenshot({})</pre>
+          <p class="text-gray-500 text-sm mt-1">Capture viewport for visual verification</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Status Indicator -->
+    <section id="page-status" class="text-center text-gray-500 text-sm">
+      <p>Page loaded: <span id="load-timestamp"></span></p>
+      <p class="mt-1">Backend: <span id="backend-status" class="text-green-400">Connected</span> (localhost:8129)</p>
+    </section>
+
+  </main>
+
+  <!-- Selectors Panel (Collapsible) -->
+  <aside id="selectors-panel" class="fixed bottom-4 right-4 bg-gray-800 border border-gray-600 rounded-lg shadow-xl max-w-md">
+    <button
+      id="toggle-selectors-panel"
+      data-testid="toggle-selectors-panel"
+      onclick="toggleSelectorsPanel()"
+      class="w-full px-4 py-2 text-left font-semibold text-purple-400 border-b border-gray-700 flex justify-between items-center"
+    >
+      <span>📋 Page Selectors</span>
+      <span id="panel-arrow">▼</span>
+    </button>
+    <div id="selectors-content" class="p-4 text-sm max-h-64 overflow-y-auto">
+      <div class="selector-hint space-y-1 text-gray-300">
+        <p><span class="text-purple-400">#page-header</span> - Header container</p>
+        <p><span class="text-purple-400">#nav-forms</span> - Link to forms page</p>
+        <p><span class="text-purple-400">#nav-buttons</span> - Link to buttons page</p>
+        <p><span class="text-purple-400">#nav-navigation</span> - Link to navigation page</p>
+        <p><span class="text-purple-400">#nav-data</span> - Link to data page</p>
+        <p><span class="text-purple-400">#nav-network</span> - Link to network page</p>
+        <p><span class="text-purple-400">#toggle-selectors-panel</span> - This panel toggle</p>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    // Set load timestamp
+    document.getElementById('load-timestamp').textContent = new Date().toLocaleTimeString();
+
+    // Toggle selectors panel
+    function toggleSelectorsPanel() {
+      const content = document.getElementById('selectors-content');
+      const arrow = document.getElementById('panel-arrow');
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        arrow.textContent = '▼';
+      } else {
+        content.style.display = 'none';
+        arrow.textContent = '▲';
+      }
+    }
+
+    // Check backend connection
+    fetch('/api/health')
+      .then(r => r.json())
+      .then(() => {
+        document.getElementById('backend-status').textContent = 'Connected';
+        document.getElementById('backend-status').className = 'text-green-400';
+      })
+      .catch(() => {
+        document.getElementById('backend-status').textContent = 'Disconnected';
+        document.getElementById('backend-status').className = 'text-red-400';
+      });
+  </script>
+</body>
+</html>

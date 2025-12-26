@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Test - MCP Test Pages</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .selector-hint { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+  <!-- Navigation -->
+  <nav id="breadcrumb" class="bg-gray-800 border-b border-gray-700 px-6 py-3">
+    <a href="index.html" id="nav-home" class="text-purple-400 hover:text-purple-300">← MCP Test Hub</a>
+    <span class="text-gray-500 mx-2">/</span>
+    <span class="text-gray-300">Network</span>
+  </nav>
+
+  <!-- Page Header -->
+  <header id="page-header" class="bg-gray-800 border-b border-gray-700 px-6 py-4">
+    <h1 id="page-title" class="text-2xl font-bold text-purple-400">🌐 Network Test Page</h1>
+    <p id="page-description" class="text-gray-400 mt-1">Test tabz_enable_network_capture, tabz_get_network_requests</p>
+  </header>
+
+  <main class="container mx-auto px-6 py-8 max-w-4xl">
+
+    <!-- Instructions -->
+    <section id="instructions" class="mb-8 bg-blue-900/30 border border-blue-600 rounded-lg p-4">
+      <h2 class="text-lg font-semibold text-blue-400 mb-2">📋 How to Use</h2>
+      <ol class="list-decimal list-inside text-gray-300 space-y-1 text-sm">
+        <li>First, enable network capture: <code class="bg-gray-800 px-1 rounded">tabz_enable_network_capture({})</code></li>
+        <li>Click the buttons below to trigger API requests</li>
+        <li>View captured requests: <code class="bg-gray-800 px-1 rounded">tabz_get_network_requests({})</code></li>
+        <li>Filter by type: <code class="bg-gray-800 px-1 rounded">tabz_get_network_requests({ method: "POST" })</code></li>
+      </ol>
+    </section>
+
+    <!-- API Request Buttons -->
+    <section id="api-section" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-blue-400 mb-4">Trigger API Requests</h2>
+
+      <div class="grid md:grid-cols-2 gap-4 mb-6">
+        <!-- GET Requests -->
+        <div class="space-y-3">
+          <h3 class="text-white font-medium">GET Requests</h3>
+
+          <button
+            id="btn-fetch-users"
+            data-testid="btn-fetch-users"
+            data-action="fetch-users"
+            onclick="makeRequest('GET', '/api/health', 'Health Check')"
+            class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded flex items-center justify-center gap-2"
+          >
+            <span>📥</span> GET /api/health
+          </button>
+
+          <button
+            id="btn-fetch-terminals"
+            data-testid="btn-fetch-terminals"
+            data-action="fetch-terminals"
+            onclick="makeRequest('GET', '/api/terminals', 'Fetch Terminals')"
+            class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded flex items-center justify-center gap-2"
+          >
+            <span>📥</span> GET /api/terminals
+          </button>
+
+          <button
+            id="btn-fetch-audio"
+            data-testid="btn-fetch-audio"
+            data-action="fetch-audio"
+            onclick="makeRequest('GET', '/api/audio/list', 'List Audio')"
+            class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded flex items-center justify-center gap-2"
+          >
+            <span>📥</span> GET /api/audio/list
+          </button>
+
+          <button
+            id="btn-fetch-profiles"
+            data-testid="btn-fetch-profiles"
+            data-action="fetch-profiles"
+            onclick="makeRequest('GET', '/api/browser/profiles', 'Fetch Profiles')"
+            class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded flex items-center justify-center gap-2"
+          >
+            <span>📥</span> GET /api/browser/profiles
+          </button>
+        </div>
+
+        <!-- POST Requests -->
+        <div class="space-y-3">
+          <h3 class="text-white font-medium">POST Requests</h3>
+
+          <button
+            id="btn-generate-audio"
+            data-testid="btn-generate-audio"
+            data-action="generate-audio"
+            onclick="makeRequest('POST', '/api/audio/generate', 'Generate Audio', { text: 'Hello from MCP test' })"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded flex items-center justify-center gap-2"
+          >
+            <span>📤</span> POST /api/audio/generate
+          </button>
+
+          <button
+            id="btn-echo-test"
+            data-testid="btn-echo-test"
+            data-action="echo-test"
+            onclick="makeRequest('POST', '/api/health', 'Echo Test', { echo: true, timestamp: Date.now() })"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded flex items-center justify-center gap-2"
+          >
+            <span>📤</span> POST (echo test)
+          </button>
+
+          <button
+            id="btn-404-error"
+            data-testid="btn-404-error"
+            data-action="trigger-404"
+            onclick="makeRequest('GET', '/api/nonexistent', '404 Error Test')"
+            class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded flex items-center justify-center gap-2"
+          >
+            <span>⚠️</span> GET (triggers 404)
+          </button>
+
+          <button
+            id="btn-slow-request"
+            data-testid="btn-slow-request"
+            data-action="slow-request"
+            onclick="makeSlowRequest()"
+            class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded flex items-center justify-center gap-2"
+          >
+            <span>🐢</span> Slow Request (2s delay)
+          </button>
+        </div>
+      </div>
+
+      <!-- Request Status -->
+      <div id="request-status" data-testid="request-status" class="p-3 bg-gray-900 rounded text-sm">
+        <span class="text-gray-400">Click a button to make an API request...</span>
+      </div>
+    </section>
+
+    <!-- Request Log Section -->
+    <section id="log-section" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold text-blue-400">Request Log</h2>
+        <div class="flex gap-2">
+          <span id="request-counter" data-testid="request-counter" class="text-sm text-gray-400">
+            0 requests
+          </span>
+          <button
+            id="btn-clear-log"
+            data-testid="btn-clear-log"
+            onclick="clearLog()"
+            class="text-sm text-gray-400 hover:text-white"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <div id="request-log" data-testid="request-log" class="bg-gray-900 rounded p-4 max-h-80 overflow-y-auto space-y-3 text-sm selector-hint">
+        <p class="text-gray-500">Requests will appear here...</p>
+      </div>
+    </section>
+
+    <!-- Response Viewer Section -->
+    <section id="response-section" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-blue-400 mb-4">Last Response</h2>
+
+      <div class="grid md:grid-cols-2 gap-4">
+        <!-- Response Headers -->
+        <div>
+          <h3 class="text-white font-medium mb-2">Headers</h3>
+          <pre id="response-headers" data-testid="response-headers" class="bg-gray-900 rounded p-4 text-xs text-gray-400 overflow-x-auto max-h-40">
+No response yet
+          </pre>
+        </div>
+
+        <!-- Response Body -->
+        <div>
+          <h3 class="text-white font-medium mb-2">Body</h3>
+          <pre id="response-body" data-testid="response-body" class="bg-gray-900 rounded p-4 text-xs text-green-400 overflow-x-auto max-h-40">
+No response yet
+          </pre>
+        </div>
+      </div>
+
+      <!-- Response Stats -->
+      <div id="response-stats" data-testid="response-stats" class="mt-4 flex gap-6 text-sm">
+        <span class="text-gray-400">Status: <span id="response-status-code" class="text-purple-400">-</span></span>
+        <span class="text-gray-400">Time: <span id="response-time" class="text-purple-400">-</span></span>
+        <span class="text-gray-400">Size: <span id="response-size" class="text-purple-400">-</span></span>
+      </div>
+    </section>
+
+    <!-- Bulk Request Section -->
+    <section id="bulk-section" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-blue-400 mb-4">Bulk Requests (for testing network capture)</h2>
+
+      <div class="flex flex-wrap gap-4 mb-4">
+        <button
+          id="btn-burst-3"
+          data-testid="btn-burst-3"
+          onclick="burstRequests(3)"
+          class="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-4 rounded"
+        >
+          🔥 Burst 3 requests
+        </button>
+
+        <button
+          id="btn-burst-5"
+          data-testid="btn-burst-5"
+          onclick="burstRequests(5)"
+          class="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-4 rounded"
+        >
+          🔥 Burst 5 requests
+        </button>
+
+        <button
+          id="btn-mixed-burst"
+          data-testid="btn-mixed-burst"
+          onclick="mixedBurst()"
+          class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded"
+        >
+          🌪️ Mixed (GET + POST + Error)
+        </button>
+      </div>
+
+      <p id="burst-status" data-testid="burst-status" class="text-sm text-gray-500">
+        Use burst requests to test network capture with multiple simultaneous requests.
+      </p>
+    </section>
+
+    <!-- JSON Viewer Section -->
+    <section id="json-section" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-blue-400 mb-4">Custom JSON Request</h2>
+
+      <div class="space-y-4">
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label for="custom-method" class="block text-sm text-gray-300 mb-1">Method</label>
+            <select
+              id="custom-method"
+              data-testid="custom-method"
+              class="w-full bg-gray-900 border border-gray-600 rounded px-4 py-2 text-white"
+            >
+              <option value="GET">GET</option>
+              <option value="POST" selected>POST</option>
+              <option value="PUT">PUT</option>
+              <option value="DELETE">DELETE</option>
+            </select>
+          </div>
+          <div>
+            <label for="custom-endpoint" class="block text-sm text-gray-300 mb-1">Endpoint</label>
+            <input
+              type="text"
+              id="custom-endpoint"
+              data-testid="custom-endpoint"
+              value="/api/health"
+              class="w-full bg-gray-900 border border-gray-600 rounded px-4 py-2 text-white"
+            >
+          </div>
+        </div>
+
+        <div>
+          <label for="custom-body" class="block text-sm text-gray-300 mb-1">Request Body (JSON)</label>
+          <textarea
+            id="custom-body"
+            data-testid="custom-body"
+            rows="4"
+            class="w-full bg-gray-900 border border-gray-600 rounded px-4 py-2 text-white selector-hint"
+            placeholder='{ "key": "value" }'
+          >{ "test": true, "timestamp": 123456789 }</textarea>
+        </div>
+
+        <button
+          id="btn-send-custom"
+          data-testid="btn-send-custom"
+          onclick="sendCustomRequest()"
+          class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-6 rounded"
+        >
+          Send Custom Request
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Selectors Panel -->
+  <aside id="selectors-panel" class="fixed bottom-4 right-4 bg-gray-800 border border-gray-600 rounded-lg shadow-xl max-w-md">
+    <button
+      id="toggle-selectors-panel"
+      data-testid="toggle-selectors-panel"
+      onclick="toggleSelectorsPanel()"
+      class="w-full px-4 py-2 text-left font-semibold text-purple-400 border-b border-gray-700 flex justify-between items-center"
+    >
+      <span>📋 Network Selectors</span>
+      <span id="panel-arrow">▼</span>
+    </button>
+    <div id="selectors-content" class="p-4 text-sm max-h-80 overflow-y-auto">
+      <div class="selector-hint space-y-1 text-gray-300">
+        <p class="font-semibold text-yellow-400">GET Requests:</p>
+        <p><span class="text-purple-400">#btn-fetch-users</span> - Health check</p>
+        <p><span class="text-purple-400">#btn-fetch-terminals</span> - List terminals</p>
+        <p><span class="text-purple-400">#btn-fetch-audio</span> - List audio files</p>
+
+        <p class="font-semibold text-yellow-400 mt-4">POST Requests:</p>
+        <p><span class="text-purple-400">#btn-generate-audio</span> - Generate TTS</p>
+        <p><span class="text-purple-400">#btn-echo-test</span> - Echo POST</p>
+
+        <p class="font-semibold text-yellow-400 mt-4">Special:</p>
+        <p><span class="text-purple-400">#btn-404-error</span> - Trigger 404</p>
+        <p><span class="text-purple-400">#btn-slow-request</span> - Slow request</p>
+        <p><span class="text-purple-400">#btn-burst-5</span> - Burst 5 requests</p>
+
+        <p class="font-semibold text-yellow-400 mt-4">Log/Response:</p>
+        <p><span class="text-purple-400">#request-log</span> - Request history</p>
+        <p><span class="text-purple-400">#response-body</span> - Last response</p>
+        <p><span class="text-purple-400">#request-counter</span> - Request count</p>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    let requestCount = 0;
+    const requestLog = [];
+
+    async function makeRequest(method, endpoint, description, body = null) {
+      const startTime = performance.now();
+      const statusEl = document.getElementById('request-status');
+
+      statusEl.innerHTML = `<span class="text-yellow-400">⏳ ${description}...</span>`;
+
+      try {
+        const options = {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+        };
+
+        if (body && method !== 'GET') {
+          options.body = JSON.stringify(body);
+        }
+
+        const response = await fetch(endpoint, options);
+        const endTime = performance.now();
+        const duration = Math.round(endTime - startTime);
+
+        let data;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          data = await response.json();
+        } else {
+          data = await response.text();
+        }
+
+        // Update status
+        const statusClass = response.ok ? 'text-green-400' : 'text-red-400';
+        statusEl.innerHTML = `<span class="${statusClass}">✓ ${description} - ${response.status} (${duration}ms)</span>`;
+
+        // Log the request
+        logRequest(method, endpoint, response.status, duration, data);
+
+        // Update response viewer
+        updateResponseViewer(response, data, duration);
+
+      } catch (error) {
+        const endTime = performance.now();
+        const duration = Math.round(endTime - startTime);
+
+        statusEl.innerHTML = `<span class="text-red-400">✗ ${description} - Error: ${error.message}</span>`;
+        logRequest(method, endpoint, 'ERROR', duration, { error: error.message });
+      }
+    }
+
+    async function makeSlowRequest() {
+      const statusEl = document.getElementById('request-status');
+      statusEl.innerHTML = `<span class="text-yellow-400">⏳ Slow request in progress...</span>`;
+
+      // Simulate slow request with timeout
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      await makeRequest('GET', '/api/health', 'Slow Request Complete');
+    }
+
+    function logRequest(method, endpoint, status, duration, data) {
+      requestCount++;
+      document.getElementById('request-counter').textContent = `${requestCount} requests`;
+
+      const logDiv = document.getElementById('request-log');
+      if (requestCount === 1) {
+        logDiv.innerHTML = '';
+      }
+
+      const timestamp = new Date().toLocaleTimeString();
+      const statusColor = typeof status === 'number' && status < 400 ? 'text-green-400' : 'text-red-400';
+      const methodColor = method === 'GET' ? 'text-blue-400' : 'text-yellow-400';
+
+      const entry = document.createElement('div');
+      entry.className = 'p-2 bg-gray-800 rounded';
+      entry.innerHTML = `
+        <div class="flex justify-between items-center">
+          <span>
+            <span class="${methodColor}">${method}</span>
+            <span class="text-gray-300">${endpoint}</span>
+          </span>
+          <span class="flex items-center gap-2">
+            <span class="${statusColor}">${status}</span>
+            <span class="text-gray-500">${duration}ms</span>
+          </span>
+        </div>
+        <div class="text-xs text-gray-500 mt-1">${timestamp}</div>
+      `;
+
+      logDiv.insertBefore(entry, logDiv.firstChild);
+      requestLog.push({ method, endpoint, status, duration, timestamp, data });
+    }
+
+    function updateResponseViewer(response, data, duration) {
+      // Headers
+      const headers = {};
+      response.headers.forEach((value, key) => {
+        headers[key] = value;
+      });
+      document.getElementById('response-headers').textContent = JSON.stringify(headers, null, 2);
+
+      // Body
+      const bodyText = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
+      document.getElementById('response-body').textContent = bodyText;
+
+      // Stats
+      document.getElementById('response-status-code').textContent = response.status;
+      document.getElementById('response-time').textContent = `${duration}ms`;
+      document.getElementById('response-size').textContent = `${bodyText.length} bytes`;
+    }
+
+    function clearLog() {
+      requestCount = 0;
+      requestLog.length = 0;
+      document.getElementById('request-counter').textContent = '0 requests';
+      document.getElementById('request-log').innerHTML = '<p class="text-gray-500">Requests will appear here...</p>';
+    }
+
+    async function burstRequests(count) {
+      const statusEl = document.getElementById('burst-status');
+      statusEl.innerHTML = `<span class="text-yellow-400">Sending ${count} requests...</span>`;
+
+      const promises = [];
+      for (let i = 0; i < count; i++) {
+        promises.push(makeRequest('GET', '/api/health', `Burst ${i + 1}/${count}`));
+      }
+
+      await Promise.all(promises);
+      statusEl.innerHTML = `<span class="text-green-400">Burst complete: ${count} requests sent</span>`;
+    }
+
+    async function mixedBurst() {
+      const statusEl = document.getElementById('burst-status');
+      statusEl.innerHTML = `<span class="text-yellow-400">Sending mixed requests...</span>`;
+
+      await Promise.all([
+        makeRequest('GET', '/api/health', 'Mixed GET 1'),
+        makeRequest('POST', '/api/health', 'Mixed POST', { test: true }),
+        makeRequest('GET', '/api/nonexistent', 'Mixed 404'),
+        makeRequest('GET', '/api/terminals', 'Mixed GET 2'),
+      ]);
+
+      statusEl.innerHTML = `<span class="text-green-400">Mixed burst complete</span>`;
+    }
+
+    async function sendCustomRequest() {
+      const method = document.getElementById('custom-method').value;
+      const endpoint = document.getElementById('custom-endpoint').value;
+      const bodyText = document.getElementById('custom-body').value;
+
+      let body = null;
+      if (bodyText && method !== 'GET') {
+        try {
+          body = JSON.parse(bodyText);
+        } catch (e) {
+          alert('Invalid JSON in request body');
+          return;
+        }
+      }
+
+      await makeRequest(method, endpoint, `Custom ${method}`, body);
+    }
+
+    // Toggle selectors panel
+    function toggleSelectorsPanel() {
+      const content = document.getElementById('selectors-content');
+      const arrow = document.getElementById('panel-arrow');
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        arrow.textContent = '▼';
+      } else {
+        content.style.display = 'none';
+        arrow.textContent = '▲';
+      }
+    }
+  </script>
+</body>
+</html>

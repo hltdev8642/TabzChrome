@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Navigation Test - MCP Test Pages</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .selector-hint { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; }
+    .dropdown-content { display: none; }
+    .dropdown:hover .dropdown-content { display: block; }
+    .modal-overlay { background: rgba(0, 0, 0, 0.7); }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+  <!-- Navigation -->
+  <nav id="breadcrumb" class="bg-gray-800 border-b border-gray-700 px-6 py-3">
+    <a href="index.html" id="nav-home" class="text-purple-400 hover:text-purple-300">← MCP Test Hub</a>
+    <span class="text-gray-500 mx-2">/</span>
+    <span class="text-gray-300">Navigation</span>
+  </nav>
+
+  <!-- Page Header -->
+  <header id="page-header" class="bg-gray-800 border-b border-gray-700 px-6 py-4">
+    <h1 id="page-title" class="text-2xl font-bold text-purple-400">🧭 Navigation Test Page</h1>
+    <p id="page-description" class="text-gray-400 mt-1">Test tabs, dropdowns, modals, and pagination</p>
+  </header>
+
+  <main class="container mx-auto px-6 py-8 max-w-4xl">
+
+    <!-- Tabs Section -->
+    <section id="tabs-section" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-blue-400 mb-4">Tab Navigation</h2>
+
+      <!-- Tab Headers -->
+      <div id="tab-headers" class="flex border-b border-gray-600 mb-4">
+        <button
+          id="tab-overview"
+          data-testid="tab-overview"
+          data-tab="overview"
+          onclick="switchTab('overview')"
+          class="px-4 py-2 text-purple-400 border-b-2 border-purple-400 font-medium"
+        >
+          Overview
+        </button>
+        <button
+          id="tab-details"
+          data-testid="tab-details"
+          data-tab="details"
+          onclick="switchTab('details')"
+          class="px-4 py-2 text-gray-400 hover:text-gray-300 border-b-2 border-transparent"
+        >
+          Details
+        </button>
+        <button
+          id="tab-settings"
+          data-testid="tab-settings"
+          data-tab="settings"
+          onclick="switchTab('settings')"
+          class="px-4 py-2 text-gray-400 hover:text-gray-300 border-b-2 border-transparent"
+        >
+          Settings
+        </button>
+        <button
+          id="tab-history"
+          data-testid="tab-history"
+          data-tab="history"
+          onclick="switchTab('history')"
+          class="px-4 py-2 text-gray-400 hover:text-gray-300 border-b-2 border-transparent"
+        >
+          History
+        </button>
+      </div>
+
+      <!-- Tab Content -->
+      <div id="tab-content-overview" data-testid="tab-content-overview" class="tab-content">
+        <h3 class="text-lg font-medium text-white mb-2">Overview Tab</h3>
+        <p class="text-gray-400">This is the overview content. This tab is selected by default.</p>
+        <div class="mt-4 p-4 bg-gray-900 rounded">
+          <p class="text-sm text-gray-500">Tab content can contain any elements. Use <code class="text-purple-400">#tab-overview</code> to select this tab.</p>
+        </div>
+      </div>
+
+      <div id="tab-content-details" data-testid="tab-content-details" class="tab-content hidden">
+        <h3 class="text-lg font-medium text-white mb-2">Details Tab</h3>
+        <p class="text-gray-400">Detailed information goes here.</p>
+        <ul class="mt-4 list-disc list-inside text-gray-400">
+          <li>Feature 1: Comprehensive analysis</li>
+          <li>Feature 2: Historical data</li>
+          <li>Feature 3: Export options</li>
+        </ul>
+      </div>
+
+      <div id="tab-content-settings" data-testid="tab-content-settings" class="tab-content hidden">
+        <h3 class="text-lg font-medium text-white mb-2">Settings Tab</h3>
+        <p class="text-gray-400">Configuration options would appear here.</p>
+        <div class="mt-4 space-y-2">
+          <label class="flex items-center gap-2">
+            <input type="checkbox" id="setting-auto-save" checked class="rounded bg-gray-900 border-gray-600">
+            <span class="text-gray-300">Auto-save enabled</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="checkbox" id="setting-notifications" class="rounded bg-gray-900 border-gray-600">
+            <span class="text-gray-300">Push notifications</span>
+          </label>
+        </div>
+      </div>
+
+      <div id="tab-content-history" data-testid="tab-content-history" class="tab-content hidden">
+        <h3 class="text-lg font-medium text-white mb-2">History Tab</h3>
+        <p class="text-gray-400">Activity history would be listed here.</p>
+        <div class="mt-4 space-y-2 text-sm text-gray-400">
+          <p>• Dec 26, 2024 - Page created</p>
+          <p>• Dec 25, 2024 - Initial setup</p>
+          <p>• Dec 24, 2024 - Project started</p>
+        </div>
+      </div>
+
+      <!-- Active Tab Indicator -->
+      <p id="active-tab" data-testid="active-tab" class="mt-4 text-sm text-gray-500">
+        Active tab: <span class="text-purple-400">overview</span>
+      </p>
+    </section>
+
+    <!-- Dropdown Section -->
+    <section id="dropdown-section" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-blue-400 mb-4">Dropdown Menus</h2>
+
+      <div class="flex flex-wrap gap-4">
+        <!-- File Menu -->
+        <div class="dropdown relative">
+          <button
+            id="dropdown-file"
+            data-testid="dropdown-file"
+            class="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded flex items-center gap-2"
+          >
+            📁 File <span class="text-xs">▼</span>
+          </button>
+          <div class="dropdown-content absolute left-0 mt-1 w-48 bg-gray-700 rounded shadow-lg z-10">
+            <button id="menu-new" data-testid="menu-new" onclick="selectMenuItem('new')" class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-gray-300">New</button>
+            <button id="menu-open" data-testid="menu-open" onclick="selectMenuItem('open')" class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-gray-300">Open</button>
+            <button id="menu-save" data-testid="menu-save" onclick="selectMenuItem('save')" class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-gray-300">Save</button>
+            <hr class="border-gray-600 my-1">
+            <button id="menu-exit" data-testid="menu-exit" onclick="selectMenuItem('exit')" class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-red-400">Exit</button>
+          </div>
+        </div>
+
+        <!-- Edit Menu -->
+        <div class="dropdown relative">
+          <button
+            id="dropdown-edit"
+            data-testid="dropdown-edit"
+            class="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded flex items-center gap-2"
+          >
+            ✏️ Edit <span class="text-xs">▼</span>
+          </button>
+          <div class="dropdown-content absolute left-0 mt-1 w-48 bg-gray-700 rounded shadow-lg z-10">
+            <button id="menu-undo" data-testid="menu-undo" onclick="selectMenuItem('undo')" class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-gray-300">Undo</button>
+            <button id="menu-redo" data-testid="menu-redo" onclick="selectMenuItem('redo')" class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-gray-300">Redo</button>
+            <hr class="border-gray-600 my-1">
+            <button id="menu-cut" data-testid="menu-cut" onclick="selectMenuItem('cut')" class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-gray-300">Cut</button>
+            <button id="menu-copy" data-testid="menu-copy" onclick="selectMenuItem('copy')" class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-gray-300">Copy</button>
+            <button id="menu-paste" data-testid="menu-paste" onclick="selectMenuItem('paste')" class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-gray-300">Paste</button>
+          </div>
+        </div>
+
+        <!-- Help Menu -->
+        <div class="dropdown relative">
+          <button
+            id="dropdown-help"
+            data-testid="dropdown-help"
+            class="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded flex items-center gap-2"
+          >
+            ❓ Help <span class="text-xs">▼</span>
+          </button>
+          <div class="dropdown-content absolute left-0 mt-1 w-48 bg-gray-700 rounded shadow-lg z-10">
+            <button id="menu-docs" data-testid="menu-docs" onclick="selectMenuItem('docs')" class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-gray-300">Documentation</button>
+            <button id="menu-about" data-testid="menu-about" onclick="selectMenuItem('about')" class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-gray-300">About</button>
+          </div>
+        </div>
+      </div>
+
+      <p id="selected-menu-item" data-testid="selected-menu-item" class="mt-4 text-sm text-gray-500">
+        Selected menu item: <span class="text-purple-400">None</span>
+      </p>
+    </section>
+
+    <!-- Modal Section -->
+    <section id="modal-section" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-blue-400 mb-4">Modal Dialogs</h2>
+
+      <div class="flex flex-wrap gap-4">
+        <button
+          id="modal-open"
+          data-testid="modal-open"
+          data-action="open-modal"
+          onclick="openModal('info')"
+          class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded"
+        >
+          Open Info Modal
+        </button>
+
+        <button
+          id="modal-open-confirm"
+          data-testid="modal-open-confirm"
+          data-action="open-confirm-modal"
+          onclick="openModal('confirm')"
+          class="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded"
+        >
+          Open Confirm Modal
+        </button>
+
+        <button
+          id="modal-open-form"
+          data-testid="modal-open-form"
+          data-action="open-form-modal"
+          onclick="openModal('form')"
+          class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded"
+        >
+          Open Form Modal
+        </button>
+      </div>
+
+      <p id="modal-result" data-testid="modal-result" class="mt-4 text-sm text-gray-500">
+        Modal result: <span class="text-gray-400">No modal interaction yet</span>
+      </p>
+    </section>
+
+    <!-- Pagination Section -->
+    <section id="pagination-section" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-blue-400 mb-4">Pagination</h2>
+
+      <!-- Pagination Controls -->
+      <div id="pagination" class="flex items-center gap-2">
+        <button
+          id="page-first"
+          data-testid="page-first"
+          onclick="goToPage(1)"
+          class="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded disabled:opacity-50"
+        >
+          ⟪ First
+        </button>
+        <button
+          id="page-prev"
+          data-testid="page-prev"
+          onclick="goToPage('prev')"
+          class="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded disabled:opacity-50"
+        >
+          ← Prev
+        </button>
+
+        <span id="page-numbers" class="flex gap-1">
+          <!-- Page numbers generated by JS -->
+        </span>
+
+        <button
+          id="page-next"
+          data-testid="page-next"
+          onclick="goToPage('next')"
+          class="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded"
+        >
+          Next →
+        </button>
+        <button
+          id="page-last"
+          data-testid="page-last"
+          onclick="goToPage(10)"
+          class="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded"
+        >
+          Last ⟫
+        </button>
+      </div>
+
+      <p id="current-page" data-testid="current-page" class="mt-4 text-sm text-gray-500">
+        Current page: <span class="text-purple-400">1</span> of 10
+      </p>
+
+      <!-- Page Content -->
+      <div id="page-content" data-testid="page-content" class="mt-4 p-4 bg-gray-900 rounded">
+        <p class="text-gray-400">Content for page 1</p>
+      </div>
+    </section>
+
+    <!-- Breadcrumb Navigation Section -->
+    <section id="breadcrumb-section" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-blue-400 mb-4">Breadcrumb Navigation</h2>
+
+      <nav id="breadcrumb-nav" data-testid="breadcrumb-nav" class="flex items-center gap-2 text-sm">
+        <a href="#" id="crumb-home" data-testid="crumb-home" onclick="navigateBreadcrumb('home')" class="text-purple-400 hover:text-purple-300">Home</a>
+        <span class="text-gray-500">›</span>
+        <a href="#" id="crumb-products" data-testid="crumb-products" onclick="navigateBreadcrumb('products')" class="text-purple-400 hover:text-purple-300">Products</a>
+        <span class="text-gray-500">›</span>
+        <a href="#" id="crumb-electronics" data-testid="crumb-electronics" onclick="navigateBreadcrumb('electronics')" class="text-purple-400 hover:text-purple-300">Electronics</a>
+        <span class="text-gray-500">›</span>
+        <span id="crumb-current" data-testid="crumb-current" class="text-gray-300">Laptops</span>
+      </nav>
+
+      <p id="breadcrumb-location" data-testid="breadcrumb-location" class="mt-4 text-sm text-gray-500">
+        You are at: <span class="text-purple-400">Laptops</span>
+      </p>
+    </section>
+
+  </main>
+
+  <!-- Modal Container -->
+  <div id="modal-container" class="hidden fixed inset-0 z-50">
+    <div class="modal-overlay absolute inset-0" onclick="closeModal()"></div>
+
+    <!-- Info Modal -->
+    <div id="modal-info" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+      <div class="p-6">
+        <h3 id="modal-info-title" class="text-xl font-semibold text-white mb-4">Information</h3>
+        <p id="modal-info-body" class="text-gray-400 mb-6">This is an informational modal dialog. It provides details to the user.</p>
+        <button
+          id="modal-info-close"
+          data-testid="modal-info-close"
+          onclick="closeModal('info-closed')"
+          class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded"
+        >
+          Got it!
+        </button>
+      </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="modal-confirm" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+      <div class="p-6">
+        <h3 id="modal-confirm-title" class="text-xl font-semibold text-white mb-4">Confirm Action</h3>
+        <p id="modal-confirm-body" class="text-gray-400 mb-6">Are you sure you want to proceed with this action? This cannot be undone.</p>
+        <div class="flex gap-3">
+          <button
+            id="modal-confirm-cancel"
+            data-testid="modal-confirm-cancel"
+            onclick="closeModal('cancelled')"
+            class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded"
+          >
+            Cancel
+          </button>
+          <button
+            id="modal-confirm-ok"
+            data-testid="modal-confirm-ok"
+            onclick="closeModal('confirmed')"
+            class="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded"
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form Modal -->
+    <div id="modal-form" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+      <div class="p-6">
+        <h3 id="modal-form-title" class="text-xl font-semibold text-white mb-4">Quick Form</h3>
+        <div class="space-y-4 mb-6">
+          <div>
+            <label for="modal-form-name" class="block text-sm text-gray-300 mb-1">Name</label>
+            <input
+              type="text"
+              id="modal-form-name"
+              data-testid="modal-form-name"
+              placeholder="Enter your name"
+              class="w-full bg-gray-900 border border-gray-600 rounded px-4 py-2 text-white"
+            >
+          </div>
+          <div>
+            <label for="modal-form-email" class="block text-sm text-gray-300 mb-1">Email</label>
+            <input
+              type="email"
+              id="modal-form-email"
+              data-testid="modal-form-email"
+              placeholder="Enter your email"
+              class="w-full bg-gray-900 border border-gray-600 rounded px-4 py-2 text-white"
+            >
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <button
+            id="modal-form-cancel"
+            data-testid="modal-form-cancel"
+            onclick="closeModal('form-cancelled')"
+            class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded"
+          >
+            Cancel
+          </button>
+          <button
+            id="modal-form-submit"
+            data-testid="modal-form-submit"
+            onclick="submitFormModal()"
+            class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded"
+          >
+            Submit
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Selectors Panel -->
+  <aside id="selectors-panel" class="fixed bottom-4 right-4 bg-gray-800 border border-gray-600 rounded-lg shadow-xl max-w-md">
+    <button
+      id="toggle-selectors-panel"
+      data-testid="toggle-selectors-panel"
+      onclick="toggleSelectorsPanel()"
+      class="w-full px-4 py-2 text-left font-semibold text-purple-400 border-b border-gray-700 flex justify-between items-center"
+    >
+      <span>📋 Navigation Selectors</span>
+      <span id="panel-arrow">▼</span>
+    </button>
+    <div id="selectors-content" class="p-4 text-sm max-h-80 overflow-y-auto">
+      <div class="selector-hint space-y-1 text-gray-300">
+        <p class="font-semibold text-yellow-400">Tabs:</p>
+        <p><span class="text-purple-400">#tab-overview</span> - Overview tab</p>
+        <p><span class="text-purple-400">#tab-details</span> - Details tab</p>
+        <p><span class="text-purple-400">#tab-settings</span> - Settings tab</p>
+        <p><span class="text-purple-400">#tab-history</span> - History tab</p>
+        <p><span class="text-purple-400">#active-tab</span> - Shows active tab</p>
+
+        <p class="font-semibold text-yellow-400 mt-4">Dropdowns:</p>
+        <p><span class="text-purple-400">#dropdown-file</span> - File menu trigger</p>
+        <p><span class="text-purple-400">#menu-new</span> - New menu item</p>
+        <p><span class="text-purple-400">#menu-save</span> - Save menu item</p>
+
+        <p class="font-semibold text-yellow-400 mt-4">Modals:</p>
+        <p><span class="text-purple-400">#modal-open</span> - Open info modal</p>
+        <p><span class="text-purple-400">#modal-open-confirm</span> - Open confirm</p>
+        <p><span class="text-purple-400">#modal-info-close</span> - Close info modal</p>
+        <p><span class="text-purple-400">#modal-confirm-ok</span> - Confirm button</p>
+
+        <p class="font-semibold text-yellow-400 mt-4">Pagination:</p>
+        <p><span class="text-purple-400">#page-prev</span> - Previous page</p>
+        <p><span class="text-purple-400">#page-next</span> - Next page</p>
+        <p><span class="text-purple-400">#page-1</span> - Page 1 button</p>
+        <p><span class="text-purple-400">#current-page</span> - Current page info</p>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    // Tab switching
+    function switchTab(tabName) {
+      // Update tab headers
+      document.querySelectorAll('#tab-headers button').forEach(btn => {
+        if (btn.dataset.tab === tabName) {
+          btn.classList.add('text-purple-400', 'border-purple-400');
+          btn.classList.remove('text-gray-400', 'border-transparent');
+        } else {
+          btn.classList.remove('text-purple-400', 'border-purple-400');
+          btn.classList.add('text-gray-400', 'border-transparent');
+        }
+      });
+
+      // Update tab content
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.add('hidden');
+      });
+      document.getElementById(`tab-content-${tabName}`).classList.remove('hidden');
+
+      // Update indicator
+      document.getElementById('active-tab').innerHTML = `Active tab: <span class="text-purple-400">${tabName}</span>`;
+    }
+
+    // Menu item selection
+    function selectMenuItem(item) {
+      document.getElementById('selected-menu-item').innerHTML = `Selected menu item: <span class="text-purple-400">${item}</span>`;
+    }
+
+    // Modal handling
+    let currentModal = null;
+
+    function openModal(type) {
+      currentModal = type;
+      document.getElementById('modal-container').classList.remove('hidden');
+      document.getElementById(`modal-${type}`).classList.remove('hidden');
+    }
+
+    function closeModal(result = 'closed') {
+      if (currentModal) {
+        document.getElementById(`modal-${currentModal}`).classList.add('hidden');
+      }
+      document.getElementById('modal-container').classList.add('hidden');
+      document.getElementById('modal-result').innerHTML = `Modal result: <span class="text-purple-400">${result}</span>`;
+      currentModal = null;
+    }
+
+    function submitFormModal() {
+      const name = document.getElementById('modal-form-name').value;
+      const email = document.getElementById('modal-form-email').value;
+      closeModal(`form-submitted: ${name || 'no name'}, ${email || 'no email'}`);
+    }
+
+    // Pagination
+    let currentPage = 1;
+    const totalPages = 10;
+
+    function renderPageNumbers() {
+      const container = document.getElementById('page-numbers');
+      container.innerHTML = '';
+
+      for (let i = 1; i <= 5; i++) {
+        const btn = document.createElement('button');
+        btn.id = `page-${i}`;
+        btn.dataset.testid = `page-${i}`;
+        btn.textContent = i;
+        btn.className = i === currentPage
+          ? 'px-3 py-1 bg-purple-600 text-white rounded'
+          : 'px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded';
+        btn.onclick = () => goToPage(i);
+        container.appendChild(btn);
+      }
+
+      if (totalPages > 5) {
+        const dots = document.createElement('span');
+        dots.textContent = '...';
+        dots.className = 'px-2 text-gray-500';
+        container.appendChild(dots);
+      }
+    }
+
+    function goToPage(page) {
+      if (page === 'prev') {
+        if (currentPage > 1) currentPage--;
+      } else if (page === 'next') {
+        if (currentPage < totalPages) currentPage++;
+      } else {
+        currentPage = page;
+      }
+
+      document.getElementById('current-page').innerHTML = `Current page: <span class="text-purple-400">${currentPage}</span> of ${totalPages}`;
+      document.getElementById('page-content').innerHTML = `<p class="text-gray-400">Content for page ${currentPage}</p>`;
+      renderPageNumbers();
+
+      // Update button states
+      document.getElementById('page-prev').disabled = currentPage === 1;
+      document.getElementById('page-first').disabled = currentPage === 1;
+      document.getElementById('page-next').disabled = currentPage === totalPages;
+      document.getElementById('page-last').disabled = currentPage === totalPages;
+    }
+
+    // Breadcrumb navigation
+    function navigateBreadcrumb(location) {
+      event.preventDefault();
+      document.getElementById('breadcrumb-location').innerHTML = `You are at: <span class="text-purple-400">${location}</span>`;
+    }
+
+    // Toggle selectors panel
+    function toggleSelectorsPanel() {
+      const content = document.getElementById('selectors-content');
+      const arrow = document.getElementById('panel-arrow');
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        arrow.textContent = '▼';
+      } else {
+        content.style.display = 'none';
+        arrow.textContent = '▲';
+      }
+    }
+
+    // Initialize
+    renderPageNumbers();
+  </script>
+</body>
+</html>

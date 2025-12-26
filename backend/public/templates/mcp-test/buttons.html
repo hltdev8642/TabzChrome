@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buttons Test - MCP Test Pages</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .selector-hint { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+  <!-- Navigation -->
+  <nav id="breadcrumb" class="bg-gray-800 border-b border-gray-700 px-6 py-3">
+    <a href="index.html" id="nav-home" class="text-purple-400 hover:text-purple-300">← MCP Test Hub</a>
+    <span class="text-gray-500 mx-2">/</span>
+    <span class="text-gray-300">Buttons</span>
+  </nav>
+
+  <!-- Page Header -->
+  <header id="page-header" class="bg-gray-800 border-b border-gray-700 px-6 py-4">
+    <h1 id="page-title" class="text-2xl font-bold text-purple-400">🔘 Buttons Test Page</h1>
+    <p id="page-description" class="text-gray-400 mt-1">Test tabz_click with various button types and states</p>
+  </header>
+
+  <main class="container mx-auto px-6 py-8 max-w-4xl">
+
+    <!-- Action Buttons Section -->
+    <section id="action-buttons" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-blue-400 mb-4">Action Buttons</h2>
+
+      <div class="flex flex-wrap gap-4 mb-6">
+        <button
+          id="btn-primary"
+          data-testid="btn-primary"
+          data-action="primary"
+          onclick="recordClick('btn-primary', 'Primary Action')"
+          class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-6 rounded transition-colors"
+        >
+          Primary Action
+        </button>
+
+        <button
+          id="btn-secondary"
+          data-testid="btn-secondary"
+          data-action="secondary"
+          onclick="recordClick('btn-secondary', 'Secondary Action')"
+          class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-6 rounded transition-colors"
+        >
+          Secondary Action
+        </button>
+
+        <button
+          id="btn-success"
+          data-testid="btn-success"
+          data-action="success"
+          onclick="recordClick('btn-success', 'Success Action')"
+          class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded transition-colors"
+        >
+          ✓ Success
+        </button>
+
+        <button
+          id="btn-danger"
+          data-testid="btn-danger"
+          data-action="danger"
+          onclick="recordClick('btn-danger', 'Danger Action')"
+          class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-6 rounded transition-colors"
+        >
+          ✗ Danger
+        </button>
+
+        <button
+          id="btn-cancel"
+          data-testid="btn-cancel"
+          data-action="cancel"
+          onclick="recordClick('btn-cancel', 'Cancel Action')"
+          class="border border-gray-500 text-gray-300 hover:bg-gray-700 font-semibold py-2 px-6 rounded transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+
+      <!-- Click Counter -->
+      <div id="click-stats" class="bg-gray-900 rounded p-4">
+        <div class="flex items-center gap-4">
+          <span class="text-gray-400">Total clicks:</span>
+          <span id="click-count" data-testid="click-count" class="text-2xl font-bold text-purple-400">0</span>
+          <button
+            id="btn-reset-count"
+            data-testid="btn-reset-count"
+            onclick="resetClickCount()"
+            class="ml-auto text-sm text-gray-400 hover:text-white"
+          >
+            Reset
+          </button>
+        </div>
+        <p id="last-clicked" data-testid="last-clicked" class="text-sm text-gray-500 mt-2">No buttons clicked yet</p>
+      </div>
+    </section>
+
+    <!-- Toggle Buttons Section -->
+    <section id="toggle-buttons" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-blue-400 mb-4">Toggle Buttons</h2>
+
+      <div class="space-y-4">
+        <!-- Theme Toggle -->
+        <div class="flex items-center justify-between bg-gray-900 rounded p-4">
+          <div>
+            <span class="text-white font-medium">Dark Mode</span>
+            <span class="selector-hint text-purple-400 text-xs ml-2">(#btn-toggle-theme)</span>
+          </div>
+          <button
+            id="btn-toggle-theme"
+            data-testid="btn-toggle-theme"
+            data-action="toggle-theme"
+            data-state="on"
+            onclick="toggleButton('theme')"
+            class="relative w-14 h-8 bg-purple-600 rounded-full transition-colors"
+          >
+            <span id="toggle-theme-knob" class="absolute right-1 top-1 w-6 h-6 bg-white rounded-full transition-transform"></span>
+          </button>
+        </div>
+
+        <!-- Notifications Toggle -->
+        <div class="flex items-center justify-between bg-gray-900 rounded p-4">
+          <div>
+            <span class="text-white font-medium">Notifications</span>
+            <span class="selector-hint text-purple-400 text-xs ml-2">(#btn-toggle-notifications)</span>
+          </div>
+          <button
+            id="btn-toggle-notifications"
+            data-testid="btn-toggle-notifications"
+            data-action="toggle-notifications"
+            data-state="off"
+            onclick="toggleButton('notifications')"
+            class="relative w-14 h-8 bg-gray-600 rounded-full transition-colors"
+          >
+            <span id="toggle-notifications-knob" class="absolute left-1 top-1 w-6 h-6 bg-white rounded-full transition-transform"></span>
+          </button>
+        </div>
+
+        <!-- Sound Toggle -->
+        <div class="flex items-center justify-between bg-gray-900 rounded p-4">
+          <div>
+            <span class="text-white font-medium">Sound Effects</span>
+            <span class="selector-hint text-purple-400 text-xs ml-2">(#btn-toggle-sound)</span>
+          </div>
+          <button
+            id="btn-toggle-sound"
+            data-testid="btn-toggle-sound"
+            data-action="toggle-sound"
+            data-state="on"
+            onclick="toggleButton('sound')"
+            class="relative w-14 h-8 bg-purple-600 rounded-full transition-colors"
+          >
+            <span id="toggle-sound-knob" class="absolute right-1 top-1 w-6 h-6 bg-white rounded-full transition-transform"></span>
+          </button>
+        </div>
+
+        <!-- Toggle States Display -->
+        <div id="toggle-states" data-testid="toggle-states" class="mt-4 p-4 bg-gray-900 rounded text-sm">
+          <p class="text-gray-400 mb-2">Current toggle states:</p>
+          <code id="toggle-states-json" class="text-green-400 selector-hint">
+            { "theme": "on", "notifications": "off", "sound": "on" }
+          </code>
+        </div>
+      </div>
+    </section>
+
+    <!-- Icon Buttons Section -->
+    <section id="icon-buttons" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-blue-400 mb-4">Icon Buttons</h2>
+
+      <div class="flex flex-wrap gap-3">
+        <button
+          id="btn-icon-home"
+          data-testid="btn-icon-home"
+          data-action="go-home"
+          onclick="recordClick('btn-icon-home', 'Home')"
+          class="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+          title="Home"
+        >
+          🏠
+        </button>
+
+        <button
+          id="btn-icon-settings"
+          data-testid="btn-icon-settings"
+          data-action="open-settings"
+          onclick="recordClick('btn-icon-settings', 'Settings')"
+          class="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+          title="Settings"
+        >
+          ⚙️
+        </button>
+
+        <button
+          id="btn-icon-refresh"
+          data-testid="btn-icon-refresh"
+          data-action="refresh"
+          onclick="recordClick('btn-icon-refresh', 'Refresh')"
+          class="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+          title="Refresh"
+        >
+          🔄
+        </button>
+
+        <button
+          id="btn-icon-add"
+          data-testid="btn-icon-add"
+          data-action="add-item"
+          onclick="recordClick('btn-icon-add', 'Add')"
+          class="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+          title="Add"
+        >
+          ➕
+        </button>
+
+        <button
+          id="btn-icon-delete"
+          data-testid="btn-icon-delete"
+          data-action="delete-item"
+          onclick="recordClick('btn-icon-delete', 'Delete')"
+          class="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+          title="Delete"
+        >
+          🗑️
+        </button>
+
+        <button
+          id="btn-icon-edit"
+          data-testid="btn-icon-edit"
+          data-action="edit-item"
+          onclick="recordClick('btn-icon-edit', 'Edit')"
+          class="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+          title="Edit"
+        >
+          ✏️
+        </button>
+
+        <button
+          id="btn-icon-save"
+          data-testid="btn-icon-save"
+          data-action="save-item"
+          onclick="recordClick('btn-icon-save', 'Save')"
+          class="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+          title="Save"
+        >
+          💾
+        </button>
+
+        <button
+          id="btn-icon-copy"
+          data-testid="btn-icon-copy"
+          data-action="copy-item"
+          onclick="recordClick('btn-icon-copy', 'Copy')"
+          class="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+          title="Copy"
+        >
+          📋
+        </button>
+      </div>
+    </section>
+
+    <!-- Button States Section -->
+    <section id="button-states" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-blue-400 mb-4">Button States</h2>
+
+      <div class="grid md:grid-cols-2 gap-6">
+        <!-- Normal vs Disabled -->
+        <div class="space-y-3">
+          <h3 class="text-white font-medium">Enabled vs Disabled</h3>
+          <div class="flex gap-3">
+            <button
+              id="btn-enabled"
+              data-testid="btn-enabled"
+              data-state="enabled"
+              onclick="recordClick('btn-enabled', 'Enabled Button')"
+              class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded"
+            >
+              Enabled
+            </button>
+            <button
+              id="btn-disabled"
+              data-testid="btn-disabled"
+              data-state="disabled"
+              disabled
+              class="bg-gray-700 text-gray-500 font-semibold py-2 px-4 rounded cursor-not-allowed"
+            >
+              Disabled
+            </button>
+          </div>
+          <button
+            id="btn-toggle-disabled"
+            data-testid="btn-toggle-disabled"
+            onclick="toggleDisabledState()"
+            class="text-sm text-purple-400 hover:text-purple-300"
+          >
+            Toggle disabled state ↔
+          </button>
+        </div>
+
+        <!-- Loading State -->
+        <div class="space-y-3">
+          <h3 class="text-white font-medium">Loading State</h3>
+          <button
+            id="btn-loading"
+            data-testid="btn-loading"
+            data-state="idle"
+            onclick="simulateLoading()"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded min-w-32"
+          >
+            <span id="btn-loading-text">Load Data</span>
+          </button>
+          <p id="loading-status" data-testid="loading-status" class="text-sm text-gray-400">
+            Click to simulate loading
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Button Group Section -->
+    <section id="button-group" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-blue-400 mb-4">Button Group (Single Select)</h2>
+
+      <div id="size-selector" class="inline-flex rounded-lg overflow-hidden border border-gray-600">
+        <button
+          id="btn-size-small"
+          data-testid="btn-size-small"
+          data-group="size"
+          data-value="small"
+          onclick="selectSize('small')"
+          class="px-4 py-2 bg-gray-700 text-gray-300 hover:bg-gray-600 border-r border-gray-600"
+        >
+          Small
+        </button>
+        <button
+          id="btn-size-medium"
+          data-testid="btn-size-medium"
+          data-group="size"
+          data-value="medium"
+          onclick="selectSize('medium')"
+          class="px-4 py-2 bg-purple-600 text-white border-r border-gray-600"
+        >
+          Medium
+        </button>
+        <button
+          id="btn-size-large"
+          data-testid="btn-size-large"
+          data-group="size"
+          data-value="large"
+          onclick="selectSize('large')"
+          class="px-4 py-2 bg-gray-700 text-gray-300 hover:bg-gray-600"
+        >
+          Large
+        </button>
+      </div>
+
+      <p id="selected-size" data-testid="selected-size" class="mt-4 text-gray-400">
+        Selected size: <span class="text-purple-400 font-semibold">medium</span>
+      </p>
+    </section>
+
+    <!-- Click Log Section -->
+    <section id="click-log-section" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold text-blue-400">Click Log</h2>
+        <button
+          id="btn-clear-log"
+          data-testid="btn-clear-log"
+          onclick="clearClickLog()"
+          class="text-sm text-gray-400 hover:text-white"
+        >
+          Clear Log
+        </button>
+      </div>
+
+      <div id="click-log" data-testid="click-log" class="bg-gray-900 rounded p-4 max-h-48 overflow-y-auto text-sm selector-hint">
+        <p class="text-gray-500">Click events will appear here...</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Selectors Panel -->
+  <aside id="selectors-panel" class="fixed bottom-4 right-4 bg-gray-800 border border-gray-600 rounded-lg shadow-xl max-w-md">
+    <button
+      id="toggle-selectors-panel"
+      data-testid="toggle-selectors-panel"
+      onclick="toggleSelectorsPanel()"
+      class="w-full px-4 py-2 text-left font-semibold text-purple-400 border-b border-gray-700 flex justify-between items-center"
+    >
+      <span>📋 Button Selectors</span>
+      <span id="panel-arrow">▼</span>
+    </button>
+    <div id="selectors-content" class="p-4 text-sm max-h-80 overflow-y-auto">
+      <div class="selector-hint space-y-1 text-gray-300">
+        <p class="font-semibold text-yellow-400">Action Buttons:</p>
+        <p><span class="text-purple-400">#btn-primary</span> - Primary action</p>
+        <p><span class="text-purple-400">#btn-secondary</span> - Secondary action</p>
+        <p><span class="text-purple-400">#btn-success</span> - Success action</p>
+        <p><span class="text-purple-400">#btn-danger</span> - Danger action</p>
+        <p><span class="text-purple-400">#btn-cancel</span> - Cancel action</p>
+
+        <p class="font-semibold text-yellow-400 mt-4">Toggles:</p>
+        <p><span class="text-purple-400">#btn-toggle-theme</span> - Theme toggle</p>
+        <p><span class="text-purple-400">#btn-toggle-notifications</span> - Notifications</p>
+        <p><span class="text-purple-400">#btn-toggle-sound</span> - Sound toggle</p>
+
+        <p class="font-semibold text-yellow-400 mt-4">Icon Buttons:</p>
+        <p><span class="text-purple-400">#btn-icon-*</span> - home, settings, refresh, add, delete, edit, save, copy</p>
+
+        <p class="font-semibold text-yellow-400 mt-4">States:</p>
+        <p><span class="text-purple-400">#btn-enabled</span> - Enabled button</p>
+        <p><span class="text-purple-400">#btn-disabled</span> - Disabled button</p>
+        <p><span class="text-purple-400">#btn-loading</span> - Loading simulation</p>
+
+        <p class="font-semibold text-yellow-400 mt-4">Status Elements:</p>
+        <p><span class="text-purple-400">#click-count</span> - Total click count</p>
+        <p><span class="text-purple-400">#last-clicked</span> - Last clicked info</p>
+        <p><span class="text-purple-400">#click-log</span> - Full click history</p>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    // Click tracking
+    let clickCount = 0;
+    const clickLog = [];
+
+    function recordClick(buttonId, buttonName) {
+      clickCount++;
+      const timestamp = new Date().toLocaleTimeString();
+      const entry = { buttonId, buttonName, timestamp };
+      clickLog.push(entry);
+
+      // Update UI
+      document.getElementById('click-count').textContent = clickCount;
+      document.getElementById('last-clicked').textContent = `Last: ${buttonName} (${buttonId}) at ${timestamp}`;
+
+      // Update log
+      const logDiv = document.getElementById('click-log');
+      if (clickLog.length === 1) {
+        logDiv.innerHTML = ''; // Clear placeholder
+      }
+      const logEntry = document.createElement('p');
+      logEntry.className = 'text-gray-300';
+      logEntry.innerHTML = `<span class="text-gray-500">${timestamp}</span> → <span class="text-purple-400">${buttonId}</span>`;
+      logDiv.insertBefore(logEntry, logDiv.firstChild);
+    }
+
+    function resetClickCount() {
+      clickCount = 0;
+      document.getElementById('click-count').textContent = '0';
+      document.getElementById('last-clicked').textContent = 'No buttons clicked yet';
+    }
+
+    function clearClickLog() {
+      clickLog.length = 0;
+      document.getElementById('click-log').innerHTML = '<p class="text-gray-500">Click events will appear here...</p>';
+    }
+
+    // Toggle button states
+    const toggleStates = { theme: 'on', notifications: 'off', sound: 'on' };
+
+    function toggleButton(name) {
+      const btn = document.getElementById(`btn-toggle-${name}`);
+      const knob = document.getElementById(`toggle-${name}-knob`);
+      const currentState = toggleStates[name];
+      const newState = currentState === 'on' ? 'off' : 'on';
+
+      toggleStates[name] = newState;
+      btn.dataset.state = newState;
+
+      if (newState === 'on') {
+        btn.classList.replace('bg-gray-600', 'bg-purple-600');
+        knob.classList.remove('left-1');
+        knob.classList.add('right-1');
+      } else {
+        btn.classList.replace('bg-purple-600', 'bg-gray-600');
+        knob.classList.remove('right-1');
+        knob.classList.add('left-1');
+      }
+
+      // Update states display
+      document.getElementById('toggle-states-json').textContent = JSON.stringify(toggleStates, null, 2);
+      recordClick(`btn-toggle-${name}`, `Toggle ${name} → ${newState}`);
+    }
+
+    // Disabled state toggle
+    function toggleDisabledState() {
+      const enabledBtn = document.getElementById('btn-enabled');
+      const disabledBtn = document.getElementById('btn-disabled');
+
+      if (enabledBtn.disabled) {
+        enabledBtn.disabled = false;
+        enabledBtn.classList.replace('bg-gray-700', 'bg-purple-600');
+        enabledBtn.classList.replace('text-gray-500', 'text-white');
+        enabledBtn.classList.remove('cursor-not-allowed');
+        enabledBtn.classList.add('hover:bg-purple-700');
+
+        disabledBtn.disabled = true;
+        disabledBtn.classList.replace('bg-purple-600', 'bg-gray-700');
+        disabledBtn.classList.replace('text-white', 'text-gray-500');
+        disabledBtn.classList.add('cursor-not-allowed');
+        disabledBtn.classList.remove('hover:bg-purple-700');
+      } else {
+        enabledBtn.disabled = true;
+        enabledBtn.classList.replace('bg-purple-600', 'bg-gray-700');
+        enabledBtn.classList.replace('text-white', 'text-gray-500');
+        enabledBtn.classList.add('cursor-not-allowed');
+        enabledBtn.classList.remove('hover:bg-purple-700');
+
+        disabledBtn.disabled = false;
+        disabledBtn.classList.replace('bg-gray-700', 'bg-purple-600');
+        disabledBtn.classList.replace('text-gray-500', 'text-white');
+        disabledBtn.classList.remove('cursor-not-allowed');
+        disabledBtn.classList.add('hover:bg-purple-700');
+      }
+    }
+
+    // Loading simulation
+    function simulateLoading() {
+      const btn = document.getElementById('btn-loading');
+      const text = document.getElementById('btn-loading-text');
+      const status = document.getElementById('loading-status');
+
+      btn.disabled = true;
+      btn.dataset.state = 'loading';
+      text.textContent = '⏳ Loading...';
+      status.textContent = 'Loading in progress...';
+      status.className = 'text-sm text-yellow-400';
+
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.dataset.state = 'complete';
+        text.textContent = '✓ Complete';
+        status.textContent = 'Loading completed!';
+        status.className = 'text-sm text-green-400';
+
+        setTimeout(() => {
+          btn.dataset.state = 'idle';
+          text.textContent = 'Load Data';
+          status.textContent = 'Click to simulate loading';
+          status.className = 'text-sm text-gray-400';
+        }, 2000);
+      }, 2000);
+    }
+
+    // Size selector
+    function selectSize(size) {
+      const sizes = ['small', 'medium', 'large'];
+      sizes.forEach(s => {
+        const btn = document.getElementById(`btn-size-${s}`);
+        if (s === size) {
+          btn.classList.replace('bg-gray-700', 'bg-purple-600');
+          btn.classList.replace('text-gray-300', 'text-white');
+        } else {
+          btn.classList.replace('bg-purple-600', 'bg-gray-700');
+          btn.classList.replace('text-white', 'text-gray-300');
+        }
+      });
+      document.getElementById('selected-size').innerHTML = `Selected size: <span class="text-purple-400 font-semibold">${size}</span>`;
+      recordClick(`btn-size-${size}`, `Select size: ${size}`);
+    }
+
+    // Toggle selectors panel
+    function toggleSelectorsPanel() {
+      const content = document.getElementById('selectors-content');
+      const arrow = document.getElementById('panel-arrow');
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        arrow.textContent = '▼';
+      } else {
+        content.style.display = 'none';
+        arrow.textContent = '▲';
+      }
+    }
+  </script>
+</body>
+</html>

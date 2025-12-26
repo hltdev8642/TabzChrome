@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forms Test - MCP Test Pages</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .selector-hint { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; }
+    .form-feedback { transition: all 0.3s ease; }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+  <!-- Navigation -->
+  <nav id="breadcrumb" class="bg-gray-800 border-b border-gray-700 px-6 py-3">
+    <a href="index.html" id="nav-home" class="text-purple-400 hover:text-purple-300">← MCP Test Hub</a>
+    <span class="text-gray-500 mx-2">/</span>
+    <span class="text-gray-300">Forms</span>
+  </nav>
+
+  <!-- Page Header -->
+  <header id="page-header" class="bg-gray-800 border-b border-gray-700 px-6 py-4">
+    <h1 id="page-title" class="text-2xl font-bold text-purple-400">📝 Forms Test Page</h1>
+    <p id="page-description" class="text-gray-400 mt-1">Test tabz_fill, tabz_click on form elements</p>
+  </header>
+
+  <main class="container mx-auto px-6 py-8 max-w-4xl">
+
+    <!-- Login Form Section -->
+    <section id="login-section" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-blue-400 mb-4">Login Form</h2>
+
+      <form id="login-form" data-testid="login-form" onsubmit="handleLogin(event)" class="space-y-4 max-w-md">
+        <!-- Email Field -->
+        <div>
+          <label for="login-email" class="block text-sm font-medium text-gray-300 mb-1">
+            Email <span class="selector-hint text-purple-400 text-xs">(#login-email)</span>
+          </label>
+          <input
+            type="email"
+            id="login-email"
+            name="email"
+            data-testid="login-email"
+            data-field="email"
+            placeholder="user@example.com"
+            class="w-full bg-gray-900 border border-gray-600 rounded px-4 py-2 text-white focus:border-purple-500 focus:outline-none"
+            required
+          >
+        </div>
+
+        <!-- Password Field -->
+        <div>
+          <label for="login-password" class="block text-sm font-medium text-gray-300 mb-1">
+            Password <span class="selector-hint text-purple-400 text-xs">(#login-password)</span>
+          </label>
+          <input
+            type="password"
+            id="login-password"
+            name="password"
+            data-testid="login-password"
+            data-field="password"
+            placeholder="••••••••"
+            class="w-full bg-gray-900 border border-gray-600 rounded px-4 py-2 text-white focus:border-purple-500 focus:outline-none"
+            required
+          >
+        </div>
+
+        <!-- Remember Me -->
+        <div class="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="login-remember"
+            name="remember"
+            data-testid="login-remember"
+            class="rounded bg-gray-900 border-gray-600 text-purple-500 focus:ring-purple-500"
+          >
+          <label for="login-remember" class="text-sm text-gray-300">
+            Remember me <span class="selector-hint text-purple-400 text-xs">(#login-remember)</span>
+          </label>
+        </div>
+
+        <!-- Submit Button -->
+        <button
+          type="submit"
+          id="login-submit"
+          data-testid="login-submit"
+          data-action="submit-login"
+          class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded transition-colors"
+        >
+          Sign In
+        </button>
+      </form>
+
+      <!-- Login Status -->
+      <div id="login-status" data-testid="login-status" class="mt-4 p-3 rounded form-feedback hidden">
+        <!-- Status message appears here -->
+      </div>
+    </section>
+
+    <!-- Search Form Section -->
+    <section id="search-section" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-blue-400 mb-4">Search Form</h2>
+
+      <form id="search-form" data-testid="search-form" onsubmit="handleSearch(event)" class="flex gap-2 max-w-lg">
+        <input
+          type="text"
+          id="search-input"
+          name="query"
+          data-testid="search-input"
+          data-field="search-query"
+          placeholder="Search for anything..."
+          class="flex-1 bg-gray-900 border border-gray-600 rounded px-4 py-2 text-white focus:border-purple-500 focus:outline-none"
+        >
+        <button
+          type="submit"
+          id="search-submit"
+          data-testid="search-submit"
+          data-action="submit-search"
+          class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded transition-colors"
+        >
+          🔍 Search
+        </button>
+      </form>
+
+      <!-- Search Results -->
+      <div id="search-results" data-testid="search-results" class="mt-4 text-gray-400">
+        <p>Enter a search query and click Search.</p>
+      </div>
+    </section>
+
+    <!-- Multi-Step Wizard Section -->
+    <section id="wizard-section" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-blue-400 mb-4">Multi-Step Form Wizard</h2>
+
+      <!-- Progress Indicator -->
+      <div id="wizard-progress" class="flex justify-between mb-6 max-w-md">
+        <div id="step-indicator-1" data-step="1" class="flex items-center">
+          <span class="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold">1</span>
+          <span class="ml-2 text-sm text-gray-300">Profile</span>
+        </div>
+        <div id="step-indicator-2" data-step="2" class="flex items-center opacity-50">
+          <span class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center font-bold">2</span>
+          <span class="ml-2 text-sm text-gray-300">Preferences</span>
+        </div>
+        <div id="step-indicator-3" data-step="3" class="flex items-center opacity-50">
+          <span class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center font-bold">3</span>
+          <span class="ml-2 text-sm text-gray-300">Confirm</span>
+        </div>
+      </div>
+
+      <!-- Step 1: Profile -->
+      <div id="wizard-step-1" data-testid="wizard-step-1" class="wizard-step space-y-4 max-w-md">
+        <h3 class="font-semibold text-white">Step 1: Your Profile</h3>
+
+        <div>
+          <label for="wizard-name" class="block text-sm font-medium text-gray-300 mb-1">
+            Full Name <span class="selector-hint text-purple-400 text-xs">(#wizard-name)</span>
+          </label>
+          <input
+            type="text"
+            id="wizard-name"
+            name="name"
+            data-testid="wizard-name"
+            placeholder="John Doe"
+            class="w-full bg-gray-900 border border-gray-600 rounded px-4 py-2 text-white focus:border-purple-500 focus:outline-none"
+          >
+        </div>
+
+        <div>
+          <label for="wizard-company" class="block text-sm font-medium text-gray-300 mb-1">
+            Company <span class="selector-hint text-purple-400 text-xs">(#wizard-company)</span>
+          </label>
+          <input
+            type="text"
+            id="wizard-company"
+            name="company"
+            data-testid="wizard-company"
+            placeholder="Acme Inc."
+            class="w-full bg-gray-900 border border-gray-600 rounded px-4 py-2 text-white focus:border-purple-500 focus:outline-none"
+          >
+        </div>
+
+        <button
+          type="button"
+          id="wizard-next-1"
+          data-testid="wizard-next-1"
+          data-action="wizard-next"
+          onclick="wizardNext(1)"
+          class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-6 rounded transition-colors"
+        >
+          Next →
+        </button>
+      </div>
+
+      <!-- Step 2: Preferences -->
+      <div id="wizard-step-2" data-testid="wizard-step-2" class="wizard-step space-y-4 max-w-md hidden">
+        <h3 class="font-semibold text-white">Step 2: Preferences</h3>
+
+        <div>
+          <label for="wizard-theme" class="block text-sm font-medium text-gray-300 mb-1">
+            Theme <span class="selector-hint text-purple-400 text-xs">(#wizard-theme)</span>
+          </label>
+          <select
+            id="wizard-theme"
+            name="theme"
+            data-testid="wizard-theme"
+            class="w-full bg-gray-900 border border-gray-600 rounded px-4 py-2 text-white focus:border-purple-500 focus:outline-none"
+          >
+            <option value="dark">Dark Mode</option>
+            <option value="light">Light Mode</option>
+            <option value="system">System Default</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">
+            Notifications <span class="selector-hint text-purple-400 text-xs">(#wizard-notify-*)</span>
+          </label>
+          <div class="space-y-2">
+            <label class="flex items-center gap-2">
+              <input type="checkbox" id="wizard-notify-email" data-testid="wizard-notify-email" class="rounded bg-gray-900 border-gray-600" checked>
+              <span class="text-gray-300">Email notifications</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" id="wizard-notify-sms" data-testid="wizard-notify-sms" class="rounded bg-gray-900 border-gray-600">
+              <span class="text-gray-300">SMS notifications</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button
+            type="button"
+            id="wizard-back-2"
+            data-testid="wizard-back-2"
+            data-action="wizard-back"
+            onclick="wizardBack(2)"
+            class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-6 rounded transition-colors"
+          >
+            ← Back
+          </button>
+          <button
+            type="button"
+            id="wizard-next-2"
+            data-testid="wizard-next-2"
+            data-action="wizard-next"
+            onclick="wizardNext(2)"
+            class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-6 rounded transition-colors"
+          >
+            Next →
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: Confirm -->
+      <div id="wizard-step-3" data-testid="wizard-step-3" class="wizard-step space-y-4 max-w-md hidden">
+        <h3 class="font-semibold text-white">Step 3: Confirm Your Details</h3>
+
+        <div id="wizard-summary" data-testid="wizard-summary" class="bg-gray-900 rounded p-4 text-gray-300">
+          <!-- Summary populated by JS -->
+        </div>
+
+        <div class="flex gap-2">
+          <button
+            type="button"
+            id="wizard-back-3"
+            data-testid="wizard-back-3"
+            data-action="wizard-back"
+            onclick="wizardBack(3)"
+            class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-6 rounded transition-colors"
+          >
+            ← Back
+          </button>
+          <button
+            type="button"
+            id="wizard-complete"
+            data-testid="wizard-complete"
+            data-action="wizard-complete"
+            onclick="wizardComplete()"
+            class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded transition-colors"
+          >
+            ✓ Complete Setup
+          </button>
+        </div>
+      </div>
+
+      <!-- Wizard Status -->
+      <div id="wizard-status" data-testid="wizard-status" class="mt-4 hidden">
+        <span id="wizard-current-step" class="text-purple-400">Current Step: 1</span>
+      </div>
+    </section>
+
+    <!-- Textarea Section -->
+    <section id="textarea-section" class="mb-12 bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-xl font-semibold text-blue-400 mb-4">Textarea / Long Text</h2>
+
+      <form id="feedback-form" data-testid="feedback-form" onsubmit="handleFeedback(event)">
+        <div class="mb-4">
+          <label for="feedback-message" class="block text-sm font-medium text-gray-300 mb-1">
+            Your Feedback <span class="selector-hint text-purple-400 text-xs">(#feedback-message)</span>
+          </label>
+          <textarea
+            id="feedback-message"
+            name="message"
+            data-testid="feedback-message"
+            data-field="feedback"
+            rows="4"
+            placeholder="Type your feedback here..."
+            class="w-full bg-gray-900 border border-gray-600 rounded px-4 py-2 text-white focus:border-purple-500 focus:outline-none resize-y"
+          ></textarea>
+          <p id="feedback-char-count" class="text-sm text-gray-500 mt-1">0 characters</p>
+        </div>
+
+        <button
+          type="submit"
+          id="feedback-submit"
+          data-testid="feedback-submit"
+          data-action="submit-feedback"
+          class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded transition-colors"
+        >
+          Send Feedback
+        </button>
+      </form>
+
+      <div id="feedback-status" data-testid="feedback-status" class="mt-4 hidden p-3 rounded bg-green-900 text-green-300">
+        Feedback submitted successfully!
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Selectors Panel -->
+  <aside id="selectors-panel" class="fixed bottom-4 right-4 bg-gray-800 border border-gray-600 rounded-lg shadow-xl max-w-md">
+    <button
+      id="toggle-selectors-panel"
+      data-testid="toggle-selectors-panel"
+      onclick="toggleSelectorsPanel()"
+      class="w-full px-4 py-2 text-left font-semibold text-purple-400 border-b border-gray-700 flex justify-between items-center"
+    >
+      <span>📋 Form Selectors</span>
+      <span id="panel-arrow">▼</span>
+    </button>
+    <div id="selectors-content" class="p-4 text-sm max-h-80 overflow-y-auto">
+      <div class="selector-hint space-y-1 text-gray-300">
+        <p class="font-semibold text-yellow-400 mt-2">Login Form:</p>
+        <p><span class="text-purple-400">#login-email</span> - Email input</p>
+        <p><span class="text-purple-400">#login-password</span> - Password input</p>
+        <p><span class="text-purple-400">#login-remember</span> - Remember checkbox</p>
+        <p><span class="text-purple-400">#login-submit</span> - Submit button</p>
+        <p><span class="text-purple-400">#login-status</span> - Status message</p>
+
+        <p class="font-semibold text-yellow-400 mt-4">Search Form:</p>
+        <p><span class="text-purple-400">#search-input</span> - Search text input</p>
+        <p><span class="text-purple-400">#search-submit</span> - Search button</p>
+        <p><span class="text-purple-400">#search-results</span> - Results display</p>
+
+        <p class="font-semibold text-yellow-400 mt-4">Wizard:</p>
+        <p><span class="text-purple-400">#wizard-name</span> - Name input (step 1)</p>
+        <p><span class="text-purple-400">#wizard-company</span> - Company input (step 1)</p>
+        <p><span class="text-purple-400">#wizard-next-1</span> - Next button (step 1)</p>
+        <p><span class="text-purple-400">#wizard-theme</span> - Theme select (step 2)</p>
+        <p><span class="text-purple-400">#wizard-complete</span> - Complete button (step 3)</p>
+
+        <p class="font-semibold text-yellow-400 mt-4">Feedback:</p>
+        <p><span class="text-purple-400">#feedback-message</span> - Textarea</p>
+        <p><span class="text-purple-400">#feedback-submit</span> - Submit button</p>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    // Toggle selectors panel
+    function toggleSelectorsPanel() {
+      const content = document.getElementById('selectors-content');
+      const arrow = document.getElementById('panel-arrow');
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        arrow.textContent = '▼';
+      } else {
+        content.style.display = 'none';
+        arrow.textContent = '▲';
+      }
+    }
+
+    // Login form handler
+    function handleLogin(event) {
+      event.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      const remember = document.getElementById('login-remember').checked;
+
+      const status = document.getElementById('login-status');
+      status.classList.remove('hidden', 'bg-red-900', 'bg-green-900', 'text-red-300', 'text-green-300');
+
+      if (email && password) {
+        status.classList.add('bg-green-900', 'text-green-300');
+        status.innerHTML = `✓ Login successful!<br><small>Email: ${email}, Remember: ${remember}</small>`;
+      } else {
+        status.classList.add('bg-red-900', 'text-red-300');
+        status.innerHTML = '✗ Please fill in all fields';
+      }
+    }
+
+    // Search form handler
+    function handleSearch(event) {
+      event.preventDefault();
+      const query = document.getElementById('search-input').value;
+      const results = document.getElementById('search-results');
+
+      if (query) {
+        results.innerHTML = `
+          <p class="text-green-400 mb-2">Search results for: "${query}"</p>
+          <ul class="list-disc list-inside text-gray-300">
+            <li>Result 1: Found "${query}" in documents</li>
+            <li>Result 2: Related to "${query}"</li>
+            <li>Result 3: Similar content</li>
+          </ul>
+        `;
+      } else {
+        results.innerHTML = '<p class="text-yellow-400">Please enter a search query.</p>';
+      }
+    }
+
+    // Wizard navigation
+    let currentStep = 1;
+
+    function wizardNext(fromStep) {
+      if (fromStep < 3) {
+        document.getElementById(`wizard-step-${fromStep}`).classList.add('hidden');
+        document.getElementById(`wizard-step-${fromStep + 1}`).classList.remove('hidden');
+        document.getElementById(`step-indicator-${fromStep}`).classList.add('opacity-50');
+        document.getElementById(`step-indicator-${fromStep}`).querySelector('span').classList.replace('bg-purple-600', 'bg-green-600');
+        document.getElementById(`step-indicator-${fromStep + 1}`).classList.remove('opacity-50');
+        document.getElementById(`step-indicator-${fromStep + 1}`).querySelector('span').classList.replace('bg-gray-600', 'bg-purple-600');
+        currentStep = fromStep + 1;
+        document.getElementById('wizard-current-step').textContent = `Current Step: ${currentStep}`;
+        document.getElementById('wizard-status').classList.remove('hidden');
+
+        // Populate summary on step 3
+        if (currentStep === 3) {
+          const name = document.getElementById('wizard-name').value || '(not provided)';
+          const company = document.getElementById('wizard-company').value || '(not provided)';
+          const theme = document.getElementById('wizard-theme').value;
+          const emailNotify = document.getElementById('wizard-notify-email').checked;
+          const smsNotify = document.getElementById('wizard-notify-sms').checked;
+
+          document.getElementById('wizard-summary').innerHTML = `
+            <p><strong>Name:</strong> ${name}</p>
+            <p><strong>Company:</strong> ${company}</p>
+            <p><strong>Theme:</strong> ${theme}</p>
+            <p><strong>Email Notifications:</strong> ${emailNotify ? 'Yes' : 'No'}</p>
+            <p><strong>SMS Notifications:</strong> ${smsNotify ? 'Yes' : 'No'}</p>
+          `;
+        }
+      }
+    }
+
+    function wizardBack(fromStep) {
+      if (fromStep > 1) {
+        document.getElementById(`wizard-step-${fromStep}`).classList.add('hidden');
+        document.getElementById(`wizard-step-${fromStep - 1}`).classList.remove('hidden');
+        document.getElementById(`step-indicator-${fromStep}`).classList.add('opacity-50');
+        document.getElementById(`step-indicator-${fromStep}`).querySelector('span').classList.replace('bg-purple-600', 'bg-gray-600');
+        document.getElementById(`step-indicator-${fromStep - 1}`).classList.remove('opacity-50');
+        document.getElementById(`step-indicator-${fromStep - 1}`).querySelector('span').classList.replace('bg-green-600', 'bg-purple-600');
+        currentStep = fromStep - 1;
+        document.getElementById('wizard-current-step').textContent = `Current Step: ${currentStep}`;
+      }
+    }
+
+    function wizardComplete() {
+      document.getElementById('wizard-step-3').innerHTML = `
+        <div class="bg-green-900 text-green-300 p-4 rounded text-center">
+          <p class="text-2xl mb-2">✓</p>
+          <p class="font-semibold">Setup Complete!</p>
+          <p class="text-sm mt-2">All wizard steps have been completed successfully.</p>
+        </div>
+      `;
+      document.getElementById('step-indicator-3').querySelector('span').classList.replace('bg-purple-600', 'bg-green-600');
+    }
+
+    // Feedback form
+    function handleFeedback(event) {
+      event.preventDefault();
+      const message = document.getElementById('feedback-message').value;
+      if (message) {
+        document.getElementById('feedback-status').classList.remove('hidden');
+      }
+    }
+
+    // Character count for textarea
+    document.getElementById('feedback-message').addEventListener('input', function() {
+      document.getElementById('feedback-char-count').textContent = this.value.length + ' characters';
+    });
+  </script>
+</body>
+</html>
