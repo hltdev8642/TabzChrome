@@ -102,6 +102,29 @@ curl -X DELETE http://localhost:8129/api/agents/ctt-MyTerminal-a1b2c3d4
 
 ---
 
+### POST /api/agents/:id/detach
+
+Detach a terminal (convert to ghost session). Used by popout windows when closed via OS window button.
+
+This endpoint is designed for `navigator.sendBeacon()` - it accepts an empty body and doesn't require auth since it only detaches (doesn't spawn or kill).
+
+```bash
+curl -X POST http://localhost:8129/api/agents/ctt-MyTerminal-a1b2c3d4/detach
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Terminal detached",
+  "terminalId": "ctt-MyTerminal-a1b2c3d4"
+}
+```
+
+**Use case:** When a popout window is closed via the OS close button (X), the `beforeunload` handler calls this endpoint to detach the terminal, making it a "ghost" that can be reattached later.
+
+---
+
 ### GET/POST /api/settings/working-dir
 
 Sync working directory settings between extension and dashboard.

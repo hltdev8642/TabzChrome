@@ -2,7 +2,7 @@
 
 **Full Linux terminals in your Chrome sidebar**
 
-![Version](https://img.shields.io/badge/version-1.2.19-blue)
+![Version](https://img.shields.io/badge/version-1.2.22-blue)
 ![Chrome](https://img.shields.io/badge/chrome-manifest%20v3-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -35,6 +35,7 @@ Browse the web with your terminals always visible - no window juggling, no Alt+T
 - **Category organization** - Color-coded groups for easy identification
 - **Smart directory inheritance** - Set a global working directory, profiles inherit it
 - **3D Focus Mode** - Pop any terminal into an immersive full-tab 3D view (scroll to zoom, mouse to orbit, F2 to lock)
+- **Terminal Popouts** - Right-click tab → "Pop Out" for standalone terminal windows (theme synced, return or detach)
 - **Local dashboard** - Web UI at `localhost:8129` for terminal management and quick stats
 - **Tabz MCP tools** - Let Claude Code control your browser (screenshots, clicks, form filling)
 - **Keyboard shortcuts** - Quick access to paste text, send to chat, spawn terminals
@@ -52,7 +53,7 @@ TabzChrome is designed to work seamlessly with Claude Code:
 
 ![MCP settings](docs/pages/screenshots/mcp-settings.png)
 
-Using Claude Code's experimental MCP CLI mode, tool schemas are loaded on-demand instead of all 37 definitions into context. Enable with the `ENABLE_EXPERIMENTAL_MCP_CLI=true` environment variable. See the [setup gist](https://gist.github.com/GGPrompts/50e82596b345557656df2fc8d2d54e2c) for details.
+Using Claude Code's experimental MCP CLI mode, tool schemas are loaded on-demand instead of all 44 definitions into context. Enable with the `ENABLE_EXPERIMENTAL_MCP_CLI=true` environment variable. See the [setup gist](https://gist.github.com/GGPrompts/50e82596b345557656df2fc8d2d54e2c) for details.
 
 **🎭 Power Features (Claude Code Integration):**
 
