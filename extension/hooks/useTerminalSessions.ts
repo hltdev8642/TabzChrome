@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { sendMessage } from '../shared/messaging'
 import type { Profile } from '../components/SettingsModal'
+import type { BackgroundMediaType } from '../components/settings/types'
 
 // Per-terminal appearance overrides (not saved to profile)
 export interface TerminalAppearanceOverrides {
@@ -9,6 +10,10 @@ export interface TerminalAppearanceOverrides {
   panelColor?: string
   transparency?: number
   fontFamily?: string
+  // Background media (video/image)
+  backgroundMedia?: string
+  backgroundMediaType?: BackgroundMediaType
+  backgroundMediaOpacity?: number
 }
 
 export interface TerminalSession {

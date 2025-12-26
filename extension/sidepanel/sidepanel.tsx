@@ -587,6 +587,9 @@ function SidePanelTerminal() {
     const effectiveTransparency = overrides.transparency ?? session.profile.transparency ?? 100
     const effectiveFontFamily = overrides.fontFamily ?? session.profile.fontFamily ?? 'monospace'
     const effectiveFontSize = (session.profile.fontSize ?? 16) + fontSizeOffset
+    const effectiveBackgroundMedia = overrides.backgroundMedia ?? session.profile.backgroundMedia
+    const effectiveBackgroundMediaType = overrides.backgroundMediaType ?? session.profile.backgroundMediaType
+    const effectiveBackgroundMediaOpacity = overrides.backgroundMediaOpacity ?? session.profile.backgroundMediaOpacity
 
     // Update the profile in the profiles array
     const updatedProfiles = profiles.map(p =>
@@ -599,6 +602,9 @@ function SidePanelTerminal() {
             transparency: effectiveTransparency,
             fontFamily: effectiveFontFamily,
             fontSize: effectiveFontSize,
+            backgroundMedia: effectiveBackgroundMedia,
+            backgroundMediaType: effectiveBackgroundMediaType,
+            backgroundMediaOpacity: effectiveBackgroundMediaOpacity,
           }
         : p
     )
@@ -615,6 +621,42 @@ function SidePanelTerminal() {
     resetTerminalAppearance(sessionId)
     resetFontSize(sessionId)
   }
+
+  // Handle live preview of profile appearance changes from Settings modal
+  // Updates all sessions using this profile to preview the appearance
+  const handlePreviewProfileAppearance = useCallback((profileId: string, appearance: {
+    themeName?: string
+    backgroundGradient?: string
+    panelColor?: string
+    transparency?: number
+    fontFamily?: string
+    backgroundMedia?: string
+    backgroundMediaType?: 'none' | 'image' | 'video'
+    backgroundMediaOpacity?: number
+  }) => {
+    // Find all sessions using this profile and update their appearance overrides
+    setSessions(prev => prev.map(session => {
+      if (session.profile?.id !== profileId) return session
+      return {
+        ...session,
+        appearanceOverrides: {
+          ...session.appearanceOverrides,
+          ...appearance,
+        },
+      }
+    }))
+  }, [setSessions])
+
+  // Clear preview overrides for all sessions using a profile (on cancel)
+  const handleClearProfilePreview = useCallback((profileId: string) => {
+    setSessions(prev => prev.map(session => {
+      if (session.profile?.id !== profileId) return session
+      return {
+        ...session,
+        appearanceOverrides: undefined,
+      }
+    }))
+  }, [setSessions])
 
   // Handle "Detach Session" from tab menu
   // Removes from registry (so it becomes an orphan) but keeps tmux session alive
@@ -1315,6 +1357,9 @@ function SidePanelTerminal() {
                           backgroundGradient={session.appearanceOverrides?.backgroundGradient ?? effectiveProfile?.backgroundGradient}
                           panelColor={session.appearanceOverrides?.panelColor ?? effectiveProfile?.panelColor ?? '#000000'}
                           transparency={session.appearanceOverrides?.transparency ?? effectiveProfile?.transparency ?? 100}
+                          backgroundMedia={session.appearanceOverrides?.backgroundMedia ?? effectiveProfile?.backgroundMedia}
+                          backgroundMediaType={session.appearanceOverrides?.backgroundMediaType ?? effectiveProfile?.backgroundMediaType}
+                          backgroundMediaOpacity={session.appearanceOverrides?.backgroundMediaOpacity ?? effectiveProfile?.backgroundMediaOpacity}
                           onClose={() => {
                             sendMessage({
                               type: 'CLOSE_TERMINAL',
@@ -1356,6 +1401,8 @@ function SidePanelTerminal() {
           setEditProfileId(null)  // Clear edit profile ID on close
         }}
         editProfileId={editProfileId}
+        onPreviewProfileAppearance={handlePreviewProfileAppearance}
+        onClearPreview={handleClearProfilePreview}
       />
 
       {/* Tab Context Menu */}
@@ -1442,6 +1489,9 @@ function SidePanelTerminal() {
               transparency: effectiveProfile?.transparency,
               fontSize: effectiveProfile?.fontSize,
               fontFamily: effectiveProfile?.fontFamily,
+              backgroundMedia: effectiveProfile?.backgroundMedia,
+              backgroundMediaType: effectiveProfile?.backgroundMediaType,
+              backgroundMediaOpacity: effectiveProfile?.backgroundMediaOpacity,
             }}
             isDark={isDark}
             fontSizeOffset={session.fontSizeOffset}

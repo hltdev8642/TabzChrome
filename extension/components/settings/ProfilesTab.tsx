@@ -8,6 +8,7 @@ import {
   CategorySettings,
   AudioSettings,
   AudioMode,
+  BackgroundMediaType,
   CATEGORY_COLORS,
   DEFAULT_CATEGORY_COLOR,
   DEFAULT_PROFILE,
@@ -15,6 +16,7 @@ import {
   TTS_VOICES,
 } from './types'
 import { CategoryCombobox } from './CategoryCombobox'
+import { useSettings } from './SettingsContext'
 
 interface ProfilesTabProps {
   profiles: Profile[]
@@ -42,6 +44,9 @@ export function ProfilesTab({
   onImportClick,
   editProfileId,
 }: ProfilesTabProps) {
+  // Get preview callbacks from context
+  const { onPreviewProfileAppearance, onClearPreview } = useSettings()
+
   // Profile state
   const [isAdding, setIsAdding] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -58,6 +63,35 @@ export function ProfilesTab({
     }
   }, [editProfileId, profiles])
   const [formData, setFormData] = useState<Profile>(DEFAULT_PROFILE)
+
+  // Live preview: whenever formData appearance changes while editing, preview on terminals
+  useEffect(() => {
+    if (!onPreviewProfileAppearance || editingIndex === null || !formData.id) return
+
+    // Preview appearance-related fields
+    onPreviewProfileAppearance(formData.id, {
+      themeName: formData.themeName,
+      backgroundGradient: formData.backgroundGradient,
+      panelColor: formData.panelColor,
+      transparency: formData.transparency,
+      fontFamily: formData.fontFamily,
+      backgroundMedia: formData.backgroundMedia,
+      backgroundMediaType: formData.backgroundMediaType,
+      backgroundMediaOpacity: formData.backgroundMediaOpacity,
+    })
+  }, [
+    onPreviewProfileAppearance,
+    editingIndex,
+    formData.id,
+    formData.themeName,
+    formData.backgroundGradient,
+    formData.panelColor,
+    formData.transparency,
+    formData.fontFamily,
+    formData.backgroundMedia,
+    formData.backgroundMediaType,
+    formData.backgroundMediaOpacity,
+  ])
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [dropPosition, setDropPosition] = useState<'above' | 'below' | null>(null)
@@ -83,16 +117,26 @@ export function ProfilesTab({
   const handleAddProfile = () => {
     if (!formData.name || !formData.id) return
 
+    // Clear preview overrides when saving (the profile data will be applied)
+    if (editingIndex !== null && formData.id && onClearPreview) {
+      onClearPreview(formData.id)
+    }
+
+    let updatedProfiles: Profile[]
     if (editingIndex !== null) {
       // Update existing
-      const updated = [...profiles]
-      updated[editingIndex] = formData
-      setProfiles(updated)
+      updatedProfiles = [...profiles]
+      updatedProfiles[editingIndex] = formData
+      setProfiles(updatedProfiles)
       setEditingIndex(null)
     } else {
       // Add new
-      setProfiles([...profiles, formData])
+      updatedProfiles = [...profiles, formData]
+      setProfiles(updatedProfiles)
     }
+
+    // Save to Chrome storage immediately for live updates
+    chrome.storage.local.set({ profiles: updatedProfiles })
 
     // Reset form
     setFormData(DEFAULT_PROFILE)
@@ -117,6 +161,10 @@ export function ProfilesTab({
   }
 
   const handleCancelEdit = () => {
+    // Clear preview overrides when canceling
+    if (editingIndex !== null && formData.id && onClearPreview) {
+      onClearPreview(formData.id)
+    }
     setIsAdding(false)
     setEditingIndex(null)
     setFormData(DEFAULT_PROFILE)
@@ -733,6 +781,78 @@ export function ProfilesTab({
               <span>0% (solid color)</span>
               <span>100% (full gradient)</span>
             </div>
+          </div>
+
+          {/* Background Media (Video/Image) */}
+          <div className="border border-gray-800 rounded-lg p-3 space-y-3">
+            <label className="block text-xs text-gray-400 mb-1">
+              Background Media (optional)
+            </label>
+
+            {/* Media Type Selector */}
+            <div className="flex gap-2">
+              {(['none', 'image', 'video'] as const).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, backgroundMediaType: type })}
+                  className={`
+                    flex-1 px-3 py-2 rounded-lg border text-sm transition-all capitalize
+                    ${(formData.backgroundMediaType || 'none') === type
+                      ? 'border-[#00ff88] bg-[#00ff88]/10 text-white'
+                      : 'border-gray-700 hover:border-gray-600 bg-black/30 text-gray-400'
+                    }
+                  `}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+
+            {/* Media Path Input - only show when type is not 'none' */}
+            {formData.backgroundMediaType && formData.backgroundMediaType !== 'none' && (
+              <>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">
+                    {formData.backgroundMediaType === 'video' ? 'Video' : 'Image'} Path
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.backgroundMedia || ''}
+                    onChange={(e) => setFormData({ ...formData, backgroundMedia: e.target.value })}
+                    placeholder={formData.backgroundMediaType === 'video'
+                      ? 'e.g., ~/Videos/space.mp4 or https://...'
+                      : 'e.g., ~/Pictures/bg.png or https://...'}
+                    className="w-full px-3 py-2 bg-black/50 border border-gray-700 rounded text-white text-sm font-mono focus:border-[#00ff88] focus:outline-none"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    {formData.backgroundMediaType === 'video'
+                      ? 'Supports: mp4, webm, mov (loops silently)'
+                      : 'Supports: jpg, png, gif, webp'}
+                  </p>
+                </div>
+
+                {/* Media Opacity Slider */}
+                <div>
+                  <label className="flex items-center gap-2 text-xs text-gray-400 mb-2">
+                    Media Opacity: {formData.backgroundMediaOpacity ?? 50}%
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={formData.backgroundMediaOpacity ?? 50}
+                    onChange={(e) => setFormData({ ...formData, backgroundMediaOpacity: parseInt(e.target.value) })}
+                    className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-[#00ff88]"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>0% (hidden)</span>
+                    <span>100% (full)</span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Audio Settings - Collapsible */}

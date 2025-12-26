@@ -151,6 +151,9 @@ export function PopoutTerminalView({ terminalId }: PopoutTerminalViewProps) {
         backgroundGradient={targetSession.appearanceOverrides?.backgroundGradient ?? effectiveProfile?.backgroundGradient}
         panelColor={targetSession.appearanceOverrides?.panelColor ?? effectiveProfile?.panelColor ?? '#000000'}
         transparency={targetSession.appearanceOverrides?.transparency ?? effectiveProfile?.transparency ?? 100}
+        backgroundMedia={targetSession.appearanceOverrides?.backgroundMedia ?? effectiveProfile?.backgroundMedia}
+        backgroundMediaType={targetSession.appearanceOverrides?.backgroundMediaType ?? effectiveProfile?.backgroundMediaType}
+        backgroundMediaOpacity={targetSession.appearanceOverrides?.backgroundMediaOpacity ?? effectiveProfile?.backgroundMediaOpacity}
       />
     </div>
   )
