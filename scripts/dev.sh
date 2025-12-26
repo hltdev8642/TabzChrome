@@ -283,8 +283,17 @@ if [ -n "$LATEST_RELEASE" ] && version_gt "$LATEST_RELEASE" "$CURRENT_VERSION"; 
     read -p "$(echo -e ${BLUE}Update now? ${NC}${YELLOW}[y/N]${NC}: )" DO_UPDATE
     if [[ "$DO_UPDATE" =~ ^[Yy]$ ]]; then
         echo ""
-        echo -e "${BLUE}📥 Pulling latest changes...${NC}"
         cd "$SCRIPT_DIR/.."
+
+        # Stash any local changes (build artifacts, etc.) before pulling
+        STASH_NEEDED=false
+        if ! git diff --quiet || ! git diff --cached --quiet; then
+            echo -e "${YELLOW}📦 Stashing local changes (build artifacts, etc.)...${NC}"
+            git stash push -m "dev.sh auto-stash before update" --include-untracked
+            STASH_NEEDED=true
+        fi
+
+        echo -e "${BLUE}📥 Pulling latest changes...${NC}"
         git pull origin main
 
         echo ""
@@ -312,6 +321,12 @@ if [ -n "$LATEST_RELEASE" ] && version_gt "$LATEST_RELEASE" "$CURRENT_VERSION"; 
 
         # Update version after update
         CURRENT_VERSION=$(grep '"version"' "$SCRIPT_DIR/../package.json" | sed 's/.*"version": "\([^"]*\)".*/\1/')
+
+        # Drop the stash (new build artifacts replace old ones)
+        if [ "$STASH_NEEDED" = true ]; then
+            echo -e "${YELLOW}🗑️  Dropping stashed changes (replaced by fresh build)${NC}"
+            git stash drop 2>/dev/null || true
+        fi
         echo ""
     fi
 
