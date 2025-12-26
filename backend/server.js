@@ -1211,6 +1211,81 @@ wss.on('connection', (ws, req) => {
           break;
 
         // ============================================
+        // WINDOW MANAGEMENT - Result handlers
+        // ============================================
+        case 'browser-list-windows-result':
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              windows: data.windows,
+              error: data.error
+            });
+          }
+          break;
+
+        case 'browser-create-window-result':
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              window: data.window,
+              error: data.error
+            });
+          }
+          break;
+
+        case 'browser-update-window-result':
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              window: data.window,
+              error: data.error
+            });
+          }
+          break;
+
+        case 'browser-close-window-result':
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              error: data.error
+            });
+          }
+          break;
+
+        case 'browser-get-displays-result':
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              displays: data.displays,
+              error: data.error
+            });
+          }
+          break;
+
+        case 'browser-tile-windows-result':
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              results: data.results,
+              layout: data.layout,
+              displayId: data.displayId,
+              error: data.error
+            });
+          }
+          break;
+
+        case 'browser-popout-terminal-result':
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              window: data.window,
+              terminalId: data.terminalId,
+              error: data.error
+            });
+          }
+          break;
+
+        // ============================================
         // QUEUE_COMMAND - Forward to Chrome extension
         // ============================================
         case 'QUEUE_COMMAND':

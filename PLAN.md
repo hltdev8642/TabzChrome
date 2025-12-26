@@ -118,6 +118,21 @@ Detailed analysis in `audit-results/`:
 | `tabz_profile_performance` | Profile page performance metrics | Done |
 | `tabz_get_coverage` | Code coverage analysis | Done |
 
+#### `chrome.windows` + `chrome.system.display` - Window Management ✓
+**Permission**: `"system.display"`
+
+| Tool | Description | Status |
+|------|-------------|--------|
+| `tabz_list_windows` | List all Chrome windows with dimensions/state | Done |
+| `tabz_get_displays` | Get monitor info (bounds, work area, position) | Done |
+| `tabz_create_window` | Create new window (normal or popup) | Done |
+| `tabz_update_window` | Resize, move, maximize, minimize, focus | Done |
+| `tabz_close_window` | Close a window | Done |
+| `tabz_tile_windows` | Auto-arrange windows (horizontal/vertical/grid) | Done |
+| `tabz_popout_terminal` | Pop terminal to standalone popup | Done* |
+
+*Note: `tabz_popout_terminal` works but causes display issues when multiple popouts load the same terminal sessions. See "Terminal Popout System Fix" section for planned fix.
+
 ### Priority 3: Lower Value / Complex
 
 | Tool | Description | Why Lower |
@@ -263,14 +278,63 @@ Benefits: No infrastructure to build, works from CLI, real-time sync, mobile app
 
 ---
 
+## Terminal Popout System Fix
+
+**Status**: Planning
+**Priority**: High - Current implementation causes display corruption
+
+### Problem
+
+The `tabz_popout_terminal` tool creates popup windows loading `/sidepanel/sidepanel.html`, but each popout:
+1. Loads ALL terminal sessions (not just one)
+2. Creates duplicate xterm.js instances for the same tmux sessions
+3. Multiple xterm instances fight over the same terminal output → garbled display
+
+### Proposed Solution
+
+Make popout windows show **only a single terminal** in dedicated mode:
+
+1. **URL Parameter Detection**
+   - Popout URL: `/sidepanel/sidepanel.html?terminal=ctt-profile-uuid&popout=true`
+   - Sidepanel reads `popout` and `terminal` params on load
+
+2. **Single Terminal Mode**
+   - When `popout=true`:
+     - Hide terminal tab bar
+     - Only initialize the specified terminal's xterm instance
+     - Don't connect to other sessions' output streams
+     - Cleaner UI (no profile dropdown, maybe minimal header)
+
+3. **Benefits**
+   - No duplicate xterm instances for same tmux session
+   - Each popout window = dedicated view of one terminal
+   - Can tile multiple terminal windows across monitors
+   - Main sidebar remains full-featured
+
+### Implementation Checklist
+
+- [ ] Add URL param parsing in `sidepanel.tsx`
+- [ ] Create `PopoutTerminalView` component (single terminal, minimal UI)
+- [ ] Conditionally render popout vs full sidebar based on `popout` param
+- [ ] Update `tabz_popout_terminal` to always pass `popout=true`
+- [ ] Test: Main sidebar + 3 popouts showing different terminals
+- [ ] Test: Output goes to correct window only
+
+### Alternative: Broadcast Channel Coordination
+
+More complex but allows multiple views of same terminal:
+- Use `BroadcastChannel` API to coordinate which window renders which terminal
+- "Primary" window renders, others show read-only or don't render
+- Probably overkill for this use case
+
+---
+
 ## Non-Goals
 
 These are intentionally excluded from the Chrome extension:
 
 - **Split terminals** - Sidebar is narrow, use tmux splits instead
-- **Multi-window support** - Chrome has one sidebar per window by design
 - **Complex theming UI** - 6 curated themes + dark/light toggle is enough
-- **`chrome.windows` tools** - Multi-window workflows conflict with sidebar simplicity
 
 ---
 
