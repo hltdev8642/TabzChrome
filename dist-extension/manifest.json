@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tabz - Chrome Edition",
-  "version": "1.2.20",
+  "version": "1.2.21",
   "description": "Full-featured terminal manager in your browser with xterm.js, tmux integration, and multi-window support",
   "permissions": [
     "storage",
@@ -57,6 +57,9 @@
   "commands": {
     "_execute_action": {
       "description": "Toggle terminal sidebar"
+    },
+    "spawn-quick-terminal": {
+      "description": "Spawn quick popout terminal"
     },
     "new-tab": {
       "suggested_key": {

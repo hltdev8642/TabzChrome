@@ -1,19 +1,19 @@
 {
   "../../../../../@crx/manifest": {
-    "file": "assets/crx-manifest.js-DMLc7haZ.js",
+    "file": "assets/crx-manifest.js-DzehwS4M.js",
     "name": "crx-manifest.js",
     "src": "../../../../../@crx/manifest",
     "isEntry": true
   },
   "3d/3d-focus.html": {
-    "file": "assets/3d-focus-CSnq5y2o.js",
+    "file": "assets/3d-focus-BSMm_BRv.js",
     "name": "3d-focus",
     "src": "3d/3d-focus.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
-      "_terminal-backgrounds-DnHa1Rrr.js",
-      "_globals-gb3n6Amr.js",
+      "_terminal-backgrounds-P64U3As2.js",
+      "_globals-W9Fh2RMR.js",
       "_extends-CF3RwP-h.js"
     ]
   },
@@ -22,36 +22,36 @@
     "name": "extends"
   },
   "_globals-!~{008}~.js": {
-    "file": "assets/globals-BmqPF_-c.css",
+    "file": "assets/globals-u6dtW2Am.css",
     "src": "_globals-!~{008}~.js"
   },
-  "_globals-gb3n6Amr.js": {
-    "file": "assets/globals-gb3n6Amr.js",
+  "_globals-W9Fh2RMR.js": {
+    "file": "assets/globals-W9Fh2RMR.js",
     "name": "globals",
     "imports": [
-      "_terminal-backgrounds-DnHa1Rrr.js"
+      "_terminal-backgrounds-P64U3As2.js"
     ],
     "css": [
-      "assets/globals-BmqPF_-c.css"
+      "assets/globals-u6dtW2Am.css"
     ]
   },
   "_modulepreload-polyfill-B5Qt9EMX.js": {
     "file": "assets/modulepreload-polyfill-B5Qt9EMX.js",
     "name": "modulepreload-polyfill"
   },
-  "_terminal-backgrounds-DnHa1Rrr.js": {
-    "file": "assets/terminal-backgrounds-DnHa1Rrr.js",
+  "_terminal-backgrounds-P64U3As2.js": {
+    "file": "assets/terminal-backgrounds-P64U3As2.js",
     "name": "terminal-backgrounds"
   },
-  "_useDragDrop-BIPTi6Zw.js": {
-    "file": "assets/useDragDrop-BIPTi6Zw.js",
+  "_useDragDrop-DCb7T_yh.js": {
+    "file": "assets/useDragDrop-DCb7T_yh.js",
     "name": "useDragDrop",
     "imports": [
-      "_terminal-backgrounds-DnHa1Rrr.js"
+      "_terminal-backgrounds-P64U3As2.js"
     ]
   },
   "background/index.ts": {
-    "file": "assets/index.ts-BzHc9oLW.js",
+    "file": "assets/index.ts-B2_tqSVK.js",
     "name": "index.ts",
     "src": "background/index.ts",
     "isEntry": true
@@ -63,18 +63,18 @@
     "isEntry": true
   },
   "dashboard/index.html": {
-    "file": "assets/dashboard-ClE8DUeh.js",
+    "file": "assets/dashboard-Da3RqDia.js",
     "name": "dashboard",
     "src": "dashboard/index.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
-      "_terminal-backgrounds-DnHa1Rrr.js",
-      "_useDragDrop-BIPTi6Zw.js",
+      "_terminal-backgrounds-P64U3As2.js",
+      "_useDragDrop-DCb7T_yh.js",
       "_extends-CF3RwP-h.js"
     ],
     "css": [
-      "assets/dashboard-D2TzmcJN.css"
+      "assets/dashboard-DtRMX7P8.css"
     ]
   },
   "devtools/devtools.html": {
@@ -87,15 +87,15 @@
     ]
   },
   "sidepanel/sidepanel.html": {
-    "file": "assets/sidepanel.html-Bq29VTPX.js",
+    "file": "assets/sidepanel.html-CX0SwiPb.js",
     "name": "sidepanel.html",
     "src": "sidepanel/sidepanel.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
-      "_terminal-backgrounds-DnHa1Rrr.js",
-      "_globals-gb3n6Amr.js",
-      "_useDragDrop-BIPTi6Zw.js"
+      "_terminal-backgrounds-P64U3As2.js",
+      "_globals-W9Fh2RMR.js",
+      "_useDragDrop-DCb7T_yh.js"
     ]
   }
 }
