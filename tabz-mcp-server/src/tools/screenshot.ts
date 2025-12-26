@@ -23,7 +23,7 @@ const ScreenshotViewportSchema = z.object({
     .describe("CSS selector for element to screenshot. If not provided, captures the current viewport."),
   outputPath: z.string()
     .optional()
-    .describe("Custom output path for the screenshot. Default: ~/ai-images/screenshot-{timestamp}.png"),
+    .describe("Custom output path for the screenshot. Default: Downloads/tabz/screenshots/screenshot-{timestamp}.png"),
   tabId: z.number()
     .int()
     .optional()
@@ -36,7 +36,7 @@ type ScreenshotViewportInput = z.infer<typeof ScreenshotViewportSchema>;
 const ScreenshotFullSchema = z.object({
   outputPath: z.string()
     .optional()
-    .describe("Custom output path for the screenshot. Default: ~/ai-images/screenshot-{timestamp}.png"),
+    .describe("Custom output path for the screenshot. Default: Downloads/tabz/screenshots/screenshot-full-{timestamp}.png"),
   tabId: z.number()
     .int()
     .optional()
@@ -56,7 +56,7 @@ const DownloadImageSchema = z.object({
     .describe("Direct URL of the image to download. Use this OR selector, not both."),
   outputPath: z.string()
     .optional()
-    .describe("Custom output path for the image. Default: ~/ai-images/image-{timestamp}.{ext}")
+    .describe("Custom output path for the image. Default: Downloads/tabz/images/captured-image-{timestamp}.png")
 }).strict();
 
 type DownloadImageInput = z.infer<typeof DownloadImageSchema>;
@@ -76,7 +76,8 @@ async function takeScreenshot(options: {
       `${BACKEND_URL}${endpoint}`,
       {
         tabId: options.tabId,
-        selector: options.selector
+        selector: options.selector,
+        outputPath: options.outputPath
       },
       { timeout: options.fullPage ? 65000 : 35000 }
     );

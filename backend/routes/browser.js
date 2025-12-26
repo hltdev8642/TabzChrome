@@ -589,9 +589,9 @@ router.post('/get-element-info', async (req, res) => {
 
 // POST /api/browser/screenshot - Capture screenshot of current viewport
 router.post('/screenshot', async (req, res) => {
-  const { tabId, selector } = req.body;
+  const { tabId, selector, outputPath } = req.body;
 
-  log.debug('POST /screenshot', { tabId, selector });
+  log.debug('POST /screenshot', { tabId, selector, outputPath });
 
   const broadcast = req.app.get('broadcast');
   if (!broadcast) {
@@ -605,7 +605,7 @@ router.post('/screenshot', async (req, res) => {
     const result = await makeBrowserRequest(
       broadcast,
       'browser-screenshot',
-      { tabId, selector, fullPage: false },
+      { tabId, selector, fullPage: false, outputPath },
       30000,
       'Screenshot timed out'
     );
@@ -618,9 +618,9 @@ router.post('/screenshot', async (req, res) => {
 
 // POST /api/browser/screenshot-full - Capture full page screenshot (scroll + stitch)
 router.post('/screenshot-full', async (req, res) => {
-  const { tabId } = req.body;
+  const { tabId, outputPath } = req.body;
 
-  log.debug('POST /screenshot-full', { tabId });
+  log.debug('POST /screenshot-full', { tabId, outputPath });
 
   const broadcast = req.app.get('broadcast');
   if (!broadcast) {
@@ -634,7 +634,7 @@ router.post('/screenshot-full', async (req, res) => {
     const result = await makeBrowserRequest(
       broadcast,
       'browser-screenshot',
-      { tabId, fullPage: true },
+      { tabId, fullPage: true, outputPath },
       60000,
       'Full page screenshot timed out'
     );

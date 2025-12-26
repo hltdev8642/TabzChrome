@@ -16,6 +16,7 @@ export async function handleBrowserScreenshot(message: {
   tabId?: number
   selector?: string
   fullPage?: boolean
+  outputPath?: string
 }): Promise<void> {
   try {
     // Get target tab
@@ -46,11 +47,19 @@ export async function handleBrowserScreenshot(message: {
       dataUrl = await chrome.tabs.captureVisibleTab(targetTab.windowId!, { format: 'png' })
     }
 
-    // Generate filename
+    // Generate filename with optional custom path
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-    const filename = message.fullPage
-      ? `screenshot-full-${timestamp}.png`
-      : `screenshot-${timestamp}.png`
+    let filename: string
+    if (message.outputPath) {
+      // Use custom path (can include subdirectories)
+      filename = message.outputPath
+    } else {
+      // Default: organize into tabz/screenshots/ subdirectory
+      const baseName = message.fullPage
+        ? `screenshot-full-${timestamp}.png`
+        : `screenshot-${timestamp}.png`
+      filename = `tabz/screenshots/${baseName}`
+    }
 
     // Download using data URL directly (URL.createObjectURL not available in service workers)
     const downloadId = await new Promise<number>((resolve, reject) => {

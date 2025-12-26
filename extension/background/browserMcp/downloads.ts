@@ -255,11 +255,16 @@ export async function handleBrowserCaptureImage(message: {
     const blob = new Blob([byteArray], { type: 'image/png' })
     const blobUrl = URL.createObjectURL(blob)
 
-    // Generate filename
+    // Generate filename with optional custom path
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-    const filename = message.outputPath
-      ? message.outputPath.split(/[/\\]/).pop() || `captured-image-${timestamp}.png`
-      : `captured-image-${timestamp}.png`
+    let filename: string
+    if (message.outputPath) {
+      // Use custom path (can include subdirectories)
+      filename = message.outputPath
+    } else {
+      // Default: organize into tabz/images/ subdirectory
+      filename = `tabz/images/captured-image-${timestamp}.png`
+    }
 
     // Download the blob
     const downloadId = await new Promise<number>((resolve, reject) => {
