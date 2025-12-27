@@ -280,6 +280,34 @@ app.post('/api/audio/speak', async (req, res) => {
   });
 });
 
+// POST /api/audio/play - Play an audio file by URL (for soundboards, notifications, etc.)
+// Broadcasts directly to extension without TTS generation
+app.post('/api/audio/play', (req, res) => {
+  const {
+    url,
+    volume = 0.7,
+    priority = 'low'  // 'high' interrupts, 'low' can be skipped
+  } = req.body;
+
+  if (!url || typeof url !== 'string') {
+    return res.status(400).json({ success: false, error: 'Missing url parameter' });
+  }
+
+  // Broadcast to all WebSocket clients to play this audio
+  broadcast({
+    type: 'audio-play',
+    url: url,
+    volume: Math.max(0, Math.min(1, volume)),
+    priority: priority === 'high' ? 'high' : 'low'
+  });
+
+  res.json({
+    success: true,
+    message: 'Audio broadcast to extension',
+    url: url
+  });
+});
+
 // app.use('/api/workspace', workspaceRouter); // Archived - workspace-manager removed
 
 // TUI Tools endpoints

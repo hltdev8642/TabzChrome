@@ -163,18 +163,16 @@ export function useStatusTransitions({
 
       prevToolNamesRef.current.set(terminalId, currentToolKey)
 
-      // Subagent count changes (chipmunk voice for distinction)
+      // Subagent count changes
       if (audioSettings.events.subagents && currentSubagentCount !== prevSubagentCount) {
-        const chipmunkVoice = { pitch: '+50Hz', rate: '+15%' }
         if (currentSubagentCount > prevSubagentCount) {
           playAudio(
             `${currentSubagentCount} agent${currentSubagentCount > 1 ? 's' : ''} running`,
             session,
-            true,
-            chipmunkVoice
+            true
           )
         } else if (currentSubagentCount === 0 && prevSubagentCount > 0) {
-          playAudio('All agents complete', session, false, chipmunkVoice)
+          playAudio('All agents complete', session, false)
         }
       }
 

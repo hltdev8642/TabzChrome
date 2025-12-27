@@ -65,6 +65,10 @@ export const MCP_TOOLS: McpTool[] = [
   { id: 'tabz_get_displays', name: 'Get Displays', desc: 'Get monitor info for multi-monitor layouts', tokens: 1100 },
   { id: 'tabz_tile_windows', name: 'Tile Windows', desc: 'Auto-arrange windows in grid/splits', tokens: 1300 },
   { id: 'tabz_popout_terminal', name: 'Popout Terminal', desc: 'Pop sidebar to standalone popup window', tokens: 1000 },
+  // Audio (TTS via edge-tts)
+  { id: 'tabz_speak', name: 'Speak', desc: 'Text-to-speech announcement', tokens: 1200 },
+  { id: 'tabz_list_voices', name: 'List Voices', desc: 'Show available TTS voices', tokens: 600 },
+  { id: 'tabz_play_audio', name: 'Play Audio', desc: 'Play audio file by URL', tokens: 800 },
 ]
 
 // All tool IDs for reference

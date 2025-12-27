@@ -1,6 +1,6 @@
 # TabzChrome MCP Tools Reference
 
-TabzChrome provides 44 MCP tools for browser automation via Chrome Extension APIs.
+TabzChrome provides 47 MCP tools for browser automation via Chrome Extension APIs.
 
 ## Tool Categories
 
@@ -18,6 +18,7 @@ TabzChrome provides 44 MCP tools for browser automation via Chrome Extension API
 | **Network** | `tabz_enable_network_capture`, `tabz_get_network_requests`, `tabz_clear_network_requests` | Monitor API calls |
 | **Inspection** | `tabz_get_element`, `tabz_get_console_logs`, `tabz_get_page_info` | Debug, inspect HTML/CSS |
 | **Debugger** | `tabz_get_dom_tree`, `tabz_profile_performance`, `tabz_get_coverage` | DOM tree, metrics, code coverage (uses chrome.debugger) |
+| **Audio** | `tabz_speak`, `tabz_list_voices`, `tabz_play_audio` | TTS and audio file playback |
 
 ## Visual Feedback
 
@@ -78,7 +79,7 @@ mcp-cli call tabz/tabz_switch_tab '{"tabId": 1762556601}'
 
 ### All Tools Use Extension APIs
 
-All 44 tools work using Chrome Extension APIs only - no `--remote-debugging-port=9222` required:
+All 47 tools work using Chrome Extension APIs only - no `--remote-debugging-port=9222` required:
 - Tab management, downloads, bookmarks
 - Screenshots, click/fill, element inspection
 - Network capture, console logs, scripting

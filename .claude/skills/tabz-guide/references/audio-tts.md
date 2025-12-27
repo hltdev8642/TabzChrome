@@ -192,3 +192,36 @@ Header mute button (🔊/🔇) silences all audio regardless of profile settings
 **Wrong voice playing:**
 - Check profile overrides in Settings → Profiles → [profile]
 - "Random" voice assigns unique voice per terminal session
+
+## MCP Audio Tools
+
+Three MCP tools provide programmatic access to audio:
+
+### tabz_speak
+
+Speak text aloud using neural TTS. Respects user's audio settings.
+
+```bash
+mcp-cli call tabz/tabz_speak '{"text": "Build complete"}'
+mcp-cli call tabz/tabz_speak '{"text": "Error!", "priority": "high"}'
+mcp-cli call tabz/tabz_speak '{"text": "Hello", "voice": "en-GB-SoniaNeural"}'
+```
+
+### tabz_list_voices
+
+List available TTS voices.
+
+```bash
+mcp-cli call tabz/tabz_list_voices '{}'
+```
+
+### tabz_play_audio
+
+Play audio files by URL (MP3, WAV, OGG, etc.).
+
+```bash
+mcp-cli call tabz/tabz_play_audio '{"url": "http://localhost:8129/sounds/ding.mp3"}'
+mcp-cli call tabz/tabz_play_audio '{"url": "...", "volume": 0.5, "priority": "high"}'
+```
+
+**Serving audio files:** Place files in `backend/public/sounds/` to serve at `http://localhost:8129/sounds/<filename>`

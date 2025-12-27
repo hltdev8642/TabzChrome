@@ -331,6 +331,18 @@ function SidePanelTerminal() {
             }
           })
         }
+        // Play audio file directly (for soundboards, notifications, etc.)
+        // Skip in popout mode - sidebar handles all audio to prevent duplicates
+        if (message.data?.type === 'audio-play' && message.data?.url && !isPopoutMode) {
+          const audioData = message.data
+          const priority: AudioPriority = audioData.priority === 'high' ? 'high' : 'low'
+          // Use user's volume setting if available
+          chrome.storage.local.get(['audioSettings'], (result) => {
+            const settings = result.audioSettings as { volume?: number } || {}
+            const volume = audioData.volume ?? settings.volume ?? 0.7
+            playWithPriority(audioData.url, priority, volume)
+          })
+        }
       } else if (message.type === 'TERMINAL_OUTPUT') {
         // Terminal component will handle this
       } else if (message.type === 'PASTE_COMMAND') {

@@ -50,6 +50,9 @@ Quick reference for the browser MCP tools available to Claude Code.
 | `tabz_get_displays` | "monitors", "displays", "screens", "multi-monitor" | Get display/monitor info for multi-monitor layouts |
 | `tabz_tile_windows` | "tile windows", "arrange windows", "split windows" | Auto-arrange windows in grid/split layouts |
 | `tabz_popout_terminal` | "popout terminal", "terminal window", "detach terminal" | Pop out sidebar terminal to standalone popup window |
+| `tabz_speak` | "say", "announce", "speak", "read aloud", "TTS" | Speak text aloud using neural TTS (respects user audio settings) |
+| `tabz_list_voices` | "list voices", "TTS voices", "available voices" | List available neural TTS voices |
+| `tabz_play_audio` | "play sound", "play audio", "soundboard", "notification sound" | Play audio file by URL (MP3, WAV, etc.) |
 
 > **Note:** Most tools support a `tabId` parameter to target a specific tab. Get tab IDs from `tabz_list_tabs`.
 
@@ -1576,14 +1579,120 @@ When Claude starts working with a browser tab (e.g., taking screenshots, clickin
 
 ---
 
+## tabz_speak
+
+**Purpose:** Speak text aloud using neural text-to-speech.
+
+**Trigger phrases:**
+- "Say this out loud"
+- "Announce..."
+- "Read this to me"
+- "Speak..."
+
+**Parameters:**
+- `text` (required): The text to speak (max 3000 chars, markdown stripped automatically)
+- `voice` (optional): TTS voice (e.g., `en-US-AriaNeural`). Uses user's configured voice if not specified.
+- `rate` (optional): Speech rate (e.g., `+30%` faster, `-20%` slower)
+- `pitch` (optional): Voice pitch (e.g., `+50Hz` higher, `-100Hz` lower)
+- `priority` (optional): `high` interrupts current audio, `low` (default) may be skipped
+
+**Returns:**
+- Success confirmation with text preview
+
+**Example:**
+```javascript
+// Simple announcement
+{ text: "Build complete. Ready for next task." }
+
+// Urgent alert with custom settings
+{ text: "Error: 3 tests failed", priority: "high", pitch: "+50Hz" }
+
+// Use specific voice
+{ text: "Hello!", voice: "en-GB-SoniaNeural" }
+```
+
+**Notes:**
+- Uses Microsoft Edge neural TTS (high-quality voices)
+- Respects user's audio settings from TabzChrome dashboard
+- Audio plays through the browser sidebar
+
+---
+
+## tabz_list_voices
+
+**Purpose:** List available neural TTS voices for use with `tabz_speak`.
+
+**Trigger phrases:**
+- "What voices are available?"
+- "List TTS voices"
+- "Show available voices"
+
+**Parameters:** None
+
+**Returns:**
+- List of voice codes with descriptions organized by region (US, UK, AU)
+
+**Available voices include:**
+- `en-US-AndrewMultilingualNeural` - US Male, warm and confident
+- `en-US-EmmaMultilingualNeural` - US Female, cheerful and clear
+- `en-US-AriaNeural` - US Female, confident news-style
+- `en-GB-SoniaNeural` - UK Female, friendly
+- `en-GB-RyanNeural` - UK Male, friendly
+- `en-AU-NatashaNeural` - AU Female, friendly
+
+---
+
+## tabz_play_audio
+
+**Purpose:** Play an audio file through the browser.
+
+**Trigger phrases:**
+- "Play this sound"
+- "Play audio file"
+- "Trigger notification sound"
+- "Soundboard"
+
+**Parameters:**
+- `url` (required): URL of the audio file (MP3, WAV, OGG, etc.)
+  - Local: `http://localhost:8129/sounds/ding.mp3`
+  - Remote: `https://example.com/sound.mp3`
+- `volume` (optional): 0.0 to 1.0. Uses user's configured volume if not specified.
+- `priority` (optional): `high` interrupts current audio, `low` (default) may be skipped
+
+**Returns:**
+- Success confirmation with URL and volume info
+
+**Example:**
+```javascript
+// Play local sound
+{ url: "http://localhost:8129/sounds/success.mp3" }
+
+// Play at half volume
+{ url: "http://localhost:8129/sounds/notify.mp3", volume: 0.5 }
+
+// Urgent notification
+{ url: "http://localhost:8129/sounds/alert.mp3", priority: "high" }
+```
+
+**Serving audio files:**
+Place audio files in `backend/public/sounds/` to serve them at `http://localhost:8129/sounds/<filename>`
+
+**Use cases:**
+- Soundboards with custom sound effects
+- Notification sounds for task completion
+- Alert sounds for errors or warnings
+- Ambient sounds or music playback
+
+---
+
 ## Architecture
 
-All 44 MCP tools use **Chrome Extension APIs** exclusively (no CDP required since v1.2.0).
+All 47 MCP tools use **Chrome Extension APIs** exclusively (no CDP required since v1.2.0).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     EXTENSION-BASED ARCHITECTURE                     │
-│   All 44 tools: tabs, screenshots, clicks, network, windows, etc.    │
+│   All 47 tools: tabs, screenshots, clicks, network, windows, etc.    │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  Chrome Browser                                                      │

@@ -16,6 +16,7 @@
  * - debugger: tabz_get_dom_tree, tabz_profile_performance, tabz_get_coverage
  * - tabgroups: tabz_list_groups, tabz_create_group, tabz_update_group, tabz_add_to_group, tabz_ungroup_tabs, tabz_claude_group_add, tabz_claude_group_remove, tabz_claude_group_status
  * - windows: tabz_list_windows, tabz_create_window, tabz_update_window, tabz_close_window, tabz_get_displays, tabz_tile_windows, tabz_popout_terminal
+ * - audio: tabz_speak, tabz_list_voices, tabz_play_audio
  * - cookies: (future) tabz_check_auth, tabz_get_cookies
  * - history: (future) tabz_search_history
  *
@@ -38,12 +39,13 @@ import { registerBookmarkTools } from "./tools/bookmarks.js";
 import { registerDebuggerTools } from "./tools/debugger.js";
 import { registerTabGroupTools } from "./tools/tabGroups.js";
 import { registerWindowTools } from "./tools/windows.js";
+import { registerAudioTools } from "./tools/audio.js";
 
 // Backend URL (TabzChrome backend running in WSL)
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8129";
 
 // Default enabled tool groups (used if backend is not reachable)
-const DEFAULT_ENABLED_GROUPS = ['core', 'interaction', 'navigation', 'console', 'network', 'downloads', 'bookmarks', 'debugger', 'tabgroups', 'windows'];
+const DEFAULT_ENABLED_GROUPS = ['core', 'interaction', 'navigation', 'console', 'network', 'downloads', 'bookmarks', 'debugger', 'tabgroups', 'windows', 'audio'];
 
 // Tool group registration functions
 // Maps group names to their registration functions
@@ -93,6 +95,10 @@ const TOOL_GROUPS: Record<string, ToolGroupRegistrar> = {
   // Window management tools (Chrome windows API)
   windows: (server) => {
     registerWindowTools(server);      // tabz_list_windows, tabz_create_window, tabz_update_window, tabz_close_window, tabz_get_displays, tabz_tile_windows, tabz_popout_terminal
+  },
+  // Audio tools (TTS + playback)
+  audio: (server) => {
+    registerAudioTools(server);       // tabz_speak, tabz_list_voices, tabz_play_audio
   },
   // cookies: (server) => registerCookieTools(server),
   // history: (server) => registerHistoryTools(server),

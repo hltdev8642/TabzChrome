@@ -511,7 +511,7 @@ Install the `tabz-mcp` skill for guided browser automation. The skill dynamicall
 
 ### No Remote Debugging Required
 
-**All 44 MCP tools work using Chrome Extension APIs only!** No `--remote-debugging-port=9222` flag needed.
+**All 47 MCP tools work using Chrome Extension APIs only!** No `--remote-debugging-port=9222` flag needed.
 
 | Feature | Works Out of the Box |
 |---------|---------------------|

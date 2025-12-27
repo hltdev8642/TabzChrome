@@ -6,14 +6,14 @@
     "isEntry": true
   },
   "3d/3d-focus.html": {
-    "file": "assets/3d-focus-BcrK6ylo.js",
+    "file": "assets/3d-focus-CbzdbmNR.js",
     "name": "3d-focus",
     "src": "3d/3d-focus.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_terminal-backgrounds-P64U3As2.js",
-      "_globals-2IqJmWy0.js",
+      "_globals-CdyabROb.js",
       "_extends-CF3RwP-h.js"
     ]
   },
@@ -22,17 +22,17 @@
     "name": "extends"
   },
   "_globals-!~{008}~.js": {
-    "file": "assets/globals-DOXk3JMA.css",
+    "file": "assets/globals-CbYHxpyp.css",
     "src": "_globals-!~{008}~.js"
   },
-  "_globals-2IqJmWy0.js": {
-    "file": "assets/globals-2IqJmWy0.js",
+  "_globals-CdyabROb.js": {
+    "file": "assets/globals-CdyabROb.js",
     "name": "globals",
     "imports": [
       "_terminal-backgrounds-P64U3As2.js"
     ],
     "css": [
-      "assets/globals-DOXk3JMA.css"
+      "assets/globals-CbYHxpyp.css"
     ]
   },
   "_modulepreload-polyfill-B5Qt9EMX.js": {
@@ -43,15 +43,15 @@
     "file": "assets/terminal-backgrounds-P64U3As2.js",
     "name": "terminal-backgrounds"
   },
-  "_useDragDrop-DCb7T_yh.js": {
-    "file": "assets/useDragDrop-DCb7T_yh.js",
+  "_useDragDrop-BrTluZx7.js": {
+    "file": "assets/useDragDrop-BrTluZx7.js",
     "name": "useDragDrop",
     "imports": [
       "_terminal-backgrounds-P64U3As2.js"
     ]
   },
   "background/index.ts": {
-    "file": "assets/index.ts-B2_tqSVK.js",
+    "file": "assets/index.ts-Did0Hk9S.js",
     "name": "index.ts",
     "src": "background/index.ts",
     "isEntry": true
@@ -63,18 +63,18 @@
     "isEntry": true
   },
   "dashboard/index.html": {
-    "file": "assets/dashboard-C0Q5-srV.js",
+    "file": "assets/dashboard-Bc7PmkIY.js",
     "name": "dashboard",
     "src": "dashboard/index.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_terminal-backgrounds-P64U3As2.js",
-      "_useDragDrop-DCb7T_yh.js",
+      "_useDragDrop-BrTluZx7.js",
       "_extends-CF3RwP-h.js"
     ],
     "css": [
-      "assets/dashboard-4G4eIIOC.css"
+      "assets/dashboard-DqX4KFIQ.css"
     ]
   },
   "devtools/devtools.html": {
@@ -87,15 +87,15 @@
     ]
   },
   "sidepanel/sidepanel.html": {
-    "file": "assets/sidepanel.html-Cj2688Wf.js",
+    "file": "assets/sidepanel.html-9Il-8tjs.js",
     "name": "sidepanel.html",
     "src": "sidepanel/sidepanel.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_terminal-backgrounds-P64U3As2.js",
-      "_globals-2IqJmWy0.js",
-      "_useDragDrop-DCb7T_yh.js"
+      "_globals-CdyabROb.js",
+      "_useDragDrop-BrTluZx7.js"
     ]
   }
 }

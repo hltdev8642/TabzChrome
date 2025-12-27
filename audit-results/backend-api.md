@@ -29,7 +29,7 @@ The TabzChrome backend has **significant redundancy** in browser interaction API
 
 ### 1.1 MCP vs REST Overlap (CRITICAL)
 
-Both MCP and REST APIs provide **identical functionality** for browser operations. All 44 MCP tools have corresponding REST endpoints:
+Both MCP and REST APIs provide **identical functionality** for browser operations. All 46 MCP tools have corresponding REST endpoints:
 
 | Category | MCP Tools | REST Endpoints | Status |
 |----------|-----------|----------------|--------|

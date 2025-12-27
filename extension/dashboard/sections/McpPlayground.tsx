@@ -68,6 +68,10 @@ const MCP_TOOLS: McpTool[] = [
   { id: 'tabz_get_displays', name: 'Get Displays', desc: 'Get monitor info for multi-monitor layouts', tokens: 1100, category: 'Windows' },
   { id: 'tabz_tile_windows', name: 'Tile Windows', desc: 'Auto-arrange windows in grid/splits', tokens: 1300, category: 'Windows' },
   { id: 'tabz_popout_terminal', name: 'Popout Terminal', desc: 'Pop sidebar to standalone popup window', tokens: 1000, category: 'Windows' },
+  // Audio (TTS via edge-tts)
+  { id: 'tabz_speak', name: 'Speak', desc: 'Text-to-speech announcement', tokens: 1200, category: 'Audio' },
+  { id: 'tabz_list_voices', name: 'List Voices', desc: 'Show available TTS voices', tokens: 600, category: 'Audio' },
+  { id: 'tabz_play_audio', name: 'Play Audio', desc: 'Play audio file by URL', tokens: 800, category: 'Audio' },
 ]
 
 const CORE_TOOL_IDS = MCP_TOOLS.filter(t => t.locked).map(t => t.id)
