@@ -55,7 +55,8 @@ export type MessageType =
   | 'RETURN_FROM_3D'
   // Popout Mode
   | 'TERMINAL_POPPED_OUT'
-  | 'TERMINAL_RETURNED_FROM_POPOUT';
+  | 'TERMINAL_RETURNED_FROM_POPOUT'
+  | 'UNTRACK_POPOUT_WINDOW';
 
 export interface BaseMessage {
   type: MessageType;
@@ -329,6 +330,12 @@ export interface TerminalReturnedFromPopoutMessage extends BaseMessage {
   terminalId: string;
 }
 
+// Popout Mode - tell background to stop tracking a popout window (for "Return to Sidebar")
+export interface UntrackPopoutWindowMessage extends BaseMessage {
+  type: 'UNTRACK_POPOUT_WINDOW';
+  windowId: number;
+}
+
 export type ExtensionMessage =
   | InitialStateMessage
   | OpenSessionMessage
@@ -375,7 +382,8 @@ export type ExtensionMessage =
   | ReturnFrom3DMessage
   // Popout Mode
   | TerminalPoppedOutMessage
-  | TerminalReturnedFromPopoutMessage;
+  | TerminalReturnedFromPopoutMessage
+  | UntrackPopoutWindowMessage;
 
 // Helper function to send messages
 export function sendMessage(message: ExtensionMessage): Promise<any> {

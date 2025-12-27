@@ -17,6 +17,13 @@ For older versions (1.1.x, 1.0.x, and pre-public 2.x), see [CHANGELOG-archive.md
 
 ## [Unreleased]
 
+### Fixed
+- **Popout window close handling** - Closing a popout terminal window now properly:
+  - Removes the tab from sidebar (was stuck showing "Popped Out" placeholder)
+  - Detaches terminal to appear as ghost/orphan for respawning
+  - Uses reliable `chrome.windows.onRemoved` listener instead of unreliable `beforeunload` + `sendBeacon`
+  - "Return to Sidebar" button returns terminal without detaching
+
 ### Added
 - **Video/Image Background Support** - Set videos or images as terminal backgrounds:
   - Per-profile background media settings (image/video/none)

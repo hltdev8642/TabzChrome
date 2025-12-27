@@ -7,7 +7,8 @@ import type { ExtensionMessage } from '../shared/messaging'
 import {
   ws, connectedClients, broadcastToClients,
   pendingQueueCommand, pendingPasteCommand,
-  setPendingQueueCommand, setPendingPasteCommand
+  setPendingQueueCommand, setPendingPasteCommand,
+  popoutWindows
 } from './state'
 import { sendToWebSocket, updateBadge } from './websocket'
 import { addConsoleLog, getConsoleLogs, getConsoleLogCount } from './consoleCapture'
@@ -129,6 +130,11 @@ export function setupMessageHandlers(): void {
           type: 'TERMINAL_RETURNED_FROM_POPOUT',
           terminalId: message.terminalId,
         })
+        break
+
+      case 'UNTRACK_POPOUT_WINDOW':
+        // Stop tracking a popout window (for "Return to Sidebar" - don't detach on close)
+        popoutWindows.delete((message as any).windowId)
         break
 
       case 'CLOSE_SESSION':

@@ -1301,6 +1301,12 @@ function SidePanelTerminal() {
                           onClick={async () => {
                             // Close the popout window and return terminal to sidebar
                             if (session.popoutWindowId) {
+                              // Tell background to stop tracking this window BEFORE closing
+                              // This prevents the onRemoved listener from calling detach
+                              sendMessage({
+                                type: 'UNTRACK_POPOUT_WINDOW',
+                                windowId: session.popoutWindowId,
+                              })
                               try {
                                 await chrome.windows.remove(session.popoutWindowId)
                               } catch (e) {

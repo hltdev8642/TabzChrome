@@ -5,13 +5,14 @@
  * This file initializes all background worker modules and coordinates startup.
  */
 
-import { ws } from './state'
+import { ws, popoutWindows } from './state'
 import { connectWebSocket } from './websocket'
 import { initializeAlarms, setupAlarmListener } from './alarms'
 import { setupOmnibox } from './omnibox'
 import { setupMessageHandlers } from './messageHandlers'
 import { setupContextMenus, setupContextMenuListener } from './contextMenus'
 import { setupActionHandler, setupKeyboardHandler } from './keyboard'
+import { handlePopoutWindowClosed } from './browserMcp/windows'
 
 // Initialize background service worker
 console.log('Terminal Tabs background service worker starting...')
@@ -44,6 +45,14 @@ setTimeout(() => {
   console.log('Delayed context menu setup (for dev reload)')
   setupContextMenus()
 }, 100)
+
+// Listen for window close to clean up popout terminals
+// This is more reliable than beforeunload + sendBeacon in the popout window
+chrome.windows.onRemoved.addListener((windowId) => {
+  if (popoutWindows.has(windowId)) {
+    handlePopoutWindowClosed(windowId)
+  }
+})
 
 // Initialize WebSocket connection
 connectWebSocket()

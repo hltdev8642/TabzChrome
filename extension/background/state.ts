@@ -22,6 +22,10 @@ export const connectedClients = new Set<chrome.runtime.Port>()
 export let pendingQueueCommand: string | null = null // Goes to chat bar
 export let pendingPasteCommand: string | null = null // Goes directly to terminal
 
+// Track popout windows: windowId -> terminalId
+// Used to detect when popout windows close and trigger cleanup
+export const popoutWindows = new Map<number, string>()
+
 // State setters (needed because we can't export let and modify from other modules)
 export function setWs(newWs: WebSocket | null): void {
   ws = newWs

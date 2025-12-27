@@ -88,20 +88,11 @@ export function PopoutTerminalView({ terminalId }: PopoutTerminalViewProps) {
     return () => chrome.storage.onChanged.removeListener(handleStorageChange)
   }, [])
 
-  // Set up beforeunload handler to detach on window close
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (targetSession) {
-        // Use sendBeacon for reliable delivery on page unload
-        // POST /api/agents/:id/detach endpoint exists specifically for this use case
-        const url = `http://localhost:8129/api/agents/${targetSession.id}/detach`
-        navigator.sendBeacon(url, '')
-      }
-    }
-
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [targetSession])
+  // Note: Cleanup on popout close is now handled by chrome.windows.onRemoved
+  // listener in background/index.ts. This is more reliable than beforeunload + sendBeacon
+  // which often fails to fire on window close. The background listener will:
+  // 1. Clear poppedOut state in sidebar (via TERMINAL_RETURNED_FROM_POPOUT)
+  // 2. Call the detach API to make terminal an orphan (unless untracked by "Return to Sidebar")
 
   // Get effective profile for appearance
   const getEffectiveProfile = () => {

@@ -4,7 +4,7 @@
  */
 
 import { sendToWebSocket } from '../websocket'
-import { broadcastToClients } from '../state'
+import { broadcastToClients, popoutWindows } from '../state'
 
 // Window state enum (matches Chrome API)
 type WindowState = 'normal' | 'minimized' | 'maximized' | 'fullscreen'
@@ -409,6 +409,36 @@ export async function handleBrowserTileWindows(message: {
 }
 
 /**
+ * Handle popout window close - called from chrome.windows.onRemoved listener
+ * Cleans up state and optionally detaches the terminal
+ */
+export async function handlePopoutWindowClosed(windowId: number): Promise<void> {
+  const terminalId = popoutWindows.get(windowId)
+  if (!terminalId) return
+
+  // Remove from tracking
+  popoutWindows.delete(windowId)
+
+  console.log(`[Popout] Window ${windowId} closed, cleaning up terminal ${terminalId}`)
+
+  // Clear the poppedOut state in sidebar so it doesn't show the placeholder
+  broadcastToClients({
+    type: 'TERMINAL_RETURNED_FROM_POPOUT',
+    terminalId,
+  })
+
+  // Call the detach API to properly detach the terminal
+  // This is more reliable than the sendBeacon from PopoutTerminalView's beforeunload
+  try {
+    await fetch(`http://localhost:8129/api/agents/${terminalId}/detach`, {
+      method: 'POST',
+    })
+  } catch (err) {
+    console.warn('[Popout] Failed to detach terminal (backend may be down):', err)
+  }
+}
+
+/**
  * Pop out the sidepanel to a standalone popup window
  * This allows running terminals in separate windows without duplicate extension issues
  */
@@ -456,6 +486,9 @@ export async function handleBrowserPopoutTerminal(message: {
     // Notify sidepanel that this terminal is now in a popout window
     // Sidepanel will show a placeholder instead of rendering the terminal
     if (terminalId && newWindow.id) {
+      // Track the popout window so we can clean up when it closes
+      popoutWindows.set(newWindow.id, terminalId)
+
       broadcastToClients({
         type: 'TERMINAL_POPPED_OUT',
         terminalId,
