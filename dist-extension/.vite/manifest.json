@@ -6,14 +6,14 @@
     "isEntry": true
   },
   "3d/3d-focus.html": {
-    "file": "assets/3d-focus-C2FvyF4S.js",
+    "file": "assets/3d-focus-C56lt_m8.js",
     "name": "3d-focus",
     "src": "3d/3d-focus.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_terminal-backgrounds-P64U3As2.js",
-      "_globals-CK8UcmIO.js",
+      "_globals-B2t-6sXg.js",
       "_extends-CF3RwP-h.js"
     ]
   },
@@ -25,8 +25,8 @@
     "file": "assets/globals-BmmRhwhT.css",
     "src": "_globals-!~{008}~.js"
   },
-  "_globals-CK8UcmIO.js": {
-    "file": "assets/globals-CK8UcmIO.js",
+  "_globals-B2t-6sXg.js": {
+    "file": "assets/globals-B2t-6sXg.js",
     "name": "globals",
     "imports": [
       "_terminal-backgrounds-P64U3As2.js"
@@ -63,7 +63,7 @@
     "isEntry": true
   },
   "dashboard/index.html": {
-    "file": "assets/dashboard-CZUayLPR.js",
+    "file": "assets/dashboard-gsFFGXZ3.js",
     "name": "dashboard",
     "src": "dashboard/index.html",
     "isEntry": true,
@@ -87,14 +87,14 @@
     ]
   },
   "sidepanel/sidepanel.html": {
-    "file": "assets/sidepanel.html-IbK_s-__.js",
+    "file": "assets/sidepanel.html-BOaSyCnG.js",
     "name": "sidepanel.html",
     "src": "sidepanel/sidepanel.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_terminal-backgrounds-P64U3As2.js",
-      "_globals-CK8UcmIO.js",
+      "_globals-B2t-6sXg.js",
       "_useDragDrop-D4IaLD2B.js"
     ]
   }

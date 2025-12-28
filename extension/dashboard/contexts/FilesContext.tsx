@@ -354,6 +354,7 @@ export function FilesProvider({ children }: { children: ReactNode }) {
 
   // Check for file path from URL hash (e.g., from "Open Reference" context menu)
   // URL format: dashboard/index.html#/files?path=/path/to/file
+  // For directories: dashboard/index.html#/files?path=/path/to/dir&dir=true
   useEffect(() => {
     const handleHashPath = () => {
       const hash = window.location.hash
@@ -362,11 +363,17 @@ export function FilesProvider({ children }: { children: ReactNode }) {
         if (queryString) {
           const params = new URLSearchParams(queryString)
           const filePath = params.get('path')
+          const isDir = params.get('dir') === 'true'
           if (filePath) {
             // Clear the query part but keep #/files for navigation
             window.history.replaceState({}, '', window.location.pathname + '#/files')
-            // Open the file with pin=true so it stays open
-            openFile(filePath, true)
+            if (isDir) {
+              // Navigate to directory in file tree
+              setFileTreePath(filePath)
+            } else {
+              // Open the file with pin=true so it stays open
+              openFile(filePath, true)
+            }
           }
         }
       }
@@ -378,7 +385,7 @@ export function FilesProvider({ children }: { children: ReactNode }) {
     // Listen for hash changes (e.g., from Profiles page reference links)
     window.addEventListener('hashchange', handleHashPath)
     return () => window.removeEventListener('hashchange', handleHashPath)
-  }, []) // openFile is stable
+  }, []) // openFile and setFileTreePath are stable
 
   return (
     <FilesContext.Provider value={{

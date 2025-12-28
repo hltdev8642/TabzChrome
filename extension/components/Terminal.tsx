@@ -379,8 +379,12 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
               // Open in dashboard Files page
               const extensionId = chrome?.runtime?.id
               if (extensionId) {
+                // Detect if path is likely a directory (no file extension in last segment)
+                const lastSegment = pathWithoutLineNum.split('/').pop() || ''
+                const hasExtension = lastSegment.includes('.') && !lastSegment.startsWith('.')
+                const dirParam = hasExtension ? '' : '&dir=true'
                 window.open(
-                  `chrome-extension://${extensionId}/dashboard/index.html#/files?path=${encodeURIComponent(pathWithoutLineNum)}`,
+                  `chrome-extension://${extensionId}/dashboard/index.html#/files?path=${encodeURIComponent(pathWithoutLineNum)}${dirParam}`,
                   '_blank'
                 )
               }
