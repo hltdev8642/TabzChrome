@@ -29,6 +29,7 @@ curl -X POST http://localhost:8129/api/spawn \
   -H "X-Auth-Token: $TOKEN" \
   -d '{"name": "Worker", "workingDir": "~/projects", "command": "claude"}'
 ```
+[Paste Spawn Example](tabz:paste?text=TOKEN%3D%24%28cat%20%2Ftmp%2Ftabz-auth-token%29%0Acurl%20-X%20POST%20http%3A%2F%2Flocalhost%3A8129%2Fapi%2Fspawn%20%5C%0A%20%20-H%20%22Content-Type%3A%20application%2Fjson%22%20%5C%0A%20%20-H%20%22X-Auth-Token%3A%20%24TOKEN%22%20%5C%0A%20%20-d%20%27%7B%22name%22%3A%20%22Worker%22%2C%20%22workingDir%22%3A%20%22~%2Fprojects%22%2C%20%22command%22%3A%20%22claude%22%7D%27)
 
 **Parameters:**
 - `name` - Display name (default: "Claude Terminal")
@@ -45,6 +46,7 @@ Health check (no auth required).
 curl http://localhost:8129/api/health
 # Returns: uptime, memory, version, Node.js version, platform
 ```
+[Paste Health Check](tabz:paste?text=curl%20http%3A%2F%2Flocalhost%3A8129%2Fapi%2Fhealth)
 
 ---
 
@@ -56,6 +58,7 @@ List all active terminals.
 curl http://localhost:8129/api/agents
 # Returns: data[] with id, name, state, sessionName
 ```
+[Paste List Agents](tabz:paste?text=curl%20http%3A%2F%2Flocalhost%3A8129%2Fapi%2Fagents)
 
 ---
 
@@ -66,6 +69,7 @@ Kill a terminal by ID.
 ```bash
 curl -X DELETE http://localhost:8129/api/agents/ctt-MyTerminal-abc123
 ```
+[Paste Delete Example](tabz:paste?text=curl%20-X%20DELETE%20http%3A%2F%2Flocalhost%3A8129%2Fapi%2Fagents%2Fctt-MyTerminal-abc123)
 
 ---
 
@@ -104,6 +108,7 @@ Capture full terminal scrollback as text.
 curl http://localhost:8129/api/tmux/sessions/ctt-Claude-abc123/capture
 # Returns: content, metadata (workingDir, gitBranch, timestamp)
 ```
+[Paste Capture Example](tabz:paste?text=curl%20http%3A%2F%2Flocalhost%3A8129%2Fapi%2Ftmux%2Fsessions%2Fctt-Claude-abc123%2Fcapture)
 
 ---
 
@@ -121,6 +126,7 @@ curl -X POST http://localhost:8129/api/audio/speak \
     "volume": 0.8
   }'
 ```
+[Paste TTS Example](tabz:paste?text=curl%20-X%20POST%20http%3A%2F%2Flocalhost%3A8129%2Fapi%2Faudio%2Fspeak%20%5C%0A%20%20-H%20%22Content-Type%3A%20application%2Fjson%22%20%5C%0A%20%20-d%20%27%7B%22text%22%3A%20%22Hello%2C%20this%20is%20a%20test%22%2C%20%22voice%22%3A%20%22en-US-AndrewMultilingualNeural%22%7D%27)
 
 ---
 

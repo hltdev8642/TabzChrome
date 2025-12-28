@@ -34,6 +34,8 @@ claude -p --output-format json "explain this"
 claude -p --output-format stream-json "explain this"
 ```
 
+[Text Output](tabz:paste?text=claude%20-p%20%22explain%20this%22) | [JSON Output](tabz:paste?text=claude%20-p%20--output-format%20json%20%22explain%20this%22) | [Stream JSON](tabz:paste?text=claude%20-p%20--output-format%20stream-json%20%22explain%20this%22)
+
 ## Tool Control
 
 ```bash
@@ -47,6 +49,8 @@ claude --disallowed-tools "Edit Write"
 claude -p --tools ""
 ```
 
+[Git Only Tools](tabz:paste?text=claude%20--allowed-tools%20%22Bash%28git%3A%2A%29%20Read%22) | [No Edit/Write](tabz:paste?text=claude%20--disallowed-tools%20%22Edit%20Write%22)
+
 ## Agents & System Prompts
 
 ```bash
@@ -59,6 +63,8 @@ claude --system-prompt "You are a code reviewer"
 # Append to default prompt
 claude --append-system-prompt "Focus on security"
 ```
+
+[Code Reviewer](tabz:paste?text=claude%20--system-prompt%20%22You%20are%20a%20code%20reviewer%22) | [Security Focus](tabz:paste?text=claude%20--append-system-prompt%20%22Focus%20on%20security%22)
 
 ## Session Management
 

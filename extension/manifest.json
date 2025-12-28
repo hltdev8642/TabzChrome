@@ -134,7 +134,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["spawn-options.json", "profiles.json", "icons/tabz-logo-light.png"],
+      "resources": ["profiles.json", "icons/tabz-logo-light.png"],
       "matches": [
         "https://github.com/*",
         "https://gitlab.com/*",

@@ -1,6 +1,6 @@
 {
   "../../../../../@crx/manifest": {
-    "file": "assets/crx-manifest.js-CF8z79Tw.js",
+    "file": "assets/crx-manifest.js-6e7BOZGO.js",
     "name": "crx-manifest.js",
     "src": "../../../../../@crx/manifest",
     "isEntry": true
@@ -63,7 +63,7 @@
     "isEntry": true
   },
   "dashboard/index.html": {
-    "file": "assets/dashboard-DqegTYez.js",
+    "file": "assets/dashboard-2LmaxIIA.js",
     "name": "dashboard",
     "src": "dashboard/index.html",
     "isEntry": true,

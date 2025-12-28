@@ -69,6 +69,7 @@ curl -X POST http://localhost:8129/api/spawn \
   -H "X-Auth-Token: $TOKEN" \
   -d '{"name": "Claude Worker", "workingDir": "~/projects", "command": "claude"}'
 ```
+[Paste Spawn Example](tabz:paste?text=TOKEN%3D%24%28cat%20%2Ftmp%2Ftabz-auth-token%29%0Acurl%20-X%20POST%20http%3A%2F%2Flocalhost%3A8129%2Fapi%2Fspawn%20%5C%0A%20%20-H%20%22Content-Type%3A%20application%2Fjson%22%20%5C%0A%20%20-H%20%22X-Auth-Token%3A%20%24TOKEN%22%20%5C%0A%20%20-d%20%27%7B%22name%22%3A%20%22Claude%20Worker%22%2C%20%22workingDir%22%3A%20%22~%2Fprojects%22%2C%20%22command%22%3A%20%22claude%22%7D%27)
 
 ---
 
@@ -79,6 +80,7 @@ Health check endpoint (no auth required).
 ```bash
 curl http://localhost:8129/api/health
 ```
+[Paste Health Check](tabz:paste?text=curl%20http%3A%2F%2Flocalhost%3A8129%2Fapi%2Fhealth)
 
 ---
 
@@ -89,6 +91,7 @@ List all active terminals.
 ```bash
 curl http://localhost:8129/api/agents
 ```
+[Paste List Agents](tabz:paste?text=curl%20http%3A%2F%2Flocalhost%3A8129%2Fapi%2Fagents)
 
 ---
 
@@ -99,6 +102,7 @@ Kill a terminal by ID.
 ```bash
 curl -X DELETE http://localhost:8129/api/agents/ctt-MyTerminal-a1b2c3d4
 ```
+[Paste Delete Example](tabz:paste?text=curl%20-X%20DELETE%20http%3A%2F%2Flocalhost%3A8129%2Fapi%2Fagents%2Fctt-MyTerminal-a1b2c3d4)
 
 ---
 
@@ -195,6 +199,7 @@ Capture full terminal scrollback as text. Used by the "View as Text" feature.
 ```bash
 curl http://localhost:8129/api/tmux/sessions/ctt-Claude-abc123/capture
 ```
+[Paste Capture Example](tabz:paste?text=curl%20http%3A%2F%2Flocalhost%3A8129%2Fapi%2Ftmux%2Fsessions%2Fctt-Claude-abc123%2Fcapture)
 
 **Notes:**
 - ANSI escape codes are stripped for clean text output

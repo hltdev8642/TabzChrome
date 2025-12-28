@@ -15,21 +15,35 @@ import { Separator } from '../components/ui/separator'
 import { getLocal, SyncedSession, getActiveSessionCount } from '../shared/storage'
 import { sendMessage } from '../shared/messaging'
 import { formatTimestamp } from '../shared/utils'
-import spawnOptionsData from '../spawn-options.json'
+import type { Profile } from '../components/SettingsModal'
 import '../styles/globals.css'
 
-interface SpawnOption {
-  label: string
-  command: string
-  terminalType: string
-  icon: string
-  description: string
+// Helper to derive an icon from profile name/themeName
+function getProfileIcon(profile: Profile): string {
+  const name = profile.name.toLowerCase()
+  const theme = (profile.themeName || '').toLowerCase()
+
+  // Map common profile names to icons
+  if (name.includes('default')) return '\uD83D\uDCBB' // computer
+  if (name.includes('project')) return '\uD83D\uDCC1' // folder
+  if (name.includes('log')) return '\uD83D\uDCDC' // scroll
+  if (name.includes('git') || name.includes('lazygit')) return '\uD83C\uDF3F' // herb
+  if (name.includes('vim') || name.includes('nvim')) return '\u270F\uFE0F' // pencil
+  if (name.includes('htop') || name.includes('monitor')) return '\uD83D\uDCCA' // chart
+  if (name.includes('large')) return '\uD83D\uDD0D' // magnifying glass
+
+  // Map theme names to icons
+  if (theme.includes('dracula')) return '\uD83E\uDDDB' // vampire
+  if (theme.includes('matrix')) return '\uD83E\uDE9E' // lotus (close to matrix green)
+  if (theme.includes('ocean')) return '\uD83C\uDF0A' // wave
+
+  return '\u2699\uFE0F' // gear (default)
 }
 
 function ExtensionPopup() {
   const [recentSessions, setRecentSessions] = useState<SyncedSession[]>([])
   const [activeSessionCount, setActiveSessionCount] = useState(0)
-  const [spawnOptions, setSpawnOptions] = useState<SpawnOption[]>([])
+  const [profiles, setProfiles] = useState<Profile[]>([])
   const [searchValue, setSearchValue] = useState('')
 
   useEffect(() => {
@@ -46,9 +60,27 @@ function ExtensionPopup() {
       setActiveSessionCount(count)
     })
 
-    // Load spawn options from imported JSON
-    const options = spawnOptionsData.spawnOptions || []
-    setSpawnOptions(options)
+    // Load profiles from Chrome storage (or profiles.json on first run)
+    chrome.storage.local.get(['profiles'], async (result) => {
+      if (result.profiles && Array.isArray(result.profiles) && result.profiles.length > 0) {
+        setProfiles(result.profiles)
+      } else {
+        // Initialize profiles from profiles.json on first load
+        try {
+          const url = chrome.runtime.getURL('profiles.json')
+          const response = await fetch(url)
+          const data = await response.json()
+          setProfiles(data.profiles || [])
+          // Save to storage so they persist
+          chrome.storage.local.set({
+            profiles: data.profiles,
+            defaultProfile: data.defaultProfile || 'default'
+          })
+        } catch (error) {
+          console.error('[Popup] Failed to load default profiles:', error)
+        }
+      }
+    })
   }, [])
 
   const handleSessionSelect = (sessionName: string) => {
@@ -59,11 +91,11 @@ function ExtensionPopup() {
     window.close() // Close popup
   }
 
-  const handleSpawn = (spawnOption: SpawnOption) => {
+  const handleSpawn = (profile: Profile) => {
     sendMessage({
       type: 'SPAWN_TERMINAL',
-      spawnOption: spawnOption.terminalType,
-      command: spawnOption.command,
+      profile: profile,
+      command: profile.command,
     })
     window.close()
   }
@@ -102,10 +134,11 @@ function ExtensionPopup() {
     }
   }
 
-  // Filter spawn options based on search
-  const filteredSpawnOptions = spawnOptions.filter(option =>
-    option.label.toLowerCase().includes(searchValue.toLowerCase()) ||
-    option.description.toLowerCase().includes(searchValue.toLowerCase())
+  // Filter profiles based on search
+  const filteredProfiles = profiles.filter(profile =>
+    profile.name.toLowerCase().includes(searchValue.toLowerCase()) ||
+    (profile.command && profile.command.toLowerCase().includes(searchValue.toLowerCase())) ||
+    (profile.category && profile.category.toLowerCase().includes(searchValue.toLowerCase()))
   )
 
   const filteredRecentSessions = recentSessions.filter(session =>
@@ -185,17 +218,17 @@ function ExtensionPopup() {
               </div>
             </CommandItem>
 
-            {filteredSpawnOptions.slice(0, 8).map(option => (
+            {filteredProfiles.slice(0, 8).map(profile => (
               <CommandItem
-                key={option.terminalType}
-                value={option.label}
-                onSelect={() => handleSpawn(option)}
+                key={profile.id}
+                value={profile.name}
+                onSelect={() => handleSpawn(profile)}
               >
-                <span className="mr-2 text-lg">{option.icon}</span>
+                <span className="mr-2 text-lg">{getProfileIcon(profile)}</span>
                 <div className="flex-1">
-                  <div className="font-medium">{option.label}</div>
+                  <div className="font-medium">{profile.name}</div>
                   <div className="text-xs text-muted-foreground">
-                    {option.description}
+                    {profile.command || profile.workingDir || 'Default bash terminal'}
                   </div>
                 </div>
               </CommandItem>

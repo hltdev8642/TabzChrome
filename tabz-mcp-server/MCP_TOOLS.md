@@ -63,10 +63,10 @@ Quick reference for the browser MCP tools available to Claude Code.
 **Purpose:** Get information about the current browser page.
 
 **Trigger phrases:**
-- "What page am I looking at?"
-- "What's the current URL?"
-- "What tab is open?"
-- "What site am I on?"
+- [What page am I looking at?](tabz:paste?text=What%20page%20am%20I%20looking%20at%3F)
+- [What's the current URL?](tabz:paste?text=What%27s%20the%20current%20URL%3F)
+- [What tab is open?](tabz:paste?text=What%20tab%20is%20open%3F)
+- [What site am I on?](tabz:paste?text=What%20site%20am%20I%20on%3F)
 
 **Parameters:**
 - `tabId` (optional): Specific tab ID to query. Defaults to active tab.
@@ -85,11 +85,11 @@ Quick reference for the browser MCP tools available to Claude Code.
 **Purpose:** Get console output (log, warn, error, info, debug) from browser tabs.
 
 **Trigger phrases:**
-- "Show me the console logs"
-- "Are there any errors in the browser?"
-- "Check for JavaScript errors"
-- "What's in the console?"
-- "Debug the page"
+- [Show me the console logs](tabz:paste?text=Show%20me%20the%20console%20logs)
+- [Are there any errors in the browser?](tabz:paste?text=Are%20there%20any%20errors%20in%20the%20browser%3F)
+- [Check for JavaScript errors](tabz:paste?text=Check%20for%20JavaScript%20errors)
+- [What's in the console?](tabz:paste?text=What%27s%20in%20the%20console%3F)
+- [Debug the page](tabz:paste?text=Debug%20the%20page)
 
 **Parameters:**
 - `level`: Filter by level - `all`, `log`, `info`, `warn`, `error`, `debug`
@@ -109,12 +109,12 @@ Quick reference for the browser MCP tools available to Claude Code.
 **Purpose:** Execute JavaScript code in the browser tab.
 
 **Trigger phrases:**
-- "Run this script in the browser"
-- "Get the page title"
-- "Click the button"
-- "Extract data from the page"
-- "Check if element exists"
-- "Get the DOM"
+- [Run this script in the browser](tabz:paste?text=Run%20this%20script%20in%20the%20browser)
+- [Get the page title](tabz:paste?text=Get%20the%20page%20title)
+- [Click the button](tabz:paste?text=Click%20the%20button)
+- [Extract data from the page](tabz:paste?text=Extract%20data%20from%20the%20page)
+- [Check if element exists](tabz:paste?text=Check%20if%20element%20exists)
+- [Get the DOM](tabz:paste?text=Get%20the%20DOM)
 
 **Parameters:**
 - `code` (required): JavaScript code to execute
@@ -154,15 +154,15 @@ JSON.stringify(localStorage)
 **Purpose:** Capture a screenshot of the current viewport (what's visible on screen).
 
 **When to use:**
-- "Screenshot my view"
-- "What do I see right now"
-- "Screenshot that button" (with selector)
-- "Capture current viewport"
+- [Screenshot my view](tabz:paste?text=Screenshot%20my%20view)
+- [What do I see right now](tabz:paste?text=What%20do%20I%20see%20right%20now)
+- [Screenshot that button](tabz:paste?text=Screenshot%20that%20button) (with selector)
+- [Capture current viewport](tabz:paste?text=Capture%20current%20viewport)
 
 **When to use `tabz_screenshot_full` instead:**
-- "Screenshot this page"
-- "Capture the entire page"
-- "Show me the whole page"
+- [Screenshot this page](tabz:paste?text=Screenshot%20this%20page)
+- [Capture the entire page](tabz:paste?text=Capture%20the%20entire%20page)
+- [Show me the whole page](tabz:paste?text=Show%20me%20the%20whole%20page)
 
 **Parameters:**
 - `selector` (optional): CSS selector for a specific element to screenshot
@@ -195,16 +195,16 @@ JSON.stringify(localStorage)
 **Purpose:** Capture the entire scrollable page in one image.
 
 **When to use:**
-- "Screenshot this page"
-- "Capture the entire page"
-- "Show me the whole page"
-- "Take a full page screenshot"
+- [Screenshot this page](tabz:paste?text=Screenshot%20this%20page)
+- [Capture the entire page](tabz:paste?text=Capture%20the%20entire%20page)
+- [Show me the whole page](tabz:paste?text=Show%20me%20the%20whole%20page)
+- [Take a full page screenshot](tabz:paste?text=Take%20a%20full%20page%20screenshot)
 - First-time page exploration (recommended - avoids scroll-and-screenshot)
 
 **When to use `tabz_screenshot` instead:**
-- "Screenshot my view"
-- "What's visible right now"
-- "Screenshot that button" (with selector)
+- [Screenshot my view](tabz:paste?text=Screenshot%20my%20view)
+- [What's visible right now](tabz:paste?text=What%27s%20visible%20right%20now)
+- [Screenshot that button](tabz:paste?text=Screenshot%20that%20button) (with selector)
 
 **Parameters:**
 - `outputPath` (optional): Custom save path (default: ~/ai-images/screenshot-{timestamp}.png)
@@ -235,10 +235,10 @@ JSON.stringify(localStorage)
 **Purpose:** Download an image from the browser page and save to local disk. Works with AI-generated images from ChatGPT, Copilot, DALL-E, and similar tools.
 
 **Trigger phrases:**
-- "Download that image"
-- "Save the image"
-- "Get the picture from the page"
-- "Download the AI image"
+- [Download that image](tabz:paste?text=Download%20that%20image)
+- [Save the image](tabz:paste?text=Save%20the%20image)
+- [Get the picture from the page](tabz:paste?text=Get%20the%20picture%20from%20the%20page)
+- [Download the AI image](tabz:paste?text=Download%20the%20AI%20image)
 
 **Parameters:**
 - `selector` (optional): CSS selector for an `<img>` element or element with background-image
@@ -285,10 +285,10 @@ The tool automatically extracts full image URLs (including auth tokens) from AI 
 **Purpose:** List all open browser tabs with **accurate active tab detection**.
 
 **Trigger phrases:**
-- "What tabs are open?"
-- "List all tabs"
-- "Show me the open tabs"
-- "Which tab am I on?"
+- [What tabs are open?](tabz:paste?text=What%20tabs%20are%20open%3F)
+- [List all tabs](tabz:paste?text=List%20all%20tabs)
+- [Show me the open tabs](tabz:paste?text=Show%20me%20the%20open%20tabs)
+- [Which tab am I on?](tabz:paste?text=Which%20tab%20am%20I%20on%3F)
 
 **Parameters:**
 - `response_format`: `markdown` (default) or `json`
@@ -339,9 +339,9 @@ Unlike CDP-only solutions, this tool uses the Chrome Extension API to detect the
 **Purpose:** Switch to a specific browser tab.
 
 **Trigger phrases:**
-- "Switch to tab 2"
-- "Go to the other tab"
-- "Change to that tab"
+- [Switch to tab 2](tabz:paste?text=Switch%20to%20tab%202)
+- [Go to the other tab](tabz:paste?text=Go%20to%20the%20other%20tab)
+- [Change to that tab](tabz:paste?text=Change%20to%20that%20tab)
 
 **Parameters:**
 - `tabId` (required): The Chrome tab ID to switch to (from tabz_list_tabs)
@@ -362,9 +362,9 @@ Unlike CDP-only solutions, this tool uses the Chrome Extension API to detect the
 **Purpose:** Assign a custom name to a browser tab.
 
 **Trigger phrases:**
-- "Rename tab 0 to My App"
-- "Name this tab"
-- "Label the GitHub tab"
+- [Rename tab 0 to My App](tabz:paste?text=Rename%20tab%200%20to%20My%20App)
+- [Name this tab](tabz:paste?text=Name%20this%20tab)
+- [Label the GitHub tab](tabz:paste?text=Label%20the%20GitHub%20tab)
 
 **Parameters:**
 - `tabId` (required): The tab ID to rename (from tabz_list_tabs)
@@ -398,9 +398,9 @@ Unlike CDP-only solutions, this tool uses the Chrome Extension API to detect the
 **Purpose:** Click an element on the page.
 
 **Trigger phrases:**
-- "Click the submit button"
-- "Press the login button"
-- "Click on that link"
+- [Click the submit button](tabz:paste?text=Click%20the%20submit%20button)
+- [Press the login button](tabz:paste?text=Press%20the%20login%20button)
+- [Click on that link](tabz:paste?text=Click%20on%20that%20link)
 
 **Parameters:**
 - `selector` (required): CSS selector for the element to click
@@ -433,9 +433,9 @@ Unlike CDP-only solutions, this tool uses the Chrome Extension API to detect the
 **Purpose:** Fill an input field with text.
 
 **Trigger phrases:**
-- "Fill in the email field"
-- "Type my username"
-- "Enter text in the search box"
+- [Fill in the email field](tabz:paste?text=Fill%20in%20the%20email%20field)
+- [Type my username](tabz:paste?text=Type%20my%20username)
+- [Enter text in the search box](tabz:paste?text=Enter%20text%20in%20the%20search%20box)
 
 **Parameters:**
 - `selector` (required): CSS selector for the input field
@@ -469,11 +469,11 @@ Unlike CDP-only solutions, this tool uses the Chrome Extension API to detect the
 **Purpose:** Get detailed information about a DOM element for CSS debugging or recreation.
 
 **Trigger phrases:**
-- "Inspect that element"
-- "What styles does this have?"
-- "Get the CSS for that card"
-- "How is this element styled?"
-- "I want to recreate this component"
+- [Inspect that element](tabz:paste?text=Inspect%20that%20element)
+- [What styles does this have?](tabz:paste?text=What%20styles%20does%20this%20have%3F)
+- [Get the CSS for that card](tabz:paste?text=Get%20the%20CSS%20for%20that%20card)
+- [How is this element styled?](tabz:paste?text=How%20is%20this%20element%20styled%3F)
+- [I want to recreate this component](tabz:paste?text=I%20want%20to%20recreate%20this%20component)
 
 **Parameters:**
 - `selector` (required): CSS selector for the element
@@ -533,10 +533,10 @@ Unlike CDP-only solutions, this tool uses the Chrome Extension API to detect the
 **Purpose:** Open a URL in the browser (supports allowed domains only).
 
 **Trigger phrases:**
-- "Open GitHub repo"
-- "Navigate to localhost"
-- "Open my Vercel app"
-- "Go to that URL"
+- [Open GitHub repo](tabz:paste?text=Open%20GitHub%20repo)
+- [Navigate to localhost](tabz:paste?text=Navigate%20to%20localhost)
+- [Open my Vercel app](tabz:paste?text=Open%20my%20Vercel%20app)
+- [Go to that URL](tabz:paste?text=Go%20to%20that%20URL)
 
 **Parameters:**
 - `url` (required): URL to open (must be from allowed domains)
@@ -597,10 +597,10 @@ Only whitelisted domains can be opened to prevent abuse. Cannot open arbitrary w
 **Purpose:** Enable network request monitoring for the current browser tab.
 
 **Trigger phrases:**
-- "Start capturing network requests"
-- "Enable network monitoring"
-- "Monitor API calls"
-- "Watch network traffic"
+- [Start capturing network requests](tabz:paste?text=Start%20capturing%20network%20requests)
+- [Enable network monitoring](tabz:paste?text=Enable%20network%20monitoring)
+- [Monitor API calls](tabz:paste?text=Monitor%20API%20calls)
+- [Watch network traffic](tabz:paste?text=Watch%20network%20traffic)
 
 **Parameters:**
 - `tabId` (optional): Specific tab ID to enable capture for. Defaults to current tab.
@@ -627,10 +627,10 @@ Only whitelisted domains can be opened to prevent abuse. Cannot open arbitrary w
 **Purpose:** List captured network requests (XHR, fetch, etc.) from browser pages.
 
 **Trigger phrases:**
-- "Show network requests"
-- "What API calls were made?"
-- "Find failed requests"
-- "Show all XHR requests"
+- [Show network requests](tabz:paste?text=Show%20network%20requests)
+- [What API calls were made?](tabz:paste?text=What%20API%20calls%20were%20made%3F)
+- [Find failed requests](tabz:paste?text=Find%20failed%20requests)
+- [Show all XHR requests](tabz:paste?text=Show%20all%20XHR%20requests)
 
 **Parameters:**
 - `urlPattern` (optional): Filter by URL pattern (regex or substring). Examples: `"api/"`, `"\\.json$"`, `"graphql"`
@@ -677,9 +677,9 @@ Only whitelisted domains can be opened to prevent abuse. Cannot open arbitrary w
 **Purpose:** Clear all captured network requests.
 
 **Trigger phrases:**
-- "Clear network requests"
-- "Reset captured requests"
-- "Start fresh with network monitoring"
+- [Clear network requests](tabz:paste?text=Clear%20network%20requests)
+- [Reset captured requests](tabz:paste?text=Reset%20captured%20requests)
+- [Start fresh with network monitoring](tabz:paste?text=Start%20fresh%20with%20network%20monitoring)
 
 **Parameters:**
 None
@@ -696,9 +696,9 @@ Confirmation that requests were cleared.
 **Purpose:** Download any URL to disk using Chrome's downloads API.
 
 **Trigger phrases:**
-- "Download this file"
-- "Download URL to disk"
-- "Save file from URL"
+- [Download this file](tabz:paste?text=Download%20this%20file)
+- [Download URL to disk](tabz:paste?text=Download%20URL%20to%20disk)
+- [Save file from URL](tabz:paste?text=Save%20file%20from%20URL)
 
 **Parameters:**
 - `url` (required): URL of the file to download
@@ -730,9 +730,9 @@ Both Windows and WSL paths for cross-platform compatibility:
 **Purpose:** List recent downloads with status and progress.
 
 **Trigger phrases:**
-- "List downloads"
-- "Show download status"
-- "What files downloaded?"
+- [List downloads](tabz:paste?text=List%20downloads)
+- [Show download status](tabz:paste?text=Show%20download%20status)
+- [What files downloaded?](tabz:paste?text=What%20files%20downloaded%3F)
 
 **Parameters:**
 - `limit` (optional): Max results (1-100, default: 20)
@@ -749,8 +749,8 @@ List of downloads with ID, filename, status, size, and paths.
 **Purpose:** Cancel an in-progress download.
 
 **Trigger phrases:**
-- "Cancel download"
-- "Stop downloading"
+- [Cancel download](tabz:paste?text=Cancel%20download)
+- [Stop downloading](tabz:paste?text=Stop%20downloading)
 
 **Parameters:**
 - `downloadId` (required): Download ID from `tabz_get_downloads`
@@ -765,10 +765,10 @@ Confirmation of cancellation.
 **Purpose:** Save the current browser page as an MHTML file for offline analysis.
 
 **Trigger phrases:**
-- "Save this page"
-- "Archive this documentation"
-- "Save page for offline"
-- "Capture page as MHTML"
+- [Save this page](tabz:paste?text=Save%20this%20page)
+- [Archive this documentation](tabz:paste?text=Archive%20this%20documentation)
+- [Save page for offline](tabz:paste?text=Save%20page%20for%20offline)
+- [Capture page as MHTML](tabz:paste?text=Capture%20page%20as%20MHTML)
 
 **Parameters:**
 - `tabId` (optional): Tab ID to save. Defaults to active tab.
@@ -813,9 +813,9 @@ MHTML (MIME HTML) bundles the complete webpage into a single file:
 **Purpose:** Get the Chrome bookmarks hierarchy showing folders and bookmarks.
 
 **Trigger phrases:**
-- "Show my bookmarks"
-- "What folders do I have?"
-- "Bookmark structure"
+- [Show my bookmarks](tabz:paste?text=Show%20my%20bookmarks)
+- [What folders do I have?](tabz:paste?text=What%20folders%20do%20I%20have%3F)
+- [Bookmark structure](tabz:paste?text=Bookmark%20structure)
 
 **Parameters:**
 - `folderId` (optional): Get children of specific folder. Omit for full tree.
@@ -850,9 +850,9 @@ Tree structure with:
 **Purpose:** Search Chrome bookmarks by title or URL.
 
 **Trigger phrases:**
-- "Find my React bookmarks"
-- "Search bookmarks for GitHub"
-- "Do I have this bookmarked?"
+- [Find my React bookmarks](tabz:paste?text=Find%20my%20React%20bookmarks)
+- [Search bookmarks for GitHub](tabz:paste?text=Search%20bookmarks%20for%20GitHub)
+- [Do I have this bookmarked?](tabz:paste?text=Do%20I%20have%20this%20bookmarked%3F)
 
 **Parameters:**
 - `query` (required): Search text - matches titles and URLs
@@ -881,9 +881,9 @@ List of matching bookmarks with ID, title, URL, and parent folder ID.
 **Purpose:** Save a URL as a Chrome bookmark.
 
 **Trigger phrases:**
-- "Bookmark this page"
-- "Save to bookmarks"
-- "Add to Bookmarks Bar"
+- [Bookmark this page](tabz:paste?text=Bookmark%20this%20page)
+- [Save to bookmarks](tabz:paste?text=Save%20to%20bookmarks)
+- [Add to Bookmarks Bar](tabz:paste?text=Add%20to%20Bookmarks%20Bar)
 
 **Parameters:**
 - `url` (required): URL to bookmark
@@ -916,9 +916,9 @@ The created bookmark with its ID.
 **Purpose:** Create a new bookmark folder.
 
 **Trigger phrases:**
-- "Create bookmark folder"
-- "New folder in bookmarks"
-- "Make a folder for these"
+- [Create bookmark folder](tabz:paste?text=Create%20bookmark%20folder)
+- [New folder in bookmarks](tabz:paste?text=New%20folder%20in%20bookmarks)
+- [Make a folder for these](tabz:paste?text=Make%20a%20folder%20for%20these)
 
 **Parameters:**
 - `title` (required): Folder name
@@ -947,9 +947,9 @@ The created folder with its ID. Use this ID as `parentId` in `tabz_save_bookmark
 **Purpose:** Move a bookmark or folder to a different location.
 
 **Trigger phrases:**
-- "Move this bookmark"
-- "Reorganize bookmarks"
-- "Put bookmark in folder"
+- [Move this bookmark](tabz:paste?text=Move%20this%20bookmark)
+- [Reorganize bookmarks](tabz:paste?text=Reorganize%20bookmarks)
+- [Put bookmark in folder](tabz:paste?text=Put%20bookmark%20in%20folder)
 
 **Parameters:**
 - `id` (required): Bookmark or folder ID to move
@@ -982,9 +982,9 @@ The moved bookmark with updated location.
 **Purpose:** Delete a bookmark or folder.
 
 **Trigger phrases:**
-- "Delete this bookmark"
-- "Remove bookmark"
-- "Clean up bookmarks"
+- [Delete this bookmark](tabz:paste?text=Delete%20this%20bookmark)
+- [Remove bookmark](tabz:paste?text=Remove%20bookmark)
+- [Clean up bookmarks](tabz:paste?text=Clean%20up%20bookmarks)
 
 **Parameters:**
 - `id` (required): Bookmark or folder ID to delete
@@ -1012,10 +1012,10 @@ Confirmation of deletion.
 **Purpose:** Get the full DOM tree structure of the current page using Chrome DevTools Protocol.
 
 **Trigger phrases:**
-- "Show me the DOM structure"
-- "What's the page hierarchy?"
-- "Inspect the DOM tree"
-- "Get the HTML structure"
+- [Show me the DOM structure](tabz:paste?text=Show%20me%20the%20DOM%20structure)
+- [What's the page hierarchy?](tabz:paste?text=What%27s%20the%20page%20hierarchy%3F)
+- [Inspect the DOM tree](tabz:paste?text=Inspect%20the%20DOM%20tree)
+- [Get the HTML structure](tabz:paste?text=Get%20the%20HTML%20structure)
 
 **Parameters:**
 - `tabId` (optional): Chrome tab ID. Omit for active tab.
@@ -1058,10 +1058,10 @@ Confirmation of deletion.
 **Purpose:** Profile the current page's performance metrics using Chrome DevTools Protocol.
 
 **Trigger phrases:**
-- "Check page performance"
-- "How much memory is this using?"
-- "Profile this page"
-- "Get performance metrics"
+- [Check page performance](tabz:paste?text=Check%20page%20performance)
+- [How much memory is this using?](tabz:paste?text=How%20much%20memory%20is%20this%20using%3F)
+- [Profile this page](tabz:paste?text=Profile%20this%20page)
+- [Get performance metrics](tabz:paste?text=Get%20performance%20metrics)
 
 **Parameters:**
 - `tabId` (optional): Chrome tab ID. Omit for active tab.
@@ -1106,10 +1106,10 @@ Confirmation of deletion.
 **Purpose:** Analyze JavaScript and/or CSS code coverage to find unused code.
 
 **Trigger phrases:**
-- "How much code is unused?"
-- "Check CSS coverage"
-- "Find unused JavaScript"
-- "Code coverage analysis"
+- [How much code is unused?](tabz:paste?text=How%20much%20code%20is%20unused%3F)
+- [Check CSS coverage](tabz:paste?text=Check%20CSS%20coverage)
+- [Find unused JavaScript](tabz:paste?text=Find%20unused%20JavaScript)
+- [Code coverage analysis](tabz:paste?text=Code%20coverage%20analysis)
 
 **Parameters:**
 - `tabId` (optional): Chrome tab ID. Omit for active tab.
@@ -1156,9 +1156,9 @@ Confirmation of deletion.
 **Purpose:** List all tab groups in the current browser window.
 
 **Trigger phrases:**
-- "Show me tab groups"
-- "What groups are open?"
-- "List all groups"
+- [Show me tab groups](tabz:paste?text=Show%20me%20tab%20groups)
+- [What groups are open?](tabz:paste?text=What%20groups%20are%20open%3F)
+- [List all groups](tabz:paste?text=List%20all%20groups)
 
 **Parameters:**
 - `response_format`: `markdown` (default) or `json`
@@ -1183,9 +1183,9 @@ Confirmation of deletion.
 **Purpose:** Create a new tab group from specified tabs.
 
 **Trigger phrases:**
-- "Group these tabs"
-- "Create a new group"
-- "Put tabs in a group"
+- [Group these tabs](tabz:paste?text=Group%20these%20tabs)
+- [Create a new group](tabz:paste?text=Create%20a%20new%20group)
+- [Put tabs in a group](tabz:paste?text=Put%20tabs%20in%20a%20group)
 
 **Parameters:**
 - `tabIds` (required): Array of Chrome tab IDs to group
@@ -1216,9 +1216,9 @@ Confirmation of deletion.
 **Purpose:** Update an existing tab group's properties.
 
 **Trigger phrases:**
-- "Rename the group"
-- "Change group color"
-- "Collapse the group"
+- [Rename the group](tabz:paste?text=Rename%20the%20group)
+- [Change group color](tabz:paste?text=Change%20group%20color)
+- [Collapse the group](tabz:paste?text=Collapse%20the%20group)
 
 **Parameters:**
 - `groupId` (required): The tab group ID to update
@@ -1245,8 +1245,8 @@ Confirmation of deletion.
 **Purpose:** Add tabs to an existing tab group.
 
 **Trigger phrases:**
-- "Add tab to group"
-- "Move this to the research group"
+- [Add tab to group](tabz:paste?text=Add%20tab%20to%20group)
+- [Move this to the research group](tabz:paste?text=Move%20this%20to%20the%20research%20group)
 
 **Parameters:**
 - `groupId` (required): The group ID to add tabs to
@@ -1268,8 +1268,8 @@ Confirmation of deletion.
 **Purpose:** Remove tabs from their groups (ungroup them).
 
 **Trigger phrases:**
-- "Ungroup this tab"
-- "Remove from group"
+- [Ungroup this tab](tabz:paste?text=Ungroup%20this%20tab)
+- [Remove from group](tabz:paste?text=Remove%20from%20group)
 
 **Parameters:**
 - `tabIds` (required): Array of tab IDs to ungroup
@@ -1297,9 +1297,9 @@ Confirmation of deletion.
 This is the **recommended way to highlight tabs Claude is working with**. The Claude group has a distinctive purple color and "Claude" title.
 
 **Trigger phrases:**
-- "Mark this tab as active"
-- "Highlight this tab"
-- "Add to Claude group"
+- [Mark this tab as active](tabz:paste?text=Mark%20this%20tab%20as%20active)
+- [Highlight this tab](tabz:paste?text=Highlight%20this%20tab)
+- [Add to Claude group](tabz:paste?text=Add%20to%20Claude%20group)
 
 **Parameters:**
 - `tabId` (required): Chrome tab ID to add
@@ -1322,9 +1322,9 @@ When Claude starts working with a browser tab (e.g., taking screenshots, clickin
 **Purpose:** Remove a tab from the "Claude Active" group.
 
 **Trigger phrases:**
-- "Done with this tab"
-- "Unmark this tab"
-- "Remove from Claude group"
+- [Done with this tab](tabz:paste?text=Done%20with%20this%20tab)
+- [Unmark this tab](tabz:paste?text=Unmark%20this%20tab)
+- [Remove from Claude group](tabz:paste?text=Remove%20from%20Claude%20group)
 
 **Parameters:**
 - `tabId` (required): Chrome tab ID to remove
@@ -1343,8 +1343,8 @@ When Claude starts working with a browser tab (e.g., taking screenshots, clickin
 **Purpose:** Get the status of the "Claude Active" group.
 
 **Trigger phrases:**
-- "What tabs am I working with?"
-- "Show Claude active tabs"
+- [What tabs am I working with?](tabz:paste?text=What%20tabs%20am%20I%20working%20with%3F)
+- [Show Claude active tabs](tabz:paste?text=Show%20Claude%20active%20tabs)
 
 **Parameters:**
 - `response_format`: `markdown` (default) or `json`
@@ -1368,9 +1368,9 @@ When Claude starts working with a browser tab (e.g., taking screenshots, clickin
 **Purpose:** List all Chrome windows with their properties.
 
 **Trigger phrases:**
-- "What windows are open?"
-- "List browser windows"
-- "Show all windows"
+- [What windows are open?](tabz:paste?text=What%20windows%20are%20open%3F)
+- [List browser windows](tabz:paste?text=List%20browser%20windows)
+- [Show all windows](tabz:paste?text=Show%20all%20windows)
 
 **Parameters:**
 - `response_format`: `markdown` (default) or `json`
@@ -1396,10 +1396,10 @@ When Claude starts working with a browser tab (e.g., taking screenshots, clickin
 **Purpose:** Create a new Chrome browser window.
 
 **Trigger phrases:**
-- "Create a new window"
-- "Open a popup window"
-- "New browser window"
-- "Pop out to new window"
+- [Create a new window](tabz:paste?text=Create%20a%20new%20window)
+- [Open a popup window](tabz:paste?text=Open%20a%20popup%20window)
+- [New browser window](tabz:paste?text=New%20browser%20window)
+- [Pop out to new window](tabz:paste?text=Pop%20out%20to%20new%20window)
 
 **Parameters:**
 - `url` (optional): URL or array of URLs to open. Use `/sidepanel/sidepanel.html` for terminal popout.
@@ -1433,11 +1433,11 @@ When Claude starts working with a browser tab (e.g., taking screenshots, clickin
 **Purpose:** Update a window's properties (resize, move, change state, focus).
 
 **Trigger phrases:**
-- "Resize the window"
-- "Move window to..."
-- "Maximize the window"
-- "Minimize that window"
-- "Bring window to front"
+- [Resize the window](tabz:paste?text=Resize%20the%20window)
+- [Move window to...](tabz:paste?text=Move%20window%20to%E2%80%A6)
+- [Maximize the window](tabz:paste?text=Maximize%20the%20window)
+- [Minimize that window](tabz:paste?text=Minimize%20that%20window)
+- [Bring window to front](tabz:paste?text=Bring%20window%20to%20front)
 
 **Parameters:**
 - `windowId` (required): Window ID from `tabz_list_windows`
@@ -1466,8 +1466,8 @@ When Claude starts working with a browser tab (e.g., taking screenshots, clickin
 **Purpose:** Close a Chrome window.
 
 **Trigger phrases:**
-- "Close that window"
-- "Close window 123"
+- [Close that window](tabz:paste?text=Close%20that%20window)
+- [Close window 123](tabz:paste?text=Close%20window%20123)
 
 **Parameters:**
 - `windowId` (required): Window ID to close
@@ -1486,9 +1486,9 @@ When Claude starts working with a browser tab (e.g., taking screenshots, clickin
 **Purpose:** Get information about connected monitors/displays.
 
 **Trigger phrases:**
-- "What monitors do I have?"
-- "Show display info"
-- "Multi-monitor setup"
+- [What monitors do I have?](tabz:paste?text=What%20monitors%20do%20I%20have%3F)
+- [Show display info](tabz:paste?text=Show%20display%20info)
+- [Multi-monitor setup](tabz:paste?text=Multi-monitor%20setup)
 
 **Parameters:**
 - `response_format`: `markdown` (default) or `json`
@@ -1517,10 +1517,10 @@ When Claude starts working with a browser tab (e.g., taking screenshots, clickin
 **Purpose:** Auto-arrange windows in a tiled layout.
 
 **Trigger phrases:**
-- "Tile my windows"
-- "Arrange windows side by side"
-- "Split windows"
-- "Grid layout"
+- [Tile my windows](tabz:paste?text=Tile%20my%20windows)
+- [Arrange windows side by side](tabz:paste?text=Arrange%20windows%20side%20by%20side)
+- [Split windows](tabz:paste?text=Split%20windows)
+- [Grid layout](tabz:paste?text=Grid%20layout)
 
 **Parameters:**
 - `windowIds` (required): Array of window IDs to tile
@@ -1552,9 +1552,9 @@ When Claude starts working with a browser tab (e.g., taking screenshots, clickin
 **Purpose:** Pop out the terminal sidebar to a standalone popup window.
 
 **Trigger phrases:**
-- "Pop out the terminal"
-- "Detach terminal to window"
-- "Terminal in new window"
+- [Pop out the terminal](tabz:paste?text=Pop%20out%20the%20terminal)
+- [Detach terminal to window](tabz:paste?text=Detach%20terminal%20to%20window)
+- [Terminal in new window](tabz:paste?text=Terminal%20in%20new%20window)
 
 **Parameters:**
 - `terminalId` (optional): Focus specific terminal in new window
@@ -1584,10 +1584,10 @@ When Claude starts working with a browser tab (e.g., taking screenshots, clickin
 **Purpose:** Speak text aloud using neural text-to-speech.
 
 **Trigger phrases:**
-- "Say this out loud"
-- "Announce..."
-- "Read this to me"
-- "Speak..."
+- [Say this out loud](tabz:paste?text=Say%20this%20out%20loud)
+- [Announce...](tabz:paste?text=Announce%E2%80%A6)
+- [Read this to me](tabz:paste?text=Read%20this%20to%20me)
+- [Speak...](tabz:paste?text=Speak%E2%80%A6)
 
 **Parameters:**
 - `text` (required): The text to speak (max 3000 chars, markdown stripped automatically)
@@ -1623,9 +1623,9 @@ When Claude starts working with a browser tab (e.g., taking screenshots, clickin
 **Purpose:** List available neural TTS voices for use with `tabz_speak`.
 
 **Trigger phrases:**
-- "What voices are available?"
-- "List TTS voices"
-- "Show available voices"
+- [What voices are available?](tabz:paste?text=What%20voices%20are%20available%3F)
+- [List TTS voices](tabz:paste?text=List%20TTS%20voices)
+- [Show available voices](tabz:paste?text=Show%20available%20voices)
 
 **Parameters:** None
 
@@ -1647,10 +1647,10 @@ When Claude starts working with a browser tab (e.g., taking screenshots, clickin
 **Purpose:** Play an audio file through the browser.
 
 **Trigger phrases:**
-- "Play this sound"
-- "Play audio file"
-- "Trigger notification sound"
-- "Soundboard"
+- [Play this sound](tabz:paste?text=Play%20this%20sound)
+- [Play audio file](tabz:paste?text=Play%20audio%20file)
+- [Trigger notification sound](tabz:paste?text=Trigger%20notification%20sound)
+- [Soundboard](tabz:paste?text=Soundboard)
 
 **Parameters:**
 - `url` (required): URL of the audio file (MP3, WAV, OGG, etc.)

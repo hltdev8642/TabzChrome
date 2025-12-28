@@ -146,7 +146,6 @@
         "https://gitlab.com/*"
       ],
       "resources": [
-        "spawn-options.json",
         "profiles.json",
         "icons/tabz-logo-light.png"
       ],

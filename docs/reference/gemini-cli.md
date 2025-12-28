@@ -31,6 +31,8 @@ gemini --approval-mode auto_edit
 gemini --approval-mode yolo
 ```
 
+[Default Approval](tabz:paste?text=gemini%20--approval-mode%20default) | [Auto Edits](tabz:paste?text=gemini%20--approval-mode%20auto_edit) | [YOLO Mode](tabz:paste?text=gemini%20--approval-mode%20yolo)
+
 ## Output Formats
 
 ```bash
@@ -43,6 +45,8 @@ gemini -o json "query"
 # Streaming JSON
 gemini -o stream-json "query"
 ```
+
+[Text Output](tabz:paste?text=gemini%20-o%20text%20%22query%22) | [JSON Output](tabz:paste?text=gemini%20-o%20json%20%22query%22) | [Stream JSON](tabz:paste?text=gemini%20-o%20stream-json%20%22query%22)
 
 ## Extensions & Tools
 

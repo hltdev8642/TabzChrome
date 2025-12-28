@@ -31,6 +31,8 @@ codex -s workspace-write
 codex -s danger-full-access
 ```
 
+[Read-Only](tabz:paste?text=codex%20-s%20read-only) | [Workspace Write](tabz:paste?text=codex%20-s%20workspace-write) | [Full Access](tabz:paste?text=codex%20-s%20danger-full-access)
+
 ## Approval Policies
 
 ```bash
@@ -47,6 +49,8 @@ codex -a on-request
 codex -a never
 ```
 
+[Untrusted](tabz:paste?text=codex%20-a%20untrusted) | [On Failure](tabz:paste?text=codex%20-a%20on-failure) | [On Request](tabz:paste?text=codex%20-a%20on-request) | [Never Ask](tabz:paste?text=codex%20-a%20never)
+
 ## Non-Interactive Mode
 
 ```bash
@@ -56,6 +60,8 @@ codex exec "fix the bug in main.py"
 # Code review
 codex review
 ```
+
+[Exec Example](tabz:paste?text=codex%20exec%20%22fix%20the%20bug%20in%20main.py%22) | [Code Review](tabz:paste?text=codex%20review)
 
 ## Image Input
 

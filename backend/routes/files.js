@@ -645,37 +645,7 @@ router.post('/write', async (req, res) => {
   }
 })
 
-// Write spawn-options.json file
-router.post('/write-spawn-options', async (req, res) => {
-  try {
-    const { content } = req.body
-
-    if (!content) {
-      return res.status(400).json({ error: 'Content is required' })
-    }
-
-    // Validate JSON
-    try {
-      JSON.parse(content)
-    } catch (parseError) {
-      return res.status(400).json({ error: `Invalid JSON: ${parseError.message}` })
-    }
-
-    // Write to both locations (project root and frontend/public)
-    const projectRoot = path.join(__dirname, '..', '..')
-    const rootPath = path.join(projectRoot, 'spawn-options.json')
-    const publicPath = path.join(projectRoot, 'frontend', 'public', 'spawn-options.json')
-
-    await fs.writeFile(rootPath, content, 'utf-8')
-    await fs.writeFile(publicPath, content, 'utf-8')
-
-    console.log('[Files API] Updated spawn-options.json in both locations')
-    return res.json({ ok: true, message: 'Spawn options updated successfully' })
-  } catch (error) {
-    console.error('Error writing spawn-options.json:', error)
-    return res.status(500).json({ error: error.message })
-  }
-})
+// NOTE: write-spawn-options endpoint removed - profiles are now stored in Chrome storage
 
 // Helper to get Claude file type for backend classification
 function getClaudeFileType(name, filePath) {
