@@ -570,6 +570,12 @@ TabzChrome/
 │   ├── hooks/              # React hooks (useProfiles, useTerminalSessions, etc.)
 │   ├── background/         # Service worker (WebSocket relay)
 │   ├── content/            # Content script (data-terminal-command triggers)
+│   ├── dashboard/          # Full-page dashboard UI
+│   │   ├── sections/       # Page sections (Files, Profiles, Terminals, etc.)
+│   │   ├── components/     # Dashboard-specific components
+│   │   │   └── files/      # File viewer components (ImageViewer, MarkdownViewer, etc.)
+│   │   ├── contexts/       # React contexts (FilesContext, SettingsContext)
+│   │   └── hooks/          # Dashboard hooks (useFileViewerSettings, useDashboard)
 │   ├── shared/             # Messaging and storage helpers
 │   └── manifest.json
 ├── backend/                # Node.js server

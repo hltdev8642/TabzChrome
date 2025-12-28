@@ -1,130 +1,23 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { FileTree } from '../components/files/FileTree'
 import { FilteredFileList } from '../components/files/FilteredFileList'
 import { PromptyViewer } from '../components/files/PromptyViewer'
 import { isPromptyFile } from '../utils/promptyUtils'
-import { X, Copy, ExternalLink, Code, Image as ImageIcon, FileText, FileJson, Settings, ZoomIn, ZoomOut, Maximize, Download, Video, Table, Star, Pin, Send, AtSign, FolderOpen, Terminal, Volume2, Square, MoreVertical, Loader2, Play, ClipboardPaste, MessageSquare } from 'lucide-react'
+import { X, Copy, Send, FolderOpen, Square, MoreVertical, Loader2 } from 'lucide-react'
 import { FileActionsMenu } from '../components/files/FileActionsMenu'
 import { useWorkingDirectory } from '../../hooks/useWorkingDirectory'
-import { spawnTerminal, queueCommand, pasteCommand, getProfiles } from '../hooks/useDashboard'
 import { useFileViewerSettings } from '../hooks/useFileViewerSettings'
-import { getFileTypeAndLanguage, FileType } from '../utils/fileTypeUtils'
+import { getFileTypeAndLanguage } from '../utils/fileTypeUtils'
 import { useFilesContext } from '../contexts/FilesContext'
-import { FileFilter, isPromptFile } from '../utils/claudeFileTypes'
-
-// Get icon color class based on file type (matches FileTree.tsx colors)
-const getIconColorClass = (fileType: FileType): string => {
-  switch (fileType) {
-    case 'image': return 'text-yellow-400'
-    case 'video': return 'text-purple-400'
-    case 'csv': return 'text-emerald-400'
-    case 'markdown': return 'text-blue-400'
-    case 'json': return 'text-orange-400'
-    case 'code': return 'text-green-400'
-    default: return ''
-  }
-}
-
-// Get icon component based on file type
-const getFileIcon = (fileType: FileType) => {
-  switch (fileType) {
-    case 'image': return ImageIcon
-    case 'video': return Video
-    case 'csv': return Table
-    case 'markdown': return FileText
-    case 'json': return FileJson
-    default: return Code
-  }
-}
-
-// Format relative time (e.g., "2 hours ago", "yesterday")
-const formatRelativeTime = (isoDate: string): string => {
-  const date = new Date(isoDate)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-
-  if (diffMins < 1) return 'just now'
-  if (diffMins < 60) return `${diffMins}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays === 1) return 'yesterday'
-  if (diffDays < 7) return `${diffDays}d ago`
-  return date.toLocaleDateString()
-}
-
-// Simple CSV parser
-const parseCSV = (content: string): { headers: string[], rows: string[][] } => {
-  const lines = content.trim().split('\n')
-  if (lines.length === 0) return { headers: [], rows: [] }
-
-  // Simple CSV parsing (handles basic cases, not full RFC 4180)
-  const parseLine = (line: string): string[] => {
-    const result: string[] = []
-    let current = ''
-    let inQuotes = false
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i]
-      if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          current += '"'
-          i++
-        } else {
-          inQuotes = !inQuotes
-        }
-      } else if (char === ',' && !inQuotes) {
-        result.push(current.trim())
-        current = ''
-      } else {
-        current += char
-      }
-    }
-    result.push(current.trim())
-    return result
-  }
-
-  const headers = parseLine(lines[0])
-  const rows = lines.slice(1).map(parseLine)
-
-  return { headers, rows }
-}
-
-// Parse YAML frontmatter from markdown content
-// Returns { frontmatter, content } where frontmatter is parsed key-value pairs
-const parseFrontmatter = (content: string): { frontmatter: Record<string, string> | null; content: string } => {
-  const frontmatterRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
-  const match = content.match(frontmatterRegex)
-
-  if (!match) {
-    return { frontmatter: null, content }
-  }
-
-  const frontmatterStr = match[1]
-  const remainingContent = content.slice(match[0].length)
-
-  // Simple YAML parsing for key: value pairs (handles multiline values on same line)
-  const frontmatter: Record<string, string> = {}
-  const lines = frontmatterStr.split('\n')
-
-  for (const line of lines) {
-    const colonIndex = line.indexOf(':')
-    if (colonIndex > 0) {
-      const key = line.slice(0, colonIndex).trim()
-      const value = line.slice(colonIndex + 1).trim()
-      if (key && value) {
-        frontmatter[key] = value
-      }
-    }
-  }
-
-  return { frontmatter, content: remainingContent }
-}
+import { FileFilter } from '../utils/claudeFileTypes'
+import { getIconColorClass, getFileIcon, formatRelativeTime } from '../components/files/fileViewerUtils'
+import { ImageViewer } from '../components/files/ImageViewer'
+import { VideoViewer } from '../components/files/VideoViewer'
+import { CsvViewer } from '../components/files/CsvViewer'
+import { MarkdownViewer } from '../components/files/MarkdownViewer'
+import { Settings } from 'lucide-react'
 
 // Filter button component
 function FilterButton({
@@ -522,174 +415,26 @@ export default function FilesSection() {
               {activeFile.error}
             </div>
           ) : activeFile.fileType === 'image' ? (
-            <div className="h-full flex flex-col">
-              {/* Image Toolbar */}
-              <div className="flex items-center gap-2 p-2 border-b border-border bg-card/50">
-                <div className="flex items-center gap-1 border-r border-border pr-2">
-                  <button
-                    onClick={() => setImageZoom('fit')}
-                    className={`flex items-center gap-1 px-2 py-1 text-sm rounded ${imageZoom === 'fit' ? 'bg-primary/20 text-primary' : 'hover:bg-muted'}`}
-                    title="Fit to view"
-                  >
-                    <Maximize className="w-4 h-4" /> Fit
-                  </button>
-                  <button
-                    onClick={() => setImageZoom(100)}
-                    className={`flex items-center gap-1 px-2 py-1 text-sm rounded ${imageZoom === 100 ? 'bg-primary/20 text-primary' : 'hover:bg-muted'}`}
-                    title="Actual size"
-                  >
-                    100%
-                  </button>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setImageZoom(prev => Math.max(25, (typeof prev === 'number' ? prev : 100) - 25))}
-                    className="p-1.5 hover:bg-muted rounded"
-                    title="Zoom out"
-                  >
-                    <ZoomOut className="w-4 h-4" />
-                  </button>
-                  <span className="text-sm text-muted-foreground w-12 text-center">
-                    {imageZoom === 'fit' ? 'Fit' : `${imageZoom}%`}
-                  </span>
-                  <button
-                    onClick={() => setImageZoom(prev => Math.min(400, (typeof prev === 'number' ? prev : 100) + 25))}
-                    className="p-1.5 hover:bg-muted rounded"
-                    title="Zoom in"
-                  >
-                    <ZoomIn className="w-4 h-4" />
-                  </button>
-                </div>
-                <a
-                  href={activeFile.mediaDataUri}
-                  download={activeFile.name}
-                  className="flex items-center gap-1 px-2 py-1 text-sm hover:bg-muted rounded ml-2"
-                  title="Download image"
-                >
-                  <Download className="w-4 h-4" /> Download
-                </a>
-                <button
-                  onClick={openFileActionsDropdown}
-                  className="p-1.5 hover:bg-muted rounded"
-                  title="More actions"
-                >
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-                <span className="ml-auto text-xs text-muted-foreground">
-                  {imageDimensions && `${imageDimensions.width} × ${imageDimensions.height}`}
-                  {activeFile.path && <span className="ml-2">{activeFile.path}</span>}
-                </span>
-              </div>
-              {/* Image Display */}
-              <div className="flex-1 overflow-auto flex items-center justify-center p-4 bg-[#1a1a1a]">
-                <img
-                  src={activeFile.mediaDataUri}
-                  alt={activeFile.name}
-                  onLoad={(e) => {
-                    const img = e.target as HTMLImageElement
-                    setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight })
-                  }}
-                  style={imageZoom === 'fit' ? {
-                    maxWidth: '100%',
-                    maxHeight: '100%',
-                    objectFit: 'contain'
-                  } : {
-                    width: `${(imageDimensions?.width || 100) * (imageZoom / 100)}px`,
-                    height: 'auto'
-                  }}
-                />
-              </div>
-            </div>
+            <ImageViewer
+              file={activeFile}
+              imageZoom={imageZoom}
+              setImageZoom={setImageZoom}
+              imageDimensions={imageDimensions}
+              setImageDimensions={setImageDimensions}
+              onOpenActions={openFileActionsDropdown}
+            />
           ) : activeFile.fileType === 'video' ? (
-            <div className="h-full flex flex-col">
-              {/* Video Toolbar */}
-              <div className="flex items-center gap-2 p-2 border-b border-border bg-card/50">
-                <a
-                  href={activeFile.mediaDataUri}
-                  download={activeFile.name}
-                  className="flex items-center gap-1 px-2 py-1 text-sm hover:bg-muted rounded"
-                  title="Download video"
-                >
-                  <Download className="w-4 h-4" /> Download
-                </a>
-                <button
-                  onClick={openFileActionsDropdown}
-                  className="p-1.5 hover:bg-muted rounded"
-                  title="More actions"
-                >
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-                <span className="ml-auto text-xs text-muted-foreground">{activeFile.path}</span>
-              </div>
-              {/* Video Player */}
-              <div className="flex-1 overflow-auto flex items-center justify-center p-4 bg-[#1a1a1a]">
-                <video
-                  src={activeFile.mediaDataUri}
-                  controls
-                  className="max-w-full max-h-full"
-                  style={{ maxHeight: 'calc(100vh - 200px)' }}
-                >
-                  Your browser does not support video playback.
-                </video>
-              </div>
-            </div>
+            <VideoViewer
+              file={activeFile}
+              onOpenActions={openFileActionsDropdown}
+            />
           ) : activeFile.fileType === 'csv' ? (
-            <div className="h-full flex flex-col">
-              {/* CSV Toolbar */}
-              <div className="flex items-center gap-2 p-2 border-b border-border bg-card/50">
-                <button onClick={copyContent} className="flex items-center gap-1 px-2 py-1 text-sm hover:bg-muted rounded" title="Copy file content">
-                  <Copy className="w-4 h-4" /> Copy
-                </button>
-                <button
-                  onClick={openFileActionsDropdown}
-                  className="p-1.5 hover:bg-muted rounded"
-                  title="More actions"
-                >
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-                <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
-                  {activeFile.lineCount !== undefined && (
-                    <span>{activeFile.lineCount} rows</span>
-                  )}
-                  {activeFile.modified && (
-                    <span title={new Date(activeFile.modified).toLocaleString()}>
-                      {formatRelativeTime(activeFile.modified)}
-                    </span>
-                  )}
-                  <span className="truncate max-w-[200px]" title={activeFile.path}>{activeFile.path}</span>
-                </div>
-              </div>
-              {/* CSV Table */}
-              <div className="flex-1 overflow-auto p-4">
-                {(() => {
-                  const { headers, rows } = parseCSV(activeFile.content || '')
-                  return (
-                    <table className="w-full border-collapse text-sm" style={{ fontFamily: `${viewerSettings.fontFamily}, monospace`, fontSize: `${viewerSettings.fontSize}px` }}>
-                      <thead>
-                        <tr className="bg-muted/50 sticky top-0">
-                          {headers.map((header, i) => (
-                            <th key={i} className="border border-border px-3 py-2 text-left font-semibold whitespace-nowrap">
-                              {header}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rows.map((row, rowIndex) => (
-                          <tr key={rowIndex} className="hover:bg-muted/30">
-                            {row.map((cell, cellIndex) => (
-                              <td key={cellIndex} className="border border-border px-3 py-1.5 whitespace-nowrap">
-                                {cell}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )
-                })()}
-              </div>
-            </div>
+            <CsvViewer
+              file={activeFile}
+              viewerSettings={viewerSettings}
+              onCopy={copyContent}
+              onOpenActions={openFileActionsDropdown}
+            />
           ) : isPromptyFile(activeFile.path) ? (
             <PromptyViewer
               content={activeFile.content || ''}
@@ -756,216 +501,13 @@ export default function FilesSection() {
               </div>
               {/* Content */}
               <div className="flex-1 overflow-auto">
-                {isMarkdown ? (() => {
-                  // Parse frontmatter for SKILL.md, AGENT.md, and similar files
-                  const { frontmatter, content: markdownContent } = parseFrontmatter(activeFile.content || '')
-
-                  return (
-                  <div
-                    className="file-viewer-markdown"
-                    style={{
-                      fontSize: `${viewerSettings.fontSize}px`,
-                      fontFamily: `${viewerSettings.fontFamily}, monospace`,
-                    }}
-                  >
-                    {/* Frontmatter header for skill/agent files */}
-                    {frontmatter && (frontmatter.name || frontmatter.description) && (
-                      <div className="mb-6 pb-4 border-b border-border">
-                        {frontmatter.name && (
-                          <h1 className="text-2xl font-bold text-primary mb-2 flex items-center gap-2">
-                            {activeFile.name.toLowerCase().includes('skill') && <span>⚡</span>}
-                            {activeFile.name.toLowerCase().includes('agent') && <span>🤖</span>}
-                            {frontmatter.name}
-                          </h1>
-                        )}
-                        {frontmatter.description && (
-                          <p className="text-muted-foreground text-base leading-relaxed">
-                            {frontmatter.description}
-                          </p>
-                        )}
-                        {frontmatter.license && (
-                          <p className="text-xs text-muted-foreground/60 mt-2">
-                            📜 {frontmatter.license}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      urlTransform={(url) => {
-                        // Allow tabz: protocol through (default sanitizer strips it)
-                        if (url.startsWith('tabz:')) return url
-                        // Default behavior for other URLs
-                        return url
-                      }}
-                      components={{
-                        a({ href, children, ...props }: any) {
-                          // Handle tabz: protocol links for terminal integration
-                          if (href?.startsWith('tabz:')) {
-                            // Parse tabz:action?params manually (URL constructor doesn't handle custom protocols well)
-                            const withoutProtocol = href.slice(5) // remove 'tabz:'
-                            const [action, queryString] = withoutProtocol.split('?')
-                            const params = new URLSearchParams(queryString || '')
-
-                            const handleClick = async (e: React.MouseEvent) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              try {
-                                if (action === 'spawn') {
-                                  // tabz:spawn?profile=xxx or tabz:spawn?cmd=xxx&name=xxx&dir=xxx
-                                  const profileName = params.get('profile')
-                                  if (profileName) {
-                                    const profiles = await getProfiles()
-                                    const searchLower = profileName.toLowerCase()
-
-                                    // Find profile with priority: exact > emoji-stripped > starts-with > contains
-                                    const profile =
-                                      // 1. Exact match on id
-                                      profiles.find(p => p.id === profileName) ||
-                                      // 2. Exact match on name (case-insensitive)
-                                      profiles.find(p => p.name.toLowerCase() === searchLower) ||
-                                      // 3. Match ignoring emoji prefix (e.g., "🖥️ TFE" matches "tfe")
-                                      profiles.find(p => p.name.toLowerCase().replace(/^\p{Emoji}\s*/u, '') === searchLower) ||
-                                      // 4. Name starts with search term (e.g., "claude" matches "Claude Code")
-                                      profiles.find(p => p.name.toLowerCase().startsWith(searchLower)) ||
-                                      // 5. Emoji-stripped name starts with search term
-                                      profiles.find(p => p.name.toLowerCase().replace(/^\p{Emoji}\s*/u, '').startsWith(searchLower))
-                                    if (profile) {
-                                      await spawnTerminal({ profile, name: profile.name })
-                                    } else {
-                                      console.error(`Profile not found: "${profileName}". Available: ${profiles.map(p => p.name).join(', ')}`)
-                                    }
-                                  } else {
-                                    // No profile specified - use default profile for theme settings
-                                    const profiles = await getProfiles()
-                                    const defaultProfileId = await new Promise<string>(resolve => {
-                                      chrome.storage.local.get(['defaultProfile'], (result: { defaultProfile?: string }) => {
-                                        resolve(result.defaultProfile || profiles[0]?.id || '')
-                                      })
-                                    })
-                                    const defaultProfile = profiles.find(p => p.id === defaultProfileId) || profiles[0]
-
-                                    await spawnTerminal({
-                                      name: params.get('name') || 'Terminal',
-                                      command: params.get('cmd') || undefined,
-                                      workingDir: params.get('dir') || undefined,
-                                      profile: defaultProfile, // Use default profile's theme
-                                    })
-                                  }
-                                } else if (action === 'queue') {
-                                  // tabz:queue?text=xxx - queue to chat input
-                                  const text = params.get('text')
-                                  if (text) await queueCommand(text)
-                                } else if (action === 'paste') {
-                                  // tabz:paste?text=xxx - paste into active terminal
-                                  const text = params.get('text')
-                                  if (text) await pasteCommand(text)
-                                }
-                              } catch (err) {
-                                console.error('Tabz link action failed:', err)
-                              }
-                            }
-
-                            // Determine button style based on action
-                            const buttonStyles: Record<string, { colors: string, icon: React.ReactNode }> = {
-                              spawn: { colors: 'text-green-400 border-green-500/50 hover:border-green-400 hover:bg-green-500/10', icon: <Play className="w-3 h-3" /> },
-                              queue: { colors: 'text-blue-400 border-blue-500/50 hover:border-blue-400 hover:bg-blue-500/10', icon: <MessageSquare className="w-3 h-3" /> },
-                              paste: { colors: 'text-orange-400 border-orange-500/50 hover:border-orange-400 hover:bg-orange-500/10', icon: <ClipboardPaste className="w-3 h-3" /> },
-                            }
-                            const style = buttonStyles[action] || buttonStyles.spawn
-
-                            return (
-                              <button
-                                type="button"
-                                onClick={handleClick}
-                                onMouseDown={(e) => e.stopPropagation()}
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium border transition-colors ${style.colors}`}
-                                title={href}
-                              >
-                                {style.icon}
-                                {children}
-                              </button>
-                            )
-                          }
-
-                          // Check if it's a relative file link (not http/https/mailto/etc)
-                          const isRelativeFile = href && !href.match(/^(https?:|mailto:|#|\/\/|tabz:)/)
-
-                          if (isRelativeFile && activeFile) {
-                            // Resolve relative path based on current file's directory
-                            const currentDir = activeFile.path.split('/').slice(0, -1).join('/')
-                            const resolvedPath = href.startsWith('/')
-                              ? href
-                              : `${currentDir}/${href}`.replace(/\/\.\//g, '/') // handle ./
-
-                            return (
-                              <a
-                                href="#"
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  openFile(resolvedPath)
-                                }}
-                                className="text-primary hover:underline cursor-pointer"
-                                title={`Open: ${resolvedPath}`}
-                                {...props}
-                              >
-                                {children}
-                              </a>
-                            )
-                          }
-
-                          // External links - open in new tab
-                          return (
-                            <a
-                              href={href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline"
-                              {...props}
-                            >
-                              {children}
-                            </a>
-                          )
-                        },
-                        code({ className, children, ...props }: any) {
-                          const match = /language-(\w+)/.exec(className || '')
-                          const codeString = String(children).replace(/\n$/, '')
-
-                          // Inline code
-                          if (!match && !className) {
-                            return <code className={className} {...props}>{children}</code>
-                          }
-
-                          // Code block with syntax highlighting
-                          return (
-                            <SyntaxHighlighter
-                              language={match?.[1] || 'text'}
-                              style={vscDarkPlus}
-                              customStyle={{
-                                margin: 0,
-                                padding: '1rem',
-                                background: 'rgba(0, 0, 0, 0.4)',
-                                borderRadius: '8px',
-                                fontSize: `${viewerSettings.fontSize}px`,
-                                fontFamily: `${viewerSettings.fontFamily}, monospace`,
-                              }}
-                              codeTagProps={{
-                                style: {
-                                  fontSize: `${viewerSettings.fontSize}px`,
-                                  fontFamily: `${viewerSettings.fontFamily}, monospace`,
-                                }
-                              }}
-                            >
-                              {codeString}
-                            </SyntaxHighlighter>
-                          )
-                        }
-                      }}
-                    >
-                      {markdownContent}
-                    </ReactMarkdown>
-                  </div>
-                )})() : (
+                {isMarkdown ? (
+                  <MarkdownViewer
+                    file={activeFile}
+                    viewerSettings={viewerSettings}
+                    onOpenFile={openFile}
+                  />
+                ) : (
                   <SyntaxHighlighter
                     language={language || 'text'}
                     style={vscDarkPlus}

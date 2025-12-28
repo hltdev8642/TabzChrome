@@ -17,6 +17,14 @@ For older versions (1.1.x, 1.0.x, and pre-public 2.x), see [CHANGELOG-archive.md
 
 ## [Unreleased]
 
+### Refactored
+- **Files.tsx component extraction** - Split 1,048-line monolith into focused components (now 590 lines):
+  - `fileViewerUtils.ts` (113 lines) - Utility functions (icon colors, relative time, CSV/frontmatter parsing)
+  - `ImageViewer.tsx` (107 lines) - Image display with zoom controls and dimensions
+  - `VideoViewer.tsx` (50 lines) - Video player with download button
+  - `CsvViewer.tsx` (88 lines) - CSV table with sticky headers
+  - `MarkdownViewer.tsx` (237 lines) - Markdown with frontmatter, tabz: protocol links, syntax highlighting
+
 ### Fixed
 - **Popout window close handling** - Closing a popout terminal window now properly:
   - Removes the tab from sidebar (was stuck showing "Popped Out" placeholder)
