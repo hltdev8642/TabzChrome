@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react'
-import { Copy, AtSign, Star, Pin, Terminal } from 'lucide-react'
+import { Copy, AtSign, Star, Pin, Terminal, Send, Volume2, Loader2, FolderOpen } from 'lucide-react'
 
 interface FileNode {
   name: string
@@ -19,6 +19,13 @@ interface FileTreeContextMenuProps {
   onToggleFavorite: () => void
   onPin: () => void
   onOpenInEditor: () => void
+  // New actions for files
+  onSendToChat?: () => void
+  onPasteToTerminal?: () => void
+  onReadAloud?: () => void
+  isLoadingAudio?: boolean
+  // New action for directories
+  onSetWorkingDir?: () => void
 }
 
 /**
@@ -32,7 +39,11 @@ interface FileTreeContextMenuProps {
  * - **Copy @Path**: Copy path with @ prefix (for Claude references)
  * - **Favorite**: Toggle favorite status (works for files AND folders)
  * - **Pin**: Open file as pinned tab (files only)
+ * - **Send to Chat**: Queue file content to sidebar chat (files only)
+ * - **Paste to Terminal**: Paste file content to active terminal (files only)
+ * - **Read Aloud**: TTS playback of file content (files only)
  * - **Open in Editor**: Open file in user's default editor (files only)
+ * - **Set as Working Dir**: Set folder as working directory (folders only)
  */
 export function FileTreeContextMenu({
   show,
@@ -46,6 +57,11 @@ export function FileTreeContextMenu({
   onToggleFavorite,
   onPin,
   onOpenInEditor,
+  onSendToChat,
+  onPasteToTerminal,
+  onReadAloud,
+  isLoadingAudio,
+  onSetWorkingDir,
 }: FileTreeContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState({ x, y })
@@ -179,6 +195,55 @@ export function FileTreeContextMenu({
 
           <div className="context-menu-divider" />
 
+          {/* Send actions */}
+          {onSendToChat && (
+            <button
+              className="context-menu-item"
+              onClick={() => {
+                onSendToChat()
+                onClose()
+              }}
+            >
+              <Send className="w-4 h-4 inline mr-2" />
+              Send to Chat
+            </button>
+          )}
+          {onPasteToTerminal && (
+            <button
+              className="context-menu-item"
+              onClick={() => {
+                onPasteToTerminal()
+                onClose()
+              }}
+            >
+              <Terminal className="w-4 h-4 inline mr-2" />
+              Paste to Terminal
+            </button>
+          )}
+          {onReadAloud && (
+            <button
+              className={`context-menu-item ${isLoadingAudio ? 'opacity-50 cursor-wait' : ''}`}
+              onClick={() => {
+                if (!isLoadingAudio) {
+                  onReadAloud()
+                  // Don't close - let user see loading state
+                }
+              }}
+              disabled={isLoadingAudio}
+            >
+              {isLoadingAudio ? (
+                <Loader2 className="w-4 h-4 inline mr-2 animate-spin" />
+              ) : (
+                <Volume2 className="w-4 h-4 inline mr-2" />
+              )}
+              {isLoadingAudio ? 'Loading...' : 'Read Aloud'}
+            </button>
+          )}
+
+          {(onSendToChat || onPasteToTerminal || onReadAloud) && (
+            <div className="context-menu-divider" />
+          )}
+
           <button
             className="context-menu-item"
             onClick={() => {
@@ -188,6 +253,23 @@ export function FileTreeContextMenu({
           >
             <Terminal className="w-4 h-4 inline mr-2" />
             Open in Editor
+          </button>
+        </>
+      )}
+
+      {/* Directory-only actions */}
+      {!isFile && onSetWorkingDir && (
+        <>
+          <div className="context-menu-divider" />
+          <button
+            className="context-menu-item"
+            onClick={() => {
+              onSetWorkingDir()
+              onClose()
+            }}
+          >
+            <FolderOpen className="w-4 h-4 inline mr-2" />
+            Set as Working Dir
           </button>
         </>
       )}

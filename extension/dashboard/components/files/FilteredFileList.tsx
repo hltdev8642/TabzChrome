@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import {
   ChevronRight,
   ChevronDown,
@@ -14,8 +14,9 @@ import {
   Plug,
   FileJson,
   Star,
+  Search,
 } from 'lucide-react'
-import { FileFilter, ClaudeFileType, claudeFileColors, getClaudeFileType } from '../../utils/claudeFileTypes'
+import { FileFilter, ClaudeFileType, claudeFileColors, getClaudeFileType, isAlwaysInContext } from '../../utils/claudeFileTypes'
 import { FileTreeContextMenu } from './FileTreeContextMenu'
 import { useFilesContext } from '../../contexts/FilesContext'
 import { sendMessage } from '../../../shared/messaging'
@@ -179,6 +180,7 @@ function MiniTree({
             : getFileIcon(node.name, node.path)}
         </span>
         <span className={`text-sm truncate flex-1 ${isDirectory ? 'font-medium' : ''} ${textColorClass}`}>
+          {isAlwaysInContext(node.name) && <span className="mr-1">🤖</span>}
           {node.name}
         </span>
         {/* Favorite star - visible on hover or if favorited */}
@@ -306,6 +308,7 @@ function TreeSection({
 
 export function FilteredFileList({ filter, filteredFiles, loading, onFileSelect }: FilteredFileListProps) {
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const { toggleFavorite, isFavorite, openFile, pinFile } = useFilesContext()
 
   // Context menu state
@@ -315,6 +318,42 @@ export function FilteredFileList({ filter, filteredFiles, loading, onFileSelect 
     y: number
     node: TreeNode | null
   }>({ show: false, x: 0, y: 0, node: null })
+
+  // Filter tree nodes based on search query
+  const filterTreeNode = useCallback((node: TreeNode, query: string): TreeNode | null => {
+    if (!query) return node
+
+    const queryLower = query.toLowerCase()
+    const nameMatches = node.name.toLowerCase().includes(queryLower)
+
+    if (node.type === 'file') {
+      return nameMatches ? node : null
+    }
+
+    // Directory: filter children and include if any match or name matches
+    const filteredChildren = node.children
+      ?.map(child => filterTreeNode(child, query))
+      .filter((child): child is TreeNode => child !== null)
+
+    if (nameMatches || (filteredChildren && filteredChildren.length > 0)) {
+      return { ...node, children: filteredChildren }
+    }
+
+    return null
+  }, [])
+
+  // Apply search filter to all trees
+  const filteredTrees = useMemo(() => {
+    if (!filteredFiles?.trees || !searchQuery) return filteredFiles?.trees || []
+
+    return filteredFiles.trees
+      .map(source => {
+        const filteredTree = filterTreeNode(source.tree, searchQuery)
+        if (!filteredTree) return null
+        return { ...source, tree: filteredTree }
+      })
+      .filter((source): source is FilteredTree => source !== null)
+  }, [filteredFiles?.trees, searchQuery, filterTreeNode])
 
   const handleFileSelect = (path: string) => {
     setSelectedPath(path)
@@ -364,6 +403,87 @@ export function FilteredFileList({ filter, filteredFiles, loading, onFileSelect 
     })
   }, [contextMenu.node])
 
+  // State for audio loading
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false)
+
+  const API_BASE = "http://localhost:8129"
+
+  // Helper to fetch file content
+  const fetchFileContent = useCallback(async (path: string): Promise<string | null> => {
+    try {
+      const res = await fetch(`${API_BASE}/api/files/content?path=${encodeURIComponent(path)}`)
+      const data = await res.json()
+      return data.content || null
+    } catch {
+      return null
+    }
+  }, [])
+
+  // Send file content to chat
+  const handleSendToChat = useCallback(async () => {
+    if (!contextMenu.node || contextMenu.node.type !== 'file') return
+    const content = await fetchFileContent(contextMenu.node.path)
+    if (content) {
+      chrome.runtime?.sendMessage({
+        type: 'QUEUE_COMMAND',
+        command: content,
+      })
+    }
+  }, [contextMenu.node, fetchFileContent])
+
+  // Paste file content to terminal
+  const handlePasteToTerminal = useCallback(async () => {
+    if (!contextMenu.node || contextMenu.node.type !== 'file') return
+    const content = await fetchFileContent(contextMenu.node.path)
+    if (content) {
+      chrome.runtime?.sendMessage({
+        type: 'PASTE_COMMAND',
+        command: content,
+      })
+    }
+  }, [contextMenu.node, fetchFileContent])
+
+  // Read file aloud
+  const handleReadAloud = useCallback(async () => {
+    if (!contextMenu.node || contextMenu.node.type !== 'file') return
+    setIsLoadingAudio(true)
+
+    try {
+      const content = await fetchFileContent(contextMenu.node.path)
+      if (!content) {
+        setIsLoadingAudio(false)
+        return
+      }
+
+      // Load audio settings
+      const result = await chrome.storage.local.get(['audioSettings'])
+      const audioSettings = (result.audioSettings || {}) as { voice?: string; rate?: string; pitch?: string; volume?: number }
+
+      const TTS_VOICE_VALUES = [
+        'en-US-AndrewMultilingualNeural', 'en-US-EmmaMultilingualNeural', 'en-US-BrianMultilingualNeural',
+        'en-US-AriaNeural', 'en-US-GuyNeural', 'en-US-JennyNeural', 'en-US-ChristopherNeural', 'en-US-AvaNeural',
+      ]
+      let voice = audioSettings.voice || 'en-US-AndrewMultilingualNeural'
+      if (voice === 'random') {
+        voice = TTS_VOICE_VALUES[Math.floor(Math.random() * TTS_VOICE_VALUES.length)]
+      }
+
+      const rate = audioSettings.rate || '+0%'
+      const pitch = audioSettings.pitch || '+0Hz'
+      const volume = audioSettings.volume ?? 0.7
+
+      await fetch(`${API_BASE}/api/audio/speak`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: content, voice, rate, pitch, volume })
+      })
+    } catch (err) {
+      console.error('Failed to read aloud:', err)
+    } finally {
+      setIsLoadingAudio(false)
+    }
+  }, [contextMenu.node, fetchFileContent])
+
   if (loading) {
     return (
       <div className="flex flex-col h-full bg-card rounded-lg border border-border">
@@ -410,9 +530,26 @@ export function FilteredFileList({ filter, filteredFiles, loading, onFileSelect 
         <h3 className="font-semibold text-sm capitalize">{filter} Files</h3>
       </div>
 
+      {/* Search */}
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+        <Search className="w-4 h-4 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="Search files..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="flex-1 bg-transparent text-sm outline-none"
+        />
+        {searchQuery && (
+          <button onClick={() => setSearchQuery('')} className="text-muted-foreground hover:text-foreground">
+            ×
+          </button>
+        )}
+      </div>
+
       {/* Tree sections */}
       <div className="flex-1 overflow-auto p-2">
-        {trees.map((source) => (
+        {filteredTrees.map((source) => (
           <TreeSection
             key={source.basePath}
             source={source}
@@ -466,6 +603,10 @@ export function FilteredFileList({ filter, filteredFiles, loading, onFileSelect 
         onToggleFavorite={() => contextMenu.node && toggleFavorite(contextMenu.node.path)}
         onPin={handlePin}
         onOpenInEditor={handleOpenInEditor}
+        onSendToChat={handleSendToChat}
+        onPasteToTerminal={handlePasteToTerminal}
+        onReadAloud={handleReadAloud}
+        isLoadingAudio={isLoadingAudio}
       />
     </div>
   )

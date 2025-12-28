@@ -123,7 +123,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/content.ts-BdKEkwYV.js"
+        "assets/content.ts-BfJ4t1zb.js"
       ],
       "matches": [
         "<all_urls>"
@@ -157,7 +157,7 @@
         "<all_urls>"
       ],
       "resources": [
-        "assets/content.ts-BdKEkwYV.js"
+        "assets/content.ts-BfJ4t1zb.js"
       ],
       "use_dynamic_url": false
     }

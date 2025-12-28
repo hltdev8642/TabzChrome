@@ -30,7 +30,7 @@ import {
   Star,       // Favorites
 } from "lucide-react"
 import { useFilesContext } from "../../contexts/FilesContext"
-import { getClaudeFileType, claudeFileColors, ClaudeFileType } from "../../utils/claudeFileTypes"
+import { getClaudeFileType, claudeFileColors, ClaudeFileType, isAlwaysInContext } from "../../utils/claudeFileTypes"
 import { FileTreeContextMenu } from "./FileTreeContextMenu"
 import { sendMessage } from "../../../shared/messaging"
 
@@ -430,6 +430,93 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
     })
   }, [contextMenu.node])
 
+  // State for audio loading
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false)
+
+  // Helper to fetch file content
+  const fetchFileContent = useCallback(async (path: string): Promise<string | null> => {
+    try {
+      const res = await fetch(`${API_BASE}/api/files/content?path=${encodeURIComponent(path)}`)
+      const data = await res.json()
+      return data.content || null
+    } catch {
+      return null
+    }
+  }, [])
+
+  // Send file content to chat
+  const handleSendToChat = useCallback(async () => {
+    if (!contextMenu.node || contextMenu.node.type !== 'file') return
+    const content = await fetchFileContent(contextMenu.node.path)
+    if (content) {
+      chrome.runtime?.sendMessage({
+        type: 'QUEUE_COMMAND',
+        command: content,
+      })
+    }
+  }, [contextMenu.node, fetchFileContent])
+
+  // Paste file content to terminal
+  const handlePasteToTerminal = useCallback(async () => {
+    if (!contextMenu.node || contextMenu.node.type !== 'file') return
+    const content = await fetchFileContent(contextMenu.node.path)
+    if (content) {
+      chrome.runtime?.sendMessage({
+        type: 'PASTE_COMMAND',
+        command: content,
+      })
+    }
+  }, [contextMenu.node, fetchFileContent])
+
+  // Read file aloud
+  const handleReadAloud = useCallback(async () => {
+    if (!contextMenu.node || contextMenu.node.type !== 'file') return
+    setIsLoadingAudio(true)
+
+    try {
+      const content = await fetchFileContent(contextMenu.node.path)
+      if (!content) {
+        setIsLoadingAudio(false)
+        return
+      }
+
+      // Load audio settings
+      const result = await chrome.storage.local.get(['audioSettings'])
+      const audioSettings = (result.audioSettings || {}) as { voice?: string; rate?: string; pitch?: string; volume?: number }
+
+      const TTS_VOICE_VALUES = [
+        'en-US-AndrewMultilingualNeural', 'en-US-EmmaMultilingualNeural', 'en-US-BrianMultilingualNeural',
+        'en-US-AriaNeural', 'en-US-GuyNeural', 'en-US-JennyNeural', 'en-US-ChristopherNeural', 'en-US-AvaNeural',
+      ]
+      let voice = audioSettings.voice || 'en-US-AndrewMultilingualNeural'
+      if (voice === 'random') {
+        voice = TTS_VOICE_VALUES[Math.floor(Math.random() * TTS_VOICE_VALUES.length)]
+      }
+
+      const rate = audioSettings.rate || '+0%'
+      const pitch = audioSettings.pitch || '+0Hz'
+      const volume = audioSettings.volume ?? 0.7
+
+      // Use speak endpoint for playback
+      await fetch(`${API_BASE}/api/audio/speak`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: content, voice, rate, pitch, volume })
+      })
+    } catch (err) {
+      console.error('Failed to read aloud:', err)
+    } finally {
+      setIsLoadingAudio(false)
+    }
+  }, [contextMenu.node, fetchFileContent])
+
+  // Set folder as working directory
+  const handleSetWorkingDir = useCallback(() => {
+    if (!contextMenu.node || contextMenu.node.type !== 'directory') return
+    setCurrentPath(contextMenu.node.path)
+    fetchFileTree(contextMenu.node.path, true)
+  }, [contextMenu.node, fetchFileTree])
+
   // Render file tree recursively
   const renderFileTree = useCallback((node: FileNode, depth = 0): React.ReactNode => {
     const isExpanded = expandedFolders.has(node.path)
@@ -463,7 +550,10 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
               getFileIcon(node.name, node.path)
             )}
           </span>
-          <span className={`text-sm truncate flex-1 ${isDirectory ? "font-medium" : ""} ${textColorClass}`}>{node.name}</span>
+          <span className={`text-sm truncate flex-1 ${isDirectory ? "font-medium" : ""} ${textColorClass}`}>
+            {isAlwaysInContext(node.name) && <span className="mr-1">🤖</span>}
+            {node.name}
+          </span>
           {/* Favorite star - visible on hover or if favorited */}
           <button
             className={`p-0.5 rounded hover:bg-muted/50 ${isNodeFavorite ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
@@ -570,6 +660,11 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
         onToggleFavorite={() => contextMenu.node && toggleFavorite(contextMenu.node.path)}
         onPin={handlePin}
         onOpenInEditor={handleOpenInEditor}
+        onSendToChat={handleSendToChat}
+        onPasteToTerminal={handlePasteToTerminal}
+        onReadAloud={handleReadAloud}
+        isLoadingAudio={isLoadingAudio}
+        onSetWorkingDir={handleSetWorkingDir}
       />
     </div>
   )

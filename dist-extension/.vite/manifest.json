@@ -43,8 +43,8 @@
     "file": "assets/terminal-backgrounds-P64U3As2.js",
     "name": "terminal-backgrounds"
   },
-  "_useDragDrop-CzjtM7iS.js": {
-    "file": "assets/useDragDrop-CzjtM7iS.js",
+  "_useDragDrop-Ky8FTwlj.js": {
+    "file": "assets/useDragDrop-Ky8FTwlj.js",
     "name": "useDragDrop",
     "imports": [
       "_terminal-backgrounds-P64U3As2.js"
@@ -57,20 +57,20 @@
     "isEntry": true
   },
   "content/content.ts": {
-    "file": "assets/content.ts-BdKEkwYV.js",
+    "file": "assets/content.ts-BfJ4t1zb.js",
     "name": "content.ts",
     "src": "content/content.ts",
     "isEntry": true
   },
   "dashboard/index.html": {
-    "file": "assets/dashboard-CjcSCKQO.js",
+    "file": "assets/dashboard-DqegTYez.js",
     "name": "dashboard",
     "src": "dashboard/index.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_terminal-backgrounds-P64U3As2.js",
-      "_useDragDrop-CzjtM7iS.js",
+      "_useDragDrop-Ky8FTwlj.js",
       "_extends-CF3RwP-h.js"
     ],
     "css": [
@@ -87,7 +87,7 @@
     ]
   },
   "sidepanel/sidepanel.html": {
-    "file": "assets/sidepanel.html-BKSsHrTw.js",
+    "file": "assets/sidepanel.html-MA8qMsOT.js",
     "name": "sidepanel.html",
     "src": "sidepanel/sidepanel.html",
     "isEntry": true,
@@ -95,7 +95,7 @@
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_terminal-backgrounds-P64U3As2.js",
       "_globals-DnNIb4gR.js",
-      "_useDragDrop-CzjtM7iS.js"
+      "_useDragDrop-Ky8FTwlj.js"
     ]
   }
 }

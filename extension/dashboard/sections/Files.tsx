@@ -95,6 +95,37 @@ const parseCSV = (content: string): { headers: string[], rows: string[][] } => {
   return { headers, rows }
 }
 
+// Parse YAML frontmatter from markdown content
+// Returns { frontmatter, content } where frontmatter is parsed key-value pairs
+const parseFrontmatter = (content: string): { frontmatter: Record<string, string> | null; content: string } => {
+  const frontmatterRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
+  const match = content.match(frontmatterRegex)
+
+  if (!match) {
+    return { frontmatter: null, content }
+  }
+
+  const frontmatterStr = match[1]
+  const remainingContent = content.slice(match[0].length)
+
+  // Simple YAML parsing for key: value pairs (handles multiline values on same line)
+  const frontmatter: Record<string, string> = {}
+  const lines = frontmatterStr.split('\n')
+
+  for (const line of lines) {
+    const colonIndex = line.indexOf(':')
+    if (colonIndex > 0) {
+      const key = line.slice(0, colonIndex).trim()
+      const value = line.slice(colonIndex + 1).trim()
+      if (key && value) {
+        frontmatter[key] = value
+      }
+    }
+  }
+
+  return { frontmatter, content: remainingContent }
+}
+
 // Filter button component
 function FilterButton({
   active,
@@ -142,6 +173,7 @@ export default function FilesSection() {
     loadFilteredFiles,
     toggleFavorite,
     isFavorite,
+    favorites,
   } = useFilesContext()
 
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false)
@@ -364,6 +396,9 @@ export default function FilesSection() {
             >
               {option.icon && <span className="mr-1">{option.icon}</span>}
               {option.label}
+              {option.value === 'favorites' && favorites.size > 0 && (
+                <span className="ml-1 text-xs text-muted-foreground">{favorites.size}</span>
+              )}
             </FilterButton>
           ))}
         </div>
@@ -721,7 +756,11 @@ export default function FilesSection() {
               </div>
               {/* Content */}
               <div className="flex-1 overflow-auto">
-                {isMarkdown ? (
+                {isMarkdown ? (() => {
+                  // Parse frontmatter for SKILL.md, AGENT.md, and similar files
+                  const { frontmatter, content: markdownContent } = parseFrontmatter(activeFile.content || '')
+
+                  return (
                   <div
                     className="file-viewer-markdown"
                     style={{
@@ -729,6 +768,28 @@ export default function FilesSection() {
                       fontFamily: `${viewerSettings.fontFamily}, monospace`,
                     }}
                   >
+                    {/* Frontmatter header for skill/agent files */}
+                    {frontmatter && (frontmatter.name || frontmatter.description) && (
+                      <div className="mb-6 pb-4 border-b border-border">
+                        {frontmatter.name && (
+                          <h1 className="text-2xl font-bold text-primary mb-2 flex items-center gap-2">
+                            {activeFile.name.toLowerCase().includes('skill') && <span>⚡</span>}
+                            {activeFile.name.toLowerCase().includes('agent') && <span>🤖</span>}
+                            {frontmatter.name}
+                          </h1>
+                        )}
+                        {frontmatter.description && (
+                          <p className="text-muted-foreground text-base leading-relaxed">
+                            {frontmatter.description}
+                          </p>
+                        )}
+                        {frontmatter.license && (
+                          <p className="text-xs text-muted-foreground/60 mt-2">
+                            📜 {frontmatter.license}
+                          </p>
+                        )}
+                      </div>
+                    )}
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       urlTransform={(url) => {
@@ -901,10 +962,10 @@ export default function FilesSection() {
                         }
                       }}
                     >
-                      {activeFile.content || ''}
+                      {markdownContent}
                     </ReactMarkdown>
                   </div>
-                ) : (
+                )})() : (
                   <SyntaxHighlighter
                     language={language || 'text'}
                     style={vscDarkPlus}

@@ -176,6 +176,14 @@ export function getSpecialFileEmoji(name: string, path: string): string | null {
 }
 
 /**
+ * Check if a file is always included in Claude's context (CLAUDE.md, AGENTS.md)
+ * These files should be visually distinct as they're always read by Claude
+ */
+export function isAlwaysInContext(name: string): boolean {
+  return /^(CLAUDE|AGENTS)(\.local)?\.md$/i.test(name)
+}
+
+/**
  * Get Tailwind color class for a Claude file type
  */
 export function getClaudeFileColorClass(name: string, path: string): string | null {
