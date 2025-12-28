@@ -8,6 +8,7 @@ import {
   PRESETS,
   DEFAULT_AUDIO_SETTINGS,
 } from './types'
+import { migrateProfiles, profilesNeedMigration, getValidDefaultProfileId } from '../../shared/profiles'
 
 /** Appearance properties that can be previewed */
 export interface ProfileAppearancePreview {
@@ -207,51 +208,24 @@ export function SettingsProvider({ isOpen, onClose, children, onPreviewProfileAp
           console.error('[Settings] Failed to load default profiles:', error)
         }
       } else {
-        // Migrate old profiles
-        const migratedProfiles = (result.profiles as any[]).map(p => {
-          let themeName = p.themeName
-          if (!themeName && p.theme) {
-            themeName = p.theme === 'light' ? 'high-contrast' : 'high-contrast'
-          }
-          let audioOverrides = p.audioOverrides
-          if (audioOverrides) {
-            const { enabled, events, ...rest } = audioOverrides
-            if (enabled === false) {
-              audioOverrides = { ...rest, mode: 'disabled' as const }
-            } else if (events !== undefined || enabled !== undefined) {
-              audioOverrides = Object.keys(rest).length > 0 ? rest : undefined
-            }
-          }
-          return {
-            ...p,
-            fontSize: p.fontSize ?? 16,
-            fontFamily: p.fontFamily ?? 'monospace',
-            themeName: themeName ?? 'high-contrast',
-            theme: undefined,
-            audioOverrides,
-          }
-        })
-        setProfiles(migratedProfiles)
+        // Migrate old profiles to current schema
+        const migrated = migrateProfiles(result.profiles)
+        setProfiles(migrated)
 
+        // Validate default profile ID
         const savedDefault = result.defaultProfile as string
-        const profileIds = migratedProfiles.map((p: Profile) => p.id)
-        const validDefault = savedDefault && profileIds.includes(savedDefault)
-          ? savedDefault
-          : migratedProfiles[0]?.id || 'default'
+        const validDefault = getValidDefaultProfileId(savedDefault, migrated)
 
-        if (!validDefault || validDefault !== savedDefault) {
+        if (validDefault !== savedDefault) {
           console.log(`[Settings] defaultProfile '${savedDefault}' not found, using '${validDefault}'`)
           chrome.storage.local.set({ defaultProfile: validDefault })
         }
         setDefaultProfile(validDefault)
 
-        const needsMigration = (result.profiles as any[]).some(
-          p => p.fontSize === undefined || p.fontFamily === undefined || p.themeName === undefined || p.theme !== undefined ||
-               (p.audioOverrides && (p.audioOverrides.enabled !== undefined || p.audioOverrides.events !== undefined))
-        )
-        if (needsMigration) {
+        // Save migrated profiles if needed
+        if (profilesNeedMigration(result.profiles)) {
           console.log('[Settings] Migrating old profiles')
-          chrome.storage.local.set({ profiles: migratedProfiles })
+          chrome.storage.local.set({ profiles: migrated })
         }
       }
     })

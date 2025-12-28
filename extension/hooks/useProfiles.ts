@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import type { Profile, AudioMode, CategorySettings } from '../components/SettingsModal'
+import type { Profile, CategorySettings } from '../components/SettingsModal'
+import { migrateProfiles, profilesNeedMigration, getValidDefaultProfileId } from '../shared/profiles'
 
 export { DEFAULT_CATEGORY_COLOR } from '../components/SettingsModal'
 
@@ -60,56 +61,17 @@ export function useProfiles(_params: UseProfilesParams): UseProfilesReturn {
       if (!isMountedRef.current) return
 
       if (result.profiles && Array.isArray(result.profiles) && result.profiles.length > 0) {
-        // Migrate old profiles: ensure all required fields have defaults
-        // Also migrate old 'theme' field to new 'themeName' field
-        // Also migrate old audioOverrides format (enabled: boolean) to new format (mode: AudioMode)
-        const migratedProfiles = (result.profiles as any[]).map(p => {
-          // Convert old theme field to themeName
-          let themeName = p.themeName
-          if (!themeName && p.theme) {
-            themeName = 'high-contrast' // Map old dark/light to high-contrast
-          }
-
-          // Migrate audioOverrides: convert enabled:false to mode:'disabled'
-          let audioOverrides = p.audioOverrides
-          if (audioOverrides) {
-            const { enabled, events, ...rest } = audioOverrides
-            // Convert enabled: false → mode: 'disabled'
-            if (enabled === false) {
-              audioOverrides = { ...rest, mode: 'disabled' as AudioMode }
-            } else if (events !== undefined || enabled !== undefined) {
-              // Remove old fields (events, enabled)
-              audioOverrides = Object.keys(rest).length > 0 ? rest : undefined
-            }
-          }
-
-          return {
-            ...p,
-            fontSize: p.fontSize ?? 16,
-            fontFamily: p.fontFamily ?? 'monospace',
-            themeName: themeName ?? 'high-contrast',
-            theme: undefined, // Remove old field
-            audioOverrides,
-          }
-        })
-        setProfiles(migratedProfiles)
+        // Migrate old profiles to current schema
+        const migrated = migrateProfiles(result.profiles)
+        setProfiles(migrated)
 
         // Set default profile ID (with validation)
-        const savedDefaultId = (result.defaultProfile as string) || 'default'
-        const profileIds = migratedProfiles.map((p: Profile) => p.id)
-        if (profileIds.includes(savedDefaultId)) {
-          setDefaultProfileId(savedDefaultId)
-        } else if (migratedProfiles.length > 0) {
-          setDefaultProfileId(migratedProfiles[0].id)
-        }
+        const validDefaultId = getValidDefaultProfileId(result.defaultProfile as string, migrated)
+        setDefaultProfileId(validDefaultId)
 
         // Save migrated profiles back to storage if any were updated
-        const needsMigration = (result.profiles as any[]).some(
-          p => p.fontSize === undefined || p.fontFamily === undefined || p.themeName === undefined || p.theme !== undefined ||
-               (p.audioOverrides && (p.audioOverrides.enabled !== undefined || p.audioOverrides.events !== undefined))
-        )
-        if (needsMigration) {
-          chrome.storage.local.set({ profiles: migratedProfiles })
+        if (profilesNeedMigration(result.profiles)) {
+          chrome.storage.local.set({ profiles: migrated })
         }
       } else {
         // Initialize profiles from profiles.json on first load
