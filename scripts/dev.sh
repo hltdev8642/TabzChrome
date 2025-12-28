@@ -285,10 +285,21 @@ if [ -n "$LATEST_RELEASE" ] && version_gt "$LATEST_RELEASE" "$CURRENT_VERSION"; 
         echo ""
         cd "$SCRIPT_DIR/.."
 
-        # Stash any local changes (build artifacts, etc.) before pulling
+        # Check for local changes before pulling
         STASH_NEEDED=false
+        DROP_STASH=false
         if ! git diff --quiet || ! git diff --cached --quiet; then
-            echo -e "${YELLOW}📦 Stashing local changes (build artifacts, etc.)...${NC}"
+            echo -e "${YELLOW}📦 Local changes detected:${NC}"
+            echo ""
+            git status --short
+            echo ""
+            git diff --stat
+            echo ""
+            read -p "$(echo -e ${BLUE}Drop these changes after update? ${NC}${YELLOW}[y/N]${NC}: )" DROP_CHOICE
+            if [[ "$DROP_CHOICE" =~ ^[Yy]$ ]]; then
+                DROP_STASH=true
+            fi
+            echo -e "${BLUE}Stashing changes for update...${NC}"
             git stash push -m "dev.sh auto-stash before update" --include-untracked
             STASH_NEEDED=true
         fi
@@ -322,10 +333,20 @@ if [ -n "$LATEST_RELEASE" ] && version_gt "$LATEST_RELEASE" "$CURRENT_VERSION"; 
         # Update version after update
         CURRENT_VERSION=$(grep '"version"' "$SCRIPT_DIR/../package.json" | sed 's/.*"version": "\([^"]*\)".*/\1/')
 
-        # Drop the stash (new build artifacts replace old ones)
+        # Handle stashed changes based on user choice
         if [ "$STASH_NEEDED" = true ]; then
-            echo -e "${YELLOW}🗑️  Dropping stashed changes (replaced by fresh build)${NC}"
-            git stash drop 2>/dev/null || true
+            if [ "$DROP_STASH" = true ]; then
+                echo -e "${YELLOW}🗑️  Dropping stashed changes (as requested)${NC}"
+                git stash drop 2>/dev/null || true
+            else
+                echo -e "${BLUE}📦 Restoring stashed changes...${NC}"
+                if git stash pop 2>/dev/null; then
+                    echo -e "${GREEN}✓ Stashed changes restored${NC}"
+                else
+                    echo -e "${YELLOW}⚠️  Could not auto-restore stash (conflicts). Your changes are in: git stash list${NC}"
+                    echo -e "   Run ${BLUE}git stash pop${NC} manually to restore, or ${BLUE}git stash drop${NC} to discard."
+                fi
+            fi
         fi
         echo ""
     fi

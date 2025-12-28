@@ -323,6 +323,75 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
     xterm.loadAddon(unicode11Addon)
     xterm.unicode.activeVersion = '11'
 
+    // Register custom file path link provider for clickable file paths
+    // Opens files in the dashboard Files page when clicked
+    xterm.registerLinkProvider({
+      provideLinks: (bufferLineNumber, callback) => {
+        const line = xterm.buffer.active.getLine(bufferLineNumber)
+        if (!line) {
+          callback(undefined)
+          return
+        }
+
+        const text = line.translateToString()
+
+        // Match file paths with optional line:column numbers
+        // Patterns matched:
+        // - Absolute paths: /home/user/file.txt, /etc/config
+        // - Tilde paths: ~/projects/file.ts
+        // - Relative paths: ./src/index.ts, ../config.json
+        // - With line numbers: file.ts:42 or file.ts:42:10
+        // - In quotes: "path/to/file", 'path/to/file'
+        const filePathRegex = /(?:^|[\s"'`(])((\.\.?|~)?(?:\/[\w.-]+)+(?:\.[a-zA-Z0-9]+)?(?::\d+(?::\d+)?)?)/g
+
+        const links: Array<{
+          range: { start: { x: number; y: number }; end: { x: number; y: number } }
+          text: string
+          activate: (event: MouseEvent, text: string) => void
+          hover?: (event: MouseEvent, text: string) => void
+        }> = []
+
+        let match
+        while ((match = filePathRegex.exec(text)) !== null) {
+          const fullMatch = match[0]
+          const path = match[1]
+
+          // Skip if it looks like a URL (would be handled by WebLinksAddon)
+          if (path.includes('://') || path.startsWith('//')) continue
+
+          // Skip if path is too short or doesn't look like a file
+          if (path.length < 3) continue
+
+          // Calculate the actual start position (accounting for leading whitespace/quote)
+          const startOffset = fullMatch.length - path.length
+          const startX = match.index + startOffset + 1 // +1 because xterm columns are 1-indexed
+
+          // Extract just the path without line numbers for the link text
+          const pathWithoutLineNum = path.replace(/:\d+(?::\d+)?$/, '')
+
+          links.push({
+            range: {
+              start: { x: startX, y: bufferLineNumber }, // 0-indexed - clicking works, underline is 1 line off
+              end: { x: startX + path.length, y: bufferLineNumber }
+            },
+            text: path,
+            activate: () => {
+              // Open in dashboard Files page
+              const extensionId = chrome?.runtime?.id
+              if (extensionId) {
+                window.open(
+                  `chrome-extension://${extensionId}/dashboard/index.html#/files?path=${encodeURIComponent(pathWithoutLineNum)}`,
+                  '_blank'
+                )
+              }
+            }
+          })
+        }
+
+        callback(links.length > 0 ? links : undefined)
+      }
+    })
+
     // Store refs early so fit functions can use them
     xtermRef.current = xterm
     fitAddonRef.current = fitAddon

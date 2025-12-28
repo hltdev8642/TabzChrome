@@ -18,6 +18,21 @@ For older versions (1.1.x, 1.0.x, and pre-public 2.x), see [CHANGELOG-archive.md
 ## [Unreleased]
 
 ### Added
+- **Clickable File Paths in Terminal** - File paths in terminal output are now clickable:
+  - Detects absolute paths (`/home/...`), tilde paths (`~/...`), and relative paths (`./...`, `../...`)
+  - Supports line:column suffixes (`file.tsx:42:10`)
+  - Clicking opens the file in the Dashboard Files viewer
+  - Uses xterm.js `registerLinkProvider` API
+
+- **Profiles Dashboard Improvements**:
+  - **Search bar in header** - Moved to header row to save vertical space
+  - **Multi-select category filter** - Filter button with dropdown supporting multiple category selection
+  - **Profile title styling** - Uses profile's theme foreground color and font family
+  - **Full-width command preview** - Commands use card width with natural truncation, brighter text
+  - **Consistent card heights** - Button row always at bottom with min-height
+  - **Drag handle top-left** - Moved from bottom action bar to top-left corner on hover
+  - **Clickable reference badge** - Reference links in top-right corner, click to open URL or file
+
 - **Script Runner in File Tree** - Right-click scripts to run, check, or explain them:
   - **Run Script** - Spawns new terminal to execute the script
   - **Check / Dry Run** - Syntax check without execution (e.g., `bash -n`, `python -m py_compile`)
@@ -42,7 +57,19 @@ For older versions (1.1.x, 1.0.x, and pre-public 2.x), see [CHANGELOG-archive.md
   - `CsvViewer.tsx` (88 lines) - CSV table with sticky headers
   - `MarkdownViewer.tsx` (237 lines) - Markdown with frontmatter, tabz: protocol links, syntax highlighting
 
+### Changed
+- **dev.sh stash behavior** - Now asks before dropping stashed changes:
+  - Shows what files are modified before stashing
+  - Prompts "Drop these changes after update?" with default No
+  - If No, restores stash after build (preserves uncommitted work)
+  - If Yes, drops stash as before (for build artifacts)
+
 ### Fixed
+- **Dashboard hash navigation** - Clicking reference links now navigates between sections:
+  - App listens for `hashchange` events to switch active section
+  - FilesContext listens for `hashchange` to open files from URL path parameter
+  - Fixes: clicking profile reference badge now opens file in Files viewer
+
 - **Popout window close handling** - Closing a popout terminal window now properly:
   - Removes the tab from sidebar (was stuck showing "Popped Out" placeholder)
   - Detaches terminal to appear as ghost/orphan for respawning

@@ -133,8 +133,22 @@ export default function App() {
     }
   }, [])
 
-  // Note: Hash-based navigation (e.g., #/files?path=...) is handled synchronously
-  // in the useState initializer above to prevent race condition with FilesContext
+  // Listen for hash changes to navigate between sections (e.g., from Profiles → Files)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash
+      if (hash.startsWith('#/')) {
+        const hashPath = hash.slice(2) // Remove '#/'
+        const [section] = hashPath.split('?')
+        const validSections: Section[] = ['home', 'profiles', 'terminals', 'files', 'git', 'api', 'mcp', 'settings']
+        if (validSections.includes(section as Section)) {
+          setActiveSection(section as Section)
+        }
+      }
+    }
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
 
   const handleCloseCapture = () => {
     // Get capture ID from URL to clean up localStorage

@@ -6,14 +6,14 @@
     "isEntry": true
   },
   "3d/3d-focus.html": {
-    "file": "assets/3d-focus-sCnKfned.js",
+    "file": "assets/3d-focus-C2FvyF4S.js",
     "name": "3d-focus",
     "src": "3d/3d-focus.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_terminal-backgrounds-P64U3As2.js",
-      "_globals-DJXeSpUr.js",
+      "_globals-CK8UcmIO.js",
       "_extends-CF3RwP-h.js"
     ]
   },
@@ -22,17 +22,17 @@
     "name": "extends"
   },
   "_globals-!~{008}~.js": {
-    "file": "assets/globals-ngTMHqcU.css",
+    "file": "assets/globals-BmmRhwhT.css",
     "src": "_globals-!~{008}~.js"
   },
-  "_globals-DJXeSpUr.js": {
-    "file": "assets/globals-DJXeSpUr.js",
+  "_globals-CK8UcmIO.js": {
+    "file": "assets/globals-CK8UcmIO.js",
     "name": "globals",
     "imports": [
       "_terminal-backgrounds-P64U3As2.js"
     ],
     "css": [
-      "assets/globals-ngTMHqcU.css"
+      "assets/globals-BmmRhwhT.css"
     ]
   },
   "_modulepreload-polyfill-B5Qt9EMX.js": {
@@ -43,8 +43,8 @@
     "file": "assets/terminal-backgrounds-P64U3As2.js",
     "name": "terminal-backgrounds"
   },
-  "_useDragDrop-Ky8FTwlj.js": {
-    "file": "assets/useDragDrop-Ky8FTwlj.js",
+  "_useDragDrop-D4IaLD2B.js": {
+    "file": "assets/useDragDrop-D4IaLD2B.js",
     "name": "useDragDrop",
     "imports": [
       "_terminal-backgrounds-P64U3As2.js"
@@ -63,18 +63,18 @@
     "isEntry": true
   },
   "dashboard/index.html": {
-    "file": "assets/dashboard-C0RcWRlZ.js",
+    "file": "assets/dashboard-CZUayLPR.js",
     "name": "dashboard",
     "src": "dashboard/index.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_terminal-backgrounds-P64U3As2.js",
-      "_useDragDrop-Ky8FTwlj.js",
+      "_useDragDrop-D4IaLD2B.js",
       "_extends-CF3RwP-h.js"
     ],
     "css": [
-      "assets/dashboard-BKL0dM92.css"
+      "assets/dashboard-DNYqDaQq.css"
     ]
   },
   "devtools/devtools.html": {
@@ -87,15 +87,15 @@
     ]
   },
   "sidepanel/sidepanel.html": {
-    "file": "assets/sidepanel.html-Dc3VkptI.js",
+    "file": "assets/sidepanel.html-IbK_s-__.js",
     "name": "sidepanel.html",
     "src": "sidepanel/sidepanel.html",
     "isEntry": true,
     "imports": [
       "_modulepreload-polyfill-B5Qt9EMX.js",
       "_terminal-backgrounds-P64U3As2.js",
-      "_globals-DJXeSpUr.js",
-      "_useDragDrop-Ky8FTwlj.js"
+      "_globals-CK8UcmIO.js",
+      "_useDragDrop-D4IaLD2B.js"
     ]
   }
 }

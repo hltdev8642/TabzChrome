@@ -355,21 +355,30 @@ export function FilesProvider({ children }: { children: ReactNode }) {
   // Check for file path from URL hash (e.g., from "Open Reference" context menu)
   // URL format: dashboard/index.html#/files?path=/path/to/file
   useEffect(() => {
-    const hash = window.location.hash
-    if (hash.startsWith('#/files?')) {
-      const queryString = hash.split('?')[1]
-      if (queryString) {
-        const params = new URLSearchParams(queryString)
-        const filePath = params.get('path')
-        if (filePath) {
-          // Clear the hash to prevent re-opening on refresh
-          window.history.replaceState({}, '', window.location.pathname + window.location.search)
-          // Open the file with pin=true so it stays open
-          openFile(filePath, true)
+    const handleHashPath = () => {
+      const hash = window.location.hash
+      if (hash.startsWith('#/files?')) {
+        const queryString = hash.split('?')[1]
+        if (queryString) {
+          const params = new URLSearchParams(queryString)
+          const filePath = params.get('path')
+          if (filePath) {
+            // Clear the query part but keep #/files for navigation
+            window.history.replaceState({}, '', window.location.pathname + '#/files')
+            // Open the file with pin=true so it stays open
+            openFile(filePath, true)
+          }
         }
       }
     }
-  }, []) // Run once on mount, openFile is stable
+
+    // Check on mount
+    handleHashPath()
+
+    // Listen for hash changes (e.g., from Profiles page reference links)
+    window.addEventListener('hashchange', handleHashPath)
+    return () => window.removeEventListener('hashchange', handleHashPath)
+  }, []) // openFile is stable
 
   return (
     <FilesContext.Provider value={{

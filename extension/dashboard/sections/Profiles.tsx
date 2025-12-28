@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react'
-import { Grid, Grid3X3, List, Search, Play, RefreshCw, Terminal, Folder, X, Settings, GripVertical, Star, Copy, ClipboardType, Paperclip } from 'lucide-react'
+import React, { useEffect, useState, useRef } from 'react'
+import { Grid, Grid3X3, List, Search, Play, RefreshCw, Terminal, Folder, X, Settings, GripVertical, Star, Copy, ClipboardType, Paperclip, Filter, Check } from 'lucide-react'
 import { spawnTerminal, getProfiles } from '../hooks/useDashboard'
 import { useWorkingDirectory } from '../../hooks/useWorkingDirectory'
 import { useDragDrop } from '../../hooks/useDragDrop'
@@ -31,9 +31,11 @@ export default function ProfilesSection() {
   const [error, setError] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [filterOpen, setFilterOpen] = useState(false)
   const [categorySettings, setCategorySettings] = useState<CategorySettings>({})
   const [defaultProfile, setDefaultProfile] = useState<string>('')
+  const filterRef = useRef<HTMLDivElement>(null)
 
   // Category drag-and-drop state (using shared hook)
   const {
@@ -109,6 +111,19 @@ export default function ProfilesSection() {
     return () => chrome.storage.onChanged.removeListener(handleStorageChange)
   }, [])
 
+  // Close filter dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false)
+      }
+    }
+    if (filterOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [filterOpen])
+
   // Helper to get category color
   const getCategoryColor = (category: string) => {
     return categorySettings[category]?.color || DEFAULT_CATEGORY_COLOR
@@ -117,13 +132,23 @@ export default function ProfilesSection() {
   // Get unique categories
   const categories = Array.from(new Set(profiles.map((p) => p.category).filter(Boolean))) as string[]
 
+  // Toggle category selection (multi-select)
+  const toggleCategory = (category: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    )
+  }
+
   // Filter profiles
   const filteredProfiles = profiles.filter((profile) => {
     const matchesSearch =
       !searchQuery ||
       profile.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       profile.command?.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCategory = !selectedCategory || profile.category === selectedCategory
+    const matchesCategory = selectedCategories.length === 0 ||
+      selectedCategories.includes(profile.category || 'Uncategorized')
     return matchesSearch && matchesCategory
   })
 
@@ -135,7 +160,8 @@ export default function ProfilesSection() {
         !searchQuery ||
         profile.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         profile.command?.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchesCategory = !selectedCategory || profile.category === selectedCategory
+      const matchesCategory = selectedCategories.length === 0 ||
+        selectedCategories.includes(profile.category || 'Uncategorized')
       if (!matchesSearch || !matchesCategory) return acc
 
       const cat = profile.category || 'Uncategorized'
@@ -340,12 +366,19 @@ export default function ProfilesSection() {
     resetCategoryDragState()
   }
 
+  // All categories including Uncategorized if there are uncategorized profiles
+  const allCategories = [
+    ...categories,
+    ...(profiles.some(p => !p.category) ? ['Uncategorized'] : [])
+  ]
+
   return (
     <div className="p-6">
 
-      {/* Header */}
-      <div className="flex items-start sm:items-center justify-between gap-4 mb-6">
-        <div className="min-w-0">
+      {/* Header with integrated search */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+        {/* Title */}
+        <div className="min-w-0 flex-shrink-0">
           <h1 className="text-2xl sm:text-3xl font-bold font-mono text-primary terminal-glow truncate flex items-center gap-3">
             <Grid3X3 className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0" />
             Profiles
@@ -355,8 +388,86 @@ export default function ProfilesSection() {
           </p>
         </div>
 
+        {/* Search bar with filter - grows to fill space */}
+        <div className="relative flex-1 min-w-0" ref={filterRef}>
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search profiles..."
+            className="w-full pl-9 pr-20 py-2 rounded-lg bg-card border border-border focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm transition-all"
+          />
+          <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {/* Filter button */}
+            <button
+              onClick={() => setFilterOpen(!filterOpen)}
+              className={`p-1.5 rounded-md transition-colors relative ${
+                filterOpen || selectedCategories.length > 0
+                  ? 'text-primary bg-primary/10'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
+              title="Filter by category"
+            >
+              <Filter className="w-3.5 h-3.5" />
+              {selectedCategories.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[10px] font-medium flex items-center justify-center">
+                  {selectedCategories.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Filter dropdown */}
+          {filterOpen && (
+            <div className="absolute right-0 top-full mt-2 w-64 bg-card border border-border rounded-lg shadow-xl z-50 overflow-hidden">
+              <div className="p-2 border-b border-border flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Categories</span>
+                {selectedCategories.length > 0 && (
+                  <button
+                    onClick={() => setSelectedCategories([])}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+              <div className="max-h-64 overflow-y-auto p-1">
+                {allCategories.map((cat) => {
+                  const catColor = getCategoryColor(cat)
+                  const isSelected = selectedCategories.includes(cat)
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => toggleCategory(cat)}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                        isSelected ? 'bg-muted' : 'hover:bg-muted/50'
+                      }`}
+                    >
+                      <span
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: catColor }}
+                      />
+                      <span className="flex-1 text-left truncate">{cat}</span>
+                      {isSelected && <Check className="w-4 h-4 text-primary flex-shrink-0" />}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* View toggle & refresh */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* View Toggle */}
           <div className="flex bg-muted/50 rounded-lg p-0.5">
             <button
               onClick={() => setViewMode('grid')}
@@ -382,70 +493,6 @@ export default function ProfilesSection() {
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
-        </div>
-      </div>
-
-      {/* Search & Filters */}
-      <div className="flex flex-col gap-4 mb-6">
-        {/* Search - always full width */}
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search profiles by name or command..."
-            className="w-full pl-12 pr-12 py-3 rounded-xl bg-card border border-border focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-base transition-all"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-
-        {/* Category Pills - horizontal scroll on small screens */}
-        <div className="flex gap-2 overflow-x-auto pb-1 -mb-1 scrollbar-thin">
-          <button
-            onClick={() => setSelectedCategory(null)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex-shrink-0 ${
-              !selectedCategory
-                ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25'
-                : 'bg-card border border-border hover:bg-muted hover:border-muted-foreground/30'
-            }`}
-          >
-            All Profiles
-          </button>
-          {categories.map((cat) => {
-            const catColor = getCategoryColor(cat)
-            const isSelected = selectedCategory === cat
-            return (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(isSelected ? null : cat)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 flex-shrink-0 ${
-                  isSelected
-                    ? 'shadow-md'
-                    : 'bg-card border border-border hover:bg-muted hover:border-muted-foreground/30'
-                }`}
-                style={isSelected ? {
-                  backgroundColor: catColor + '20',
-                  borderColor: catColor,
-                  color: catColor,
-                  boxShadow: `0 4px 12px ${catColor}25`
-                } : undefined}
-              >
-                <span
-                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: catColor }}
-                />
-                {cat}
-              </button>
-            )
-          })}
         </div>
       </div>
 
@@ -621,6 +668,9 @@ function ProfileCard({
   const effectivePanelColor = profile.panelColor ?? DEFAULT_PANEL_COLOR
   const gradientOpacity = (profile.transparency ?? DEFAULT_TRANSPARENCY) / 100
 
+  // Get theme foreground color for profile title
+  const themeForeground = themes[profile.themeName]?.dark.colors.foreground ?? '#e0e0e0'
+
   // Background media (video/image)
   const mediaUrl = getMediaUrl(profile.backgroundMedia)
   const mediaOpacity = (profile.backgroundMediaOpacity ?? 50) / 100
@@ -636,7 +686,7 @@ function ProfileCard({
       onDragEnd={onDragEnd}
       onClick={onClick}
       className={`
-        group relative flex flex-col rounded-xl border transition-all overflow-hidden cursor-pointer
+        group relative flex flex-col rounded-xl border transition-all overflow-hidden cursor-pointer min-h-[180px]
         ${isDragging ? 'opacity-50 border-primary scale-95' : 'border-border hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10'}
       `}
     >
@@ -683,23 +733,49 @@ function ProfileCard({
         <div className="absolute -right-[3px] top-0 bottom-0 w-[3px] bg-green-500 rounded-full shadow-[0_0_8px_#22c55e] z-50" />
       )}
 
+      {/* Drag handle - top left corner */}
+      <div
+        className="absolute top-2 left-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div
+          className="p-1 rounded-md hover:bg-white/20 cursor-grab active:cursor-grabbing transition-colors"
+          title="Drag to reorder"
+        >
+          <GripVertical className="w-3.5 h-3.5 text-white/50" />
+        </div>
+      </div>
+
+      {/* Reference link - top right corner */}
+      {profile.reference && (
+        <button
+          className="absolute top-2 right-2 z-20 flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-medium hover:bg-blue-500/30 transition-colors"
+          title={`Open: ${profile.reference}`}
+          onClick={(e) => {
+            e.stopPropagation()
+            const ref = profile.reference!
+            if (ref.startsWith('http://') || ref.startsWith('https://')) {
+              // Open URL in new tab
+              window.open(ref, '_blank')
+            } else {
+              // Open file in dashboard Files section (same pattern as sidebar)
+              window.location.hash = `/files?path=${encodeURIComponent(ref)}`
+            }
+          }}
+        >
+          <Paperclip className="w-2.5 h-2.5" />
+          Ref
+        </button>
+      )}
+
       {/* Main card content area - Layer 3: Content above background */}
-      <div className="relative z-10 flex flex-col items-center p-5 pt-6 pb-4">
-        {/* Badges row - default and reference */}
-        {(isDefault || profile.reference) && (
-          <div className="flex items-center gap-2 mb-2">
-            {isDefault && (
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-medium">
-                <Star className="w-2.5 h-2.5 fill-current" />
-                Default
-              </div>
-            )}
-            {profile.reference && (
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-medium" title={profile.reference}>
-                <Paperclip className="w-2.5 h-2.5" />
-                Ref
-              </div>
-            )}
+      <div className="relative z-10 flex flex-col items-center p-4 pt-5 pb-3 flex-1">
+        {/* Default badge - centered */}
+        {isDefault && (
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-medium mb-2">
+            <Star className="w-2.5 h-2.5 fill-current" />
+            Default
           </div>
         )}
 
@@ -708,8 +784,11 @@ function ProfileCard({
           {emoji || <Terminal className="w-7 h-7 text-white/80" />}
         </div>
 
-        {/* Name */}
-        <span className="text-sm font-semibold text-center line-clamp-2 text-white leading-tight">
+        {/* Name - uses profile's theme foreground color and font */}
+        <span
+          className="text-sm font-semibold text-center line-clamp-2 leading-tight"
+          style={{ color: themeForeground, fontFamily: profile.fontFamily }}
+        >
           {displayName}
         </span>
 
@@ -718,25 +797,19 @@ function ProfileCard({
           <span className="text-[11px] text-white/50 mt-1 font-mono">{truncatedDir}</span>
         )}
 
-        {/* Command preview */}
+        {/* Command preview - full width with natural truncation */}
         {profile.command && (
-          <span className="text-xs text-white/40 mt-1.5 font-mono truncate max-w-full px-2">
-            {profile.command.length > 20 ? profile.command.slice(0, 20) + '…' : profile.command}
+          <span
+            className="text-xs text-white/70 mt-1.5 font-mono truncate w-full text-center px-1"
+            title={profile.command}
+          >
+            {profile.command}
           </span>
         )}
       </div>
 
-      {/* Action bar - appears on hover at bottom */}
-      <div className="relative z-10 flex items-center justify-center gap-1 px-2 py-2 bg-black/20 backdrop-blur-sm border-t border-white/10 opacity-0 group-hover:opacity-100 transition-all">
-        <button
-          onClick={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          onMouseUp={onDragStart}
-          className="p-1.5 rounded-md hover:bg-white/10 cursor-grab active:cursor-grabbing transition-colors"
-          title="Drag to reorder"
-        >
-          <GripVertical className="w-4 h-4 text-white/50" />
-        </button>
+      {/* Action bar - always at bottom */}
+      <div className="relative z-10 flex items-center justify-center gap-1 px-2 py-2 bg-black/20 backdrop-blur-sm border-t border-white/10 opacity-0 group-hover:opacity-100 transition-all mt-auto">
         <button
           onClick={(e) => {
             e.stopPropagation()
@@ -913,12 +986,6 @@ function ProfileListItem({
                 Default
               </span>
             )}
-            {profile.reference && (
-              <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[10px] font-medium" title={profile.reference}>
-                <Paperclip className="w-2.5 h-2.5" />
-                Ref
-              </span>
-            )}
             {truncatedDir && (
               <span className="text-[10px] text-white/50 font-mono">{truncatedDir}</span>
             )}
@@ -928,6 +995,26 @@ function ProfileListItem({
           )}
         </div>
       </div>
+      {/* Reference link button */}
+      {profile.reference && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            const ref = profile.reference!
+            if (ref.startsWith('http://') || ref.startsWith('https://')) {
+              window.open(ref, '_blank')
+            } else {
+              // Open file in dashboard Files section
+              window.location.hash = `/files?path=${encodeURIComponent(ref)}`
+            }
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="relative p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-blue-500/20 transition-all flex-shrink-0 z-10"
+          title={`Open: ${profile.reference}`}
+        >
+          <Paperclip className="w-4 h-4 text-blue-400 hover:text-blue-300" />
+        </button>
+      )}
       <button
         onClick={(e) => {
           e.stopPropagation()
