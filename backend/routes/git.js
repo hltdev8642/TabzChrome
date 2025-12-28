@@ -366,7 +366,7 @@ router.post('/repos/:repo/fetch', requireAuth, async (req, res) => {
  * Body: { model?: 'haiku' }
  */
 router.post('/repos/:repo/generate-message', requireAuth, async (req, res) => {
-  const { exec } = require('child_process');
+  const { spawn, exec } = require('child_process');
   const util = require('util');
   const execAsync = util.promisify(exec);
 
@@ -407,18 +407,39 @@ Keep it under 72 characters for the first line. Add a blank line and bullet poin
 Diff:
 ${truncatedDiff}`;
 
-    // Run claude CLI with haiku model
+    // Run claude CLI with haiku model, passing prompt via stdin to avoid shell escaping issues
     const model = req.body.model || 'haiku';
     console.log(`[Git API] Generating commit message with ${model} for ${req.params.repo}`);
 
-    const { stdout: message } = await execAsync(
-      `claude -p ${JSON.stringify(prompt)} --model ${model} --print`,
-      {
+    const message = await new Promise((resolve, reject) => {
+      const child = spawn('claude', ['--model', model, '--print', '-p', '-'], {
         cwd: repoPath,
-        timeout: 30000, // 30 second timeout
-        maxBuffer: 1024 * 1024
-      }
-    );
+        timeout: 30000,
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      child.stdout.on('data', (data) => { stdout += data.toString(); });
+      child.stderr.on('data', (data) => { stderr += data.toString(); });
+
+      child.on('error', (err) => {
+        reject(new Error(`Failed to spawn claude: ${err.message}`));
+      });
+
+      child.on('close', (code) => {
+        if (code !== 0) {
+          reject(new Error(stderr || `claude exited with code ${code}`));
+        } else {
+          resolve(stdout);
+        }
+      });
+
+      // Write prompt to stdin and close it
+      child.stdin.write(prompt);
+      child.stdin.end();
+    });
 
     const cleanMessage = message.trim();
 
@@ -436,7 +457,7 @@ ${truncatedDiff}`;
     console.error('[Git API] Error generating commit message:', err);
 
     // Check if claude CLI is not available
-    if (err.message && err.message.includes('command not found')) {
+    if (err.message && (err.message.includes('ENOENT') || err.message.includes('not found'))) {
       return res.status(500).json({
         success: false,
         error: 'Claude CLI not found. Install with: npm install -g @anthropic-ai/claude-code'

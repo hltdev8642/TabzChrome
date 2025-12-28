@@ -419,23 +419,14 @@ export async function handlePopoutWindowClosed(windowId: number): Promise<void> 
   // Remove from tracking
   popoutWindows.delete(windowId)
 
-  console.log(`[Popout] Window ${windowId} closed, cleaning up terminal ${terminalId}`)
+  console.log(`[Popout] Window ${windowId} closed, returning terminal ${terminalId} to sidebar`)
 
-  // Clear the poppedOut state in sidebar so it doesn't show the placeholder
+  // Clear the poppedOut state in sidebar so it reconnects to the terminal
+  // Don't detach - let the terminal return to the sidebar automatically
   broadcastToClients({
     type: 'TERMINAL_RETURNED_FROM_POPOUT',
     terminalId,
   })
-
-  // Call the detach API to properly detach the terminal
-  // This is more reliable than the sendBeacon from PopoutTerminalView's beforeunload
-  try {
-    await fetch(`http://localhost:8129/api/agents/${terminalId}/detach`, {
-      method: 'POST',
-    })
-  } catch (err) {
-    console.warn('[Popout] Failed to detach terminal (backend may be down):', err)
-  }
 }
 
 /**

@@ -139,7 +139,7 @@ export function useGitOperations(repoName: string) {
         body: JSON.stringify({
           name: `gitlogue: ${repoName}`,
           workingDir: repoPath,
-          command: 'gitlogue || git log --oneline --graph --all'
+          command: `gitlogue -p "${repoPath}" --order desc --speed 7 || git log --oneline --graph --all`
         })
       })
       const result = await res.json()

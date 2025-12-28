@@ -88,11 +88,10 @@ export function PopoutTerminalView({ terminalId }: PopoutTerminalViewProps) {
     return () => chrome.storage.onChanged.removeListener(handleStorageChange)
   }, [])
 
-  // Note: Cleanup on popout close is now handled by chrome.windows.onRemoved
-  // listener in background/index.ts. This is more reliable than beforeunload + sendBeacon
-  // which often fails to fire on window close. The background listener will:
-  // 1. Clear poppedOut state in sidebar (via TERMINAL_RETURNED_FROM_POPOUT)
-  // 2. Call the detach API to make terminal an orphan (unless untracked by "Return to Sidebar")
+  // Note: Cleanup on popout close is handled by chrome.windows.onRemoved listener
+  // in background/index.ts. When the popout window is closed (via X or "Return to Sidebar"),
+  // it broadcasts TERMINAL_RETURNED_FROM_POPOUT to clear poppedOut state in the sidebar,
+  // allowing the terminal to automatically reconnect there.
 
   // Get effective profile for appearance
   const getEffectiveProfile = () => {

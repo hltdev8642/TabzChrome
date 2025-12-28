@@ -44,6 +44,18 @@ async function discoverRepos(dir = DEFAULT_PROJECTS_DIR) {
   const repos = [];
 
   try {
+    // First, check if the directory itself is a git repo
+    const selfGitPath = path.join(dir, '.git');
+    try {
+      const selfGitStat = await fs.stat(selfGitPath);
+      if (selfGitStat.isDirectory()) {
+        repos.push(dir);
+      }
+    } catch {
+      // Not a git repo itself, continue to scan children
+    }
+
+    // Then scan child directories for git repos
     const entries = await fs.readdir(dir, { withFileTypes: true });
 
     for (const entry of entries) {
