@@ -310,6 +310,43 @@ app.post('/api/audio/play', (req, res) => {
   });
 });
 
+// GET /api/audio/local-file - Serve a local audio file (with path expansion)
+// Used by SoundEffectPicker to play local sound files
+app.get('/api/audio/local-file', (req, res) => {
+  const os = require('os');
+  let filePath = req.query.path;
+
+  if (!filePath) {
+    return res.status(400).json({ error: 'path required' });
+  }
+
+  // Expand ~ to home directory
+  filePath = filePath.replace(/^~/, os.homedir());
+
+  // Resolve to absolute path (handles relative paths safely)
+  filePath = path.resolve(filePath);
+
+  // Security: only allow audio files
+  const ext = path.extname(filePath).toLowerCase();
+  if (!['.mp3', '.wav', '.ogg', '.m4a', '.webm'].includes(ext)) {
+    return res.status(400).json({ error: 'Invalid audio format. Allowed: mp3, wav, ogg, m4a, webm' });
+  }
+
+  // Security: prevent path traversal (must be under home directory or /tmp)
+  const homeDir = os.homedir();
+  const isInHome = filePath === homeDir || filePath.startsWith(homeDir + path.sep);
+  const isInTmp = filePath === '/tmp' || filePath.startsWith('/tmp' + path.sep);
+  if (!isInHome && !isInTmp) {
+    return res.status(403).json({ error: 'Access denied. Files must be in home directory or /tmp' });
+  }
+
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).json({ error: 'File not found' });
+  }
+});
+
 // app.use('/api/workspace', workspaceRouter); // Archived - workspace-manager removed
 
 // TUI Tools endpoints

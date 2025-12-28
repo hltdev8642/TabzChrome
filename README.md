@@ -333,13 +333,14 @@ Terminal tabs show live Claude Code status with emoji indicators:
 
 ### Claude Code Audio Announcements
 
-Get voice announcements for Claude Code activity. Configure in **Settings → Claude Audio**:
+Get voice announcements for Claude Code activity. Configure in **Dashboard → Audio** (`localhost:8129/#/audio`):
 
 ![Audio settings tab with voice selection and event toggles](docs/pages/screenshots/audio-settings.png)
 
-**Settings:**
+**Global Settings:**
 - **Voice** - Choose a specific voice or "Random (unique per terminal)" to distinguish multiple Claude sessions
 - **Speech Rate** - Adjust speed (-50% to +100%)
+- **Pitch** - Adjust pitch (0Hz to +300Hz)
 - **Volume** - Master volume control
 
 **Events you can toggle:**
@@ -350,6 +351,17 @@ Get voice announcements for Claude Code activity. Configure in **Settings → Cl
 | Tool announcements | "Reading", "Editing", "Searching"... |
 | Include file names | "Reading package.json", "Editing App.tsx" |
 | Subagent activity | "Spawning agent", agent count changes |
+| Context warning | Alert at 50% context usage |
+| Context critical | Alert at 75% context usage |
+| MCP downloads | "Downloaded image.png" when files complete |
+
+**Per-event customization:** Expand any event to override voice, rate, and pitch. Events with custom settings show a "Custom" badge.
+
+**Phrase templates:** Customize what each event says using variables like `{profile}`, `{tool}`, `{filename}`. Click variable chips to insert them.
+
+**Sound effects:** Play sounds instead of (or alongside) TTS. Choose from built-in presets, URLs, or local file paths.
+
+**Word substitutions:** Replace specific words with sounds (e.g., make "Bash" play a chime instead of being spoken).
 
 **Tool debounce** prevents announcement spam during rapid tool usage.
 
@@ -375,6 +387,7 @@ Access a web-based dashboard at `http://localhost:8129` for terminal management:
 | **Dashboard** | `/` | Quick stats (active terminals, uptime, memory), working directory selector, quick spawn |
 | **Terminals** | `/terminals.html` | Full terminal list, kill/reattach, orphan management |
 | **Files** | `/files` | File browser with syntax highlighting, image/video preview, favorites |
+| **Audio** | `/#/audio` | Voice settings, per-event customization, sound effects, phrase templates |
 
 **Features:**
 - **Working directory sync** - Changes in dashboard sync to extension sidebar and vice versa

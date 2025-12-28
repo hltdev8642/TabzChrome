@@ -1,5 +1,5 @@
 import React from 'react'
-import { X, Terminal as TerminalIcon, Wrench, Volume2, Key, Copy, Check } from 'lucide-react'
+import { X, Terminal as TerminalIcon, Wrench, Key, Copy, Check } from 'lucide-react'
 import { TabType } from './types'
 
 export function ModalHeader({ showTokenHelp, onToggleTokenHelp, onClose }: {
@@ -74,7 +74,6 @@ export function TabNavigation({ activeTab, setActiveTab, profileCount }: {
   const tabs: { id: TabType; label: string; icon: React.ReactNode; count?: number }[] = [
     { id: 'profiles', label: 'Profiles', icon: <TerminalIcon className="h-4 w-4" />, count: profileCount },
     { id: 'mcp', label: 'MCP Tools', icon: <Wrench className="h-4 w-4" /> },
-    { id: 'audio', label: 'Claude Audio', icon: <Volume2 className="h-4 w-4" /> },
   ]
 
   return (
@@ -112,7 +111,6 @@ export function ModalFooter({ activeTab, mcpConfigSaved, mcpConfigChanged, onClo
   onSave: () => void
 }) {
   const getCloseLabel = () => {
-    if (activeTab === 'audio') return 'Done'
     if (activeTab === 'mcp' && mcpConfigSaved) return 'Done'
     return activeTab === 'mcp' ? 'Close' : 'Cancel'
   }
@@ -122,9 +120,7 @@ export function ModalFooter({ activeTab, mcpConfigSaved, mcpConfigChanged, onClo
       <button onClick={onClose} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-sm">
         {getCloseLabel()}
       </button>
-      {activeTab === 'audio' ? (
-        <span className="px-4 py-2 text-gray-500 text-sm">Settings save automatically</span>
-      ) : activeTab === 'mcp' && mcpConfigSaved ? (
+      {activeTab === 'mcp' && mcpConfigSaved ? (
         <span className="px-4 py-2 bg-green-600/20 text-green-400 rounded text-sm font-medium">✓ Saved</span>
       ) : (
         <button

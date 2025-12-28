@@ -81,7 +81,7 @@ export const PRESETS = {
   full: ALL_TOOL_IDS,
 }
 
-export type TabType = 'profiles' | 'mcp' | 'audio'
+export type TabType = 'profiles' | 'mcp'
 
 // Background media type for terminal backgrounds
 export type BackgroundMediaType = 'none' | 'image' | 'video'
@@ -164,6 +164,21 @@ export const FONT_FAMILIES = [
 export const getAvailableFonts = () =>
   FONT_FAMILIES.filter(f => !('windowsOnly' in f) || f.windowsOnly === isWindows)
 
+// Sound effect types
+export type SoundEffectType = 'none' | 'preset' | 'url' | 'file'
+
+export const SOUND_PRESETS = ['beep', 'ding', 'chime', 'alert', 'success', 'error'] as const
+export type SoundPreset = typeof SOUND_PRESETS[number]
+
+export interface SoundEffect {
+  type: SoundEffectType
+  preset?: SoundPreset        // If type === 'preset'
+  url?: string                // If type === 'url'
+  filePath?: string           // If type === 'file' (local path like ~/sounds/alert.mp3)
+}
+
+export type SoundMode = 'tts' | 'sound' | 'both'
+
 // Audio types
 export const TTS_VOICES = [
   // US Voices
@@ -183,6 +198,53 @@ export const TTS_VOICES = [
   { label: 'William (AU Male)', value: 'en-AU-WilliamMultilingualNeural' },
 ]
 
+// Per-event audio configuration (optional overrides for voice, rate, pitch, phrase, sounds)
+export interface AudioEventConfig {
+  voice?: string                              // undefined = use global
+  rate?: string                               // undefined = use global
+  pitch?: string                              // undefined = use global
+  phraseTemplate?: string                     // undefined = use default phrase
+  soundEffect?: SoundEffect                   // Replace or augment TTS with sound
+  soundMode?: SoundMode                       // 'tts', 'sound', or 'both'
+  wordSubstitutions?: Record<string, SoundEffect>  // Replace words with sounds
+}
+
+// Template variables available by event type
+export const TEMPLATE_VARIABLES: Record<string, string[]> = {
+  ready: ['{profile}'],
+  sessionStart: ['{profile}'],
+  sessionClose: ['{profile}'],
+  tools: ['{profile}', '{tool}', '{filename}'],
+  subagents: ['{profile}', '{count}'],
+  contextWarning: ['{profile}', '{percentage}'],
+  contextCritical: ['{profile}', '{percentage}'],
+  mcpDownloads: ['{profile}', '{filename}'],
+}
+
+// Default phrases for each event type (what was previously hardcoded)
+export const DEFAULT_PHRASES: Record<string, string> = {
+  ready: '{profile} ready',
+  sessionStart: '{profile} started',
+  sessionClose: '{profile} closed',
+  tools: '{tool}',  // When toolDetails enabled: '{tool} {filename}'
+  toolsWithDetails: '{tool} {filename}',
+  subagents: '{count} agents running',
+  subagentsComplete: 'All agents complete',
+  contextWarning: 'Warning! {profile} {percentage} percent context!',
+  contextCritical: 'Alert! {profile} context critical!',
+  mcpDownloads: 'Downloaded {filename}',
+}
+
+// Event type identifiers for per-event config lookup
+export type AudioEventType =
+  | 'ready'
+  | 'sessionStart'
+  | 'tools'
+  | 'subagents'
+  | 'contextWarning'
+  | 'contextCritical'
+  | 'mcpDownloads'
+
 export interface AudioEventSettings {
   ready: boolean
   sessionStart: boolean
@@ -192,6 +254,14 @@ export interface AudioEventSettings {
   contextWarning: boolean   // Announce when context hits warning threshold (default 50%)
   contextCritical: boolean  // Announce when context hits critical threshold (default 75%)
   mcpDownloads: boolean     // Announce when MCP downloads complete (tabz_download_file, tabz_download_image)
+  // Per-event configs (optional overrides)
+  readyConfig?: AudioEventConfig
+  sessionStartConfig?: AudioEventConfig
+  toolsConfig?: AudioEventConfig
+  subagentsConfig?: AudioEventConfig
+  contextWarningConfig?: AudioEventConfig
+  contextCriticalConfig?: AudioEventConfig
+  mcpDownloadsConfig?: AudioEventConfig
 }
 
 export interface AudioSettings {

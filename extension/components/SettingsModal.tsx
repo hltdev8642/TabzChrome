@@ -3,7 +3,6 @@ import { TabType } from './settings/types'
 import { SettingsProvider, useSettings } from './settings/SettingsContext'
 import { ProfilesTab } from './settings/ProfilesTab'
 import { McpToolsTab } from './settings/McpToolsTab'
-import { AudioTab } from './settings/AudioTab'
 import { ImportExportDialog } from './settings/ImportExportDialog'
 import { ModalHeader, TokenHelpPanel, TabNavigation, ModalFooter } from './settings/ModalUI'
 
@@ -151,16 +150,6 @@ function SettingsModalContent({ onClose, editProfileId }: SettingsModalContentPr
                 customDomains={settings.customDomains}
                 setCustomDomains={settings.setCustomDomains}
                 onSave={settings.handleMcpSave}
-              />
-            </div>
-          )}
-
-          {activeTab === 'audio' && (
-            <div role="tabpanel" id="audio-panel" aria-labelledby="audio-tab">
-              <AudioTab
-                audioSettings={settings.audioSettings}
-                updateAudioSettings={settings.updateAudioSettings}
-                updateAudioEvents={settings.updateAudioEvents}
               />
             </div>
           )}

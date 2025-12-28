@@ -1,8 +1,10 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import type { Profile, AudioSettings } from '../components/SettingsModal'
+import type { AudioEventType, AudioEventConfig, SoundEffect } from '../components/settings/types'
 import { playLowPriority, isHighPriorityPlaying } from '../utils/audioManager'
 import { stripEmojis } from '../utils/audioTextFormatting'
 import { VOICE_POOL, DEFAULT_AUDIO_SETTINGS } from '../constants/audioVoices'
+import { playSoundEffect, isSoundEffectConfigured } from '../utils/audioEffects'
 
 export interface TerminalSession {
   id: string
@@ -32,8 +34,9 @@ export interface UseAudioPlaybackReturn {
     text: string,
     session?: TerminalSession,
     isToolAnnouncement?: boolean,
-    overrides?: { pitch?: string; rate?: string }
+    overrides?: { pitch?: string; rate?: string; eventType?: AudioEventType }
   ) => Promise<void>
+  getEventConfig: (eventType: AudioEventType) => AudioEventConfig | undefined
 }
 
 /**
@@ -105,6 +108,12 @@ export function useAudioPlayback({ sessions }: UseAudioPlaybackParams): UseAudio
     return VOICE_POOL[sessions.length % VOICE_POOL.length]
   }, [sessions])
 
+  // Get event-specific config from audio settings
+  const getEventConfig = useCallback((eventType: AudioEventType): AudioEventConfig | undefined => {
+    const configKey = `${eventType}Config` as keyof typeof audioSettings.events
+    return audioSettings.events[configKey] as AudioEventConfig | undefined
+  }, [audioSettings.events])
+
   // Get merged audio settings for a profile (global + profile overrides)
   // Logic matrix:
   // | Header Mute | Profile Mode | Result |
@@ -117,7 +126,8 @@ export function useAudioPlayback({ sessions }: UseAudioPlaybackParams): UseAudio
   // | ON          | disabled     | Silent |
   const getAudioSettingsForProfile = useCallback((
     profile?: Profile,
-    assignedVoice?: string
+    assignedVoice?: string,
+    eventType?: AudioEventType
   ): { voice: string; rate: string; pitch: string; volume: number; enabled: boolean } => {
     const overrides = profile?.audioOverrides
     const mode = overrides?.mode || 'default'
@@ -135,9 +145,14 @@ export function useAudioPlayback({ sessions }: UseAudioPlaybackParams): UseAudio
       enabled = audioSettings.enabled
     }
 
-    // Determine voice: profile override > global setting > auto-assigned fallback
+    // Get event-specific config if eventType provided
+    const eventConfig = eventType ? getEventConfig(eventType) : undefined
+
+    // Priority chain for voice: event config > profile override > global setting > auto-assigned fallback
     let voice: string
-    if (overrides?.voice) {
+    if (eventConfig?.voice) {
+      voice = eventConfig.voice
+    } else if (overrides?.voice) {
       voice = overrides.voice
     } else if (audioSettings.voice === 'random') {
       voice = assignedVoice || VOICE_POOL[0]
@@ -147,24 +162,26 @@ export function useAudioPlayback({ sessions }: UseAudioPlaybackParams): UseAudio
       voice = assignedVoice || 'en-US-AndrewMultilingualNeural'
     }
 
+    // Priority chain for rate/pitch: event config > profile override > global setting
     return {
       voice,
-      rate: overrides?.rate || audioSettings.rate,
-      pitch: overrides?.pitch || audioSettings.pitch,
+      rate: eventConfig?.rate || overrides?.rate || audioSettings.rate,
+      pitch: eventConfig?.pitch || overrides?.pitch || audioSettings.pitch,
       volume: audioSettings.volume,
       enabled,
     }
-  }, [audioGlobalMute, audioSettings])
+  }, [audioGlobalMute, audioSettings, getEventConfig])
 
   // Audio playback helper - plays MP3 from backend cache via Chrome
   // Uses low priority - will be skipped if high-priority audio is playing
+  // Supports sound effects (play instead of or alongside TTS)
   const playAudio = useCallback(async (
     text: string,
     session?: TerminalSession,
     isToolAnnouncement = false,
-    overrides?: { pitch?: string; rate?: string }
+    overrides?: { pitch?: string; rate?: string; eventType?: AudioEventType }
   ) => {
-    const settings = getAudioSettingsForProfile(session?.profile, session?.assignedVoice)
+    const settings = getAudioSettingsForProfile(session?.profile, session?.assignedVoice, overrides?.eventType)
     if (!settings.enabled) return
 
     // Skip if high-priority audio is playing
@@ -173,8 +190,14 @@ export function useAudioPlayback({ sessions }: UseAudioPlaybackParams): UseAudio
       return
     }
 
+    // Get event-specific config for sound mode/effects
+    const eventConfig = overrides?.eventType ? getEventConfig(overrides.eventType) : undefined
+    const soundMode = eventConfig?.soundMode || 'tts'
+    const soundEffect = eventConfig?.soundEffect
+    const wordSubstitutions = eventConfig?.wordSubstitutions
+
     // Strip emojis for cleaner TTS
-    const cleanText = stripEmojis(text)
+    let cleanText = stripEmojis(text)
 
     // Debounce: use separate timers for tools vs other announcements
     const now = Date.now()
@@ -188,6 +211,40 @@ export function useAudioPlayback({ sessions }: UseAudioPlaybackParams): UseAudio
       lastAudioTimeRef.current = now
     }
 
+    // Handle sound mode: 'sound' or 'both'
+    if ((soundMode === 'sound' || soundMode === 'both') && isSoundEffectConfigured(soundEffect)) {
+      try {
+        await playSoundEffect(soundEffect!, settings.volume)
+        // If sound-only mode, we're done
+        if (soundMode === 'sound') return
+      } catch {
+        // Continue to TTS if sound fails
+      }
+    }
+
+    // Handle word substitutions - play sounds for matched words
+    if (wordSubstitutions && Object.keys(wordSubstitutions).length > 0) {
+      for (const [word, sound] of Object.entries(wordSubstitutions)) {
+        if (cleanText.toLowerCase().includes(word.toLowerCase())) {
+          // Play sound for this word
+          if (isSoundEffectConfigured(sound)) {
+            try {
+              await playSoundEffect(sound, settings.volume)
+            } catch {
+              // Ignore sound failures
+            }
+          }
+          // Remove the word from text (case-insensitive)
+          cleanText = cleanText.replace(new RegExp(word, 'gi'), '')
+        }
+      }
+      // Clean up extra spaces
+      cleanText = cleanText.replace(/\s+/g, ' ').trim()
+      // If all text was substituted, we're done
+      if (!cleanText) return
+    }
+
+    // TTS playback
     try {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 3000)
@@ -213,7 +270,7 @@ export function useAudioPlayback({ sessions }: UseAudioPlaybackParams): UseAudio
     } catch {
       // Silently ignore errors to prevent console spam
     }
-  }, [getAudioSettingsForProfile, audioSettings.toolDebounceMs])
+  }, [getAudioSettingsForProfile, getEventConfig, audioSettings.toolDebounceMs])
 
   return {
     audioSettings,
@@ -223,5 +280,6 @@ export function useAudioPlayback({ sessions }: UseAudioPlaybackParams): UseAudio
     getNextAvailableVoice,
     getAudioSettingsForProfile,
     playAudio,
+    getEventConfig,
   }
 }

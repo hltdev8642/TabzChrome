@@ -39,9 +39,11 @@ extension/                          backend/
 │   │   ├── Profiles.tsx            (Profile management)
 │   │   ├── Files.tsx               (File browser)
 │   │   ├── Terminals.tsx           (Terminal management)
+│   │   ├── Audio.tsx               (Audio notifications config)
 │   │   ├── McpPlayground.tsx       (MCP tool testing)
 │   │   └── Settings.tsx
 │   ├── components/files/           (File tree, viewers)
+│   ├── components/audio/           (EventCard, PhraseEditor, etc.)
 │   └── contexts/                   (React contexts)
 ├── 3d/FocusScene.tsx
 └── shared/messaging.ts

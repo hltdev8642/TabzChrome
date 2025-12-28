@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Trash2,
   GitBranch,
+  Volume2,
 } from 'lucide-react'
 import { useWorkingDirectory } from '../hooks/useWorkingDirectory'
 
@@ -28,6 +29,7 @@ import McpPlayground from './sections/McpPlayground'
 import SettingsSection from './sections/Settings'
 import FilesSection from './sections/Files'
 import GitSection from './sections/Git'
+import AudioSection from './sections/Audio'
 
 // Components
 import CaptureViewer from './components/CaptureViewer'
@@ -47,7 +49,7 @@ interface CaptureData {
   }
 }
 
-type Section = 'home' | 'profiles' | 'terminals' | 'files' | 'git' | 'api' | 'mcp' | 'settings'
+type Section = 'home' | 'profiles' | 'terminals' | 'files' | 'git' | 'api' | 'mcp' | 'audio' | 'settings'
 
 interface NavItem {
   id: Section
@@ -63,6 +65,7 @@ const navItems: NavItem[] = [
   { id: 'git', label: 'Source Control', icon: GitBranch },
   { id: 'api', label: 'API Playground', icon: Code2 },
   { id: 'mcp', label: 'MCP Settings', icon: Wrench },
+  { id: 'audio', label: 'Audio', icon: Volume2 },
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
 
@@ -74,7 +77,7 @@ export default function App() {
     if (hash.startsWith('#/')) {
       const hashPath = hash.slice(2) // Remove '#/'
       const [section] = hashPath.split('?')
-      const validSections: Section[] = ['home', 'profiles', 'terminals', 'files', 'git', 'api', 'mcp', 'settings']
+      const validSections: Section[] = ['home', 'profiles', 'terminals', 'files', 'git', 'api', 'mcp', 'audio', 'settings']
       if (validSections.includes(section as Section)) {
         return section as Section
       }
@@ -140,7 +143,7 @@ export default function App() {
       if (hash.startsWith('#/')) {
         const hashPath = hash.slice(2) // Remove '#/'
         const [section] = hashPath.split('?')
-        const validSections: Section[] = ['home', 'profiles', 'terminals', 'files', 'git', 'api', 'mcp', 'settings']
+        const validSections: Section[] = ['home', 'profiles', 'terminals', 'files', 'git', 'api', 'mcp', 'audio', 'settings']
         if (validSections.includes(section as Section)) {
           setActiveSection(section as Section)
         }
@@ -216,6 +219,8 @@ export default function App() {
         return <ApiPlayground />
       case 'mcp':
         return <McpPlayground />
+      case 'audio':
+        return <AudioSection />
       case 'settings':
         return <SettingsSection />
       default:

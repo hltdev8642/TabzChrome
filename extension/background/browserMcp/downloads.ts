@@ -13,9 +13,36 @@ const TTS_VOICE_VALUES = [
   'en-GB-SoniaNeural', 'en-GB-RyanNeural', 'en-AU-NatashaNeural', 'en-AU-WilliamMultilingualNeural'
 ]
 
+// Per-event audio configuration type
+interface AudioEventConfig {
+  voice?: string
+  rate?: string
+  pitch?: string
+  phraseTemplate?: string
+}
+
+// Default phrase template for MCP downloads
+const DEFAULT_MCP_DOWNLOAD_PHRASE = 'Downloaded {filename}'
+
+/**
+ * Render a template string with context values
+ */
+function renderTemplate(template: string, context: { filename?: string; profile?: string }): string {
+  let result = template
+  if (context.filename) {
+    result = result.replace(/\{filename\}/g, context.filename)
+  }
+  if (context.profile) {
+    result = result.replace(/\{profile\}/g, context.profile)
+  }
+  // Remove any unreplaced variables
+  result = result.replace(/\{[^}]+\}/g, '')
+  return result.replace(/\s+/g, ' ').trim()
+}
+
 /**
  * Announce download completion via TTS
- * Uses the audio settings from Chrome storage
+ * Uses the audio settings from Chrome storage, including per-event mcpDownloadsConfig
  */
 async function announceDownload(filename: string): Promise<void> {
   try {
@@ -25,8 +52,12 @@ async function announceDownload(filename: string): Promise<void> {
       enabled?: boolean
       voice?: string
       rate?: string
+      pitch?: string
       volume?: number
-      events?: { mcpDownloads?: boolean }
+      events?: {
+        mcpDownloads?: boolean
+        mcpDownloadsConfig?: AudioEventConfig
+      }
     }
     const audioGlobalMute = result.audioGlobalMute === true
 
@@ -34,23 +65,35 @@ async function announceDownload(filename: string): Promise<void> {
     if (!audioSettings.enabled || audioGlobalMute) return
     if (audioSettings.events?.mcpDownloads === false) return
 
-    // Handle random voice selection
-    let voice = audioSettings.voice || 'en-US-AndrewMultilingualNeural'
+    // Get event-specific config (overrides global settings)
+    const eventConfig = audioSettings.events?.mcpDownloadsConfig
+
+    // Handle voice: event config > global setting > default
+    let voice = eventConfig?.voice || audioSettings.voice || 'en-US-AndrewMultilingualNeural'
     if (voice === 'random') {
       voice = TTS_VOICE_VALUES[Math.floor(Math.random() * TTS_VOICE_VALUES.length)]
     }
 
+    // Handle rate/pitch: event config > global setting > default
+    const rate = eventConfig?.rate || audioSettings.rate || '+0%'
+    const pitch = eventConfig?.pitch || audioSettings.pitch || '+0Hz'
+
     // Extract just the filename (without path)
     const shortFilename = filename.split(/[/\\]/).pop() || filename
+
+    // Get phrase template (custom or default)
+    const phraseTemplate = eventConfig?.phraseTemplate || DEFAULT_MCP_DOWNLOAD_PHRASE
+    const phrase = renderTemplate(phraseTemplate, { filename: shortFilename })
 
     // Call TTS API using speak endpoint (plays audio directly)
     const response = await fetch('http://localhost:8129/api/audio/speak', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        text: `Downloaded ${shortFilename}`,
+        text: phrase,
         voice,
-        rate: audioSettings.rate || '+0%',
+        rate,
+        pitch,
         volume: audioSettings.volume ?? 0.7
       })
     })

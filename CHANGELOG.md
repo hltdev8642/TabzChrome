@@ -15,9 +15,18 @@ For older versions (1.1.x, 1.0.x, and pre-public 2.x), see [CHANGELOG-archive.md
 
 ---
 
-## [Unreleased]
+## [1.3.0] - 2025-12-28
 
 ### Added
+- **Audio Dashboard** - Full-featured audio configuration at Dashboard → Audio (`#/audio`):
+  - Moved from sidebar Settings modal to dedicated dashboard section
+  - **Per-event overrides** - Each event (ready, tools, context warnings) can customize voice, rate, and pitch
+  - **Phrase templates** - Custom announcement text with variables: `{profile}`, `{tool}`, `{filename}`, `{count}`, `{percentage}`
+  - **Sound effects** - Play sounds instead of or alongside TTS (built-in presets, URLs, or local file paths)
+  - **Word substitutions** - Replace specific words with sound effects (e.g., "Bash" → chime sound)
+  - New components: `EventCard` (expandable with "Custom" badge), `PhraseEditor` (clickable variable chips, live preview), `SoundEffectPicker`, `WordSubstitutionEditor`
+  - Backend: `/api/audio/local-file` route for serving local audio files
+
 - **Clickable File Paths in Terminal** - File paths in terminal output are now clickable:
   - Detects absolute paths (`/home/...`), tilde paths (`~/...`), and relative paths (`./...`, `../...`)
   - Supports line:column suffixes (`file.tsx:42:10`)

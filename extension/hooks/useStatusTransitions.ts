@@ -1,11 +1,14 @@
 import { useEffect, useRef } from 'react'
 import type { Profile, AudioSettings } from '../components/SettingsModal'
+import type { AudioEventType, AudioEventSettings } from '../components/settings/types'
+import { DEFAULT_PHRASES } from '../components/settings/types'
 import type { ClaudeStatus } from './useClaudeStatus'
 import {
   CONTEXT_THRESHOLDS,
   READY_ANNOUNCEMENT_COOLDOWN_MS,
   STATUS_FRESHNESS_MS,
 } from '../constants/audioVoices'
+import { renderTemplate, type TemplateContext } from '../utils/audioTemplates'
 
 export interface TerminalSession {
   id: string
@@ -31,7 +34,7 @@ export interface UseStatusTransitionsParams {
     text: string,
     session?: TerminalSession,
     isToolAnnouncement?: boolean,
-    overrides?: { pitch?: string; rate?: string }
+    overrides?: { pitch?: string; rate?: string; eventType?: AudioEventType }
   ) => Promise<void>
 }
 
@@ -55,6 +58,20 @@ export function useStatusTransitions({
   const prevContextPctRef = useRef<Map<string, number>>(new Map())
   const lastReadyAnnouncementRef = useRef<Map<string, number>>(new Map())
   const lastStatusUpdateRef = useRef<Map<string, string>>(new Map())
+
+  // Helper to get phrase template for an event type
+  const getPhraseTemplate = (eventType: AudioEventType, variant?: string): string => {
+    const configKey = `${eventType}Config` as keyof AudioEventSettings
+    const config = audioSettings.events[configKey] as { phraseTemplate?: string } | undefined
+    if (config?.phraseTemplate) {
+      return config.phraseTemplate
+    }
+    // Use variant-specific default if provided (e.g., 'toolsWithDetails', 'subagentsComplete')
+    if (variant && DEFAULT_PHRASES[variant]) {
+      return DEFAULT_PHRASES[variant]
+    }
+    return DEFAULT_PHRASES[eventType] || '{profile}'
+  }
 
   useEffect(() => {
     if (!settingsLoaded) return
@@ -113,7 +130,9 @@ export function useStatusTransitions({
       if (shouldPlayReady) {
         lastReadyAnnouncementRef.current.set(terminalId, now)
         lastStatusUpdateRef.current.set(terminalId, currentLastUpdated)
-        playAudio(`${getDisplayName()} ready`, session)
+        const template = getPhraseTemplate('ready')
+        const phrase = renderTemplate(template, { profile: getDisplayName() })
+        playAudio(phrase, session, false, { eventType: 'ready' })
       }
 
       // Tool announcements
@@ -131,34 +150,49 @@ export function useStatusTransitions({
       const isInternalFile = filePath && (filePath.includes('/.claude/') || filePath.includes('/session-memory/'))
 
       if (audioSettings.events.tools && isActiveStatus && isNewTool && !isInternalFile) {
-        let announcement = ''
+        // Get base tool name for announcement
+        let toolAction = ''
         switch (currentToolName) {
-          case 'Read': announcement = 'Reading'; break
-          case 'Write': announcement = 'Writing'; break
-          case 'Edit': announcement = 'Edit'; break
-          case 'Bash': announcement = 'Running command'; break
-          case 'Glob': announcement = 'Searching files'; break
-          case 'Grep': announcement = 'Searching code'; break
-          case 'Task': announcement = 'Spawning agent'; break
-          case 'WebFetch': announcement = 'Fetching web'; break
-          case 'WebSearch': announcement = 'Searching web'; break
-          default: announcement = `Using ${currentToolName}`
+          case 'Read': toolAction = 'Reading'; break
+          case 'Write': toolAction = 'Writing'; break
+          case 'Edit': toolAction = 'Edit'; break
+          case 'Bash': toolAction = 'Running command'; break
+          case 'Glob': toolAction = 'Searching files'; break
+          case 'Grep': toolAction = 'Searching code'; break
+          case 'Task': toolAction = 'Spawning agent'; break
+          case 'WebFetch': toolAction = 'Fetching web'; break
+          case 'WebSearch': toolAction = 'Searching web'; break
+          default: toolAction = `Using ${currentToolName}`
         }
 
+        // Build template context
+        const context: TemplateContext = {
+          profile: getDisplayName(),
+          tool: toolAction,
+        }
+
+        // Extract filename/detail if toolDetails is enabled
+        let hasDetails = false
         if (audioSettings.events.toolDetails && status.details?.args) {
           const args = status.details.args
           if (args.file_path) {
             const parts = args.file_path.split('/')
-            const filename = parts[parts.length - 1]
-            announcement += ` ${filename}`
+            context.filename = parts[parts.length - 1]
+            hasDetails = true
           } else if (args.pattern && (currentToolName === 'Glob' || currentToolName === 'Grep')) {
-            announcement += ` for ${args.pattern}`
+            context.filename = args.pattern
+            hasDetails = true
           } else if (currentToolName === 'Bash' && args.description) {
-            announcement = args.description
+            // For Bash, override the tool action with the description
+            context.tool = args.description
           }
         }
 
-        playAudio(announcement, session, true)
+        // Get template and render
+        const template = getPhraseTemplate('tools', hasDetails ? 'toolsWithDetails' : undefined)
+        const phrase = renderTemplate(template, context)
+
+        playAudio(phrase, session, true, { eventType: 'tools' })
       }
 
       prevToolNamesRef.current.set(terminalId, currentToolKey)
@@ -166,13 +200,16 @@ export function useStatusTransitions({
       // Subagent count changes
       if (audioSettings.events.subagents && currentSubagentCount !== prevSubagentCount) {
         if (currentSubagentCount > prevSubagentCount) {
-          playAudio(
-            `${currentSubagentCount} agent${currentSubagentCount > 1 ? 's' : ''} running`,
-            session,
-            true
-          )
+          const template = getPhraseTemplate('subagents')
+          const phrase = renderTemplate(template, {
+            profile: getDisplayName(),
+            count: currentSubagentCount,
+          })
+          playAudio(phrase, session, true, { eventType: 'subagents' })
         } else if (currentSubagentCount === 0 && prevSubagentCount > 0) {
-          playAudio('All agents complete', session, false)
+          const template = getPhraseTemplate('subagents', 'subagentsComplete')
+          const phrase = renderTemplate(template, { profile: getDisplayName() })
+          playAudio(phrase, session, false, { eventType: 'subagents' })
         }
       }
 
@@ -187,11 +224,16 @@ export function useStatusTransitions({
           const crossedWarningUp = prevContextPct < CONTEXT_THRESHOLDS.WARNING &&
                                    currentContextPct >= CONTEXT_THRESHOLDS.WARNING
           if (crossedWarningUp) {
+            const template = getPhraseTemplate('contextWarning')
+            const phrase = renderTemplate(template, {
+              profile: displayName,
+              percentage: CONTEXT_THRESHOLDS.WARNING,
+            })
             playAudio(
-              `Warning! ${displayName} 50 percent context!`,
+              phrase,
               session,
               false,
-              { pitch: '+15Hz', rate: '+5%' }
+              { pitch: '+15Hz', rate: '+5%', eventType: 'contextWarning' }
             )
           }
         }
@@ -200,11 +242,16 @@ export function useStatusTransitions({
           const crossedCriticalUp = prevContextPct < CONTEXT_THRESHOLDS.CRITICAL &&
                                     currentContextPct >= CONTEXT_THRESHOLDS.CRITICAL
           if (crossedCriticalUp) {
+            const template = getPhraseTemplate('contextCritical')
+            const phrase = renderTemplate(template, {
+              profile: displayName,
+              percentage: CONTEXT_THRESHOLDS.CRITICAL,
+            })
             playAudio(
-              `Alert! ${displayName} context critical!`,
+              phrase,
               session,
               false,
-              { pitch: '+25Hz', rate: '+10%' }
+              { pitch: '+25Hz', rate: '+10%', eventType: 'contextCritical' }
             )
           }
         }
