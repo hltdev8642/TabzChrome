@@ -1,8 +1,11 @@
 /**
  * Unified Structured Logging for Terminal Tabs Backend
  *
- * All logs (backend + browser) go to logs/unified.log with consistent format:
+ * Logs go to logs/unified.log with consistent format:
  * [HH:MM:SS] LEVEL  [Module] message
+ *
+ * Log levels (LOG_LEVEL env var):
+ *   0=silent, 1=error, 2=warn, 3=info (default), 4=debug, 5=trace
  *
  * Console output: Only errors/warnings (keeps backend terminal clean)
  * Full logs: View via Logs profile in TabzChrome (lnav or tail -f)
@@ -47,8 +50,30 @@ const LEVEL_NAMES = {
   trace: 'TRACE',
 };
 
-// Write to unified log file with consistent format
+// Numeric level values (matches consola: 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=trace)
+const LEVEL_VALUES = {
+  fatal: 0,
+  error: 1,
+  warn: 2,
+  info: 3,
+  success: 3,
+  start: 3,
+  ready: 3,
+  debug: 4,
+  trace: 5,
+};
+
+// Current log level from environment (default: 3 = info)
+const currentLogLevel = parseInt(process.env.LOG_LEVEL) || 3;
+
+// Write to unified log file with consistent format (respects LOG_LEVEL)
 const writeToLog = (level, moduleName, args) => {
+  // Check if this level should be logged based on LOG_LEVEL
+  const levelValue = LEVEL_VALUES[level] ?? 3;
+  if (levelValue > currentLogLevel) {
+    return; // Skip logging if level is higher than configured
+  }
+
   const time = formatTime();
   const levelTag = LEVEL_NAMES[level] || 'INFO ';
   const message = args.map(arg =>
@@ -70,14 +95,14 @@ const logger = createConsola({
 });
 
 // Levels that should output to console (keeps backend terminal clean)
-// Everything still goes to unified.log
+// unified.log respects LOG_LEVEL (default 3=info, set 4 for debug, 5 for trace)
 const CONSOLE_LEVELS = new Set(['fatal', 'error', 'warn', 'ready', 'success']);
 
 // Create module logger that writes to file, with selective console output
 const createModuleLogger = (moduleName) => {
   const createLogMethod = (level, consolaMethod) => {
     return (...args) => {
-      // Always write to unified log file
+      // Write to unified log file (respects LOG_LEVEL)
       writeToLog(level, moduleName, args);
       // Only write to console for important levels (errors, warnings, ready)
       if (CONSOLE_LEVELS.has(level)) {
