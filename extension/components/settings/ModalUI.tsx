@@ -1,6 +1,5 @@
 import React from 'react'
-import { X, Terminal as TerminalIcon, Wrench, Key, Copy, Check } from 'lucide-react'
-import { TabType } from './types'
+import { X, Terminal as TerminalIcon, Key, Copy, Check } from 'lucide-react'
 
 export function ModalHeader({ showTokenHelp, onToggleTokenHelp, onClose }: {
   showTokenHelp: boolean
@@ -9,7 +8,10 @@ export function ModalHeader({ showTokenHelp, onToggleTokenHelp, onClose }: {
 }) {
   return (
     <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
-      <h2 className="text-xl font-semibold text-white">Settings</h2>
+      <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+        <TerminalIcon className="h-5 w-5 text-[#00ff88]" />
+        Profiles
+      </h2>
       <div className="flex items-center gap-3">
         <button
           onClick={onToggleTokenHelp}
@@ -66,75 +68,21 @@ export function TokenHelpPanel({ tokenCopied, onCopyToken, onClose }: {
   )
 }
 
-export function TabNavigation({ activeTab, setActiveTab, profileCount }: {
-  activeTab: TabType
-  setActiveTab: (tab: TabType) => void
-  profileCount: number
-}) {
-  const tabs: { id: TabType; label: string; icon: React.ReactNode; count?: number }[] = [
-    { id: 'profiles', label: 'Profiles', icon: <TerminalIcon className="h-4 w-4" />, count: profileCount },
-    { id: 'mcp', label: 'MCP Tools', icon: <Wrench className="h-4 w-4" /> },
-  ]
-
-  return (
-    <div className="flex border-b border-gray-800 px-6" role="tablist">
-      {tabs.map(tab => (
-        <button
-          key={tab.id}
-          onClick={() => setActiveTab(tab.id)}
-          className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-[1px] transition-colors ${
-            activeTab === tab.id
-              ? 'text-[#00ff88] border-[#00ff88]'
-              : 'text-gray-400 border-transparent hover:text-white hover:border-gray-600'
-          }`}
-          role="tab"
-          aria-selected={activeTab === tab.id}
-        >
-          {tab.icon}
-          {tab.label}
-          {tab.count !== undefined && tab.count > 0 && (
-            <span className="px-1.5 py-0.5 text-xs rounded bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88]/30">
-              {tab.count}
-            </span>
-          )}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-export function ModalFooter({ activeTab, mcpConfigSaved, mcpConfigChanged, onClose, onSave }: {
-  activeTab: TabType
-  mcpConfigSaved: boolean
-  mcpConfigChanged: boolean
+export function ModalFooter({ onClose, onSave }: {
   onClose: () => void
   onSave: () => void
 }) {
-  const getCloseLabel = () => {
-    if (activeTab === 'mcp' && mcpConfigSaved) return 'Done'
-    return activeTab === 'mcp' ? 'Close' : 'Cancel'
-  }
-
   return (
     <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-800">
       <button onClick={onClose} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded text-sm">
-        {getCloseLabel()}
+        Cancel
       </button>
-      {activeTab === 'mcp' && mcpConfigSaved ? (
-        <span className="px-4 py-2 bg-green-600/20 text-green-400 rounded text-sm font-medium">✓ Saved</span>
-      ) : (
-        <button
-          onClick={onSave}
-          disabled={activeTab === 'mcp' && !mcpConfigChanged}
-          className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-            activeTab === 'mcp' && !mcpConfigChanged
-              ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-              : 'bg-[#00ff88] hover:bg-[#00c8ff] text-black'
-          }`}
-        >
-          Save
-        </button>
-      )}
+      <button
+        onClick={onSave}
+        className="px-4 py-2 rounded text-sm font-medium transition-colors bg-[#00ff88] hover:bg-[#00c8ff] text-black"
+      >
+        Save
+      </button>
     </div>
   )
 }

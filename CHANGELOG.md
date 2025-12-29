@@ -15,6 +15,26 @@ For older versions (1.1.x, 1.0.x, and pre-public 2.x), see [CHANGELOG-archive.md
 
 ---
 
+## [1.3.2] - 2025-12-29
+
+### Changed
+- **Dashboard Settings Consolidation** - Unified MCP and Audio settings under nested Settings navigation:
+  - Settings now has expandable sub-items: General, Tabz MCP, Audio
+  - Collapsed sidebar shows child icons when Settings is expanded (with tooltips)
+  - Removed `McpPlayground.tsx`, `Audio.tsx`, `Settings.tsx` → renamed to `SettingsMcp.tsx`, `SettingsAudio.tsx`, `SettingsGeneral.tsx`
+
+- **Sidebar Modal → Profiles Only** - Simplified sidebar settings modal:
+  - Removed MCP tab from sidebar modal (moved to dashboard)
+  - Modal renamed from "Settings" to "Profiles" with terminal icon
+  - Deleted `McpToolsTab.tsx` component
+  - Cleaned up `SettingsContext.tsx` (removed MCP state)
+
+- **Sidebar Header Icons Swapped**:
+  - Grid icon (was Dashboard) → Opens Profiles modal
+  - Gear icon (was Settings) → Opens Dashboard Settings (General tab)
+
+---
+
 ## [1.3.1] - 2025-12-29
 
 ### Added

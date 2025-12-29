@@ -17,6 +17,7 @@ import {
   Trash2,
   GitBranch,
   Volume2,
+  Sliders,
 } from 'lucide-react'
 import { useWorkingDirectory } from '../hooks/useWorkingDirectory'
 
@@ -25,11 +26,11 @@ import HomeSection from './sections/Home'
 import ProfilesSection from './sections/Profiles'
 import TerminalsSection from './sections/Terminals'
 import ApiPlayground from './sections/ApiPlayground'
-import McpPlayground from './sections/McpPlayground'
-import SettingsSection from './sections/Settings'
+import SettingsGeneral from './sections/SettingsGeneral'
+import SettingsMcp from './sections/SettingsMcp'
+import SettingsAudio from './sections/SettingsAudio'
 import FilesSection from './sections/Files'
 import GitSection from './sections/Git'
-import AudioSection from './sections/Audio'
 
 // Components
 import CaptureViewer from './components/CaptureViewer'
@@ -49,12 +50,13 @@ interface CaptureData {
   }
 }
 
-type Section = 'home' | 'profiles' | 'terminals' | 'files' | 'git' | 'api' | 'mcp' | 'audio' | 'settings'
+type Section = 'home' | 'profiles' | 'terminals' | 'files' | 'git' | 'api' | 'settings' | 'settings-general' | 'settings-mcp' | 'settings-audio'
 
 interface NavItem {
   id: Section
   label: string
   icon: React.ComponentType<{ className?: string }>
+  children?: NavItem[]
 }
 
 const navItems: NavItem[] = [
@@ -64,9 +66,16 @@ const navItems: NavItem[] = [
   { id: 'files', label: 'Files', icon: FolderOpen },
   { id: 'git', label: 'Source Control', icon: GitBranch },
   { id: 'api', label: 'API Playground', icon: Code2 },
-  { id: 'mcp', label: 'MCP Settings', icon: Wrench },
-  { id: 'audio', label: 'Audio', icon: Volume2 },
-  { id: 'settings', label: 'Settings', icon: Settings },
+  {
+    id: 'settings',
+    label: 'Settings',
+    icon: Settings,
+    children: [
+      { id: 'settings-general', label: 'General', icon: Sliders },
+      { id: 'settings-mcp', label: 'Tabz MCP', icon: Wrench },
+      { id: 'settings-audio', label: 'Audio', icon: Volume2 },
+    ]
+  },
 ]
 
 export default function App() {
@@ -77,7 +86,7 @@ export default function App() {
     if (hash.startsWith('#/')) {
       const hashPath = hash.slice(2) // Remove '#/'
       const [section] = hashPath.split('?')
-      const validSections: Section[] = ['home', 'profiles', 'terminals', 'files', 'git', 'api', 'mcp', 'audio', 'settings']
+      const validSections: Section[] = ['home', 'profiles', 'terminals', 'files', 'git', 'api', 'settings', 'settings-general', 'settings-mcp', 'settings-audio']
       if (validSections.includes(section as Section)) {
         return section as Section
       }
@@ -89,6 +98,7 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return localStorage.getItem('tabz-dashboard-sidebar-collapsed') === 'true'
   })
+  const [expandedNav, setExpandedNav] = useState<Set<string>>(new Set(['settings']))
   const [connected, setConnected] = useState<boolean | null>(null) // null = checking
   const [captureData, setCaptureData] = useState<CaptureData | null>(null)
   const [showDirDropdown, setShowDirDropdown] = useState(false)
@@ -143,7 +153,7 @@ export default function App() {
       if (hash.startsWith('#/')) {
         const hashPath = hash.slice(2) // Remove '#/'
         const [section] = hashPath.split('?')
-        const validSections: Section[] = ['home', 'profiles', 'terminals', 'files', 'git', 'api', 'mcp', 'audio', 'settings']
+        const validSections: Section[] = ['home', 'profiles', 'terminals', 'files', 'git', 'api', 'settings', 'settings-general', 'settings-mcp', 'settings-audio']
         if (validSections.includes(section as Section)) {
           setActiveSection(section as Section)
         }
@@ -217,12 +227,13 @@ export default function App() {
         return <GitSection />
       case 'api':
         return <ApiPlayground />
-      case 'mcp':
-        return <McpPlayground />
-      case 'audio':
-        return <AudioSection />
       case 'settings':
-        return <SettingsSection />
+      case 'settings-general':
+        return <SettingsGeneral />
+      case 'settings-mcp':
+        return <SettingsMcp />
+      case 'settings-audio':
+        return <SettingsAudio />
       default:
         return <HomeSection />
     }
@@ -336,21 +347,77 @@ export default function App() {
           {navItems.map((item) => {
             const Icon = item.icon
             const isActive = activeSection === item.id
+            const hasChildren = item.children && item.children.length > 0
+            const isExpanded = expandedNav.has(item.id)
+            const isChildActive = hasChildren && item.children?.some(child => activeSection === child.id)
+
             return (
-              <button
-                key={item.id}
-                data-section={item.id}
-                onClick={() => setActiveSection(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                  isActive
-                    ? 'bg-primary/20 text-primary'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                }`}
-                title={sidebarCollapsed ? item.label : undefined}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                {!sidebarCollapsed && <span className="text-sm font-medium">{item.label}</span>}
-              </button>
+              <div key={item.id}>
+                <button
+                  data-section={item.id}
+                  onClick={() => {
+                    if (hasChildren) {
+                      // Toggle expansion
+                      setExpandedNav(prev => {
+                        const newSet = new Set(prev)
+                        if (newSet.has(item.id)) {
+                          newSet.delete(item.id)
+                        } else {
+                          newSet.add(item.id)
+                        }
+                        return newSet
+                      })
+                      // Navigate to first child if not already on a child
+                      if (!isChildActive && item.children?.[0]) {
+                        setActiveSection(item.children[0].id)
+                      }
+                    } else {
+                      setActiveSection(item.id)
+                    }
+                  }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+                    isActive || isChildActive
+                      ? 'bg-primary/20 text-primary'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                  title={sidebarCollapsed ? item.label : undefined}
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  {!sidebarCollapsed && (
+                    <>
+                      <span className="flex-1 text-left text-sm font-medium">{item.label}</span>
+                      {hasChildren && (
+                        <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
+                      )}
+                    </>
+                  )}
+                </button>
+                {/* Children */}
+                {hasChildren && isExpanded && (
+                  <div className={`mt-1 space-y-1 ${sidebarCollapsed ? '' : 'ml-4'}`}>
+                    {item.children?.map(child => {
+                      const ChildIcon = child.icon
+                      const isChildItemActive = activeSection === child.id
+                      return (
+                        <button
+                          key={child.id}
+                          data-section={child.id}
+                          onClick={() => setActiveSection(child.id)}
+                          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                            isChildItemActive
+                              ? 'bg-primary/20 text-primary'
+                              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                          } ${sidebarCollapsed ? 'justify-center' : ''}`}
+                          title={sidebarCollapsed ? child.label : undefined}
+                        >
+                          <ChildIcon className="w-4 h-4 flex-shrink-0" />
+                          {!sidebarCollapsed && <span className="text-sm">{child.label}</span>}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             )
           })}
         </nav>

@@ -5,7 +5,6 @@ import {
   AudioSettings,
   AudioEventSettings,
   BackgroundMediaType,
-  PRESETS,
   DEFAULT_AUDIO_SETTINGS,
 } from './types'
 import { migrateProfiles, profilesNeedMigration, getValidDefaultProfileId } from '../../shared/profiles'
@@ -35,19 +34,6 @@ export interface SettingsContextValue {
   categorySettings: CategorySettings
   setCategorySettings: React.Dispatch<React.SetStateAction<CategorySettings>>
 
-  // MCP state
-  mcpEnabledTools: string[]
-  setMcpEnabledTools: React.Dispatch<React.SetStateAction<string[]>>
-  mcpConfigChanged: boolean
-  setMcpConfigChanged: React.Dispatch<React.SetStateAction<boolean>>
-  mcpConfigSaved: boolean
-  setMcpConfigSaved: React.Dispatch<React.SetStateAction<boolean>>
-  mcpLoading: boolean
-  allowAllUrls: boolean
-  setAllowAllUrls: React.Dispatch<React.SetStateAction<boolean>>
-  customDomains: string
-  setCustomDomains: React.Dispatch<React.SetStateAction<string>>
-
   // Audio state
   audioSettings: AudioSettings
   updateAudioSettings: (updates: Partial<AudioSettings>) => void
@@ -66,7 +52,6 @@ export interface SettingsContextValue {
 
   // Handlers
   handleSaveProfiles: () => void
-  handleMcpSave: () => Promise<void>
   handleExportProfiles: () => void
   handleImportClick: () => void
   handleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void
@@ -110,14 +95,6 @@ export function SettingsProvider({ isOpen, onClose, children, onPreviewProfileAp
   const [defaultProfile, setDefaultProfile] = useState<string>('default')
   const [categorySettings, setCategorySettings] = useState<CategorySettings>({})
 
-  // MCP state
-  const [mcpEnabledTools, setMcpEnabledTools] = useState<string[]>(PRESETS.standard)
-  const [mcpConfigChanged, setMcpConfigChanged] = useState(false)
-  const [mcpConfigSaved, setMcpConfigSaved] = useState(false)
-  const [mcpLoading, setMcpLoading] = useState(false)
-  const [allowAllUrls, setAllowAllUrls] = useState(false)
-  const [customDomains, setCustomDomains] = useState('')
-
   // Audio state
   const [audioSettings, setAudioSettings] = useState<AudioSettings>(DEFAULT_AUDIO_SETTINGS)
 
@@ -135,8 +112,6 @@ export function SettingsProvider({ isOpen, onClose, children, onPreviewProfileAp
   // Reset form state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setMcpConfigChanged(false)
-      setMcpConfigSaved(false)
       setShowImportDialog(false)
       setPendingImportProfiles([])
       setPendingImportCategorySettings(undefined)
@@ -144,37 +119,9 @@ export function SettingsProvider({ isOpen, onClose, children, onPreviewProfileAp
     }
   }, [isOpen])
 
-  // Load MCP config from backend (with Chrome storage fallback)
+  // Load audio and category settings
   useEffect(() => {
     if (!isOpen) return
-
-    setMcpLoading(true)
-    fetch('http://localhost:8129/api/mcp-config')
-      .then(res => res.json())
-      .then(data => {
-        if (data.enabledTools) {
-          setMcpEnabledTools(data.enabledTools)
-          chrome.storage.local.set({ mcpEnabledTools: data.enabledTools })
-        } else if (data.enabledGroups) {
-          console.log('[Settings] Migrating from groups to individual tools')
-          setMcpEnabledTools(PRESETS.standard)
-        }
-        if (data.allowAllUrls !== undefined) setAllowAllUrls(data.allowAllUrls)
-        if (data.customDomains) setCustomDomains(data.customDomains)
-      })
-      .catch(err => {
-        console.warn('[Settings] Backend unavailable, using Chrome storage:', err.message)
-        chrome.storage.local.get(['mcpEnabledTools', 'mcpEnabledGroups', 'allowAllUrls', 'customDomains'], (result) => {
-          if (result.mcpEnabledTools && Array.isArray(result.mcpEnabledTools)) {
-            setMcpEnabledTools(result.mcpEnabledTools as string[])
-          } else if (result.mcpEnabledGroups) {
-            setMcpEnabledTools(PRESETS.standard)
-          }
-          if (result.allowAllUrls !== undefined) setAllowAllUrls(result.allowAllUrls as boolean)
-          if (result.customDomains) setCustomDomains(result.customDomains as string)
-        })
-      })
-      .finally(() => setMcpLoading(false))
 
     // Load audio settings
     chrome.storage.local.get(['audioSettings'], (result) => {
@@ -248,30 +195,6 @@ export function SettingsProvider({ isOpen, onClose, children, onPreviewProfileAp
       console.log('[Settings] Saved:', { profiles: profiles.length, defaultProfile })
       onClose()
     })
-  }
-
-  // MCP save handler
-  const handleMcpSave = async () => {
-    chrome.storage.local.set({ mcpEnabledTools, allowAllUrls, customDomains }, () => {
-      console.log('[Settings] MCP config saved to Chrome storage')
-    })
-
-    try {
-      const response = await fetch('http://localhost:8129/api/mcp-config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabledTools: mcpEnabledTools, allowAllUrls, customDomains })
-      })
-      const data = await response.json()
-      if (data.success) {
-        console.log('[Settings] MCP config synced to backend')
-      }
-    } catch (err) {
-      console.error('[Settings] Failed to sync MCP config to backend:', err)
-    }
-
-    setMcpConfigSaved(true)
-    setMcpConfigChanged(false)
   }
 
   // Export handler
@@ -428,17 +351,6 @@ export function SettingsProvider({ isOpen, onClose, children, onPreviewProfileAp
     setDefaultProfile,
     categorySettings,
     setCategorySettings,
-    mcpEnabledTools,
-    setMcpEnabledTools,
-    mcpConfigChanged,
-    setMcpConfigChanged,
-    mcpConfigSaved,
-    setMcpConfigSaved,
-    mcpLoading,
-    allowAllUrls,
-    setAllowAllUrls,
-    customDomains,
-    setCustomDomains,
     audioSettings,
     updateAudioSettings,
     updateAudioEvents,
@@ -452,7 +364,6 @@ export function SettingsProvider({ isOpen, onClose, children, onPreviewProfileAp
     importWarnings,
     setImportWarnings,
     handleSaveProfiles,
-    handleMcpSave,
     handleExportProfiles,
     handleImportClick,
     handleFileSelect,

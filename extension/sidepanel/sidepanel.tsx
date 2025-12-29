@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import ReactDOM from 'react-dom/client'
-import { Terminal as TerminalIcon, Settings, Plus, X, ChevronDown, Moon, Sun, Keyboard, Volume2, VolumeX, RefreshCw, LayoutDashboard } from 'lucide-react'
+import { Terminal as TerminalIcon, Settings, Plus, X, ChevronDown, Moon, Sun, Keyboard, Volume2, VolumeX, RefreshCw, LayoutDashboard, Grid3X3 } from 'lucide-react'
 import { Badge } from '../components/ui/badge'
 import { Terminal } from '../components/Terminal'
 import { TerminalCustomizePopover } from '../components/TerminalCustomizePopover'
@@ -918,14 +918,14 @@ function SidePanelTerminal() {
             setShowDropdown={setShowDirDropdown}
           />
 
-          {/* Dashboard Button */}
+          {/* Profiles Button */}
           <button
-            onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/index.html') })}
+            onClick={() => setIsSettingsOpen(true)}
             className="p-1.5 hover:bg-[#00ff88]/10 rounded-md transition-colors text-gray-400 hover:text-[#00ff88]"
-            title="Open Dashboard"
-            aria-label="Open Dashboard"
+            title="Profiles"
+            aria-label="Open Profiles"
           >
-            <LayoutDashboard className="h-4 w-4" />
+            <Grid3X3 className="h-4 w-4" />
           </button>
 
           {/* Keyboard Shortcuts Button */}
@@ -965,12 +965,12 @@ function SidePanelTerminal() {
             <RefreshCw className="h-4 w-4" />
           </button>
 
-          {/* Settings Button */}
+          {/* Dashboard Settings Button */}
           <button
-            onClick={() => setIsSettingsOpen(true)}
+            onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/index.html#/settings-general') })}
             className="p-1.5 hover:bg-[#00ff88]/10 rounded-md transition-colors text-gray-400 hover:text-[#00ff88]"
-            title="Settings"
-            aria-label="Open settings"
+            title="Dashboard Settings"
+            aria-label="Open dashboard settings"
           >
             <Settings className="h-4 w-4" />
           </button>

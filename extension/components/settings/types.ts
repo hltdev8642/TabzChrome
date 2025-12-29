@@ -81,7 +81,7 @@ export const PRESETS = {
   full: ALL_TOOL_IDS,
 }
 
-export type TabType = 'profiles' | 'mcp'
+export type TabType = 'profiles'
 
 // Background media type for terminal backgrounds
 export type BackgroundMediaType = 'none' | 'image' | 'video'

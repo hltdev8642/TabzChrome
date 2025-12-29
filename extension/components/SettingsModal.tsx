@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react'
-import { TabType } from './settings/types'
+import React, { useState } from 'react'
 import { SettingsProvider, useSettings } from './settings/SettingsContext'
 import { ProfilesTab } from './settings/ProfilesTab'
-import { McpToolsTab } from './settings/McpToolsTab'
 import { ImportExportDialog } from './settings/ImportExportDialog'
-import { ModalHeader, TokenHelpPanel, TabNavigation, ModalFooter } from './settings/ModalUI'
+import { ModalHeader, TokenHelpPanel, ModalFooter } from './settings/ModalUI'
 
 // Re-export types for backward compatibility
 export type {
@@ -62,13 +60,7 @@ interface SettingsModalContentProps {
 }
 
 function SettingsModalContent({ onClose, editProfileId }: SettingsModalContentProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('profiles')
   const settings = useSettings()
-
-  // Switch to profiles tab when editProfileId changes
-  useEffect(() => {
-    if (editProfileId) setActiveTab('profiles')
-  }, [editProfileId])
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
@@ -109,59 +101,26 @@ function SettingsModalContent({ onClose, editProfileId }: SettingsModalContentPr
           />
         )}
 
-        {/* Tab Navigation */}
-        <TabNavigation
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          profileCount={settings.profiles.length}
-        />
-
-        {/* Content */}
+        {/* Profiles Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {activeTab === 'profiles' && (
-            <div role="tabpanel" id="profiles-panel" aria-labelledby="profiles-tab">
-              <ProfilesTab
-                profiles={settings.profiles}
-                setProfiles={settings.setProfiles}
-                defaultProfile={settings.defaultProfile}
-                setDefaultProfile={settings.setDefaultProfile}
-                categorySettings={settings.categorySettings}
-                setCategorySettings={settings.setCategorySettings}
-                audioSettings={settings.audioSettings}
-                onExportProfiles={settings.handleExportProfiles}
-                onImportClick={settings.handleImportClick}
-                editProfileId={editProfileId}
-              />
-            </div>
-          )}
-
-          {activeTab === 'mcp' && (
-            <div role="tabpanel" id="mcp-panel" aria-labelledby="mcp-tab">
-              <McpToolsTab
-                mcpEnabledTools={settings.mcpEnabledTools}
-                setMcpEnabledTools={settings.setMcpEnabledTools}
-                mcpConfigChanged={settings.mcpConfigChanged}
-                setMcpConfigChanged={settings.setMcpConfigChanged}
-                mcpConfigSaved={settings.mcpConfigSaved}
-                setMcpConfigSaved={settings.setMcpConfigSaved}
-                mcpLoading={settings.mcpLoading}
-                allowAllUrls={settings.allowAllUrls}
-                setAllowAllUrls={settings.setAllowAllUrls}
-                customDomains={settings.customDomains}
-                setCustomDomains={settings.setCustomDomains}
-                onSave={settings.handleMcpSave}
-              />
-            </div>
-          )}
+          <ProfilesTab
+            profiles={settings.profiles}
+            setProfiles={settings.setProfiles}
+            defaultProfile={settings.defaultProfile}
+            setDefaultProfile={settings.setDefaultProfile}
+            categorySettings={settings.categorySettings}
+            setCategorySettings={settings.setCategorySettings}
+            audioSettings={settings.audioSettings}
+            onExportProfiles={settings.handleExportProfiles}
+            onImportClick={settings.handleImportClick}
+            editProfileId={editProfileId}
+          />
         </div>
 
         {/* Footer */}
         <ModalFooter
-          activeTab={activeTab}
-          mcpConfigSaved={settings.mcpConfigSaved}
-          mcpConfigChanged={settings.mcpConfigChanged}
           onClose={onClose}
-          onSave={activeTab === 'mcp' ? settings.handleMcpSave : settings.handleSaveProfiles}
+          onSave={settings.handleSaveProfiles}
         />
       </div>
     </div>
