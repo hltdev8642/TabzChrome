@@ -92,38 +92,89 @@ Sora supports:
 
 Access via Settings button near the prompt input.
 
+## Prompt Structure (Recommended Framework)
+
+Think of prompting "like briefing a cinematographer who has never seen your storyboard."
+
+| Section | What to Include |
+|---------|-----------------|
+| **1. Style** | Establish aesthetic first: "1970s film", "16mm grainy", "IMAX-scale cinematic" |
+| **2. Scene** | Characters, costumes, setting, weather - concrete visuals, not vague |
+| **3. Cinematography** | Camera shot type, framing, mood |
+| **4. Actions** | Specific beats with timing: "takes 3 steps, pauses, turns in final second" |
+| **5. Lighting + Palette** | Light quality AND color anchors: "warm lamp fill, cool rim from window. Palette: amber, cream, walnut" |
+
+### Replace Vague with Concrete
+
+| ❌ Weak | ✅ Strong |
+|---------|-----------|
+| "A beautiful street at night" | "Wet asphalt, zebra crosswalk, neon signs reflecting in puddles" |
+| "Actor walks across the room" | "Actor takes four steps to window, pauses, pulls curtain in final second" |
+| "Brightly lit room" | "Soft window light with warm lamp fill, cool rim from hallway" |
+
 ## Example Prompts
 
 ### Developer/Tech Scene (TabzChrome vibe)
 ```
-A developer working late at night, their screen glowing in a dark room.
-They open a Chrome browser sidebar revealing multiple terminal windows.
-The camera zooms into the screen showing colorful terminal output scrolling,
-then they type a command and AI-generated text appears.
-Cozy lo-fi aesthetic, soft desk lamp light, rain on window.
+16mm film look, cozy lo-fi aesthetic.
+
+A developer in a dark hoodie sits at a cluttered desk, face lit by monitor glow.
+Rain streaks down a window behind them. Warm desk lamp casts amber fill,
+cool blue rim light from the monitor.
+
+Medium shot, static camera. Developer clicks mouse, Chrome sidebar slides open
+revealing terminal tabs with green/cyan text. They type four keystrokes,
+pause, lean back as AI text streams across screen in final 3 seconds.
+
+Palette: deep charcoal, amber lamp glow, cyan terminal highlights,
+rain-diffused window light.
 ```
 
 ### Product Demo
 ```
-Smooth screen recording style video showing a browser extension sidebar
-opening from the right side of Chrome. Multiple terminal tabs appear
-with colorful text. A cursor clicks between tabs. Modern, clean UI,
-soft shadows, professional product demo aesthetic.
+Clean modern product demo style, soft depth-of-field, subtle shadows.
+
+Browser window fills frame, crisp UI, white background.
+Smooth tracking shot right-to-left following cursor.
+
+Beat 1: Cursor clicks extension icon, sidebar slides in from right (2s).
+Beat 2: Three terminal tabs appear with colorful syntax highlighting (2s).
+Beat 3: Cursor clicks between tabs, text scrolls smoothly (remaining time).
+
+Lighting: soft diffused, no harsh shadows. Palette: white, slate gray,
+accent purple on active elements.
 ```
 
 ### Abstract/Artistic
 ```
-Digital streams of code flowing through a neon-lit cyberpunk cityscape.
-Binary rain falls past glowing terminal windows floating in space.
-Camera slowly pushes through layers of holographic UI elements.
-Blade Runner meets Matrix aesthetic, moody blue and orange lighting.
+Blade Runner meets Matrix aesthetic. 35mm anamorphic, heavy blue-orange grade.
+
+Glowing terminal windows float in a rain-drenched neon cityscape.
+Binary rain falls through holographic UI layers. Camera slowly pushes forward
+through three depth layers: foreground code particles, midground floating
+terminals, background neon towers.
+
+Single smooth dolly push, 8 seconds. Lens flares bloom as camera passes
+light sources in final 2 seconds.
+
+Palette: deep midnight blue shadows, electric cyan terminals, orange neon accents.
 ```
 
 ## Tips
 
+### From Official Sora Prompting Guide
+
+1. **Style is your strongest lever** - Establish aesthetic in first line (era, film stock, look)
+2. **One move per shot** - One camera movement + one subject action keeps it clean
+3. **Actions in beats** - Describe with timing: "pauses 2 seconds, then turns"
+4. **Concrete over vague** - Specific nouns and visible details, not adjectives
+5. **Palette anchors** - Name 3-4 colors for highlight, midtone, shadow
+6. **Lighting quality** - Specify direction, softness, and color temperature
+7. **Remix to iterate** - "Same shot, switch to 85mm" or "same lighting, new palette"
+8. **Simplify when it fails** - Freeze camera, reduce action, clear background, then layer back
+
+### Workflow Tips
+
 1. **Start from Drafts** - Has prompt input + shows all your generated videos
-2. **Be cinematic** - Describe camera movements: "camera zooms", "slowly pans", "tracking shot"
-3. **Mention lighting** - "soft lamp light", "neon glow", "golden hour"
-4. **Add atmosphere** - "rain on window", "dust particles in light", "lens flare"
-5. **Reference styles** - "lo-fi aesthetic", "cinematic", "product demo style"
-6. **Multiple videos** - Queue several prompts, they generate in parallel
+2. **Multiple videos** - Queue several prompts, they generate in parallel
+3. **Same prompt = different results** - This is intentional, not a bug. Run twice for variety

@@ -77,30 +77,82 @@ Or be specific:
 "Create 3 images: 1) robot waving, 2) robot thinking, 3) robot celebrating"
 ```
 
+## Prompt Structure (From OpenAI Guide)
+
+DALL-E 3 uses GPT-4 to auto-expand your prompts. Very detailed prompts get significantly better results.
+
+| Section | What to Include |
+|---------|-----------------|
+| **1. Subject** | Lead with the most important element first |
+| **2. Details** | Specific visual attributes (not vague adjectives) |
+| **3. Style** | Use "photo style" not "photorealistic" |
+| **4. Technical** | Lighting, lens (subtle influence), composition |
+
+### What Works
+
+| Do This | Instead Of |
+|---------|------------|
+| "A robot with..." | "Create an image of..." |
+| "Photo style" | "Photorealistic" |
+| Describe positively | "No X", "Without Y" |
+| "Pearl in night sky" | "Moon" (avoids template) |
+| "Multi-image collection" | Just asking for variations |
+
+### What Doesn't Work
+
+- **Negations**: "no", "not", "without" are processed literally and often ignored
+- **Counting**: "3 apples" fails—DALL-E can't count accurately
+- **Instructional language**: "create", "visualize", "imagine" triggers meta-artifacts
+- **"Close to camera"**: Adds unwanted cameras/hands in frame
+- **Character consistency**: Can't reuse same character across images (use montage instead)
+
+### Technical Limits
+
+- **Max prompt**: 4,000 characters
+- **Effective tokens**: ~256 processed, only 30-40 translate to visual elements
+- **Sizes**: 1024×1024, 1792×1024 (wide), 1024×1792 (portrait)
+- **Styles**: `vivid` (hyper-real, default) or `natural` (subdued, good for logos)
+
 ## Example Prompts
 
-### Avatar
+### Avatar (Structured)
 ```
-A friendly robot avatar with a round head, glowing blue eyes, silver metallic body,
-and a warm smile. Digital art style, suitable for a profile picture, clean background.
-```
-
-### Logo
-```
-Minimalist logo for a tech startup called "TabzChrome", featuring a stylized
-browser tab with terminal cursor. Modern, clean, vector style.
+A friendly robot, round head, glowing blue eyes, silver metallic body, warm smile.
+Clean white background, centered composition.
+Digital art style, soft shadows, vibrant colors.
 ```
 
-### Scene
+### Logo (Use 'natural' style)
 ```
-Cozy home office at night, multiple monitors showing code, warm lamp light,
-rain on the window, lo-fi aesthetic, digital painting style.
+Minimalist logo, tech startup "TabzChrome".
+Stylized browser tab with terminal cursor blink.
+Vector style, clean lines, works on dark and light backgrounds.
+Monochrome with single accent color.
+```
+
+### Scene (Lead with subject)
+```
+Developer at cluttered desk, three monitors showing code, late night.
+Warm desk lamp casting amber glow, cool blue monitor light on face.
+Rain streaks on window behind, city lights bokeh through glass.
+Photo style, shallow depth of field, moody lo-fi aesthetic.
 ```
 
 ## Tips
 
+### From Official OpenAI Guide
+
+1. **Lead with subject** - Most important element first, details after
+2. **Use "photo style"** - Not "photorealistic" for realistic images
+3. **Avoid negations** - Describe what you want, not what you don't
+4. **Simple mood words** - "dark", "chaotic", "cozy" guide effectively
+5. **Style parameter** - Use `natural` for logos/stock, `vivid` for cinematic
+6. **Montage for stories** - Request "multi-image collection" for variations
+7. **Prioritize composition** - Don't list too many objects (30-40 elements max translate)
+8. **Avoid text in images** - Or add "For unlettered viewers only" to reduce gibberish
+
+### Workflow Tips
+
 1. **Direct URL** - Use the direct GPT URL to skip navigation
-2. **Be specific** - DALL-E 3 responds well to detailed prompts
-3. **Style keywords** - Add "digital art", "photorealistic", "minimalist", etc.
-4. **Aspect ratio** - Mention "square", "wide", "portrait" for specific shapes
-5. **Multiple images** - Ask for variations or numbered list of scenes
+2. **Multiple images** - Ask for "4 variations" or numbered scenes
+3. **HD quality** - Adds ~10s, costs more, but finer details

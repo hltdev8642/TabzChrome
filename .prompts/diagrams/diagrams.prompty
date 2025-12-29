@@ -150,12 +150,38 @@ Include async operations where applicable.
 
 ## Tips
 
+### For ChatGPT Diagrams GPT
+
 1. **Be specific** - List all components and relationships
 2. **Name things** - Use actual names/labels for nodes
 3. **Show flow direction** - Describe what triggers what
 4. **Include edge cases** - Error handling, alternative paths
 5. **Request format** - Ask for Mermaid code to embed elsewhere
 6. **Iterate** - Ask to add or remove elements
+
+### Mermaid Syntax Best Practices (2025)
+
+From the official Mermaid documentation:
+
+| Do | Don't |
+|----|-------|
+| Capitalize "End" in nodes | Use lowercase "end" (breaks parser) |
+| Add space before "o" or "x" at node start | Start node with `o` or `x` directly |
+| Keep diagrams focused | Overload with too much detail |
+| Use meaningful labels | Use jargon or unclear abbreviations |
+| Test in Live Editor first | Share untested diagrams |
+| Sketch on paper first | Dive straight into complex code |
+
+**New in 2025:**
+- 30 new shape types with flexible syntax
+- Edge IDs for advanced styling (`id@` prefix)
+- ELK layout for complex diagrams (vs default Dagre)
+- Hand-drawn "sketch" look option
+
+**Common Syntax Errors:**
+- `%%` starts line comments
+- Unknown words break diagrams silently
+- Misspellings fail without error messages
 
 ---
 
