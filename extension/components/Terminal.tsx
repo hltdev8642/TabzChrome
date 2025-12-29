@@ -325,9 +325,11 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
 
     // Register custom file path link provider for clickable file paths
     // Opens files in the dashboard Files page when clicked
+    // NOTE: bufferLineNumber is 1-indexed (xterm convention for provideLinks)
     xterm.registerLinkProvider({
       provideLinks: (bufferLineNumber, callback) => {
-        const line = xterm.buffer.active.getLine(bufferLineNumber)
+        // Convert to 0-indexed for buffer access
+        const line = xterm.buffer.active.getLine(bufferLineNumber - 1)
         if (!line) {
           callback(undefined)
           return
@@ -371,7 +373,7 @@ export function Terminal({ terminalId, sessionName, terminalType = 'bash', worki
 
           links.push({
             range: {
-              start: { x: startX, y: bufferLineNumber }, // 0-indexed - clicking works, underline is 1 line off
+              start: { x: startX, y: bufferLineNumber }, // bufferLineNumber is already 1-indexed
               end: { x: startX + path.length, y: bufferLineNumber }
             },
             text: path,
