@@ -1,8 +1,12 @@
 import React, { useState, useMemo, useCallback } from 'react'
 import { Copy, Send, Terminal, ChevronDown, AtSign, Star, Pin, ExternalLink, CheckCircle2, AlertCircle } from 'lucide-react'
-import { parsePrompty, getPromptForSending, parseContentToSegments, getFieldProgress } from '../../utils/promptyUtils'
+import { parsePrompty, getPromptForSending, getFieldProgress } from '../../utils/promptyUtils'
 import { InlineField } from './InlineField'
 import { sendMessage } from '../../../shared/messaging'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 interface TerminalInfo {
   id: string
@@ -46,15 +50,19 @@ export function PromptyViewer({
   // Parse the prompty file
   const parsed = useMemo(() => parsePrompty(content), [content])
 
-  // Parse content into segments for inline rendering
-  const segments = useMemo(() => parseContentToSegments(parsed.content), [parsed.content])
-
   // Get ordered list of field names (for tab navigation)
   const fieldOrder = useMemo(() => {
-    return segments
-      .filter(s => s.type === 'field')
-      .map(s => s.content)
-  }, [segments])
+    const fieldRegex = /\{\{([^:}]+)(?::([^}]+))?\}\}/g
+    const fields: string[] = []
+    let match
+    while ((match = fieldRegex.exec(parsed.content)) !== null) {
+      const fieldName = match[1].trim()
+      if (!fields.includes(fieldName)) {
+        fields.push(fieldName)
+      }
+    }
+    return fields
+  }, [parsed.content])
 
   // Progress tracking
   const progress = useMemo(
@@ -90,6 +98,63 @@ export function PromptyViewer({
     // Clear after a moment to allow the field to activate
     setTimeout(() => setActiveFieldIndex(null), 100)
   }, [fieldOrder])
+
+  // Helper to render text with inline fields - processes string children for {{variable}} patterns
+  const renderTextWithFields = useCallback((text: string): React.ReactNode => {
+    const fieldRegex = /\{\{([^:}]+)(?::([^}]+))?\}\}/g
+    const parts: React.ReactNode[] = []
+    let lastIndex = 0
+    let match
+    let key = 0
+
+    while ((match = fieldRegex.exec(text)) !== null) {
+      // Add text before this field
+      if (match.index > lastIndex) {
+        parts.push(text.slice(lastIndex, match.index))
+      }
+
+      const fieldName = match[1].trim()
+      const hint = match[2]?.trim()
+      const fieldIdx = fieldOrder.indexOf(fieldName)
+
+      parts.push(
+        <InlineField
+          key={`field-${fieldName}-${key++}`}
+          fieldId={fieldName}
+          hint={hint}
+          value={variableValues[fieldName] || ''}
+          onChange={handleFieldChange}
+          onNavigate={(direction) => handleNavigate(fieldName, direction)}
+          isActive={activeFieldIndex === fieldIdx}
+        />
+      )
+
+      lastIndex = fieldRegex.lastIndex
+    }
+
+    // Add remaining text after last field
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex))
+    }
+
+    return parts.length === 0 ? text : parts.length === 1 ? parts[0] : <>{parts}</>
+  }, [fieldOrder, variableValues, handleFieldChange, handleNavigate, activeFieldIndex])
+
+  // Process children recursively to find and replace {{variable}} patterns
+  const processChildren = useCallback((children: React.ReactNode): React.ReactNode => {
+    return React.Children.map(children, child => {
+      if (typeof child === 'string') {
+        return renderTextWithFields(child)
+      }
+      if (React.isValidElement(child) && child.props.children) {
+        return React.cloneElement(child, {
+          ...child.props,
+          children: processChildren(child.props.children)
+        } as any)
+      }
+      return child
+    })
+  }, [renderTextWithFields])
 
   const copyContent = async () => {
     const processed = getPromptForSending(content, variableValues)
@@ -146,9 +211,6 @@ export function PromptyViewer({
       setSendStatus('idle')
     }
   }, [content, variableValues])
-
-  // Track which field index we're at while rendering
-  let fieldIndex = 0
 
   return (
     <div className="h-full flex flex-col">
@@ -263,42 +325,88 @@ export function PromptyViewer({
         </div>
       )}
 
-      {/* Prompt content with inline fields */}
+      {/* Prompt content with markdown rendering and inline fields */}
       <div
-        className="flex-1 overflow-auto p-4"
+        className="flex-1 overflow-auto p-4 file-viewer-markdown"
         style={{
           fontSize: `${fontSize}px`,
           fontFamily: `${fontFamily}, monospace`,
-          lineHeight: '1.6',
         }}
       >
-        <div className="whitespace-pre-wrap">
-          {segments.map((segment, index) => {
-            if (segment.type === 'text') {
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            // Process text in paragraphs for {{variables}}
+            p: ({ children }) => <p>{processChildren(children)}</p>,
+            // Process text in list items
+            li: ({ children }) => <li>{processChildren(children)}</li>,
+            // Process headings
+            h1: ({ children }) => <h1>{processChildren(children)}</h1>,
+            h2: ({ children }) => <h2>{processChildren(children)}</h2>,
+            h3: ({ children }) => <h3>{processChildren(children)}</h3>,
+            h4: ({ children }) => <h4>{processChildren(children)}</h4>,
+            h5: ({ children }) => <h5>{processChildren(children)}</h5>,
+            h6: ({ children }) => <h6>{processChildren(children)}</h6>,
+            // Process table cells
+            td: ({ children }) => <td>{processChildren(children)}</td>,
+            th: ({ children }) => <th>{processChildren(children)}</th>,
+            // Process blockquotes
+            blockquote: ({ children }) => <blockquote>{processChildren(children)}</blockquote>,
+            // Process strong/em
+            strong: ({ children }) => <strong>{processChildren(children)}</strong>,
+            em: ({ children }) => <em>{processChildren(children)}</em>,
+            // Code blocks with syntax highlighting
+            code({ className, children, ...props }: any) {
+              const match = /language-(\w+)/.exec(className || '')
+              const codeString = String(children).replace(/\n$/, '')
+
+              // Inline code - also process for variables
+              if (!match && !className) {
+                return <code className={className} {...props}>{processChildren(children)}</code>
+              }
+
+              // Code block with syntax highlighting
               return (
-                <span key={`text-${index}`}>
-                  {segment.content}
-                </span>
+                <SyntaxHighlighter
+                  language={match?.[1] || 'text'}
+                  style={vscDarkPlus}
+                  customStyle={{
+                    margin: 0,
+                    padding: '1rem',
+                    background: 'rgba(0, 0, 0, 0.4)',
+                    borderRadius: '8px',
+                    fontSize: `${fontSize}px`,
+                    fontFamily: `${fontFamily}, monospace`,
+                  }}
+                  codeTagProps={{
+                    style: {
+                      fontSize: `${fontSize}px`,
+                      fontFamily: `${fontFamily}, monospace`,
+                    }
+                  }}
+                >
+                  {codeString}
+                </SyntaxHighlighter>
               )
-            }
-
-            // Field segment
-            const currentFieldIndex = fieldIndex
-            fieldIndex++
-
-            return (
-              <InlineField
-                key={`field-${segment.content}-${index}`}
-                fieldId={segment.content}
-                hint={segment.hint}
-                value={variableValues[segment.content] || ''}
-                onChange={handleFieldChange}
-                onNavigate={(direction) => handleNavigate(segment.content, direction)}
-                isActive={activeFieldIndex === currentFieldIndex}
-              />
-            )
-          })}
-        </div>
+            },
+            // Links
+            a({ href, children, ...props }: any) {
+              return (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                  {...props}
+                >
+                  {processChildren(children)}
+                </a>
+              )
+            },
+          }}
+        >
+          {parsed.content}
+        </ReactMarkdown>
       </div>
     </div>
   )
