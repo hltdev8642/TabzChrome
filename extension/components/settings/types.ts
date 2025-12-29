@@ -264,6 +264,14 @@ export interface AudioEventSettings {
   mcpDownloadsConfig?: AudioEventConfig
 }
 
+// Settings for content reading (highlighted text, file reading)
+export interface ContentReadingSettings {
+  useGlobal: boolean  // true = use global voice/rate/pitch, false = use custom
+  voice?: string      // Custom voice (only used if useGlobal is false)
+  rate?: string       // Custom rate (only used if useGlobal is false)
+  pitch?: string      // Custom pitch (only used if useGlobal is false)
+}
+
 export interface AudioSettings {
   enabled: boolean
   volume: number  // 0-1
@@ -272,6 +280,7 @@ export interface AudioSettings {
   pitch: string   // e.g., "+20Hz", "-10Hz" (higher = more urgent/alert tone)
   events: AudioEventSettings
   toolDebounceMs: number
+  contentReading?: ContentReadingSettings  // Settings for reading highlighted text, files
 }
 
 export type AudioMode = 'default' | 'enabled' | 'disabled'
@@ -300,4 +309,7 @@ export const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
     mcpDownloads: true,
   },
   toolDebounceMs: 1000,
+  contentReading: {
+    useGlobal: true,  // Default to using global settings
+  },
 }

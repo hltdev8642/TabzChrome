@@ -482,19 +482,36 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
 
       // Load audio settings
       const result = await chrome.storage.local.get(['audioSettings'])
-      const audioSettings = (result.audioSettings || {}) as { voice?: string; rate?: string; pitch?: string; volume?: number }
+      const audioSettings = (result.audioSettings || {}) as {
+        voice?: string
+        rate?: string
+        pitch?: string
+        volume?: number
+        contentReading?: { useGlobal: boolean; voice?: string; rate?: string; pitch?: string }
+      }
 
       const TTS_VOICE_VALUES = [
         'en-US-AndrewMultilingualNeural', 'en-US-EmmaMultilingualNeural', 'en-US-BrianMultilingualNeural',
         'en-US-AriaNeural', 'en-US-GuyNeural', 'en-US-JennyNeural', 'en-US-ChristopherNeural', 'en-US-AvaNeural',
+        'en-GB-SoniaNeural', 'en-GB-RyanNeural', 'en-AU-NatashaNeural', 'en-AU-WilliamMultilingualNeural'
       ]
-      let voice = audioSettings.voice || 'en-US-AndrewMultilingualNeural'
+
+      // Check if contentReading has custom settings
+      const useContentReading = audioSettings.contentReading && !audioSettings.contentReading.useGlobal
+
+      let voice = useContentReading && audioSettings.contentReading?.voice
+        ? audioSettings.contentReading.voice
+        : (audioSettings.voice || 'en-US-AndrewMultilingualNeural')
       if (voice === 'random') {
         voice = TTS_VOICE_VALUES[Math.floor(Math.random() * TTS_VOICE_VALUES.length)]
       }
 
-      const rate = audioSettings.rate || '+0%'
-      const pitch = audioSettings.pitch || '+0Hz'
+      const rate = useContentReading && audioSettings.contentReading?.rate
+        ? audioSettings.contentReading.rate
+        : (audioSettings.rate || '+0%')
+      const pitch = useContentReading && audioSettings.contentReading?.pitch
+        ? audioSettings.contentReading.pitch
+        : (audioSettings.pitch || '+0Hz')
       const volume = audioSettings.volume ?? 0.7
 
       // Use speak endpoint for playback
@@ -565,6 +582,59 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
       const data = await res.json()
       if (data.success) {
         setExplainResult(data.explanation)
+
+        // Read the explanation aloud using content reading settings
+        try {
+          const result = await chrome.storage.local.get(['audioSettings'])
+          const audioSettings = (result.audioSettings || {}) as {
+            enabled?: boolean
+            voice?: string
+            rate?: string
+            pitch?: string
+            volume?: number
+            contentReading?: { useGlobal: boolean; voice?: string; rate?: string; pitch?: string }
+          }
+
+          // Only speak if audio is enabled
+          if (audioSettings.enabled) {
+            const TTS_VOICE_VALUES = [
+              'en-US-AndrewMultilingualNeural', 'en-US-EmmaMultilingualNeural', 'en-US-BrianMultilingualNeural',
+              'en-US-AriaNeural', 'en-US-GuyNeural', 'en-US-JennyNeural', 'en-US-ChristopherNeural', 'en-US-AvaNeural',
+              'en-GB-SoniaNeural', 'en-GB-RyanNeural', 'en-AU-NatashaNeural', 'en-AU-WilliamMultilingualNeural'
+            ]
+
+            const useContentReading = audioSettings.contentReading && !audioSettings.contentReading.useGlobal
+
+            let voice = useContentReading && audioSettings.contentReading?.voice
+              ? audioSettings.contentReading.voice
+              : (audioSettings.voice || 'en-US-AndrewMultilingualNeural')
+            if (voice === 'random') {
+              voice = TTS_VOICE_VALUES[Math.floor(Math.random() * TTS_VOICE_VALUES.length)]
+            }
+
+            const rate = useContentReading && audioSettings.contentReading?.rate
+              ? audioSettings.contentReading.rate
+              : (audioSettings.rate || '+0%')
+            const pitch = useContentReading && audioSettings.contentReading?.pitch
+              ? audioSettings.contentReading.pitch
+              : (audioSettings.pitch || '+0Hz')
+
+            await fetch(`${API_BASE}/api/audio/speak`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                text: data.explanation,
+                voice,
+                rate,
+                pitch,
+                volume: audioSettings.volume ?? 0.7,
+                priority: 'high'
+              })
+            })
+          }
+        } catch (ttsErr) {
+          console.error('Failed to read explanation aloud:', ttsErr)
+        }
       } else {
         setExplainResult(`Error: ${data.error}`)
       }

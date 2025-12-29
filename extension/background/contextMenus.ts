@@ -234,7 +234,13 @@ export function setupContextMenuListener(): void {
       try {
         // Load audio settings from Chrome storage
         const result = await chrome.storage.local.get(['audioSettings'])
-        const audioSettings = (result.audioSettings || {}) as { voice?: string; rate?: string; volume?: number }
+        const audioSettings = (result.audioSettings || {}) as {
+          voice?: string
+          rate?: string
+          pitch?: string
+          volume?: number
+          contentReading?: { useGlobal: boolean; voice?: string; rate?: string; pitch?: string }
+        }
 
         // Handle random voice selection
         const TTS_VOICE_VALUES = [
@@ -242,10 +248,23 @@ export function setupContextMenuListener(): void {
           'en-US-AriaNeural', 'en-US-GuyNeural', 'en-US-JennyNeural', 'en-US-ChristopherNeural', 'en-US-AvaNeural',
           'en-GB-SoniaNeural', 'en-GB-RyanNeural', 'en-AU-NatashaNeural', 'en-AU-WilliamMultilingualNeural'
         ]
-        let voice = audioSettings.voice || 'en-US-AndrewMultilingualNeural'
+
+        // Check if contentReading has custom settings
+        const useContentReading = audioSettings.contentReading && !audioSettings.contentReading.useGlobal
+
+        let voice = useContentReading && audioSettings.contentReading?.voice
+          ? audioSettings.contentReading.voice
+          : (audioSettings.voice || 'en-US-AndrewMultilingualNeural')
         if (voice === 'random') {
           voice = TTS_VOICE_VALUES[Math.floor(Math.random() * TTS_VOICE_VALUES.length)]
         }
+
+        const rate = useContentReading && audioSettings.contentReading?.rate
+          ? audioSettings.contentReading.rate
+          : (audioSettings.rate || '+0%')
+        const pitch = useContentReading && audioSettings.contentReading?.pitch
+          ? audioSettings.contentReading.pitch
+          : (audioSettings.pitch || '+0Hz')
 
         const response = await fetch('http://localhost:8129/api/audio/speak', {
           method: 'POST',
@@ -253,7 +272,8 @@ export function setupContextMenuListener(): void {
           body: JSON.stringify({
             text: selectedText,
             voice,
-            rate: audioSettings.rate || '+0%',
+            rate,
+            pitch,
             volume: audioSettings.volume ?? 0.7
           })
         })

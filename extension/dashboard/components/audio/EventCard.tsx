@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
-import { ChevronDown, ChevronUp, RotateCcw } from 'lucide-react'
+import { ChevronDown, ChevronUp, RotateCcw, Volume2 } from 'lucide-react'
 import type { AudioEventConfig, AudioEventType, SoundEffect, SoundMode } from '../../../components/settings/types'
 import { TTS_VOICES } from '../../../components/settings/types'
+import { renderPreview, getDefaultPhrase } from '../../../utils/audioTemplates'
 import PhraseEditor from './PhraseEditor'
 import SoundEffectPicker from './SoundEffectPicker'
 import WordSubstitutionEditor from './WordSubstitutionEditor'
@@ -17,6 +18,9 @@ interface EventCardProps {
   nested?: boolean
   children?: React.ReactNode  // For nested content like toolDetails
   volume?: number  // For sound preview
+  globalVoice?: string  // Global voice setting for fallback
+  globalRate?: string   // Global rate setting for fallback
+  globalPitch?: string  // Global pitch setting for fallback
 }
 
 // Helper to check if config has any overrides
@@ -66,9 +70,65 @@ export default function EventCard({
   nested = false,
   children,
   volume = 0.7,
+  globalVoice = 'en-US-AriaNeural',
+  globalRate = '+0%',
+  globalPitch = '+0Hz',
 }: EventCardProps) {
   const [expanded, setExpanded] = useState(false)
+  const [previewPlaying, setPreviewPlaying] = useState(false)
   const isCustom = hasOverrides(config)
+
+  // Get effective settings (custom or global fallback)
+  const getEffectiveVoice = () => {
+    if (config?.voice) return config.voice
+    // Handle "random" by picking a random voice for preview
+    if (globalVoice === 'random') {
+      return TTS_VOICES[Math.floor(Math.random() * TTS_VOICES.length)].value
+    }
+    return globalVoice
+  }
+  const getEffectiveRate = () => config?.rate || globalRate
+  const getEffectivePitch = () => config?.pitch || globalPitch
+
+  // Generate sample text for preview
+  const getSampleText = () => {
+    const template = config?.phraseTemplate || getDefaultPhrase(eventType)
+    return renderPreview(template, eventType)
+  }
+
+  // Play audio preview with current settings
+  const handlePreview = async () => {
+    if (previewPlaying) return
+    setPreviewPlaying(true)
+
+    try {
+      const text = getSampleText()
+      const response = await fetch('http://localhost:8129/api/audio/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          voice: getEffectiveVoice(),
+          rate: getEffectiveRate(),
+          pitch: getEffectivePitch(),
+        }),
+      })
+      const data = await response.json()
+
+      if (data.success && data.url) {
+        const audio = new Audio(data.url)
+        audio.volume = volume
+        audio.onended = () => setPreviewPlaying(false)
+        audio.onerror = () => setPreviewPlaying(false)
+        await audio.play()
+      } else {
+        setPreviewPlaying(false)
+      }
+    } catch (err) {
+      console.error('[EventCard] Preview failed:', err)
+      setPreviewPlaying(false)
+    }
+  }
 
   const handleVoiceChange = (voice: string) => {
     if (voice === '') {
@@ -281,7 +341,7 @@ export default function EventCard({
                 type="range"
                 min="0"
                 max="300"
-                step="50"
+                step="10"
                 value={config?.pitch ? parsePitch(config.pitch) : 0}
                 onChange={(e) => handlePitchChange(parseInt(e.target.value))}
                 className="w-full accent-primary"
@@ -322,16 +382,27 @@ export default function EventCard({
               />
             </div>
 
-            {/* Reset button */}
-            {isCustom && (
+            {/* Actions: Preview and Reset */}
+            <div className="flex items-center justify-between pt-2 border-t border-border">
               <button
-                onClick={handleResetToGlobal}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                onClick={handlePreview}
+                disabled={previewPlaying}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
-                <RotateCcw className="w-3 h-3" />
-                Reset all to global
+                <Volume2 className="w-3 h-3" />
+                {previewPlaying ? 'Playing...' : 'Preview'}
               </button>
-            )}
+
+              {isCustom && (
+                <button
+                  onClick={handleResetToGlobal}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Reset all to global
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

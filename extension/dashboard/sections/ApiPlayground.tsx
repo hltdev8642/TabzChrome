@@ -28,16 +28,125 @@ const METHOD_COLORS: Record<HttpMethod, string> = {
   DELETE: 'text-red-400 bg-red-400/10 border-red-400/30',
 }
 
-// TabzChrome API endpoints for quick access
-const PRESETS = [
-  { method: 'GET' as HttpMethod, url: '/api/health', name: 'Health Check' },
-  { method: 'GET' as HttpMethod, url: '/api/agents', name: 'List Terminals' },
-  { method: 'GET' as HttpMethod, url: '/api/browser/profiles', name: 'Get Profiles' },
-  { method: 'GET' as HttpMethod, url: '/api/tmux/orphaned-sessions', name: 'Orphaned Sessions' },
-  { method: 'GET' as HttpMethod, url: '/api/tmux/sessions/detailed', name: 'All Tmux Sessions' },
-  { method: 'POST' as HttpMethod, url: '/api/spawn', name: 'Spawn Terminal' },
-  { method: 'DELETE' as HttpMethod, url: '/api/tmux/sessions/:name', name: 'Kill Session' },
+interface Preset {
+  method: HttpMethod
+  url: string
+  name: string
+  body?: object
+}
+
+interface PresetCategory {
+  name: string
+  presets: Preset[]
+}
+
+// TabzChrome API endpoints organized by category
+const PRESET_CATEGORIES: PresetCategory[] = [
+  {
+    name: 'Health & System',
+    presets: [
+      { method: 'GET', url: '/api/health', name: 'Health Check' },
+      { method: 'GET', url: '/api/terminal-types', name: 'Terminal Types' },
+      { method: 'GET', url: '/api/spawn-stats', name: 'Spawn Statistics' },
+      { method: 'GET', url: '/api/auth-token', name: 'Get Auth Token' },
+      { method: 'GET', url: '/api/mcp/inspector-command', name: 'MCP Inspector Command' },
+    ],
+  },
+  {
+    name: 'Agents/Terminals',
+    presets: [
+      { method: 'GET', url: '/api/agents', name: 'List All Agents' },
+      { method: 'GET', url: '/api/agents/:id', name: 'Get Agent by ID' },
+      { method: 'POST', url: '/api/spawn', name: 'Spawn Terminal', body: { name: 'Test Terminal', command: 'bash', workingDir: '~' } },
+      { method: 'POST', url: '/api/agents/:id/command', name: 'Send Command', body: { command: 'echo hello' } },
+      { method: 'POST', url: '/api/agents/:id/resize', name: 'Resize Terminal', body: { cols: 120, rows: 30 } },
+      { method: 'POST', url: '/api/agents/:id/detach', name: 'Detach Agent' },
+      { method: 'DELETE', url: '/api/agents/:id', name: 'Close Agent' },
+    ],
+  },
+  {
+    name: 'Tmux Sessions',
+    presets: [
+      { method: 'GET', url: '/api/tmux/sessions', name: 'List Sessions (Simple)' },
+      { method: 'GET', url: '/api/tmux/sessions/detailed', name: 'List Sessions (Detailed)' },
+      { method: 'GET', url: '/api/tmux/sessions/:name', name: 'Get Session Info' },
+      { method: 'GET', url: '/api/tmux/sessions/:name/preview', name: 'Capture Pane Preview' },
+      { method: 'GET', url: '/api/tmux/sessions/:name/capture', name: 'Capture Full Content' },
+      { method: 'GET', url: '/api/tmux/sessions/:name/statusline', name: 'Claude Statusline' },
+      { method: 'GET', url: '/api/tmux/sessions/:name/windows', name: 'List Windows' },
+      { method: 'GET', url: '/api/tmux/info/:name', name: 'Tmux Info' },
+      { method: 'POST', url: '/api/tmux/sessions/:name/command', name: 'Execute Tmux Command', body: { command: 'list-panes' } },
+      { method: 'POST', url: '/api/tmux/refresh/:name', name: 'Refresh Session' },
+      { method: 'POST', url: '/api/tmux/detach/:name', name: 'Detach Session' },
+      { method: 'DELETE', url: '/api/tmux/sessions/:name', name: 'Kill Session' },
+      { method: 'DELETE', url: '/api/tmux/sessions/bulk', name: 'Kill Multiple Sessions', body: { names: ['session1', 'session2'] } },
+    ],
+  },
+  {
+    name: 'Orphaned Sessions',
+    presets: [
+      { method: 'GET', url: '/api/tmux/orphaned-sessions', name: 'List Orphaned' },
+      { method: 'POST', url: '/api/tmux/reattach', name: 'Reattach Sessions', body: { sessions: [] } },
+      { method: 'POST', url: '/api/tmux/cleanup', name: 'Cleanup by Pattern', body: { pattern: 'ctt-*' } },
+    ],
+  },
+  {
+    name: 'Claude Integration',
+    presets: [
+      { method: 'GET', url: '/api/claude-status', name: 'Claude Status' },
+      { method: 'POST', url: '/api/claude-status/cleanup', name: 'Cleanup Stale State' },
+      { method: 'GET', url: '/api/plugins', name: 'List Plugins' },
+      { method: 'POST', url: '/api/plugins/toggle', name: 'Toggle Plugin', body: { pluginName: 'example', enabled: true } },
+    ],
+  },
+  {
+    name: 'Configuration',
+    presets: [
+      { method: 'GET', url: '/api/browser/profiles', name: 'Get Profiles' },
+      { method: 'GET', url: '/api/mcp-config', name: 'Get MCP Config' },
+      { method: 'POST', url: '/api/mcp-config', name: 'Save MCP Config', body: { tools: {} } },
+      { method: 'GET', url: '/api/settings/working-dir', name: 'Get Working Dir Settings' },
+      { method: 'POST', url: '/api/settings/working-dir', name: 'Save Working Dir Settings', body: { defaultDir: '~' } },
+    ],
+  },
+  {
+    name: 'Files',
+    presets: [
+      { method: 'GET', url: '/api/files/tree', name: 'File Tree' },
+      { method: 'GET', url: '/api/files/list', name: 'List Files' },
+      { method: 'GET', url: '/api/files/read?path=README.md', name: 'Read File' },
+      { method: 'GET', url: '/api/files/content?path=README.md', name: 'Get File Content' },
+      { method: 'GET', url: '/api/files/list-markdown', name: 'List Markdown Files' },
+      { method: 'GET', url: '/api/files/project-files', name: 'Project Files' },
+      { method: 'POST', url: '/api/files/write', name: 'Write File', body: { path: 'test.txt', content: 'Hello World' } },
+    ],
+  },
+  {
+    name: 'Git',
+    presets: [
+      { method: 'GET', url: '/api/git/repos', name: 'List Repositories' },
+      { method: 'GET', url: '/api/git/repos/:repo/status', name: 'Repo Status' },
+      { method: 'GET', url: '/api/git/repos/:repo/log', name: 'Commit Log' },
+      { method: 'POST', url: '/api/git/repos/:repo/stage', name: 'Stage Files', body: { files: ['.'] } },
+      { method: 'POST', url: '/api/git/repos/:repo/unstage', name: 'Unstage Files', body: { files: ['.'] } },
+      { method: 'POST', url: '/api/git/repos/:repo/commit', name: 'Create Commit', body: { message: 'commit message' } },
+      { method: 'POST', url: '/api/git/repos/:repo/fetch', name: 'Fetch Remote' },
+      { method: 'POST', url: '/api/git/repos/:repo/pull', name: 'Pull Changes' },
+      { method: 'POST', url: '/api/git/repos/:repo/push', name: 'Push Changes' },
+      { method: 'POST', url: '/api/git/repos/:repo/generate-message', name: 'Generate Commit Message' },
+    ],
+  },
+  {
+    name: 'AI & Utility',
+    presets: [
+      { method: 'POST', url: '/api/ai/explain-script', name: 'Explain Script', body: { script: 'echo "hello"' } },
+      { method: 'POST', url: '/api/console-log', name: 'Send Console Log', body: { level: 'info', message: 'test' } },
+    ],
+  },
 ]
+
+// Flatten for health checks (GET endpoints only)
+const ALL_PRESETS = PRESET_CATEGORIES.flatMap((cat) => cat.presets)
 
 export default function ApiPlayground() {
   const [method, setMethod] = useState<HttpMethod>('GET')
@@ -55,9 +164,11 @@ export default function ApiPlayground() {
   const checkHealth = useCallback(async () => {
     const newStatus: Record<string, HealthStatus> = {}
 
-    // Set all GET endpoints to 'checking', POST/DELETE to 'neutral'
-    PRESETS.forEach((preset) => {
-      if (preset.method === 'GET') {
+    // Set all GET endpoints (without params) to 'checking', others to 'neutral'
+    ALL_PRESETS.forEach((preset) => {
+      // Only check GET endpoints that don't have path params or query params
+      const hasParams = preset.url.includes(':') || preset.url.includes('?')
+      if (preset.method === 'GET' && !hasParams) {
         newStatus[preset.url] = 'checking'
       } else {
         newStatus[preset.url] = 'neutral'
@@ -65,8 +176,11 @@ export default function ApiPlayground() {
     })
     setHealthStatus(newStatus)
 
-    // Check GET endpoints in parallel
-    const getPresets = PRESETS.filter((p) => p.method === 'GET')
+    // Check GET endpoints in parallel (only those without params)
+    const getPresets = ALL_PRESETS.filter((p) => {
+      const hasParams = p.url.includes(':') || p.url.includes('?')
+      return p.method === 'GET' && !hasParams
+    })
     const results = await Promise.allSettled(
       getPresets.map(async (preset) => {
         const res = await fetch(`${API_BASE}${preset.url}`, { method: 'GET' })
@@ -164,11 +278,11 @@ export default function ApiPlayground() {
     setHeaders(headers.filter((h) => h.id !== id))
   }
 
-  const applyPreset = (preset: (typeof PRESETS)[0]) => {
+  const applyPreset = (preset: Preset) => {
     setMethod(preset.method)
     setUrl(preset.url)
-    if (preset.method === 'POST' && preset.url === '/api/spawn') {
-      setBody(JSON.stringify({ name: 'Test Terminal', command: 'bash', workingDir: '~' }, null, 2))
+    if (preset.body) {
+      setBody(JSON.stringify(preset.body, null, 2))
     } else {
       setBody('')
     }
@@ -311,43 +425,52 @@ export default function ApiPlayground() {
         </div>
 
         {/* Presets Sidebar */}
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
           <div className="rounded-xl bg-card border border-border">
             <button
               onClick={() => setShowPresets(!showPresets)}
-              className="w-full flex items-center justify-between px-4 py-3 border-b border-border"
+              className="w-full flex items-center justify-between px-4 py-3 border-b border-border sticky top-0 bg-card z-10"
             >
               <span className="font-medium">TabzChrome Endpoints</span>
               {showPresets ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             </button>
             {showPresets && (
-              <div className="p-2 space-y-1">
-                {PRESETS.map((preset, i) => {
-                  const status = healthStatus[preset.url]
-                  const dotColor =
-                    status === 'healthy'
-                      ? 'bg-emerald-400'
-                      : status === 'unhealthy'
-                        ? 'bg-red-400'
-                        : status === 'checking'
-                          ? 'bg-amber-400 animate-pulse'
-                          : 'bg-gray-500'
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => applyPreset(preset)}
-                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted text-left"
-                    >
-                      <span
-                        className={`px-2 py-0.5 rounded text-xs font-mono font-medium ${METHOD_COLORS[preset.method]}`}
-                      >
-                        {preset.method}
-                      </span>
-                      <span className="text-sm flex-1">{preset.name}</span>
-                      <span className={`w-2 h-2 rounded-full ${dotColor}`} title={status || 'unknown'} />
-                    </button>
-                  )
-                })}
+              <div className="p-2 space-y-3">
+                {PRESET_CATEGORIES.map((category, catIndex) => (
+                  <div key={catIndex}>
+                    <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      {category.name}
+                    </div>
+                    <div className="space-y-0.5">
+                      {category.presets.map((preset, i) => {
+                        const status = healthStatus[preset.url]
+                        const dotColor =
+                          status === 'healthy'
+                            ? 'bg-emerald-400'
+                            : status === 'unhealthy'
+                              ? 'bg-red-400'
+                              : status === 'checking'
+                                ? 'bg-amber-400 animate-pulse'
+                                : 'bg-gray-500'
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => applyPreset(preset)}
+                            className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted text-left"
+                          >
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-medium ${METHOD_COLORS[preset.method]}`}
+                            >
+                              {preset.method.slice(0, 3)}
+                            </span>
+                            <span className="text-sm flex-1 truncate">{preset.name}</span>
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`} title={status || 'unknown'} />
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>

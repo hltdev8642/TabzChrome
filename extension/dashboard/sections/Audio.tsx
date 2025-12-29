@@ -5,6 +5,7 @@ import {
   AudioEventSettings,
   AudioEventConfig,
   AudioEventType,
+  ContentReadingSettings,
   TTS_VOICES,
   DEFAULT_AUDIO_SETTINGS,
 } from '../../components/settings/types'
@@ -139,8 +140,8 @@ export default function AudioSection() {
           Audio
         </h1>
         <p className="text-muted-foreground mt-1">
-          Play audio notifications when Claude Code status changes.
-          Audio is generated using neural text-to-speech and played through Chrome.
+          Audio notifications and text-to-speech for terminals, Claude status, MCP events, and content reading.
+          Uses neural TTS and plays through Chrome.
         </p>
       </div>
 
@@ -165,9 +166,9 @@ export default function AudioSection() {
         </div>
       </section>
 
-      {/* Voice & Speed Settings */}
+      {/* Global Voice Settings */}
       <section className={`mb-8 ${!audioSettings.enabled ? 'opacity-50 pointer-events-none' : ''}`}>
-        <h2 className="text-lg font-semibold mb-4">Voice Settings</h2>
+        <h2 className="text-lg font-semibold mb-4">Global Voice Settings</h2>
         <div className="rounded-xl bg-card border border-border p-6 space-y-6">
           {/* Voice Selection */}
           <div>
@@ -226,7 +227,7 @@ export default function AudioSection() {
               type="range"
               min="0"
               max="300"
-              step="50"
+              step="10"
               value={parseInt(audioSettings.pitch)}
               onChange={(e) => {
                 const val = parseInt(e.target.value)
@@ -275,11 +276,11 @@ export default function AudioSection() {
         </div>
       </section>
 
-      {/* Event Cards */}
+      {/* Claude Status Events */}
       <section className={`mb-8 ${!audioSettings.enabled ? 'opacity-50 pointer-events-none' : ''}`}>
-        <h2 className="text-lg font-semibold mb-4">Events</h2>
+        <h2 className="text-lg font-semibold mb-2">Claude Status Events</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Click the arrow on any event to customize its voice, rate, and pitch.
+          Announcements triggered by Claude Code activity. Click the arrow to customize voice, rate, and pitch.
         </p>
         <div className="rounded-xl bg-card border border-border divide-y divide-border">
           {/* Ready */}
@@ -292,18 +293,9 @@ export default function AudioSection() {
             onToggle={(checked) => updateAudioEvents({ ready: checked })}
             onConfigChange={(config) => updateEventConfig('ready', config)}
             volume={audioSettings.volume}
-          />
-
-          {/* Session Start */}
-          <EventCard
-            eventType="sessionStart"
-            label="Session start"
-            description="When a new Claude session begins"
-            enabled={audioSettings.events.sessionStart}
-            config={getEventConfig('sessionStart')}
-            onToggle={(checked) => updateAudioEvents({ sessionStart: checked })}
-            onConfigChange={(config) => updateEventConfig('sessionStart', config)}
-            volume={audioSettings.volume}
+            globalVoice={audioSettings.voice}
+            globalRate={audioSettings.rate}
+            globalPitch={audioSettings.pitch}
           />
 
           {/* Tools */}
@@ -316,6 +308,9 @@ export default function AudioSection() {
             onToggle={(checked) => updateAudioEvents({ tools: checked })}
             onConfigChange={(config) => updateEventConfig('tools', config)}
             volume={audioSettings.volume}
+            globalVoice={audioSettings.voice}
+            globalRate={audioSettings.rate}
+            globalPitch={audioSettings.pitch}
           >
             {/* Tool Details (nested under tools) */}
             {audioSettings.events.tools && (
@@ -351,6 +346,9 @@ export default function AudioSection() {
             onToggle={(checked) => updateAudioEvents({ subagents: checked })}
             onConfigChange={(config) => updateEventConfig('subagents', config)}
             volume={audioSettings.volume}
+            globalVoice={audioSettings.voice}
+            globalRate={audioSettings.rate}
+            globalPitch={audioSettings.pitch}
           />
 
           {/* Context Warning */}
@@ -363,6 +361,9 @@ export default function AudioSection() {
             onToggle={(checked) => updateAudioEvents({ contextWarning: checked })}
             onConfigChange={(config) => updateEventConfig('contextWarning', config)}
             volume={audioSettings.volume}
+            globalVoice={audioSettings.voice}
+            globalRate={audioSettings.rate}
+            globalPitch={audioSettings.pitch}
           />
 
           {/* Context Critical */}
@@ -375,19 +376,184 @@ export default function AudioSection() {
             onToggle={(checked) => updateAudioEvents({ contextCritical: checked })}
             onConfigChange={(config) => updateEventConfig('contextCritical', config)}
             volume={audioSettings.volume}
+            globalVoice={audioSettings.voice}
+            globalRate={audioSettings.rate}
+            globalPitch={audioSettings.pitch}
           />
+        </div>
+      </section>
 
+      {/* Terminal Events */}
+      <section className={`mb-8 ${!audioSettings.enabled ? 'opacity-50 pointer-events-none' : ''}`}>
+        <h2 className="text-lg font-semibold mb-2">Terminal Events</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Announcements when terminals open or close. Works for any terminal, not just Claude sessions.
+        </p>
+        <div className="rounded-xl bg-card border border-border divide-y divide-border">
+          {/* Session Start */}
+          <EventCard
+            eventType="sessionStart"
+            label="Terminal opened"
+            description="When a new terminal session starts"
+            enabled={audioSettings.events.sessionStart}
+            config={getEventConfig('sessionStart')}
+            onToggle={(checked) => updateAudioEvents({ sessionStart: checked })}
+            onConfigChange={(config) => updateEventConfig('sessionStart', config)}
+            volume={audioSettings.volume}
+            globalVoice={audioSettings.voice}
+            globalRate={audioSettings.rate}
+            globalPitch={audioSettings.pitch}
+          />
+        </div>
+      </section>
+
+      {/* MCP Events */}
+      <section className={`mb-8 ${!audioSettings.enabled ? 'opacity-50 pointer-events-none' : ''}`}>
+        <h2 className="text-lg font-semibold mb-2">MCP Events</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Announcements from MCP tools. Works with any LLM using Tabz MCP.
+        </p>
+        <div className="rounded-xl bg-card border border-border divide-y divide-border">
           {/* MCP Downloads */}
           <EventCard
             eventType="mcpDownloads"
-            label="MCP downloads"
+            label="File downloads"
             description={`"Downloaded image.png" when files complete`}
             enabled={audioSettings.events.mcpDownloads}
             config={getEventConfig('mcpDownloads')}
             onToggle={(checked) => updateAudioEvents({ mcpDownloads: checked })}
             onConfigChange={(config) => updateEventConfig('mcpDownloads', config)}
             volume={audioSettings.volume}
+            globalVoice={audioSettings.voice}
+            globalRate={audioSettings.rate}
+            globalPitch={audioSettings.pitch}
           />
+        </div>
+      </section>
+
+      {/* Content Reading */}
+      <section className={`mb-8 ${!audioSettings.enabled ? 'opacity-50 pointer-events-none' : ''}`}>
+        <h2 className="text-lg font-semibold mb-2">Content Reading</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Settings for reading highlighted text on web pages and files from the file tree.
+        </p>
+        <div className="rounded-xl bg-card border border-border p-6 space-y-6">
+          {/* Use Global Toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-sm font-medium">Use global voice settings</span>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                When enabled, content reading uses the global voice, rate, and pitch settings above
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={audioSettings.contentReading?.useGlobal ?? true}
+                onChange={(e) => updateAudioSettings({
+                  contentReading: {
+                    ...audioSettings.contentReading,
+                    useGlobal: e.target.checked,
+                  }
+                })}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+            </label>
+          </div>
+
+          {/* Custom settings (only shown when not using global) */}
+          {!audioSettings.contentReading?.useGlobal && (
+            <div className="space-y-4 pt-4 border-t border-border">
+              {/* Voice Selection */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Voice</label>
+                <select
+                  value={audioSettings.contentReading?.voice || audioSettings.voice}
+                  onChange={(e) => updateAudioSettings({
+                    contentReading: {
+                      ...audioSettings.contentReading,
+                      useGlobal: false,
+                      voice: e.target.value,
+                    }
+                  })}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:border-primary focus:outline-none"
+                >
+                  {TTS_VOICES.map((voice) => (
+                    <option key={voice.value} value={voice.value}>
+                      {voice.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Rate Slider */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium">Speech Rate</label>
+                  <span className="text-sm text-muted-foreground">
+                    {audioSettings.contentReading?.rate || audioSettings.rate}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="-50"
+                  max="100"
+                  step="10"
+                  value={parseInt(audioSettings.contentReading?.rate || audioSettings.rate)}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value)
+                    updateAudioSettings({
+                      contentReading: {
+                        ...audioSettings.contentReading,
+                        useGlobal: false,
+                        rate: val >= 0 ? `+${val}%` : `${val}%`,
+                      }
+                    })
+                  }}
+                  className="w-full accent-primary"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>-50% (slower)</span>
+                  <span>0%</span>
+                  <span>+100% (faster)</span>
+                </div>
+              </div>
+
+              {/* Pitch Slider */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium">Pitch</label>
+                  <span className="text-sm text-muted-foreground">
+                    {audioSettings.contentReading?.pitch || audioSettings.pitch}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="300"
+                  step="10"
+                  value={parseInt(audioSettings.contentReading?.pitch || audioSettings.pitch)}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value)
+                    updateAudioSettings({
+                      contentReading: {
+                        ...audioSettings.contentReading,
+                        useGlobal: false,
+                        pitch: `+${val}Hz`,
+                      }
+                    })
+                  }}
+                  className="w-full accent-primary"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>0Hz (default)</span>
+                  <span>+150Hz</span>
+                  <span>+300Hz (higher)</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
