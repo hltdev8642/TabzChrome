@@ -156,6 +156,20 @@ export function setupMessageHandlers(): void {
         console.log(`[Popout] Registered popout window ${(message as any).windowId} -> ${(message as any).terminalId}`)
         break
 
+      case 'TERMINAL_POPPED_OUT':
+        // Dashboard or other extension pages notify that a terminal is in a popout window
+        // Track the window and broadcast to all clients (especially sidebar)
+        if ((message as any).windowId && (message as any).terminalId) {
+          popoutWindows.set((message as any).windowId, (message as any).terminalId)
+        }
+        broadcastToClients({
+          type: 'TERMINAL_POPPED_OUT',
+          terminalId: (message as any).terminalId,
+          windowId: (message as any).windowId,
+        })
+        console.log(`[Popout] Terminal ${(message as any).terminalId} popped out to window ${(message as any).windowId}`)
+        break
+
       case 'CLOSE_SESSION':
         sendToWebSocket({
           type: 'close-terminal',

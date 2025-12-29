@@ -23,6 +23,8 @@ import {
   Tags,
   Check,
   SquareTerminal,
+  PanelLeft,
+  ExternalLink,
 } from 'lucide-react'
 import { Terminal as TerminalIcon } from 'lucide-react'
 import { TerminalPreview } from '../components/TerminalPreview'
@@ -41,7 +43,7 @@ import {
   TTS_VOICES,
 } from '../../components/settings/types'
 import { useDragDrop } from '../../hooks/useDragDrop'
-import { spawnTerminal } from '../hooks/useDashboard'
+import { spawnTerminal, spawnTerminalPopout } from '../hooks/useDashboard'
 import { useWorkingDirectory } from '../../hooks/useWorkingDirectory'
 import { getEffectiveWorkingDir } from '../../shared/utils'
 
@@ -303,6 +305,15 @@ export default function SettingsProfiles() {
   }
 
   const handleDeleteProfile = (profileId: string) => {
+    const profileToDelete = profiles.find(p => p.id === profileId)
+    if (!profileToDelete) return
+
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      `Delete "${profileToDelete.name}"?\n\nThis action cannot be undone.`
+    )
+    if (!confirmed) return
+
     const updatedProfiles = profiles.filter(p => p.id !== profileId)
     setProfiles(updatedProfiles)
     chrome.storage.local.set({ profiles: updatedProfiles })
@@ -337,6 +348,16 @@ export default function SettingsProfiles() {
       workingDir: effectiveWorkingDir,
       profile: { ...profile, workingDir: effectiveWorkingDir },
       pasteOnly: true, // Paste command without executing
+    })
+  }
+
+  const handleLaunchPopout = async (profile: Profile) => {
+    const effectiveWorkingDir = getEffectiveWorkingDir(profile.workingDir, globalWorkingDir)
+    await spawnTerminalPopout({
+      name: profile.name,
+      command: profile.command,
+      workingDir: effectiveWorkingDir,
+      profile: { ...profile, workingDir: effectiveWorkingDir },
     })
   }
 
@@ -909,9 +930,30 @@ export default function SettingsProfiles() {
               const catColor = getCategoryColor(category)
 
               return (
-                <div key={category} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border">
+                <div
+                  key={category}
+                  draggable
+                  onDragStart={() => handleCategoryDragStart(category)}
+                  onDragOver={(e) => handleCategoryDragOver(e, category)}
+                  onDragLeave={handleCategoryDragLeave}
+                  onDrop={() => handleCategoryDrop(category)}
+                  onDragEnd={handleCategoryDragEnd}
+                  className={`
+                    relative flex items-center gap-3 p-3 rounded-lg bg-muted/50 border transition-all
+                    ${draggedCategory === category ? 'opacity-50 border-primary' : 'border-border'}
+                    ${draggedCategory && draggedCategory !== category ? 'hover:bg-muted' : ''}
+                  `}
+                >
+                  {/* Drop indicators */}
+                  {dragOverCategory === category && categoryDropPosition === 'above' && (
+                    <div className="absolute -top-[5px] left-0 right-0 h-[3px] bg-primary rounded-full shadow-[0_0_8px_var(--primary)]" />
+                  )}
+                  {dragOverCategory === category && categoryDropPosition === 'below' && (
+                    <div className="absolute -bottom-[5px] left-0 right-0 h-[3px] bg-primary rounded-full shadow-[0_0_8px_var(--primary)]" />
+                  )}
+
                   {/* Drag handle */}
-                  <GripVertical className="w-4 h-4 text-muted-foreground/50 cursor-grab" />
+                  <GripVertical className="w-4 h-4 text-muted-foreground/50 cursor-grab active:cursor-grabbing" />
 
                   {/* Color picker */}
                   <div className="flex items-center gap-1">
@@ -1033,6 +1075,7 @@ export default function SettingsProfiles() {
                       onEdit={() => handleEditProfile(profile)}
                       onDelete={() => handleDeleteProfile(profile.id)}
                       onLaunch={() => handleLaunchProfile(profile)}
+                      onLaunchPopout={() => handleLaunchPopout(profile)}
                       onLaunchPasteOnly={() => handleLaunchPasteOnly(profile)}
                       onSetDefault={() => handleSetDefault(profile.id)}
                       onOpenReference={profile.reference ? () => handleOpenReference(profile) : undefined}
@@ -1074,6 +1117,7 @@ interface ProfileCardProps {
   onEdit: () => void
   onDelete: () => void
   onLaunch: () => void
+  onLaunchPopout: () => void
   onLaunchPasteOnly: () => void
   onSetDefault: () => void
   onOpenReference?: () => void
@@ -1095,6 +1139,7 @@ function ProfileCard({
   onEdit,
   onDelete,
   onLaunch,
+  onLaunchPopout,
   onLaunchPasteOnly,
   onSetDefault,
   onOpenReference,
@@ -1136,17 +1181,29 @@ function ProfileCard({
       onDrop={onDrop}
       onDragEnd={onDragEnd}
       className={`
-        group relative rounded-xl border overflow-hidden transition-all
+        group relative rounded-xl border transition-all
         ${isDragging ? 'opacity-50 border-primary scale-95' : 'border-border hover:border-primary/50 hover:shadow-lg'}
+        ${isDragOver ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}
       `}
     >
-      {/* Drop indicators */}
+      {/* Drop position indicator */}
       {isDragOver && dropPosition === 'above' && (
-        <div className="absolute -top-[3px] left-0 right-0 h-[3px] bg-primary rounded-full shadow-[0_0_8px_var(--primary)] z-50" />
+        <div className="absolute -top-3 left-2 right-2 flex items-center gap-2 z-50">
+          <div className="flex-1 h-0.5 bg-primary rounded-full shadow-[0_0_8px_var(--primary)]" />
+          <ChevronDown className="w-4 h-4 text-primary animate-bounce" />
+          <div className="flex-1 h-0.5 bg-primary rounded-full shadow-[0_0_8px_var(--primary)]" />
+        </div>
       )}
       {isDragOver && dropPosition === 'below' && (
-        <div className="absolute -bottom-[3px] left-0 right-0 h-[3px] bg-primary rounded-full shadow-[0_0_8px_var(--primary)] z-50" />
+        <div className="absolute -bottom-3 left-2 right-2 flex items-center gap-2 z-50">
+          <div className="flex-1 h-0.5 bg-primary rounded-full shadow-[0_0_8px_var(--primary)]" />
+          <ChevronUp className="w-4 h-4 text-primary animate-bounce" />
+          <div className="flex-1 h-0.5 bg-primary rounded-full shadow-[0_0_8px_var(--primary)]" />
+        </div>
       )}
+
+      {/* Inner content wrapper with overflow hidden for media */}
+      <div className="rounded-xl overflow-hidden">
 
       {/* Layer 1: Panel color */}
       <div
@@ -1186,7 +1243,7 @@ function ProfileCard({
       />
 
       {/* Content */}
-      <div className="relative z-10 p-4">
+      <div className="relative z-10 p-4 flex flex-col min-h-[160px]">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -1220,33 +1277,44 @@ function ProfileCard({
           </div>
         </div>
 
-        {/* Working dir */}
-        {profile.workingDir && profile.workingDir !== '~' && (
-          <p className="text-xs text-white/50 font-mono truncate mb-1">
-            {profile.workingDir}
+        {/* Middle content - flexible to push actions to bottom */}
+        <div className="flex-1">
+          {/* Working dir */}
+          {profile.workingDir && profile.workingDir !== '~' && (
+            <p className="text-xs text-white/50 font-mono truncate mb-1">
+              {profile.workingDir}
+            </p>
+          )}
+
+          {/* Command */}
+          {profile.command && (
+            <p className="text-xs text-white/70 font-mono truncate mb-3">
+              $ {profile.command}
+            </p>
+          )}
+
+          {/* Theme/font info */}
+          <p className="text-[10px] text-white/40">
+            {themes[profile.themeName]?.name || profile.themeName} · {profile.fontSize}px
           </p>
-        )}
+        </div>
 
-        {/* Command */}
-        {profile.command && (
-          <p className="text-xs text-white/70 font-mono truncate mb-3">
-            $ {profile.command}
-          </p>
-        )}
-
-        {/* Theme/font info */}
-        <p className="text-[10px] text-white/40 mb-3">
-          {themes[profile.themeName]?.name || profile.themeName} · {profile.fontSize}px
-        </p>
-
-        {/* Actions */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Actions - always at bottom */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mt-3">
+          {/* Spawn actions */}
           <button
             onClick={onLaunch}
             className="p-1.5 rounded-md bg-white/10 hover:bg-white/20 transition-colors"
-            title={profile.command ? `Launch with: ${profile.command}` : 'Launch'}
+            title="Launch in sidebar"
           >
-            <Play className="w-4 h-4 text-white/70" />
+            <PanelLeft className="w-4 h-4 text-white/70" />
+          </button>
+          <button
+            onClick={onLaunchPopout}
+            className="p-1.5 rounded-md hover:bg-white/10 transition-colors"
+            title="Launch as popout window"
+          >
+            <ExternalLink className="w-4 h-4 text-white/50" />
           </button>
           {profile.command && (
             <button
@@ -1257,13 +1325,6 @@ function ProfileCard({
               <SquareTerminal className="w-4 h-4 text-white/50" />
             </button>
           )}
-          <button
-            onClick={onEdit}
-            className="p-1.5 rounded-md hover:bg-white/10 transition-colors"
-            title="Edit profile"
-          >
-            <Edit className="w-4 h-4 text-white/50" />
-          </button>
           <button
             onClick={() => navigator.clipboard.writeText(profile.command || 'bash')}
             className="p-1.5 rounded-md hover:bg-white/10 transition-colors"
@@ -1280,6 +1341,18 @@ function ProfileCard({
               <Paperclip className="w-4 h-4 text-blue-400/70" />
             </button>
           )}
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Management actions */}
+          <button
+            onClick={onEdit}
+            className="p-1.5 rounded-md hover:bg-white/10 transition-colors"
+            title="Edit profile"
+          >
+            <Edit className="w-4 h-4 text-white/50" />
+          </button>
           {!isDefault && (
             <button
               onClick={onSetDefault}
@@ -1291,13 +1364,14 @@ function ProfileCard({
           )}
           <button
             onClick={onDelete}
-            className="p-1.5 rounded-md hover:bg-red-500/20 transition-colors ml-auto"
+            className="p-1.5 rounded-md hover:bg-red-500/20 transition-colors"
             title="Delete"
           >
             <Trash2 className="w-4 h-4 text-white/50 hover:text-red-400" />
           </button>
         </div>
       </div>
+      </div>{/* Close inner overflow wrapper */}
     </div>
   )
 }

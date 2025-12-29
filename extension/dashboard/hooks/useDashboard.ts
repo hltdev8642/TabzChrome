@@ -6,6 +6,7 @@ const API_BASE = 'http://localhost:8129'
 
 /**
  * Spawn a terminal using Chrome messaging (no auth required from extension pages)
+ * Opens in sidebar by default
  */
 export async function spawnTerminal(options: {
   name?: string
@@ -25,6 +26,96 @@ export async function spawnTerminal(options: {
   }
 
   return sendMessage(message)
+}
+
+/**
+ * Spawn a terminal as a popout window
+ * Uses REST API + chrome.windows.create (similar to spawnQuickTerminal)
+ */
+export async function spawnTerminalPopout(options: {
+  name?: string
+  command?: string
+  workingDir?: string
+  profile?: Profile
+  pasteOnly?: boolean
+}): Promise<{ success: boolean; terminalId?: string; error?: string }> {
+  try {
+    // Get auth token from backend
+    const tokenResponse = await fetch(`${API_BASE}/api/auth/token`)
+    if (!tokenResponse.ok) {
+      return { success: false, error: 'Failed to get auth token - is the backend running?' }
+    }
+    const { token } = await tokenResponse.json()
+
+    // Spawn the terminal via API
+    const spawnResponse = await fetch(`${API_BASE}/api/spawn`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Auth-Token': token
+      },
+      body: JSON.stringify({
+        name: options.name || 'Terminal',
+        workingDir: options.workingDir,
+        command: options.pasteOnly ? null : (options.command || null),
+        profile: options.profile,
+      })
+    })
+
+    if (!spawnResponse.ok) {
+      const err = await spawnResponse.json()
+      return { success: false, error: err.error || 'Failed to spawn terminal' }
+    }
+
+    const { terminal } = await spawnResponse.json()
+    const terminalId = terminal.id
+
+    // Open popout window with the new terminal
+    const sidepanelUrl = chrome.runtime.getURL(
+      `sidepanel/sidepanel.html?popout=true&terminal=${encodeURIComponent(terminalId)}`
+    )
+
+    const newWindow = await chrome.windows.create({
+      url: sidepanelUrl,
+      type: 'popup',
+      width: 700,
+      height: 550,
+      focused: true
+    })
+
+    // Notify sidebar that this terminal is in a popout window
+    if (newWindow?.id) {
+      chrome.runtime.sendMessage({
+        type: 'TERMINAL_POPPED_OUT',
+        terminalId,
+        windowId: newWindow.id,
+      })
+    }
+
+    // If pasteOnly, send the command to be pasted after terminal is ready
+    if (options.pasteOnly && options.command) {
+      // Brief delay to allow terminal to initialize
+      setTimeout(async () => {
+        try {
+          await fetch(`${API_BASE}/api/terminals/${encodeURIComponent(terminalId)}/paste`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Auth-Token': token
+            },
+            body: JSON.stringify({ text: options.command })
+          })
+        } catch (e) {
+          console.warn('[Dashboard] Failed to paste command to popout:', e)
+        }
+      }, 500)
+    }
+
+    return { success: true, terminalId }
+  } catch (err) {
+    console.error('[Dashboard] Failed to spawn popout terminal:', err)
+    return { success: false, error: (err as Error).message }
+  }
 }
 
 /**
