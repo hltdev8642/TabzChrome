@@ -55,7 +55,12 @@ import {
   handleBrowserCloseWindow,
   handleBrowserGetDisplays,
   handleBrowserTileWindows,
-  handleBrowserPopoutTerminal
+  handleBrowserPopoutTerminal,
+  handleBrowserHistorySearch,
+  handleBrowserHistoryVisits,
+  handleBrowserHistoryRecent,
+  handleBrowserHistoryDeleteUrl,
+  handleBrowserHistoryDeleteRange
 } from './browserMcp'
 
 // Forward declaration - will be set by alarms module
@@ -578,6 +583,37 @@ function routeWebSocketMessage(message: any): void {
   if (message.type === 'browser-popout-terminal') {
     console.log('Browser MCP: popout-terminal request', message.requestId, message.terminalId)
     handleBrowserPopoutTerminal(message)
+    return
+  }
+
+  // History handlers
+  if (message.type === 'browser-history-search') {
+    console.log('Browser MCP: history-search request', message.requestId, message.query)
+    handleBrowserHistorySearch(message)
+    return
+  }
+
+  if (message.type === 'browser-history-visits') {
+    console.log('Browser MCP: history-visits request', message.requestId, message.url)
+    handleBrowserHistoryVisits(message)
+    return
+  }
+
+  if (message.type === 'browser-history-recent') {
+    console.log('Browser MCP: history-recent request', message.requestId)
+    handleBrowserHistoryRecent(message)
+    return
+  }
+
+  if (message.type === 'browser-history-delete-url') {
+    console.log('Browser MCP: history-delete-url request', message.requestId, message.url)
+    handleBrowserHistoryDeleteUrl(message)
+    return
+  }
+
+  if (message.type === 'browser-history-delete-range') {
+    console.log('Browser MCP: history-delete-range request', message.requestId)
+    handleBrowserHistoryDeleteRange(message)
     return
   }
 

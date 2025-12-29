@@ -1399,6 +1399,145 @@ router.post('/popout-terminal', async (req, res) => {
   }
 });
 
+// ============================================
+// HISTORY ROUTES
+// ============================================
+
+// POST /api/browser/history/search - Search browsing history
+router.post('/history/search', async (req, res) => {
+  const { query, startTime, endTime, maxResults } = req.body;
+
+  if (query === undefined) {
+    return res.status(400).json({ success: false, error: 'query is required' });
+  }
+
+  log.debug('POST /history/search', { query, startTime, endTime, maxResults });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const result = await makeBrowserRequest(
+      broadcast,
+      'browser-history-search',
+      { query, startTime, endTime, maxResults: maxResults || 100 }
+    );
+    res.json(result);
+  } catch (error) {
+    log.error('history-search error:', error);
+    res.json({ success: false, items: [], total: 0, error: error.message });
+  }
+});
+
+// POST /api/browser/history/visits - Get visit details for a URL
+router.post('/history/visits', async (req, res) => {
+  const { url } = req.body;
+
+  if (!url) {
+    return res.status(400).json({ success: false, error: 'url is required' });
+  }
+
+  log.debug('POST /history/visits', { url });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-history-visits', { url });
+    res.json(result);
+  } catch (error) {
+    log.error('history-visits error:', error);
+    res.json({ success: false, visits: [], error: error.message });
+  }
+});
+
+// GET /api/browser/history/recent - Get most recent history entries
+router.get('/history/recent', async (req, res) => {
+  const maxResults = req.query.maxResults ? parseInt(req.query.maxResults) : 50;
+
+  log.debug('GET /history/recent', { maxResults });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-history-recent', { maxResults });
+    res.json(result);
+  } catch (error) {
+    log.error('history-recent error:', error);
+    res.json({ success: false, items: [], total: 0, error: error.message });
+  }
+});
+
+// POST /api/browser/history/delete-url - Delete a specific URL from history
+router.post('/history/delete-url', async (req, res) => {
+  const { url } = req.body;
+
+  if (!url) {
+    return res.status(400).json({ success: false, error: 'url is required' });
+  }
+
+  log.debug('POST /history/delete-url', { url });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-history-delete-url', { url });
+    res.json(result);
+  } catch (error) {
+    log.error('history-delete-url error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/browser/history/delete-range - Delete history within a date range
+router.post('/history/delete-range', async (req, res) => {
+  const { startTime, endTime } = req.body;
+
+  if (startTime === undefined || endTime === undefined) {
+    return res.status(400).json({ success: false, error: 'startTime and endTime are required' });
+  }
+
+  log.debug('POST /history/delete-range', { startTime, endTime });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-history-delete-range', { startTime, endTime });
+    res.json(result);
+  } catch (error) {
+    log.error('history-delete-range error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
 module.exports.addConsoleLog = addConsoleLog;
 module.exports.getConsoleLogs = getConsoleLogs;

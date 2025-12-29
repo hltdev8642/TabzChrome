@@ -20,7 +20,8 @@
     "webRequest",
     "bookmarks",
     "pageCapture",
-    "system.display"
+    "system.display",
+    "history"
   ],
   "omnibox": {
     "keyword": "term"

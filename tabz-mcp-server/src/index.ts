@@ -17,8 +17,8 @@
  * - tabgroups: tabz_list_groups, tabz_create_group, tabz_update_group, tabz_add_to_group, tabz_ungroup_tabs, tabz_claude_group_add, tabz_claude_group_remove, tabz_claude_group_status
  * - windows: tabz_list_windows, tabz_create_window, tabz_update_window, tabz_close_window, tabz_get_displays, tabz_tile_windows, tabz_popout_terminal
  * - audio: tabz_speak, tabz_list_voices, tabz_play_audio
+ * - history: tabz_history_search, tabz_history_visits, tabz_history_recent, tabz_history_delete_url, tabz_history_delete_range
  * - cookies: (future) tabz_check_auth, tabz_get_cookies
- * - history: (future) tabz_search_history
  *
  * Tool groups can be configured via the backend /api/mcp-config endpoint.
  */
@@ -40,12 +40,13 @@ import { registerDebuggerTools } from "./tools/debugger.js";
 import { registerTabGroupTools } from "./tools/tabGroups.js";
 import { registerWindowTools } from "./tools/windows.js";
 import { registerAudioTools } from "./tools/audio.js";
+import { registerHistoryTools } from "./tools/history.js";
 
 // Backend URL (TabzChrome backend running in WSL)
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8129";
 
 // Default enabled tool groups (used if backend is not reachable)
-const DEFAULT_ENABLED_GROUPS = ['core', 'interaction', 'navigation', 'console', 'network', 'downloads', 'bookmarks', 'debugger', 'tabgroups', 'windows', 'audio'];
+const DEFAULT_ENABLED_GROUPS = ['core', 'interaction', 'navigation', 'console', 'network', 'downloads', 'bookmarks', 'debugger', 'tabgroups', 'windows', 'audio', 'history'];
 
 // Tool group registration functions
 // Maps group names to their registration functions
@@ -100,8 +101,11 @@ const TOOL_GROUPS: Record<string, ToolGroupRegistrar> = {
   audio: (server) => {
     registerAudioTools(server);       // tabz_speak, tabz_list_voices, tabz_play_audio
   },
+  // History tools (Chrome history API)
+  history: (server) => {
+    registerHistoryTools(server);     // tabz_history_search, tabz_history_visits, tabz_history_recent, tabz_history_delete_url, tabz_history_delete_range
+  },
   // cookies: (server) => registerCookieTools(server),
-  // history: (server) => registerHistoryTools(server),
 };
 
 /**

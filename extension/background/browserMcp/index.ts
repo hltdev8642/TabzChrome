@@ -83,3 +83,12 @@ export {
   handleBrowserTileWindows,
   handleBrowserPopoutTerminal
 } from './windows'
+
+// History
+export {
+  handleBrowserHistorySearch,
+  handleBrowserHistoryVisits,
+  handleBrowserHistoryRecent,
+  handleBrowserHistoryDeleteUrl,
+  handleBrowserHistoryDeleteRange
+} from './history'
