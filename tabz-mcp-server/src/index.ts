@@ -41,12 +41,16 @@ import { registerTabGroupTools } from "./tools/tabGroups.js";
 import { registerWindowTools } from "./tools/windows.js";
 import { registerAudioTools } from "./tools/audio.js";
 import { registerHistoryTools } from "./tools/history.js";
+import { registerSessionTools } from "./tools/sessions.js";
+import { registerCookieTools } from "./tools/cookies.js";
+import { registerEmulationTools } from "./tools/emulation.js";
+import { registerNotificationTools } from "./tools/notifications.js";
 
 // Backend URL (TabzChrome backend running in WSL)
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8129";
 
 // Default enabled tool groups (used if backend is not reachable)
-const DEFAULT_ENABLED_GROUPS = ['core', 'interaction', 'navigation', 'console', 'network', 'downloads', 'bookmarks', 'debugger', 'tabgroups', 'windows', 'audio', 'history'];
+const DEFAULT_ENABLED_GROUPS = ['core', 'interaction', 'navigation', 'console', 'network', 'downloads', 'bookmarks', 'debugger', 'tabgroups', 'windows', 'audio', 'history', 'sessions', 'cookies', 'emulation', 'notifications'];
 
 // Tool group registration functions
 // Maps group names to their registration functions
@@ -105,7 +109,22 @@ const TOOL_GROUPS: Record<string, ToolGroupRegistrar> = {
   history: (server) => {
     registerHistoryTools(server);     // tabz_history_search, tabz_history_visits, tabz_history_recent, tabz_history_delete_url, tabz_history_delete_range
   },
-  // cookies: (server) => registerCookieTools(server),
+  // Sessions tools (Chrome sessions API)
+  sessions: (server) => {
+    registerSessionTools(server);    // tabz_sessions_recently_closed, tabz_sessions_restore, tabz_sessions_devices
+  },
+  // Cookies tools (Chrome cookies API)
+  cookies: (server) => {
+    registerCookieTools(server);     // tabz_cookies_get, tabz_cookies_list, tabz_cookies_set, tabz_cookies_delete, tabz_cookies_audit
+  },
+  // Emulation tools (Chrome debugger CDP)
+  emulation: (server) => {
+    registerEmulationTools(server);   // tabz_emulate_device, tabz_emulate_clear, tabz_emulate_geolocation, tabz_emulate_network, tabz_emulate_media, tabz_emulate_vision
+  },
+  // Notifications tools (Chrome notifications API)
+  notifications: (server) => {
+    registerNotificationTools(server); // tabz_notification_show, tabz_notification_update, tabz_notification_progress, tabz_notification_clear, tabz_notification_list
+  },
 };
 
 /**

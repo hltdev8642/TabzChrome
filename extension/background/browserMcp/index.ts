@@ -92,3 +92,37 @@ export {
   handleBrowserHistoryDeleteUrl,
   handleBrowserHistoryDeleteRange
 } from './history'
+
+// Sessions (recently closed, synced devices)
+export {
+  handleBrowserSessionsRecent,
+  handleBrowserSessionsRestore,
+  handleBrowserSessionsDevices
+} from './sessions'
+
+// Cookies
+export {
+  handleBrowserCookiesGet,
+  handleBrowserCookiesList,
+  handleBrowserCookiesSet,
+  handleBrowserCookiesDelete,
+  handleBrowserCookiesAudit
+} from './cookies'
+
+// Emulation (CDP)
+export {
+  handleBrowserEmulateDevice,
+  handleBrowserEmulateClear,
+  handleBrowserEmulateGeolocation,
+  handleBrowserEmulateNetwork,
+  handleBrowserEmulateMedia,
+  handleBrowserEmulateVision
+} from './emulation'
+
+// Notifications
+export {
+  handleBrowserNotificationShow,
+  handleBrowserNotificationUpdate,
+  handleBrowserNotificationClear,
+  handleBrowserNotificationList
+} from './notifications'

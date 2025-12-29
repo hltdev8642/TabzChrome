@@ -21,7 +21,9 @@
     "bookmarks",
     "pageCapture",
     "system.display",
-    "history"
+    "history",
+    "sessions",
+    "cookies"
   ],
   "omnibox": {
     "keyword": "term"

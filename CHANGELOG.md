@@ -15,6 +15,19 @@ For older versions (1.1.x, 1.0.x, and pre-public 2.x), see [CHANGELOG-archive.md
 
 ---
 
+## [1.3.3] - 2025-12-29
+
+### Added
+- **Chrome History API** (5 tools): `tabz_history_search`, `tabz_history_visits`, `tabz_history_recent`, `tabz_history_delete_url`, `tabz_history_delete_range` - Search and manage browsing history
+- **Chrome Sessions API** (3 tools): `tabz_sessions_recently_closed`, `tabz_sessions_restore`, `tabz_sessions_devices` - Recover closed tabs, view synced devices
+- **Chrome Cookies API** (5 tools): `tabz_cookies_get`, `tabz_cookies_list`, `tabz_cookies_set`, `tabz_cookies_delete`, `tabz_cookies_audit` - Debug auth, audit tracking cookies
+- **CDP Emulation** (6 tools): `tabz_emulate_device`, `tabz_emulate_clear`, `tabz_emulate_geolocation`, `tabz_emulate_network`, `tabz_emulate_media`, `tabz_emulate_vision` - Responsive testing, accessibility simulation
+- **Chrome Notifications API** (5 tools): `tabz_notification_show`, `tabz_notification_update`, `tabz_notification_progress`, `tabz_notification_clear`, `tabz_notification_list` - Desktop notifications with progress support
+
+**Total MCP tools: 71** (previously 47, +24 new)
+
+---
+
 ## [1.3.2] - 2025-12-29
 
 ### Added

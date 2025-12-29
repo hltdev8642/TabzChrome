@@ -60,7 +60,25 @@ import {
   handleBrowserHistoryVisits,
   handleBrowserHistoryRecent,
   handleBrowserHistoryDeleteUrl,
-  handleBrowserHistoryDeleteRange
+  handleBrowserHistoryDeleteRange,
+  handleBrowserSessionsRecent,
+  handleBrowserSessionsRestore,
+  handleBrowserSessionsDevices,
+  handleBrowserCookiesGet,
+  handleBrowserCookiesList,
+  handleBrowserCookiesSet,
+  handleBrowserCookiesDelete,
+  handleBrowserCookiesAudit,
+  handleBrowserEmulateDevice,
+  handleBrowserEmulateClear,
+  handleBrowserEmulateGeolocation,
+  handleBrowserEmulateNetwork,
+  handleBrowserEmulateMedia,
+  handleBrowserEmulateVision,
+  handleBrowserNotificationShow,
+  handleBrowserNotificationUpdate,
+  handleBrowserNotificationClear,
+  handleBrowserNotificationList
 } from './browserMcp'
 
 // Forward declaration - will be set by alarms module
@@ -614,6 +632,118 @@ function routeWebSocketMessage(message: any): void {
   if (message.type === 'browser-history-delete-range') {
     console.log('Browser MCP: history-delete-range request', message.requestId)
     handleBrowserHistoryDeleteRange(message)
+    return
+  }
+
+  // Sessions handlers (recently closed, synced devices)
+  if (message.type === 'browser-sessions-recent') {
+    console.log('Browser MCP: sessions-recent request', message.requestId)
+    handleBrowserSessionsRecent(message)
+    return
+  }
+
+  if (message.type === 'browser-sessions-restore') {
+    console.log('Browser MCP: sessions-restore request', message.requestId, message.sessionId)
+    handleBrowserSessionsRestore(message)
+    return
+  }
+
+  if (message.type === 'browser-sessions-devices') {
+    console.log('Browser MCP: sessions-devices request', message.requestId)
+    handleBrowserSessionsDevices(message)
+    return
+  }
+
+  // Cookie handlers
+  if (message.type === 'browser-cookies-get') {
+    console.log('Browser MCP: cookies-get request', message.requestId, message.name)
+    handleBrowserCookiesGet(message)
+    return
+  }
+
+  if (message.type === 'browser-cookies-list') {
+    console.log('Browser MCP: cookies-list request', message.requestId, message.domain || message.url)
+    handleBrowserCookiesList(message)
+    return
+  }
+
+  if (message.type === 'browser-cookies-set') {
+    console.log('Browser MCP: cookies-set request', message.requestId, message.name)
+    handleBrowserCookiesSet(message)
+    return
+  }
+
+  if (message.type === 'browser-cookies-delete') {
+    console.log('Browser MCP: cookies-delete request', message.requestId, message.name)
+    handleBrowserCookiesDelete(message)
+    return
+  }
+
+  if (message.type === 'browser-cookies-audit') {
+    console.log('Browser MCP: cookies-audit request', message.requestId, message.tabId)
+    handleBrowserCookiesAudit(message)
+    return
+  }
+
+  // Emulation handlers (CDP Emulation domain)
+  if (message.type === 'browser-emulate-device') {
+    console.log('Browser MCP: emulate-device request', message.requestId, message.device)
+    handleBrowserEmulateDevice(message)
+    return
+  }
+
+  if (message.type === 'browser-emulate-clear') {
+    console.log('Browser MCP: emulate-clear request', message.requestId)
+    handleBrowserEmulateClear(message)
+    return
+  }
+
+  if (message.type === 'browser-emulate-geolocation') {
+    console.log('Browser MCP: emulate-geolocation request', message.requestId)
+    handleBrowserEmulateGeolocation(message)
+    return
+  }
+
+  if (message.type === 'browser-emulate-network') {
+    console.log('Browser MCP: emulate-network request', message.requestId, message.preset)
+    handleBrowserEmulateNetwork(message)
+    return
+  }
+
+  if (message.type === 'browser-emulate-media') {
+    console.log('Browser MCP: emulate-media request', message.requestId)
+    handleBrowserEmulateMedia(message)
+    return
+  }
+
+  if (message.type === 'browser-emulate-vision') {
+    console.log('Browser MCP: emulate-vision request', message.requestId, message.type)
+    handleBrowserEmulateVision(message)
+    return
+  }
+
+  // Notification handlers
+  if (message.type === 'browser-notification-show') {
+    console.log('Browser MCP: notification-show request', message.requestId, message.title)
+    handleBrowserNotificationShow(message)
+    return
+  }
+
+  if (message.type === 'browser-notification-update') {
+    console.log('Browser MCP: notification-update request', message.requestId, message.notificationId)
+    handleBrowserNotificationUpdate(message)
+    return
+  }
+
+  if (message.type === 'browser-notification-clear') {
+    console.log('Browser MCP: notification-clear request', message.requestId, message.notificationId)
+    handleBrowserNotificationClear(message)
+    return
+  }
+
+  if (message.type === 'browser-notification-list') {
+    console.log('Browser MCP: notification-list request', message.requestId)
+    handleBrowserNotificationList(message)
     return
   }
 

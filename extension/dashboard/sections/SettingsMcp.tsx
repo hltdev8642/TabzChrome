@@ -72,6 +72,35 @@ const MCP_TOOLS: McpTool[] = [
   { id: 'tabz_speak', name: 'Speak', desc: 'Text-to-speech announcement', tokens: 1200, category: 'Audio' },
   { id: 'tabz_list_voices', name: 'List Voices', desc: 'Show available TTS voices', tokens: 600, category: 'Audio' },
   { id: 'tabz_play_audio', name: 'Play Audio', desc: 'Play audio file by URL', tokens: 800, category: 'Audio' },
+  // History tools (chrome.history API)
+  { id: 'tabz_history_search', name: 'History Search', desc: 'Search browsing history by keyword', tokens: 1200, category: 'History' },
+  { id: 'tabz_history_visits', name: 'History Visits', desc: 'Get visit details for a URL', tokens: 1000, category: 'History' },
+  { id: 'tabz_history_recent', name: 'Recent History', desc: 'Get recent history entries', tokens: 1100, category: 'History' },
+  { id: 'tabz_history_delete_url', name: 'Delete URL', desc: 'Remove URL from history', tokens: 800, category: 'History' },
+  { id: 'tabz_history_delete_range', name: 'Delete Range', desc: 'Clear history date range', tokens: 900, category: 'History' },
+  // Sessions tools (chrome.sessions API)
+  { id: 'tabz_sessions_recently_closed', name: 'Recently Closed', desc: 'List recently closed tabs/windows', tokens: 1000, category: 'Sessions' },
+  { id: 'tabz_sessions_restore', name: 'Restore Session', desc: 'Restore closed tab or window', tokens: 900, category: 'Sessions' },
+  { id: 'tabz_sessions_devices', name: 'Synced Devices', desc: 'Tabs on other Chrome devices', tokens: 1100, category: 'Sessions' },
+  // Cookies tools (chrome.cookies API)
+  { id: 'tabz_cookies_get', name: 'Get Cookie', desc: 'Get specific cookie by name', tokens: 900, category: 'Cookies' },
+  { id: 'tabz_cookies_list', name: 'List Cookies', desc: 'List cookies for a domain', tokens: 1000, category: 'Cookies' },
+  { id: 'tabz_cookies_set', name: 'Set Cookie', desc: 'Create or update a cookie', tokens: 1100, category: 'Cookies' },
+  { id: 'tabz_cookies_delete', name: 'Delete Cookie', desc: 'Remove a specific cookie', tokens: 800, category: 'Cookies' },
+  { id: 'tabz_cookies_audit', name: 'Audit Cookies', desc: 'Analyze cookies, find trackers', tokens: 1300, category: 'Cookies' },
+  // Emulation tools (CDP Emulation)
+  { id: 'tabz_emulate_device', name: 'Emulate Device', desc: 'Mobile/tablet viewport simulation', tokens: 1200, category: 'Emulation' },
+  { id: 'tabz_emulate_clear', name: 'Clear Emulation', desc: 'Reset all emulation overrides', tokens: 600, category: 'Emulation' },
+  { id: 'tabz_emulate_geolocation', name: 'Spoof Location', desc: 'Fake GPS coordinates', tokens: 900, category: 'Emulation' },
+  { id: 'tabz_emulate_network', name: 'Network Throttle', desc: 'Simulate 3G, offline, etc.', tokens: 1000, category: 'Emulation' },
+  { id: 'tabz_emulate_media', name: 'Media Emulation', desc: 'Print mode, dark mode pref', tokens: 900, category: 'Emulation' },
+  { id: 'tabz_emulate_vision', name: 'Vision Deficiency', desc: 'Colorblindness simulation', tokens: 900, category: 'Emulation' },
+  // Notification tools (chrome.notifications API)
+  { id: 'tabz_notification_show', name: 'Show Notification', desc: 'Desktop notification', tokens: 1000, category: 'Notifications' },
+  { id: 'tabz_notification_update', name: 'Update Notification', desc: 'Modify existing notification', tokens: 800, category: 'Notifications' },
+  { id: 'tabz_notification_progress', name: 'Progress Notification', desc: 'Show progress bar notification', tokens: 900, category: 'Notifications' },
+  { id: 'tabz_notification_clear', name: 'Clear Notification', desc: 'Dismiss a notification', tokens: 600, category: 'Notifications' },
+  { id: 'tabz_notification_list', name: 'List Notifications', desc: 'Get active notifications', tokens: 800, category: 'Notifications' },
 ]
 
 const CORE_TOOL_IDS = MCP_TOOLS.filter(t => t.locked).map(t => t.id)

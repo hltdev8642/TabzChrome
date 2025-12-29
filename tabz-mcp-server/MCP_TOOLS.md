@@ -1685,14 +1685,589 @@ Place audio files in `backend/public/sounds/` to serve them at `http://localhost
 
 ---
 
+## tabz_history_search
+
+**Purpose:** Search browsing history by keyword and date range.
+
+**Trigger phrases:**
+- [Search my history](tabz:paste?text=Search%20my%20history)
+- [Find pages I visited](tabz:paste?text=Find%20pages%20I%20visited)
+- [History search](tabz:paste?text=History%20search)
+
+**Parameters:**
+- `query` (required): Search text - matches titles and URLs
+- `startTime` (optional): Start of date range (ms since epoch or ISO string)
+- `endTime` (optional): End of date range (ms since epoch or ISO string)
+- `maxResults` (optional): Max results (1-1000, default: 100)
+- `response_format`: `markdown` (default) or `json`
+
+**Returns:**
+- List of history entries with URL, title, visit count, last visit time
+
+**Examples:**
+```javascript
+// Search by keyword
+{ query: "github" }
+
+// Last week's visits
+{ query: "react", startTime: Date.now() - 7*24*60*60*1000 }
+```
+
+---
+
+## tabz_history_visits
+
+**Purpose:** Get detailed visit information for a specific URL.
+
+**Trigger phrases:**
+- [When did I visit this URL?](tabz:paste?text=When%20did%20I%20visit%20this%20URL%3F)
+- [History visits for URL](tabz:paste?text=History%20visits%20for%20URL)
+
+**Parameters:**
+- `url` (required): The URL to get visit details for
+- `response_format`: `markdown` (default) or `json`
+
+**Returns:**
+- List of visits with timestamp, transition type (link, typed, reload, etc.)
+
+---
+
+## tabz_history_recent
+
+**Purpose:** Get the most recent N history entries.
+
+**Trigger phrases:**
+- [Show recent history](tabz:paste?text=Show%20recent%20history)
+- [What did I browse?](tabz:paste?text=What%20did%20I%20browse%3F)
+- [Recent pages](tabz:paste?text=Recent%20pages)
+
+**Parameters:**
+- `maxResults` (optional): Number of entries (1-1000, default: 50)
+- `response_format`: `markdown` (default) or `json`
+
+**Returns:**
+- List of recent history entries sorted by most recent visit
+
+---
+
+## tabz_history_delete_url
+
+**Purpose:** Remove a specific URL from browsing history.
+
+**Trigger phrases:**
+- [Delete this from history](tabz:paste?text=Delete%20this%20from%20history)
+- [Remove URL from history](tabz:paste?text=Remove%20URL%20from%20history)
+
+**Parameters:**
+- `url` (required): The URL to delete from history
+
+**Returns:**
+- Confirmation of deletion
+
+**Note:** This permanently removes the URL and all associated visits.
+
+---
+
+## tabz_history_delete_range
+
+**Purpose:** Remove all history entries within a date range.
+
+**Trigger phrases:**
+- [Clear history for this week](tabz:paste?text=Clear%20history%20for%20this%20week)
+- [Delete history range](tabz:paste?text=Delete%20history%20range)
+
+**Parameters:**
+- `startTime` (required): Start of range (ms since epoch or ISO string)
+- `endTime` (required): End of range (ms since epoch or ISO string)
+
+**Returns:**
+- Confirmation of deletion
+
+**Warning:** This permanently deletes all history in the specified range.
+
+---
+
+## tabz_sessions_recently_closed
+
+**Purpose:** List recently closed tabs and windows (up to 25).
+
+**Trigger phrases:**
+- [Show recently closed tabs](tabz:paste?text=Show%20recently%20closed%20tabs)
+- [What did I close?](tabz:paste?text=What%20did%20I%20close%3F)
+- [Closed tabs](tabz:paste?text=Closed%20tabs)
+
+**Parameters:**
+- `maxResults` (optional): Number of entries (1-25, default: 25)
+- `response_format`: `markdown` (default) or `json`
+
+**Returns:**
+- List of closed sessions with sessionId, lastModified, type (tab/window)
+- For tabs: URL, title, favIconUrl
+- For windows: List of tabs that were in the window
+
+**Note:** Use the `sessionId` with `tabz_sessions_restore` to reopen.
+
+---
+
+## tabz_sessions_restore
+
+**Purpose:** Restore a closed tab or window by sessionId.
+
+**Trigger phrases:**
+- [Restore that tab](tabz:paste?text=Restore%20that%20tab)
+- [Reopen closed tab](tabz:paste?text=Reopen%20closed%20tab)
+
+**Parameters:**
+- `sessionId` (required): Session ID from `tabz_sessions_recently_closed`
+
+**Returns:**
+- The restored tab or window information
+
+---
+
+## tabz_sessions_devices
+
+**Purpose:** List tabs open on other synced Chrome devices.
+
+**Trigger phrases:**
+- [Show tabs from my phone](tabz:paste?text=Show%20tabs%20from%20my%20phone)
+- [Other device tabs](tabz:paste?text=Other%20device%20tabs)
+- [Synced devices](tabz:paste?text=Synced%20devices)
+
+**Parameters:**
+- `response_format`: `markdown` (default) or `json`
+
+**Returns:**
+- List of devices with:
+  - `deviceName`: Device name
+  - `sessions`: Windows/tabs open on that device
+
+**Note:** Requires Chrome sync to be enabled and logged in on multiple devices.
+
+---
+
+## tabz_cookies_get
+
+**Purpose:** Get a specific cookie by name and URL.
+
+**Trigger phrases:**
+- [Get cookie value](tabz:paste?text=Get%20cookie%20value)
+- [Check session cookie](tabz:paste?text=Check%20session%20cookie)
+
+**Parameters:**
+- `url` (required): URL the cookie is associated with
+- `name` (required): Name of the cookie
+- `storeId` (optional): Cookie store ID (for different profiles)
+- `response_format`: `markdown` (default) or `json`
+
+**Returns:**
+- Cookie details: name, value, domain, path, expiration, httpOnly, secure, sameSite
+
+---
+
+## tabz_cookies_list
+
+**Purpose:** List cookies for a domain with optional filters.
+
+**Trigger phrases:**
+- [Show cookies for this site](tabz:paste?text=Show%20cookies%20for%20this%20site)
+- [List all cookies](tabz:paste?text=List%20all%20cookies)
+
+**Parameters:**
+- `domain` (optional): Filter by domain
+- `url` (optional): Filter by URL
+- `name` (optional): Filter by cookie name pattern
+- `session` (optional): `true` for session-only, `false` for persistent-only
+- `secure` (optional): `true` for secure-only, `false` for non-secure only
+- `response_format`: `markdown` (default) or `json`
+
+**Returns:**
+- List of matching cookies with full details
+
+---
+
+## tabz_cookies_set
+
+**Purpose:** Create or update a cookie.
+
+**Trigger phrases:**
+- [Set cookie](tabz:paste?text=Set%20cookie)
+- [Create auth cookie](tabz:paste?text=Create%20auth%20cookie)
+
+**Parameters:**
+- `url` (required): URL to associate cookie with
+- `name` (required): Cookie name
+- `value` (required): Cookie value
+- `domain` (optional): Cookie domain
+- `path` (optional): Cookie path (default: "/")
+- `secure` (optional): HTTPS only (default: true for https URLs)
+- `httpOnly` (optional): Not accessible via JavaScript
+- `sameSite` (optional): `strict`, `lax`, or `no_restriction`
+- `expirationDate` (optional): Unix timestamp for expiration
+
+**Returns:**
+- The created/updated cookie
+
+---
+
+## tabz_cookies_delete
+
+**Purpose:** Remove a specific cookie.
+
+**Trigger phrases:**
+- [Delete cookie](tabz:paste?text=Delete%20cookie)
+- [Remove auth cookie](tabz:paste?text=Remove%20auth%20cookie)
+
+**Parameters:**
+- `url` (required): URL the cookie is associated with
+- `name` (required): Name of the cookie to delete
+
+**Returns:**
+- Confirmation of deletion
+
+---
+
+## tabz_cookies_audit
+
+**Purpose:** Analyze cookies for a page, identifying trackers and first/third-party cookies.
+
+**Trigger phrases:**
+- [Audit cookies](tabz:paste?text=Audit%20cookies)
+- [Find tracking cookies](tabz:paste?text=Find%20tracking%20cookies)
+- [Cookie analysis](tabz:paste?text=Cookie%20analysis)
+
+**Parameters:**
+- `url` (optional): URL to audit (defaults to active tab)
+- `tabId` (optional): Target tab ID
+- `response_format`: `markdown` (default) or `json`
+
+**Returns:**
+- Summary: total, first-party, third-party, trackers counts
+- Categorized cookies with tracker identification
+- Known tracker domains flagged
+
+**Use cases:**
+- Privacy auditing
+- Debug authentication issues
+- Understand cookie landscape before testing
+
+---
+
+## tabz_emulate_device
+
+**Purpose:** Emulate a mobile or tablet viewport with device presets.
+
+**Trigger phrases:**
+- [Test on iPhone](tabz:paste?text=Test%20on%20iPhone)
+- [Mobile view](tabz:paste?text=Mobile%20view)
+- [Emulate tablet](tabz:paste?text=Emulate%20tablet)
+
+**Parameters:**
+- `preset` (optional): Device preset name:
+  - `iPhone 14 Pro`, `iPhone 14 Pro Max`, `iPhone SE`
+  - `Pixel 7`, `Pixel 7 Pro`, `Samsung Galaxy S23`
+  - `iPad`, `iPad Pro 12.9`, `iPad Mini`
+  - `Surface Pro`, `Kindle Fire HDX`
+- `width` (optional): Custom viewport width (if no preset)
+- `height` (optional): Custom viewport height (if no preset)
+- `deviceScaleFactor` (optional): DPR (default: 2 for mobile, 1 for desktop)
+- `mobile` (optional): Enable mobile mode (default: true for mobile presets)
+- `tabId` (optional): Target tab ID
+
+**Returns:**
+- Confirmation with applied viewport settings
+
+**Examples:**
+```javascript
+// Use preset
+{ preset: "iPhone 14 Pro" }
+
+// Custom dimensions
+{ width: 375, height: 812, mobile: true, deviceScaleFactor: 3 }
+```
+
+---
+
+## tabz_emulate_clear
+
+**Purpose:** Clear all emulation overrides and reset to normal browser state.
+
+**Trigger phrases:**
+- [Clear emulation](tabz:paste?text=Clear%20emulation)
+- [Reset viewport](tabz:paste?text=Reset%20viewport)
+- [Stop emulating](tabz:paste?text=Stop%20emulating)
+
+**Parameters:**
+- `tabId` (optional): Target tab ID
+
+**Returns:**
+- Confirmation that all emulation was cleared
+
+---
+
+## tabz_emulate_geolocation
+
+**Purpose:** Spoof the browser's geolocation.
+
+**Trigger phrases:**
+- [Set location to Paris](tabz:paste?text=Set%20location%20to%20Paris)
+- [Fake GPS](tabz:paste?text=Fake%20GPS)
+- [Spoof location](tabz:paste?text=Spoof%20location)
+
+**Parameters:**
+- `latitude` (required): Latitude coordinate
+- `longitude` (required): Longitude coordinate
+- `accuracy` (optional): Accuracy in meters (default: 100)
+- `tabId` (optional): Target tab ID
+
+**Returns:**
+- Confirmation with coordinates set
+
+**Examples:**
+```javascript
+// Paris
+{ latitude: 48.8566, longitude: 2.3522 }
+
+// New York
+{ latitude: 40.7128, longitude: -74.0060 }
+```
+
+---
+
+## tabz_emulate_network
+
+**Purpose:** Throttle network speed to simulate different connection types.
+
+**Trigger phrases:**
+- [Test on slow 3G](tabz:paste?text=Test%20on%20slow%203G)
+- [Simulate offline](tabz:paste?text=Simulate%20offline)
+- [Throttle network](tabz:paste?text=Throttle%20network)
+
+**Parameters:**
+- `preset` (optional): Network preset:
+  - `offline` - No connection
+  - `GPRS` - 50 Kbps
+  - `Slow 3G` - 500 Kbps
+  - `Fast 3G` - 1.5 Mbps
+  - `4G` - 4 Mbps
+  - `WiFi` - 30 Mbps
+- `downloadThroughput` (optional): Download speed in bytes/sec (if no preset)
+- `uploadThroughput` (optional): Upload speed in bytes/sec
+- `latency` (optional): Additional latency in ms
+- `offline` (optional): Simulate offline (true/false)
+- `tabId` (optional): Target tab ID
+
+**Returns:**
+- Confirmation with applied network conditions
+
+**Examples:**
+```javascript
+// Use preset
+{ preset: "Slow 3G" }
+
+// Go offline
+{ offline: true }
+
+// Custom throttle
+{ downloadThroughput: 100000, latency: 200 }
+```
+
+---
+
+## tabz_emulate_media
+
+**Purpose:** Set media type and features for CSS testing.
+
+**Trigger phrases:**
+- [Print preview](tabz:paste?text=Print%20preview)
+- [Test dark mode preference](tabz:paste?text=Test%20dark%20mode%20preference)
+- [Force light mode](tabz:paste?text=Force%20light%20mode)
+
+**Parameters:**
+- `type` (optional): Media type: `screen` or `print`
+- `colorScheme` (optional): `light` or `dark` preference
+- `reducedMotion` (optional): `reduce` or `no-preference`
+- `forcedColors` (optional): `active` or `none`
+- `tabId` (optional): Target tab ID
+
+**Returns:**
+- Confirmation with applied media settings
+
+**Examples:**
+```javascript
+// Print preview mode
+{ type: "print" }
+
+// Force dark mode preference
+{ colorScheme: "dark" }
+
+// Reduce motion
+{ reducedMotion: "reduce" }
+```
+
+---
+
+## tabz_emulate_vision
+
+**Purpose:** Simulate vision deficiencies for accessibility testing.
+
+**Trigger phrases:**
+- [Test for colorblindness](tabz:paste?text=Test%20for%20colorblindness)
+- [Simulate deuteranopia](tabz:paste?text=Simulate%20deuteranopia)
+- [Vision accessibility test](tabz:paste?text=Vision%20accessibility%20test)
+
+**Parameters:**
+- `type` (required): Vision deficiency type:
+  - `none` - Clear emulation
+  - `blurredVision` - Blurred vision
+  - `protanopia` - Red-blind
+  - `deuteranopia` - Green-blind (most common)
+  - `tritanopia` - Blue-blind
+  - `achromatopsia` - Total color blindness
+- `tabId` (optional): Target tab ID
+
+**Returns:**
+- Confirmation with applied vision emulation
+
+**Use cases:**
+- Accessibility testing for color contrast
+- Ensure UI works for colorblind users
+- WCAG compliance testing
+
+---
+
+## tabz_notification_show
+
+**Purpose:** Display a Chrome desktop notification.
+
+**Trigger phrases:**
+- [Show notification](tabz:paste?text=Show%20notification)
+- [Alert me when done](tabz:paste?text=Alert%20me%20when%20done)
+- [Desktop notification](tabz:paste?text=Desktop%20notification)
+
+**Parameters:**
+- `title` (required): Notification title (max 100 chars)
+- `message` (required): Notification body (max 500 chars)
+- `type` (optional): `basic` (default), `image`, `list`, or `progress`
+- `iconUrl` (optional): Custom icon URL (uses extension icon if omitted)
+- `imageUrl` (optional): Image URL for `image` type
+- `items` (optional): List items for `list` type: `[{title, message}, ...]`
+- `progress` (optional): 0-100 for `progress` type
+- `buttons` (optional): Up to 2 buttons: `[{title, iconUrl?}, ...]`
+- `priority` (optional): -2 (lowest) to 2 (highest), default 0
+- `notificationId` (optional): Custom ID for updates (auto-generated if omitted)
+- `requireInteraction` (optional): Keep visible until dismissed (default: false)
+
+**Returns:**
+- `notificationId`: ID for updating or clearing this notification
+
+**Examples:**
+```javascript
+// Basic notification
+{ title: "Build Complete", message: "Ready for testing" }
+
+// Progress notification
+{ type: "progress", title: "Downloading", message: "file.zip", progress: 45 }
+
+// With buttons
+{ title: "Deploy?", message: "Ready to deploy", buttons: [{title: "Yes"}, {title: "No"}] }
+```
+
+**Note:** Button clicks display but are not yet connected to callback actions.
+
+---
+
+## tabz_notification_update
+
+**Purpose:** Update an existing notification.
+
+**Trigger phrases:**
+- [Update notification](tabz:paste?text=Update%20notification)
+- [Change progress](tabz:paste?text=Change%20progress)
+
+**Parameters:**
+- `notificationId` (required): ID from `tabz_notification_show`
+- `title` (optional): New title
+- `message` (optional): New message
+- `progress` (optional): New progress (0-100)
+- `type` (optional): Change type (e.g., `basic` to remove progress bar when done)
+
+**Returns:**
+- `wasUpdated`: Whether notification existed and was updated
+
+**Example workflow:**
+```javascript
+// 1. Create progress notification
+{ type: "progress", title: "Processing", message: "Step 1", progress: 0 }
+
+// 2. Update progress
+{ notificationId: "...", progress: 50, message: "Step 2" }
+
+// 3. Mark complete
+{ notificationId: "...", type: "basic", title: "Done!", message: "Finished" }
+```
+
+---
+
+## tabz_notification_progress
+
+**Purpose:** Show or update a progress notification (convenience wrapper).
+
+**Trigger phrases:**
+- [Show progress](tabz:paste?text=Show%20progress)
+- [Update progress bar](tabz:paste?text=Update%20progress%20bar)
+
+**Parameters:**
+- `title` (required): Notification title
+- `message` (required): Status message
+- `progress` (required): 0-100 percentage
+- `notificationId` (optional): ID for updates (creates new if omitted)
+
+**Returns:**
+- `notificationId`: ID for further updates
+
+---
+
+## tabz_notification_clear
+
+**Purpose:** Dismiss a notification.
+
+**Trigger phrases:**
+- [Clear notification](tabz:paste?text=Clear%20notification)
+- [Dismiss alert](tabz:paste?text=Dismiss%20alert)
+
+**Parameters:**
+- `notificationId` (required): ID from `tabz_notification_show`
+
+**Returns:**
+- `wasCleared`: Whether notification existed and was cleared
+
+---
+
+## tabz_notification_list
+
+**Purpose:** Get all active notifications.
+
+**Trigger phrases:**
+- [List notifications](tabz:paste?text=List%20notifications)
+- [Active notifications](tabz:paste?text=Active%20notifications)
+
+**Parameters:**
+- `response_format`: `markdown` (default) or `json`
+
+**Returns:**
+- Count and list of active notification IDs with their type, title, and message
+
+---
+
 ## Architecture
 
-All 47 MCP tools use **Chrome Extension APIs** exclusively (no CDP required since v1.2.0).
+All 71 MCP tools use **Chrome Extension APIs** exclusively (no CDP required since v1.2.0).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     EXTENSION-BASED ARCHITECTURE                     │
-│   All 47 tools: tabs, screenshots, clicks, network, windows, etc.    │
+│   All 71 tools: tabs, screenshots, clicks, network, windows, etc.    │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  Chrome Browser                                                      │
@@ -1756,7 +2331,7 @@ Install the `tabz-mcp` skill for guided browser automation. The skill **dynamica
 
 ## Extension API Reference
 
-All 44 tools use **Chrome Extension APIs** - no CDP or `--remote-debugging-port=9222` flag required.
+All 71 tools use **Chrome Extension APIs** - no CDP or `--remote-debugging-port=9222` flag required.
 
 | Tool | Needs Extension? | Implementation |
 |------|-----------------|----------------|
@@ -1804,6 +2379,33 @@ All 44 tools use **Chrome Extension APIs** - no CDP or `--remote-debugging-port=
 | `tabz_get_displays` | ✅ Required | chrome.system.display API |
 | `tabz_tile_windows` | ✅ Required | chrome.windows + system.display |
 | `tabz_popout_terminal` | ✅ Required | chrome.windows.create |
+| `tabz_speak` | ✅ Required | edge-tts via backend |
+| `tabz_list_voices` | ✅ Required | edge-tts via backend |
+| `tabz_play_audio` | ✅ Required | Audio API via backend |
+| `tabz_history_search` | ✅ Required | chrome.history API |
+| `tabz_history_visits` | ✅ Required | chrome.history API |
+| `tabz_history_recent` | ✅ Required | chrome.history API |
+| `tabz_history_delete_url` | ✅ Required | chrome.history API |
+| `tabz_history_delete_range` | ✅ Required | chrome.history API |
+| `tabz_sessions_recently_closed` | ✅ Required | chrome.sessions API |
+| `tabz_sessions_restore` | ✅ Required | chrome.sessions API |
+| `tabz_sessions_devices` | ✅ Required | chrome.sessions API |
+| `tabz_cookies_get` | ✅ Required | chrome.cookies API |
+| `tabz_cookies_list` | ✅ Required | chrome.cookies API |
+| `tabz_cookies_set` | ✅ Required | chrome.cookies API |
+| `tabz_cookies_delete` | ✅ Required | chrome.cookies API |
+| `tabz_cookies_audit` | ✅ Required | chrome.cookies API |
+| `tabz_emulate_device` | ✅ Required | chrome.debugger (CDP) |
+| `tabz_emulate_clear` | ✅ Required | chrome.debugger (CDP) |
+| `tabz_emulate_geolocation` | ✅ Required | chrome.debugger (CDP) |
+| `tabz_emulate_network` | ✅ Required | chrome.debugger (CDP) |
+| `tabz_emulate_media` | ✅ Required | chrome.debugger (CDP) |
+| `tabz_emulate_vision` | ✅ Required | chrome.debugger (CDP) |
+| `tabz_notification_show` | ✅ Required | chrome.notifications API |
+| `tabz_notification_update` | ✅ Required | chrome.notifications API |
+| `tabz_notification_progress` | ✅ Required | chrome.notifications API |
+| `tabz_notification_clear` | ✅ Required | chrome.notifications API |
+| `tabz_notification_list` | ✅ Required | chrome.notifications API |
 
 **Summary:**
 - **All tools use Chrome Extension APIs** - no CDP required

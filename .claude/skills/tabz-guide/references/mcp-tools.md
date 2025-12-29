@@ -1,6 +1,6 @@
 # TabzChrome MCP Tools Reference
 
-TabzChrome provides 47 MCP tools for browser automation via Chrome Extension APIs.
+TabzChrome provides 71 MCP tools for browser automation via Chrome Extension APIs.
 
 ## Tool Categories
 
@@ -19,6 +19,11 @@ TabzChrome provides 47 MCP tools for browser automation via Chrome Extension API
 | **Inspection** | `tabz_get_element`, `tabz_get_console_logs`, `tabz_get_page_info` | Debug, inspect HTML/CSS |
 | **Debugger** | `tabz_get_dom_tree`, `tabz_profile_performance`, `tabz_get_coverage` | DOM tree, metrics, code coverage (uses chrome.debugger) |
 | **Audio** | `tabz_speak`, `tabz_list_voices`, `tabz_play_audio` | TTS and audio file playback |
+| **History** | `tabz_history_search`, `tabz_history_visits`, `tabz_history_recent`, `tabz_history_delete_url`, `tabz_history_delete_range` | Search and manage browsing history |
+| **Sessions** | `tabz_sessions_recently_closed`, `tabz_sessions_restore`, `tabz_sessions_devices` | Recover closed tabs, synced devices |
+| **Cookies** | `tabz_cookies_get`, `tabz_cookies_list`, `tabz_cookies_set`, `tabz_cookies_delete`, `tabz_cookies_audit` | Debug authentication, audit trackers |
+| **Emulation** | `tabz_emulate_device`, `tabz_emulate_clear`, `tabz_emulate_geolocation`, `tabz_emulate_network`, `tabz_emulate_media`, `tabz_emulate_vision` | Responsive testing, accessibility |
+| **Notifications** | `tabz_notification_show`, `tabz_notification_update`, `tabz_notification_progress`, `tabz_notification_clear`, `tabz_notification_list` | Desktop alerts with progress |
 
 ## Visual Feedback
 
@@ -79,7 +84,7 @@ mcp-cli call tabz/tabz_switch_tab '{"tabId": 1762556601}'
 
 ### All Tools Use Extension APIs
 
-All 47 tools work using Chrome Extension APIs only - no `--remote-debugging-port=9222` required:
+All 71 tools work using Chrome Extension APIs only - no `--remote-debugging-port=9222` required:
 - Tab management, downloads, bookmarks
 - Screenshots, click/fill, element inspection
 - Network capture, console logs, scripting

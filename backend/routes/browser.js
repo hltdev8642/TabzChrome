@@ -1538,6 +1538,292 @@ router.post('/history/delete-range', async (req, res) => {
   }
 });
 
+// ============================================
+// SESSIONS ROUTES (Recently closed, synced devices)
+// ============================================
+
+router.get('/sessions/recent', async (req, res) => {
+  const maxResults = req.query.maxResults ? parseInt(req.query.maxResults) : 25;
+  log.debug('GET /sessions/recent', { maxResults });
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-sessions-recent', { maxResults });
+    res.json(result);
+  } catch (error) {
+    log.error('sessions-recent error:', error);
+    res.json({ success: false, sessions: [], error: error.message });
+  }
+});
+
+router.post('/sessions/restore', async (req, res) => {
+  const { sessionId } = req.body;
+  log.debug('POST /sessions/restore', { sessionId });
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-sessions-restore', { sessionId });
+    res.json(result);
+  } catch (error) {
+    log.error('sessions-restore error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+router.get('/sessions/devices', async (req, res) => {
+  const maxResults = req.query.maxResults ? parseInt(req.query.maxResults) : 10;
+  log.debug('GET /sessions/devices', { maxResults });
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-sessions-devices', { maxResults });
+    res.json(result);
+  } catch (error) {
+    log.error('sessions-devices error:', error);
+    res.json({ success: false, devices: [], error: error.message });
+  }
+});
+
+// ============================================
+// COOKIE ROUTES
+// ============================================
+
+router.post('/cookies/get', async (req, res) => {
+  const { url, name } = req.body;
+  if (!url || !name) return res.status(400).json({ success: false, error: 'url and name are required' });
+  log.debug('POST /cookies/get', { url, name });
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-cookies-get', { url, name });
+    res.json(result);
+  } catch (error) {
+    log.error('cookies-get error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+router.post('/cookies/list', async (req, res) => {
+  const { domain, url } = req.body;
+  log.debug('POST /cookies/list', { domain, url });
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-cookies-list', { domain, url });
+    res.json(result);
+  } catch (error) {
+    log.error('cookies-list error:', error);
+    res.json({ success: false, cookies: [], error: error.message });
+  }
+});
+
+router.post('/cookies/set', async (req, res) => {
+  const cookie = req.body;
+  log.debug('POST /cookies/set', { name: cookie.name, domain: cookie.domain });
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-cookies-set', cookie);
+    res.json(result);
+  } catch (error) {
+    log.error('cookies-set error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+router.post('/cookies/delete', async (req, res) => {
+  const { url, name } = req.body;
+  if (!url || !name) return res.status(400).json({ success: false, error: 'url and name are required' });
+  log.debug('POST /cookies/delete', { url, name });
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-cookies-delete', { url, name });
+    res.json(result);
+  } catch (error) {
+    log.error('cookies-delete error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+router.post('/cookies/audit', async (req, res) => {
+  const { tabId } = req.body;
+  log.debug('POST /cookies/audit', { tabId });
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-cookies-audit', { tabId });
+    res.json(result);
+  } catch (error) {
+    log.error('cookies-audit error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// EMULATION ROUTES (CDP)
+// ============================================
+
+router.post('/emulate/device', async (req, res) => {
+  const { tabId, device, width, height, deviceScaleFactor, mobile } = req.body;
+  log.debug('POST /emulate/device', { device, width, height });
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-emulate-device', { tabId, device, width, height, deviceScaleFactor, mobile });
+    res.json(result);
+  } catch (error) {
+    log.error('emulate-device error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+router.post('/emulate/clear', async (req, res) => {
+  const { tabId } = req.body;
+  log.debug('POST /emulate/clear', { tabId });
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-emulate-clear', { tabId });
+    res.json(result);
+  } catch (error) {
+    log.error('emulate-clear error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+router.post('/emulate/geolocation', async (req, res) => {
+  const { tabId, latitude, longitude, accuracy } = req.body;
+  log.debug('POST /emulate/geolocation', { latitude, longitude });
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-emulate-geolocation', { tabId, latitude, longitude, accuracy });
+    res.json(result);
+  } catch (error) {
+    log.error('emulate-geolocation error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+router.post('/emulate/network', async (req, res) => {
+  const { tabId, preset, offline, latency, downloadThroughput, uploadThroughput } = req.body;
+  log.debug('POST /emulate/network', { preset, offline });
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-emulate-network', { tabId, preset, offline, latency, downloadThroughput, uploadThroughput });
+    res.json(result);
+  } catch (error) {
+    log.error('emulate-network error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+router.post('/emulate/media', async (req, res) => {
+  const { tabId, type, features } = req.body;
+  log.debug('POST /emulate/media', { type, features });
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-emulate-media', { tabId, type, features });
+    res.json(result);
+  } catch (error) {
+    log.error('emulate-media error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+router.post('/emulate/vision', async (req, res) => {
+  const { tabId, type } = req.body;
+  log.debug('POST /emulate/vision', { type });
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-emulate-vision', { tabId, type });
+    res.json(result);
+  } catch (error) {
+    log.error('emulate-vision error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// NOTIFICATION ROUTES
+// ============================================
+
+router.post('/notification/show', async (req, res) => {
+  const { title, message, type, iconUrl, imageUrl, items, progress, buttons, priority, notificationId } = req.body;
+  if (!title || !message) return res.status(400).json({ success: false, error: 'title and message are required' });
+  log.debug('POST /notification/show', { title, type });
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-notification-show', { title, message, type, iconUrl, imageUrl, items, progress, buttons, priority, notificationId });
+    res.json(result);
+  } catch (error) {
+    log.error('notification-show error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+router.post('/notification/update', async (req, res) => {
+  const { notificationId, title, message, type, progress } = req.body;
+  if (!notificationId) return res.status(400).json({ success: false, error: 'notificationId is required' });
+  log.debug('POST /notification/update', { notificationId });
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-notification-update', { notificationId, title, message, type, progress });
+    res.json(result);
+  } catch (error) {
+    log.error('notification-update error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+router.post('/notification/progress', async (req, res) => {
+  const { notificationId, title, message, progress } = req.body;
+  log.debug('POST /notification/progress', { notificationId, progress });
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-notification-progress', { notificationId, title, message, progress });
+    res.json(result);
+  } catch (error) {
+    log.error('notification-progress error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+router.post('/notification/clear', async (req, res) => {
+  const { notificationId } = req.body;
+  if (!notificationId) return res.status(400).json({ success: false, error: 'notificationId is required' });
+  log.debug('POST /notification/clear', { notificationId });
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-notification-clear', { notificationId });
+    res.json(result);
+  } catch (error) {
+    log.error('notification-clear error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+router.get('/notification/list', async (req, res) => {
+  log.debug('GET /notification/list');
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-notification-list', {});
+    res.json(result);
+  } catch (error) {
+    log.error('notification-list error:', error);
+    res.json({ success: false, notifications: [], error: error.message });
+  }
+});
+
 module.exports = router;
 module.exports.addConsoleLog = addConsoleLog;
 module.exports.getConsoleLogs = getConsoleLogs;
