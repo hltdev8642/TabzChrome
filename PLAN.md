@@ -172,6 +172,32 @@ Benefits: No infrastructure to build, works from CLI, real-time sync, mobile app
 
 ## Future Enhancements
 
+### Video Background Optimizations
+
+**Status**: Planned
+
+Power-saving and performance improvements for video backgrounds:
+
+- [ ] **Idle timeout** - Pause video after configurable inactivity (5/10/30 min)
+  - Track last keypress/mouse activity
+  - Fade to static gradient when idle
+  - Resume on any input
+  - Setting: "Video idle timeout: Off / 5 min / 10 min / 30 min"
+
+- [ ] **Pause inactive tabs** - Only play video on the active terminal tab
+  - Use `isActive` prop to control playback
+  - Reduces CPU/GPU usage with many tabs open
+
+- [ ] **Volume slider** - For videos with audio (ambient sounds)
+  - Download option: video-only vs video+audio
+  - Volume control 0-100% alongside opacity slider
+  - Good for rain/fireplace/coffee shop ambience
+
+- [ ] **Background gallery** - Browse and apply backgrounds easily
+  - Scan `~/Videos/terminal-backgrounds/` for local files
+  - Thumbnail previews
+  - "Use as background" action from file viewer
+
 ### Waiting on Chrome Updates
 
 - [ ] **`sidePanel.close()` (Chrome 141+)** - Add "Close Terminal Sidebar" to context menu. Currently only `open()` exists and requires user gesture. [Chrome API docs](https://developer.chrome.com/docs/extensions/reference/api/sidePanel)
