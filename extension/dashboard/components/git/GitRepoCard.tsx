@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react'
-import { ChevronDown, ChevronRight, Star, GitBranch, ExternalLink, AlertCircle } from 'lucide-react'
+import { ChevronDown, ChevronRight, Star, GitBranch, ExternalLink, AlertCircle, FolderTree } from 'lucide-react'
 import { GitRepo } from '../../../hooks/useGitRepos'
 import { useGitOperations } from '../../../hooks/useGitOperations'
 import { GitStatusBadge } from './GitStatusBadge'
@@ -184,6 +184,40 @@ export function GitRepoCard({ repo, isActive, onToggleActive, isExpanded, onTogg
             onOpenGitlogue={handleOpenGitlogue}
             loading={loading}
           />
+
+          {/* Worktrees section */}
+          {repo.worktrees && repo.worktrees.length > 0 && (
+            <div className="border-t border-border pt-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+                <FolderTree className="w-4 h-4" />
+                Worktrees ({repo.worktrees.length})
+              </div>
+              <div className="space-y-1.5 ml-6">
+                {repo.worktrees.map((wt, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    <GitBranch className="w-3 h-3 text-muted-foreground" />
+                    <span className={`font-mono ${wt.branch === repo.branch ? 'text-primary font-medium' : 'text-foreground'}`}>
+                      {wt.branch || (wt.detached ? 'detached' : 'unknown')}
+                    </span>
+                    <span className="text-muted-foreground text-xs truncate flex-1" title={wt.path}>
+                      {wt.path}
+                    </span>
+                    {wt.githubUrl && (
+                      <a
+                        href={wt.githubUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
+                        title={`View ${wt.branch} on GitHub`}
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* File changes tree */}
           <div className="border-t border-border pt-4">

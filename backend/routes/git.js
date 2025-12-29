@@ -91,12 +91,16 @@ router.get('/repos', async (req, res) => {
           gitUtils.getLastActivity(repoPath)
         ]);
 
+        // Get worktrees (only if more than 1, to avoid noise)
+        const worktrees = await gitUtils.getWorktrees(repoPath, githubUrl);
+
         return {
           name: path.basename(repoPath),
           path: repoPath,
           ...status,
           githubUrl,
-          lastActivity
+          lastActivity,
+          worktrees: worktrees.length > 1 ? worktrees : []
         };
       } catch (err) {
         // Return basic info even if status fails

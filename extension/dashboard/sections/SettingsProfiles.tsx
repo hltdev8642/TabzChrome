@@ -1278,7 +1278,7 @@ function ProfileCard({
         </div>
 
         {/* Middle content - flexible to push actions to bottom */}
-        <div className="flex-1">
+        <div className="flex-1 min-h-[3.25rem]">
           {/* Working dir */}
           {profile.workingDir && profile.workingDir !== '~' && (
             <p className="text-xs text-white/50 font-mono truncate mb-1">

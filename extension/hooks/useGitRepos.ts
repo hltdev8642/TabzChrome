@@ -15,6 +15,15 @@ export interface GitCommit {
   refs: string[]
 }
 
+export interface GitWorktree {
+  path: string
+  branch?: string
+  head?: string
+  githubUrl?: string
+  detached?: boolean
+  bare?: boolean
+}
+
 export interface GitRepo {
   name: string
   path: string
@@ -27,6 +36,7 @@ export interface GitRepo {
   untracked: GitFile[]
   githubUrl: string | null
   lastActivity: string | null
+  worktrees: GitWorktree[]
   error?: string
 }
 

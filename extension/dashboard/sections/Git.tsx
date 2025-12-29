@@ -106,6 +106,15 @@ export default function GitSection() {
     )
   }, [filteredRepos])
 
+  // Auto-expand if only one repo is showing (on initial load)
+  const hasAutoExpanded = useRef(false)
+  useEffect(() => {
+    if (!hasAutoExpanded.current && filteredRepos.length === 1 && !loading) {
+      setExpandedRepos(new Set([filteredRepos[0].name]))
+      hasAutoExpanded.current = true
+    }
+  }, [filteredRepos, loading])
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

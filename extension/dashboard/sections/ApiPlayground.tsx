@@ -417,7 +417,7 @@ export default function ApiPlayground() {
                   {copied ? 'Copied' : 'Copy'}
                 </button>
               </div>
-              <pre className="p-4 overflow-auto max-h-96 font-mono text-sm">
+              <pre className="p-4 overflow-auto max-h-[calc(100vh-400px)] font-mono text-sm">
                 <code>{response.body}</code>
               </pre>
             </div>

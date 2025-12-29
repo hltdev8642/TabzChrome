@@ -516,6 +516,60 @@ async function getLastCommit(repoPath) {
   }
 }
 
+/**
+ * Get worktrees for a repository
+ * @param {string} repoPath - Full path to repository
+ * @param {string|null} githubUrl - GitHub URL for branch links
+ * @returns {Promise<object[]>} Array of worktree objects
+ */
+async function getWorktrees(repoPath, githubUrl = null) {
+  try {
+    const { stdout } = await execAsync('git worktree list --porcelain', {
+      cwd: repoPath,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' }
+    });
+
+    if (!stdout.trim()) {
+      return [];
+    }
+
+    const worktrees = [];
+    let current = {};
+
+    for (const line of stdout.split('\n')) {
+      if (line.startsWith('worktree ')) {
+        if (current.path) {
+          worktrees.push(current);
+        }
+        current = { path: line.substring(9) };
+      } else if (line.startsWith('HEAD ')) {
+        current.head = line.substring(5);
+      } else if (line.startsWith('branch ')) {
+        // Format: refs/heads/branch-name
+        current.branch = line.substring(7).replace('refs/heads/', '');
+        if (githubUrl) {
+          current.githubUrl = `${githubUrl}/tree/${current.branch}`;
+        }
+      } else if (line === 'detached') {
+        current.detached = true;
+      } else if (line === 'bare') {
+        current.bare = true;
+      }
+    }
+
+    // Don't forget the last one
+    if (current.path) {
+      worktrees.push(current);
+    }
+
+    return worktrees;
+  } catch (err) {
+    // Worktrees not supported or error - return empty
+    console.warn(`[Git] Error getting worktrees for ${repoPath}:`, err.message);
+    return [];
+  }
+}
+
 module.exports = {
   discoverRepos,
   getRepoStatus,
@@ -523,6 +577,7 @@ module.exports = {
   getGitHubUrl,
   getLastActivity,
   getLastCommit,
+  getWorktrees,
   parseGitStatus,
   parseBranchInfo,
   stageFiles,
