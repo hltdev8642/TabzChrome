@@ -272,7 +272,8 @@ router.delete('/agents/:id', asyncHandler(async (req, res) => {
   }
 
   // Close terminal - force=true kills tmux, force=false just removes from registry
-  terminalRegistry.closeTerminal(id, force);
+  // Must await so the terminal is removed from registry before we respond
+  await terminalRegistry.closeTerminal(id, force);
 
   // Broadcast to WebSocket clients so UI removes the tab
   const broadcast = req.app.get('broadcast');

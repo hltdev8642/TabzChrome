@@ -26,7 +26,7 @@ For older versions (1.1.x, 1.0.x, and pre-public 2.x), see [CHANGELOG-archive.md
 ### Fixed
 - **MCP Audio Tools Missing** - Rebuilt tabz-mcp-server to include `audio.js` (was missing from dist):
   - `tabz_speak`, `tabz_list_voices`, `tabz_play_audio` now available (47 total tools)
-- **README Images Broken** - Added `docs/pages/screenshots` symlink to fix image paths
+- **README Images Broken** - Moved screenshots from `docs/archive/` to `docs/screenshots/` (GitHub doesn't follow symlinks)
 - **Docs Archive Naming** - Renamed `github-pages-2024` → `github-pages` (project started in 2025)
 
 ### Changed
