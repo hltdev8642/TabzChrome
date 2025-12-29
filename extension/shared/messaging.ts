@@ -1,5 +1,5 @@
 // Chrome Extension Message Types
-import type { Profile } from '../components/SettingsModal'
+import type { Profile } from '../components/settings/types'
 
 export type MessageType =
   | 'INITIAL_STATE'

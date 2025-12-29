@@ -1,4 +1,4 @@
-import type { AudioSettings } from '../components/SettingsModal'
+import type { AudioSettings } from '../components/settings/types'
 
 // Voice pool for auto-assignment (rotates through these when no profile override)
 export const VOICE_POOL = [

@@ -1,5 +1,5 @@
 import React from 'react'
-import { type Profile } from './SettingsModal'
+import { type Profile } from './settings/types'
 
 /**
  * Terminal session data for context menu display

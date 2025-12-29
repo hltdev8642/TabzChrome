@@ -4,7 +4,7 @@ import { Terminal as TerminalIcon, Settings, Plus, X, ChevronDown, Moon, Sun, Ke
 import { Badge } from '../components/ui/badge'
 import { Terminal } from '../components/Terminal'
 import { TerminalCustomizePopover } from '../components/TerminalCustomizePopover'
-import { SettingsModal, type Profile } from '../components/SettingsModal'
+import type { Profile } from '../components/settings/types'
 import { ProfileDropdown } from '../components/ProfileDropdown'
 import { SessionContextMenu } from '../components/SessionContextMenu'
 import { GhostBadgeDropdown } from '../components/GhostBadgeDropdown'
@@ -58,8 +58,6 @@ function SidePanelTerminal() {
   const popoutTerminalId = urlParams.get('terminal')
 
   const [wsConnected, setWsConnected] = useState(false)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [editProfileId, setEditProfileId] = useState<string | null>(null)
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const [profileDropdownLeft, setProfileDropdownLeft] = useState<number | null>(null)
   const profileBtnRef = useRef<HTMLDivElement>(null)
@@ -375,9 +373,8 @@ function SidePanelTerminal() {
         chatInput.setChatInputMode('execute')
         setTimeout(() => chatInput.chatInputRef.current?.focus(), 100)
       } else if (message.type === 'OPEN_SETTINGS_EDIT_PROFILE') {
-        // Open settings modal with specific profile to edit
-        setEditProfileId(message.profileId)
-        setIsSettingsOpen(true)
+        // Open dashboard settings profiles page
+        chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/index.html#/settings-profiles') })
       } else if (message.type === 'SWITCH_TO_TERMINAL') {
         // Switch to a specific terminal tab (from dashboard click)
         const terminalId = (message as any).terminalId
@@ -646,42 +643,6 @@ function SidePanelTerminal() {
     resetFontSize(sessionId)
   }
 
-  // Handle live preview of profile appearance changes from Settings modal
-  // Updates all sessions using this profile to preview the appearance
-  const handlePreviewProfileAppearance = useCallback((profileId: string, appearance: {
-    themeName?: string
-    backgroundGradient?: string
-    panelColor?: string
-    transparency?: number
-    fontFamily?: string
-    backgroundMedia?: string
-    backgroundMediaType?: 'none' | 'image' | 'video'
-    backgroundMediaOpacity?: number
-  }) => {
-    // Find all sessions using this profile and update their appearance overrides
-    setSessions(prev => prev.map(session => {
-      if (session.profile?.id !== profileId) return session
-      return {
-        ...session,
-        appearanceOverrides: {
-          ...session.appearanceOverrides,
-          ...appearance,
-        },
-      }
-    }))
-  }, [setSessions])
-
-  // Clear preview overrides for all sessions using a profile (on cancel)
-  const handleClearProfilePreview = useCallback((profileId: string) => {
-    setSessions(prev => prev.map(session => {
-      if (session.profile?.id !== profileId) return session
-      return {
-        ...session,
-        appearanceOverrides: undefined,
-      }
-    }))
-  }, [setSessions])
-
   // Handle "Detach Session" from tab menu
   // Removes from registry (so it becomes an orphan) but keeps tmux session alive
   const handleDetachSession = async () => {
@@ -920,7 +881,7 @@ function SidePanelTerminal() {
 
           {/* Profiles Button */}
           <button
-            onClick={() => setIsSettingsOpen(true)}
+            onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/index.html#/settings-profiles') })}
             className="p-1.5 hover:bg-[#00ff88]/10 rounded-md transition-colors text-gray-400 hover:text-[#00ff88]"
             title="Profiles"
             aria-label="Open Profiles"
@@ -1423,18 +1384,6 @@ function SidePanelTerminal() {
         </div>
       </div>
 
-      {/* Settings Modal */}
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => {
-          setIsSettingsOpen(false)
-          setEditProfileId(null)  // Clear edit profile ID on close
-        }}
-        editProfileId={editProfileId}
-        onPreviewProfileAppearance={handlePreviewProfileAppearance}
-        onClearPreview={handleClearProfilePreview}
-      />
-
       {/* Tab Context Menu */}
       <SessionContextMenu
         show={contextMenu.show}
@@ -1451,11 +1400,10 @@ function SidePanelTerminal() {
           }
         }}
         onEditProfile={() => {
+          // Open dashboard settings profiles page with specific profile to edit
           const terminal = sessions.find(t => t.id === contextMenu.terminalId)
-          // Use terminal's profile ID, or fall back to default profile
           const profileId = terminal?.profile?.id || defaultProfileId || 'default'
-          setEditProfileId(profileId)
-          setIsSettingsOpen(true)
+          chrome.tabs.create({ url: chrome.runtime.getURL(`dashboard/index.html#/settings-profiles?edit=${encodeURIComponent(profileId)}`) })
         }}
         onOpenReference={(() => {
           const terminal = sessions.find(t => t.id === contextMenu.terminalId)

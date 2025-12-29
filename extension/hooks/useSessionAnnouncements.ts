@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react'
-import type { Profile, AudioSettings } from '../components/SettingsModal'
+import type { Profile, AudioSettings } from '../components/settings/types'
 
 export interface TerminalSession {
   id: string

@@ -17,21 +17,33 @@ For older versions (1.1.x, 1.0.x, and pre-public 2.x), see [CHANGELOG-archive.md
 
 ## [1.3.2] - 2025-12-29
 
+### Added
+- **Dashboard Profile Management** (`Settings → Profiles`) - Full profile editor in dashboard:
+  - Live **TerminalPreview** component showing all 4 visual layers (panel color, media, gradient, content)
+  - Profile cards with visual theme previews, category grouping, drag-drop reordering
+  - Inline edit form with live preview while editing
+  - **Category filter dropdown** next to search bar (multi-select by category)
+  - **Edit Categories mode** - rename categories, change colors, delete (moves profiles to Uncategorized)
+  - **Paste-only launch** - Terminal icon launches with command pasted but not executed (edit flags first)
+  - **Reference badge** shown next to profile name, paperclip icon in action bar to open reference
+  - Import/export profiles with merge or replace options
+
 ### Changed
-- **Dashboard Settings Consolidation** - Unified MCP and Audio settings under nested Settings navigation:
-  - Settings now has expandable sub-items: General, Tabz MCP, Audio
+- **Dashboard Settings Consolidation** - Unified settings under nested Settings navigation:
+  - Settings now has expandable sub-items: Profiles, General, Tabz MCP, Audio
   - Collapsed sidebar shows child icons when Settings is expanded (with tooltips)
-  - Removed `McpPlayground.tsx`, `Audio.tsx`, `Settings.tsx` → renamed to `SettingsMcp.tsx`, `SettingsAudio.tsx`, `SettingsGeneral.tsx`
+  - Removed top-level Profiles section (merged into Settings → Profiles)
 
-- **Sidebar Modal → Profiles Only** - Simplified sidebar settings modal:
-  - Removed MCP tab from sidebar modal (moved to dashboard)
-  - Modal renamed from "Settings" to "Profiles" with terminal icon
-  - Deleted `McpToolsTab.tsx` component
-  - Cleaned up `SettingsContext.tsx` (removed MCP state)
+- **Sidebar Modal Removed** - Profile editing moved entirely to dashboard:
+  - Grid icon in sidebar header → Opens Dashboard Settings → Profiles
+  - Right-click terminal tab → "Edit Profile" opens dashboard with that profile selected
+  - Gear icon → Opens Dashboard Settings → General
+  - Deleted: `SettingsModal.tsx`, `ProfilesTab.tsx`, `AudioTab.tsx`, `SettingsContext.tsx`, `ModalUI.tsx`, `ImportExportDialog.tsx`, `CategoryCombobox.tsx`
+  - Deleted: `dashboard/sections/Profiles.tsx` (merged into SettingsProfiles)
 
-- **Sidebar Header Icons Swapped**:
-  - Grid icon (was Dashboard) → Opens Profiles modal
-  - Gear icon (was Settings) → Opens Dashboard Settings (General tab)
+- **Profile Cards Streamlined**:
+  - Removed inline category color pickers (use Edit Categories mode instead)
+  - Action buttons: Launch, Paste-only, Edit, Copy, Reference, Star, Delete
 
 ---
 

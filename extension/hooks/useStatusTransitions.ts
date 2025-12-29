@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { Profile, AudioSettings } from '../components/SettingsModal'
+import type { Profile, AudioSettings } from '../components/settings/types'
 import type { AudioEventType, AudioEventSettings } from '../components/settings/types'
 import { DEFAULT_PHRASES } from '../components/settings/types'
 import type { ClaudeStatus } from './useClaudeStatus'

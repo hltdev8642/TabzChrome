@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { sendMessage } from '../shared/messaging'
 import { getEffectiveWorkingDir } from '../shared/utils'
-import type { Profile } from '../components/SettingsModal'
+import type { Profile } from '../components/settings/types'
 import type { TerminalSession } from './useTerminalSessions'
 
 export interface UseKeyboardShortcutsParams {

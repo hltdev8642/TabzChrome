@@ -1,0 +1,1959 @@
+import React, { useEffect, useState, useRef } from 'react'
+import {
+  Grid3X3,
+  Plus,
+  Edit,
+  Trash2,
+  GripVertical,
+  Palette,
+  Download,
+  Upload,
+  Search,
+  X,
+  ChevronDown,
+  ChevronUp,
+  ChevronRight,
+  Folder,
+  Star,
+  Play,
+  Copy,
+  Volume2,
+  Paperclip,
+  Filter,
+  Tags,
+  Check,
+  SquareTerminal,
+} from 'lucide-react'
+import { Terminal as TerminalIcon } from 'lucide-react'
+import { TerminalPreview } from '../components/TerminalPreview'
+import { themes, themeNames } from '../../styles/themes'
+import { backgroundGradients, gradientNames, PANEL_COLORS, getGradientCSS, DEFAULT_PANEL_COLOR, DEFAULT_TRANSPARENCY } from '../../styles/terminal-backgrounds'
+import {
+  type Profile,
+  type CategorySettings,
+  type AudioSettings,
+  type AudioMode,
+  CATEGORY_COLORS,
+  DEFAULT_CATEGORY_COLOR,
+  DEFAULT_PROFILE,
+  DEFAULT_AUDIO_SETTINGS,
+  getAvailableFonts,
+  TTS_VOICES,
+} from '../../components/settings/types'
+import { useDragDrop } from '../../hooks/useDragDrop'
+import { spawnTerminal } from '../hooks/useDashboard'
+import { useWorkingDirectory } from '../../hooks/useWorkingDirectory'
+import { getEffectiveWorkingDir } from '../../shared/utils'
+
+// Helper to get media URL (matches Terminal.tsx pattern)
+const getMediaUrl = (path: string | undefined): string | null => {
+  if (!path) return null
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('file://')) {
+    return path
+  }
+  return `http://localhost:8129/api/media?path=${encodeURIComponent(path)}`
+}
+
+/**
+ * SettingsProfiles - Unified profile management section
+ *
+ * Combines functionality from:
+ * - Dashboard Profiles.tsx (profile cards with themes)
+ * - Settings ProfilesTab.tsx (edit form)
+ *
+ * Features:
+ * - Profile cards showing visual themes
+ * - Click card to edit (inline form with TerminalPreview)
+ * - Category management with drag-drop
+ * - Import/export profiles
+ */
+export default function SettingsProfiles() {
+  // Profile state
+  const [profiles, setProfiles] = useState<Profile[]>([])
+  const [loading, setLoading] = useState(true)
+  const [defaultProfile, setDefaultProfileState] = useState<string>('')
+  const [categorySettings, setCategorySettings] = useState<CategorySettings>({})
+  const [audioSettings, setAudioSettings] = useState<AudioSettings>(DEFAULT_AUDIO_SETTINGS)
+
+  // Edit state
+  const [editingProfile, setEditingProfile] = useState<Profile | null>(null)
+  const [isAddingNew, setIsAddingNew] = useState(false)
+
+  // Category edit mode
+  const [editingCategories, setEditingCategories] = useState(false)
+  const [categoryRenames, setCategoryRenames] = useState<Record<string, string>>({})
+
+  // Search and filter
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set()) // Empty = show all
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false)
+  const filterDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Dark mode (for preview)
+  const [isDark, setIsDark] = useState(true)
+
+  // Import dialog state
+  const [showImportDialog, setShowImportDialog] = useState(false)
+  const [pendingImportProfiles, setPendingImportProfiles] = useState<Profile[]>([])
+  const [pendingImportCategorySettings, setPendingImportCategorySettings] = useState<CategorySettings | undefined>()
+  const [importWarnings, setImportWarnings] = useState<string[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Audio section in profile edit form
+  const [profileAudioExpanded, setProfileAudioExpanded] = useState(false)
+  const [profileAudioTestPlaying, setProfileAudioTestPlaying] = useState(false)
+
+  // Working directory (for launching profiles)
+  const { globalWorkingDir } = useWorkingDirectory()
+
+  // Category drag-and-drop state
+  const {
+    draggedItem: draggedCategory,
+    dragOverItem: dragOverCategory,
+    dropPosition: categoryDropPosition,
+    setDraggedItem: setDraggedCategory,
+    setDragOverItem: setDragOverCategory,
+    setDropPosition: setCategoryDropPosition,
+    resetDragState: resetCategoryDragState,
+  } = useDragDrop<string>()
+
+  // Profile drag-and-drop state
+  const {
+    draggedItem: draggedIndex,
+    dragOverItem: dragOverIndex,
+    dropPosition: profileDropPosition,
+    setDraggedItem: setDraggedIndex,
+    setDragOverItem: setDragOverIndex,
+    setDropPosition: setProfileDropPosition,
+    resetDragState: resetProfileDragState,
+  } = useDragDrop<number>()
+
+  // Load data from Chrome storage
+  useEffect(() => {
+    setLoading(true)
+    chrome.storage.local.get(['profiles', 'defaultProfile', 'categorySettings', 'audioSettings', 'isDark'], (result) => {
+      const loadedProfiles = result.profiles as Profile[] || []
+      if (result.profiles) {
+        setProfiles(loadedProfiles)
+      }
+      if (result.defaultProfile) {
+        setDefaultProfileState(result.defaultProfile as string)
+      }
+      if (result.categorySettings) {
+        setCategorySettings(result.categorySettings as CategorySettings)
+      }
+      if (result.audioSettings) {
+        setAudioSettings(result.audioSettings as AudioSettings)
+      }
+      if (typeof result.isDark === 'boolean') {
+        setIsDark(result.isDark)
+      }
+      setLoading(false)
+
+      // Check for edit parameter in URL hash (e.g., #/settings-profiles?edit=profile-id)
+      const hash = window.location.hash
+      if (hash.includes('?')) {
+        const queryString = hash.split('?')[1]
+        const params = new URLSearchParams(queryString)
+        const editProfileId = params.get('edit')
+        if (editProfileId && loadedProfiles.length > 0) {
+          const profileToEdit = loadedProfiles.find(p => p.id === editProfileId)
+          if (profileToEdit) {
+            setEditingProfile({ ...profileToEdit })
+            setIsAddingNew(false)
+            // Clear the edit param from URL to prevent re-opening on refresh
+            window.history.replaceState(null, '', window.location.pathname + '#/settings-profiles')
+          }
+        }
+      }
+    })
+  }, [])
+
+  // Listen for Chrome storage changes
+  useEffect(() => {
+    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
+      if (areaName !== 'local') return
+      if (changes.profiles?.newValue) {
+        setProfiles(changes.profiles.newValue as Profile[])
+      }
+      if (changes.defaultProfile?.newValue !== undefined) {
+        setDefaultProfileState(changes.defaultProfile.newValue as string)
+      }
+      if (changes.categorySettings?.newValue) {
+        setCategorySettings(changes.categorySettings.newValue as CategorySettings)
+      }
+      if (changes.audioSettings?.newValue) {
+        setAudioSettings(changes.audioSettings.newValue as AudioSettings)
+      }
+      if (changes.isDark?.newValue !== undefined) {
+        setIsDark(changes.isDark.newValue as boolean)
+      }
+    }
+
+    chrome.storage.onChanged.addListener(handleStorageChange)
+    return () => chrome.storage.onChanged.removeListener(handleStorageChange)
+  }, [])
+
+  // Close filter dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(e.target as Node)) {
+        setShowFilterDropdown(false)
+      }
+    }
+    if (showFilterDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showFilterDropdown])
+
+  // Get unique categories
+  const getUniqueCategories = (): string[] => {
+    const categories = new Set<string>()
+    profiles.forEach(p => {
+      if (p.category) categories.add(p.category)
+    })
+    return Array.from(categories).sort((a, b) => {
+      const orderA = categorySettings[a]?.order ?? Infinity
+      const orderB = categorySettings[b]?.order ?? Infinity
+      if (orderA !== orderB) return orderA - orderB
+      return a.localeCompare(b)
+    })
+  }
+
+  // Get category color
+  const getCategoryColor = (category: string): string => {
+    return categorySettings[category]?.color || DEFAULT_CATEGORY_COLOR
+  }
+
+  // Filter profiles by search and category
+  const filteredProfiles = profiles.filter(profile => {
+    // Category filter (empty set = show all)
+    if (selectedCategories.size > 0) {
+      const profileCategory = profile.category || '__uncategorized__'
+      if (!selectedCategories.has(profileCategory)) return false
+    }
+
+    // Search filter
+    if (!searchQuery) return true
+    const query = searchQuery.toLowerCase()
+    return (
+      profile.name.toLowerCase().includes(query) ||
+      profile.command?.toLowerCase().includes(query) ||
+      profile.category?.toLowerCase().includes(query)
+    )
+  })
+
+  // Group profiles by category
+  const groupedProfiles = filteredProfiles.reduce((acc, profile, index) => {
+    const cat = profile.category || ''
+    if (!acc[cat]) acc[cat] = []
+    // Track original index for drag-drop
+    const originalIndex = profiles.findIndex(p => p.id === profile.id)
+    acc[cat].push({ profile, originalIndex })
+    return acc
+  }, {} as Record<string, { profile: Profile; originalIndex: number }[]>)
+
+  // Get sorted categories
+  const getSortedCategories = (): string[] => {
+    const cats = Object.keys(groupedProfiles)
+    return cats.sort((a, b) => {
+      if (!a && b) return 1
+      if (a && !b) return -1
+      const orderA = categorySettings[a]?.order ?? Infinity
+      const orderB = categorySettings[b]?.order ?? Infinity
+      if (orderA !== orderB) return orderA - orderB
+      return a.localeCompare(b)
+    })
+  }
+
+  // Profile actions
+  const handleAddProfile = () => {
+    setEditingProfile({ ...DEFAULT_PROFILE, id: `profile-${Date.now()}` })
+    setIsAddingNew(true)
+  }
+
+  const handleEditProfile = (profile: Profile) => {
+    setEditingProfile({ ...profile })
+    setIsAddingNew(false)
+  }
+
+  const handleSaveProfile = () => {
+    if (!editingProfile?.name || !editingProfile?.id) return
+
+    let updatedProfiles: Profile[]
+    if (isAddingNew) {
+      updatedProfiles = [...profiles, editingProfile]
+    } else {
+      updatedProfiles = profiles.map(p =>
+        p.id === editingProfile.id ? editingProfile : p
+      )
+    }
+
+    setProfiles(updatedProfiles)
+    chrome.storage.local.set({ profiles: updatedProfiles })
+
+    setEditingProfile(null)
+    setIsAddingNew(false)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingProfile(null)
+    setIsAddingNew(false)
+  }
+
+  const handleDeleteProfile = (profileId: string) => {
+    const updatedProfiles = profiles.filter(p => p.id !== profileId)
+    setProfiles(updatedProfiles)
+    chrome.storage.local.set({ profiles: updatedProfiles })
+
+    // If deleting default profile, set new default
+    if (profileId === defaultProfile && updatedProfiles.length > 0) {
+      setDefaultProfileState(updatedProfiles[0].id)
+      chrome.storage.local.set({ defaultProfile: updatedProfiles[0].id })
+    }
+  }
+
+  const handleSetDefault = (profileId: string) => {
+    setDefaultProfileState(profileId)
+    chrome.storage.local.set({ defaultProfile: profileId })
+  }
+
+  const handleLaunchProfile = async (profile: Profile) => {
+    const effectiveWorkingDir = getEffectiveWorkingDir(profile.workingDir, globalWorkingDir)
+    await spawnTerminal({
+      name: profile.name,
+      command: profile.command,
+      workingDir: effectiveWorkingDir,
+      profile: { ...profile, workingDir: effectiveWorkingDir },
+    })
+  }
+
+  const handleLaunchPasteOnly = async (profile: Profile) => {
+    const effectiveWorkingDir = getEffectiveWorkingDir(profile.workingDir, globalWorkingDir)
+    await spawnTerminal({
+      name: profile.name,
+      command: profile.command,
+      workingDir: effectiveWorkingDir,
+      profile: { ...profile, workingDir: effectiveWorkingDir },
+      pasteOnly: true, // Paste command without executing
+    })
+  }
+
+  const handleOpenReference = (profile: Profile) => {
+    if (!profile.reference) return
+    if (profile.reference.startsWith('http://') || profile.reference.startsWith('https://')) {
+      window.open(profile.reference, '_blank')
+    } else {
+      window.location.hash = `/files?path=${encodeURIComponent(profile.reference)}`
+    }
+  }
+
+  // Category color management
+  const setCategoryColor = (categoryName: string, color: string) => {
+    const newSettings = {
+      ...categorySettings,
+      [categoryName]: {
+        ...categorySettings[categoryName],
+        color,
+      }
+    }
+    setCategorySettings(newSettings)
+    chrome.storage.local.set({ categorySettings: newSettings })
+    window.dispatchEvent(new CustomEvent('categorySettingsChanged', { detail: newSettings }))
+  }
+
+  // Category edit mode handlers
+  const handleStartEditCategories = () => {
+    // Initialize renames with current names
+    const renames: Record<string, string> = {}
+    getUniqueCategories().forEach(cat => {
+      renames[cat] = cat
+    })
+    setCategoryRenames(renames)
+    setEditingCategories(true)
+  }
+
+  const handleSaveCategories = () => {
+    // Apply renames to profiles and category settings
+    const updatedProfiles = profiles.map(profile => {
+      if (profile.category && categoryRenames[profile.category] !== profile.category) {
+        return { ...profile, category: categoryRenames[profile.category] || profile.category }
+      }
+      return profile
+    })
+
+    // Update category settings with new names
+    const newCategorySettings: CategorySettings = {}
+    Object.entries(categorySettings).forEach(([oldName, settings]) => {
+      const newName = categoryRenames[oldName] || oldName
+      if (newName) { // Don't keep empty names
+        newCategorySettings[newName] = settings
+      }
+    })
+
+    setProfiles(updatedProfiles)
+    setCategorySettings(newCategorySettings)
+    chrome.storage.local.set({
+      profiles: updatedProfiles,
+      categorySettings: newCategorySettings,
+    })
+    window.dispatchEvent(new CustomEvent('categorySettingsChanged', { detail: newCategorySettings }))
+
+    setEditingCategories(false)
+    setCategoryRenames({})
+  }
+
+  const handleCancelEditCategories = () => {
+    setEditingCategories(false)
+    setCategoryRenames({})
+  }
+
+  const handleDeleteCategory = (categoryName: string) => {
+    // Remove category from all profiles (move to uncategorized)
+    const updatedProfiles = profiles.map(profile => {
+      if (profile.category === categoryName) {
+        const { category, ...rest } = profile
+        return rest as Profile
+      }
+      return profile
+    })
+
+    // Remove from category settings
+    const newCategorySettings = { ...categorySettings }
+    delete newCategorySettings[categoryName]
+
+    setProfiles(updatedProfiles)
+    setCategorySettings(newCategorySettings)
+    chrome.storage.local.set({
+      profiles: updatedProfiles,
+      categorySettings: newCategorySettings,
+    })
+    window.dispatchEvent(new CustomEvent('categorySettingsChanged', { detail: newCategorySettings }))
+
+    // Remove from renames
+    const newRenames = { ...categoryRenames }
+    delete newRenames[categoryName]
+    setCategoryRenames(newRenames)
+  }
+
+  // Category drag-drop handlers
+  const handleCategoryDragStart = (category: string) => {
+    setDraggedCategory(category)
+  }
+
+  const handleCategoryDragOver = (e: React.DragEvent, category: string) => {
+    e.preventDefault()
+    if (draggedCategory === null || draggedCategory === category) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const midpoint = rect.top + rect.height / 2
+    const position = e.clientY < midpoint ? 'above' : 'below'
+    setDragOverCategory(category)
+    setCategoryDropPosition(position)
+  }
+
+  const handleCategoryDragLeave = () => {
+    setDragOverCategory(null)
+    setCategoryDropPosition(null)
+  }
+
+  const handleCategoryDrop = (targetCategory: string) => {
+    if (draggedCategory === null || draggedCategory === targetCategory) {
+      resetCategoryDragState()
+      return
+    }
+
+    const sortedCategories = getSortedCategories()
+    const draggedIdx = sortedCategories.indexOf(draggedCategory)
+    let targetIdx = sortedCategories.indexOf(targetCategory)
+
+    if (draggedIdx === -1 || targetIdx === -1) {
+      resetCategoryDragState()
+      return
+    }
+
+    if (categoryDropPosition === 'below') targetIdx += 1
+    if (draggedIdx < targetIdx) targetIdx -= 1
+
+    const newOrder = sortedCategories.filter(c => c !== draggedCategory)
+    newOrder.splice(targetIdx, 0, draggedCategory)
+
+    const newSettings = { ...categorySettings }
+    newOrder.forEach((category, index) => {
+      if (category) {
+        newSettings[category] = {
+          ...newSettings[category],
+          color: newSettings[category]?.color || DEFAULT_CATEGORY_COLOR,
+          order: index,
+        }
+      }
+    })
+
+    setCategorySettings(newSettings)
+    chrome.storage.local.set({ categorySettings: newSettings })
+    window.dispatchEvent(new CustomEvent('categorySettingsChanged', { detail: newSettings }))
+
+    resetCategoryDragState()
+  }
+
+  const handleCategoryDragEnd = () => {
+    resetCategoryDragState()
+  }
+
+  // Profile drag-drop handlers
+  const handleProfileDragStart = (index: number) => {
+    setDraggedIndex(index)
+  }
+
+  const handleProfileDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    if (draggedIndex === null || draggedIndex === index) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const midpoint = rect.top + rect.height / 2
+    const position = e.clientY < midpoint ? 'above' : 'below'
+    setDragOverIndex(index)
+    setProfileDropPosition(position)
+  }
+
+  const handleProfileDragLeave = () => {
+    setDragOverIndex(null)
+    setProfileDropPosition(null)
+  }
+
+  const handleProfileDrop = (index: number, targetCategory: string) => {
+    if (draggedIndex === null || draggedIndex === index) {
+      resetProfileDragState()
+      return
+    }
+
+    const newProfiles = [...profiles]
+    const [draggedProfile] = newProfiles.splice(draggedIndex, 1)
+
+    // Update category if different
+    const newCategory = targetCategory || undefined
+    if (draggedProfile.category !== newCategory) {
+      draggedProfile.category = newCategory
+    }
+
+    let insertIndex = index
+    if (profileDropPosition === 'below') insertIndex += 1
+    if (draggedIndex < insertIndex) insertIndex -= 1
+
+    newProfiles.splice(insertIndex, 0, draggedProfile)
+    setProfiles(newProfiles)
+    chrome.storage.local.set({ profiles: newProfiles })
+
+    resetProfileDragState()
+  }
+
+  const handleProfileDragEnd = () => {
+    resetProfileDragState()
+  }
+
+  // Import/Export
+  const handleExport = () => {
+    const exportData = {
+      profiles,
+      categorySettings,
+      exportedAt: new Date().toISOString(),
+      version: '1.0',
+    }
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `tabz-profiles-${new Date().toISOString().split('T')[0]}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string)
+        const warnings: string[] = []
+
+        if (!data.profiles || !Array.isArray(data.profiles)) {
+          throw new Error('Invalid file format')
+        }
+
+        // Validate profiles
+        const validProfiles = data.profiles.filter((p: any) => p.id && p.name)
+        if (validProfiles.length < data.profiles.length) {
+          warnings.push(`${data.profiles.length - validProfiles.length} invalid profile(s) will be skipped`)
+        }
+
+        setPendingImportProfiles(validProfiles)
+        setPendingImportCategorySettings(data.categorySettings)
+        setImportWarnings(warnings)
+        setShowImportDialog(true)
+      } catch (err) {
+        alert('Failed to parse import file')
+      }
+    }
+    reader.readAsText(file)
+
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleImportConfirm = (mode: 'merge' | 'replace') => {
+    let newProfiles: Profile[]
+    let newCategorySettings: CategorySettings
+
+    if (mode === 'replace') {
+      newProfiles = pendingImportProfiles
+      newCategorySettings = pendingImportCategorySettings || {}
+    } else {
+      // Merge - add new profiles, keep existing with same ID
+      const existingIds = new Set(profiles.map(p => p.id))
+      const newUniqueProfiles = pendingImportProfiles.filter(p => !existingIds.has(p.id))
+      newProfiles = [...profiles, ...newUniqueProfiles]
+      newCategorySettings = { ...categorySettings, ...pendingImportCategorySettings }
+    }
+
+    setProfiles(newProfiles)
+    setCategorySettings(newCategorySettings)
+    chrome.storage.local.set({
+      profiles: newProfiles,
+      categorySettings: newCategorySettings,
+    })
+
+    setShowImportDialog(false)
+    setPendingImportProfiles([])
+    setPendingImportCategorySettings(undefined)
+    setImportWarnings([])
+  }
+
+  const handleImportCancel = () => {
+    setShowImportDialog(false)
+    setPendingImportProfiles([])
+    setPendingImportCategorySettings(undefined)
+    setImportWarnings([])
+  }
+
+  // Audio test
+  const handleProfileAudioTest = async () => {
+    if (!editingProfile || profileAudioTestPlaying) return
+    setProfileAudioTestPlaying(true)
+
+    try {
+      let testVoice = editingProfile.audioOverrides?.voice || audioSettings.voice
+      if (testVoice === 'random') {
+        testVoice = TTS_VOICES[Math.floor(Math.random() * TTS_VOICES.length)].value
+      }
+
+      const response = await fetch('http://localhost:8129/api/audio/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: 'Claude ready',
+          voice: testVoice,
+          rate: editingProfile.audioOverrides?.rate || audioSettings.rate
+        })
+      })
+      const data = await response.json()
+
+      if (data.success && data.url) {
+        const audio = new Audio(data.url)
+        audio.volume = audioSettings.volume
+        audio.onended = () => setProfileAudioTestPlaying(false)
+        audio.onerror = () => setProfileAudioTestPlaying(false)
+        await audio.play()
+      } else {
+        setProfileAudioTestPlaying(false)
+      }
+    } catch (err) {
+      console.error('[SettingsProfiles] Audio test failed:', err)
+      setProfileAudioTestPlaying(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+      </div>
+    )
+  }
+
+  // Show edit form if editing
+  if (editingProfile) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <ProfileEditForm
+          profile={editingProfile}
+          setProfile={setEditingProfile}
+          isNew={isAddingNew}
+          categories={getUniqueCategories()}
+          audioSettings={audioSettings}
+          profileAudioExpanded={profileAudioExpanded}
+          setProfileAudioExpanded={setProfileAudioExpanded}
+          profileAudioTestPlaying={profileAudioTestPlaying}
+          onAudioTest={handleProfileAudioTest}
+          onSave={handleSaveProfile}
+          onCancel={handleCancelEdit}
+          isDark={isDark}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-6">
+      {/* Hidden file input for import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+
+      {/* Import Dialog */}
+      {showImportDialog && (
+        <ImportDialog
+          profileCount={pendingImportProfiles.length}
+          categoryCount={pendingImportCategorySettings ? Object.keys(pendingImportCategorySettings).length : 0}
+          warnings={importWarnings}
+          onConfirm={handleImportConfirm}
+          onCancel={handleImportCancel}
+        />
+      )}
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+        <div className="min-w-0 flex-shrink-0">
+          <h1 className="text-2xl sm:text-3xl font-bold font-mono text-primary terminal-glow truncate flex items-center gap-3">
+            <Grid3X3 className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0" />
+            Profiles
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {profiles.length} profile{profiles.length !== 1 ? 's' : ''} · {getUniqueCategories().length} categor{getUniqueCategories().length !== 1 ? 'ies' : 'y'}
+          </p>
+        </div>
+
+        {/* Search and Filter */}
+        <div className="flex items-center gap-2 flex-1 min-w-0 max-w-md">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search profiles..."
+              className="w-full pl-9 pr-8 py-2 rounded-lg bg-card border border-border focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Category Filter Dropdown */}
+          <div className="relative" ref={filterDropdownRef}>
+            <button
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              className={`p-2 rounded-lg border transition-colors flex items-center gap-1.5 ${
+                selectedCategories.size > 0
+                  ? 'bg-primary/10 border-primary text-primary'
+                  : 'bg-card border-border hover:border-primary/50'
+              }`}
+              title="Filter by category"
+            >
+              <Filter className="w-4 h-4" />
+              {selectedCategories.size > 0 && (
+                <span className="text-xs font-medium">{selectedCategories.size}</span>
+              )}
+            </button>
+
+            {showFilterDropdown && (
+              <div className="absolute right-0 top-full mt-1 w-56 bg-card border border-border rounded-lg shadow-xl z-50 overflow-hidden">
+                <div className="p-2 border-b border-border flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">Filter by Category</span>
+                  {selectedCategories.size > 0 && (
+                    <button
+                      onClick={() => setSelectedCategories(new Set())}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-64 overflow-y-auto p-1">
+                  {/* Uncategorized option */}
+                  {profiles.some(p => !p.category) && (
+                    <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedCategories.has('__uncategorized__')}
+                        onChange={(e) => {
+                          const newSet = new Set(selectedCategories)
+                          if (e.target.checked) {
+                            newSet.add('__uncategorized__')
+                          } else {
+                            newSet.delete('__uncategorized__')
+                          }
+                          setSelectedCategories(newSet)
+                        }}
+                        className="rounded border-border text-primary focus:ring-primary"
+                      />
+                      <span className="text-sm text-muted-foreground italic">Uncategorized</span>
+                    </label>
+                  )}
+                  {/* Category options */}
+                  {getUniqueCategories().map(category => (
+                    <label key={category} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedCategories.has(category)}
+                        onChange={(e) => {
+                          const newSet = new Set(selectedCategories)
+                          if (e.target.checked) {
+                            newSet.add(category)
+                          } else {
+                            newSet.delete(category)
+                          }
+                          setSelectedCategories(newSet)
+                        }}
+                        className="rounded border-border text-primary focus:ring-primary"
+                      />
+                      <span
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: getCategoryColor(category) }}
+                      />
+                      <span className="text-sm truncate">{category}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={handleStartEditCategories}
+            disabled={getUniqueCategories().length === 0}
+            className="p-2 rounded-lg bg-muted/50 hover:bg-muted disabled:opacity-50 transition-colors"
+            title="Edit categories"
+          >
+            <Tags className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={profiles.length === 0}
+            className="p-2 rounded-lg bg-muted/50 hover:bg-muted disabled:opacity-50 transition-colors"
+            title="Export profiles"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleImportClick}
+            className="p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+            title="Import profiles"
+          >
+            <Upload className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleAddProfile}
+            className="px-3 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" />
+            Add Profile
+          </button>
+        </div>
+      </div>
+
+      {/* Category Editor Mode */}
+      {editingCategories && (
+        <div className="mb-6 p-6 rounded-lg bg-card border border-border">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Tags className="w-5 h-5" />
+              Edit Categories
+            </h2>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCancelEditCategories}
+                className="px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveCategories}
+                className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4" />
+                Save
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {getUniqueCategories().map(category => {
+              const profileCount = profiles.filter(p => p.category === category).length
+              const catColor = getCategoryColor(category)
+
+              return (
+                <div key={category} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border">
+                  {/* Drag handle */}
+                  <GripVertical className="w-4 h-4 text-muted-foreground/50 cursor-grab" />
+
+                  {/* Color picker */}
+                  <div className="flex items-center gap-1">
+                    {CATEGORY_COLORS.map(color => (
+                      <button
+                        key={color.value}
+                        onClick={() => setCategoryColor(category, color.value)}
+                        className={`w-5 h-5 rounded-full transition-transform hover:scale-110 ${
+                          catColor === color.value ? 'ring-2 ring-foreground ring-offset-1 ring-offset-background' : ''
+                        }`}
+                        style={{ backgroundColor: color.value }}
+                        title={color.name}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Name input */}
+                  <input
+                    type="text"
+                    value={categoryRenames[category] ?? category}
+                    onChange={(e) => setCategoryRenames(prev => ({ ...prev, [category]: e.target.value }))}
+                    className="flex-1 px-3 py-1.5 bg-background border border-border rounded-lg text-sm focus:border-primary focus:outline-none"
+                    placeholder="Category name"
+                  />
+
+                  {/* Profile count */}
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {profileCount} profile{profileCount !== 1 ? 's' : ''}
+                  </span>
+
+                  {/* Delete button */}
+                  <button
+                    onClick={() => handleDeleteCategory(category)}
+                    className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                    title="Delete category (profiles will become uncategorized)"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )
+            })}
+
+            {getUniqueCategories().length === 0 && (
+              <p className="text-center text-muted-foreground py-4">
+                No categories to edit. Assign categories to profiles first.
+              </p>
+            )}
+          </div>
+
+          <p className="text-xs text-muted-foreground mt-4">
+            Tip: Rename categories or change their colors. Deleting a category moves its profiles to "Uncategorized".
+          </p>
+        </div>
+      )}
+
+      {/* Profiles List */}
+      {!editingCategories && (profiles.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <TerminalIcon className="w-12 h-12 mx-auto mb-4 opacity-30" />
+          <p className="mb-4">No profiles yet</p>
+          <button
+            onClick={handleAddProfile}
+            className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm font-medium transition-colors"
+          >
+            Add Your First Profile
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {getSortedCategories().map(category => {
+            const categoryProfiles = groupedProfiles[category]
+            if (!categoryProfiles) return null
+            const catColor = getCategoryColor(category)
+            const isUncategorized = !category
+
+            return (
+              <div key={category || '__uncategorized__'}>
+                {/* Category Header */}
+                <div
+                  draggable={!isUncategorized}
+                  onDragStart={() => !isUncategorized && handleCategoryDragStart(category)}
+                  onDragOver={(e) => !isUncategorized && handleCategoryDragOver(e, category)}
+                  onDragLeave={handleCategoryDragLeave}
+                  onDrop={() => !isUncategorized && handleCategoryDrop(category)}
+                  onDragEnd={handleCategoryDragEnd}
+                  className={`
+                    relative flex items-center gap-2 mb-3 py-1 px-1 -mx-1 rounded transition-all
+                    ${!isUncategorized ? 'cursor-grab active:cursor-grabbing' : ''}
+                    ${draggedCategory === category ? 'opacity-50' : ''}
+                    ${draggedCategory && draggedCategory !== category && !isUncategorized ? 'hover:bg-muted/50' : ''}
+                  `}
+                >
+                  {/* Drop indicators */}
+                  {dragOverCategory === category && categoryDropPosition === 'above' && (
+                    <div className="absolute -top-[3px] left-0 right-0 h-[2px] bg-primary rounded-full shadow-[0_0_6px_var(--primary)]" />
+                  )}
+                  {dragOverCategory === category && categoryDropPosition === 'below' && (
+                    <div className="absolute -bottom-[3px] left-0 right-0 h-[2px] bg-primary rounded-full shadow-[0_0_6px_var(--primary)]" />
+                  )}
+
+                  {!isUncategorized && (
+                    <GripVertical className="w-4 h-4 text-muted-foreground/50 hover:text-muted-foreground flex-shrink-0" />
+                  )}
+                  <Folder className="w-5 h-5 flex-shrink-0" style={{ color: catColor }} />
+                  <h2 className="text-lg font-semibold">{category || 'Uncategorized'}</h2>
+                  <span className="text-sm text-muted-foreground">({categoryProfiles.length})</span>
+                </div>
+
+                {/* Profile Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {categoryProfiles.map(({ profile, originalIndex }) => (
+                    <ProfileCard
+                      key={profile.id}
+                      profile={profile}
+                      originalIndex={originalIndex}
+                      isDefault={profile.id === defaultProfile}
+                      category={category}
+                      isDark={isDark}
+                      onEdit={() => handleEditProfile(profile)}
+                      onDelete={() => handleDeleteProfile(profile.id)}
+                      onLaunch={() => handleLaunchProfile(profile)}
+                      onLaunchPasteOnly={() => handleLaunchPasteOnly(profile)}
+                      onSetDefault={() => handleSetDefault(profile.id)}
+                      onOpenReference={profile.reference ? () => handleOpenReference(profile) : undefined}
+                      isDragging={draggedIndex === originalIndex}
+                      isDragOver={dragOverIndex === originalIndex}
+                      dropPosition={dragOverIndex === originalIndex ? profileDropPosition : null}
+                      onDragStart={() => handleProfileDragStart(originalIndex)}
+                      onDragOver={(e) => handleProfileDragOver(e, originalIndex)}
+                      onDragLeave={handleProfileDragLeave}
+                      onDrop={() => handleProfileDrop(originalIndex, category)}
+                      onDragEnd={handleProfileDragEnd}
+                    />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ))}
+
+      {/* No results */}
+      {searchQuery && filteredProfiles.length === 0 && profiles.length > 0 && (
+        <div className="text-center py-8 text-muted-foreground">
+          <Search className="w-8 h-8 mx-auto mb-2 opacity-30" />
+          <p>No profiles match "{searchQuery}"</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Profile Card Component
+interface ProfileCardProps {
+  profile: Profile
+  originalIndex: number
+  isDefault: boolean
+  category: string
+  isDark: boolean
+  onEdit: () => void
+  onDelete: () => void
+  onLaunch: () => void
+  onLaunchPasteOnly: () => void
+  onSetDefault: () => void
+  onOpenReference?: () => void
+  isDragging: boolean
+  isDragOver: boolean
+  dropPosition: 'above' | 'below' | null
+  onDragStart: () => void
+  onDragOver: (e: React.DragEvent) => void
+  onDragLeave: () => void
+  onDrop: () => void
+  onDragEnd: () => void
+}
+
+function ProfileCard({
+  profile,
+  isDefault,
+  category,
+  isDark,
+  onEdit,
+  onDelete,
+  onLaunch,
+  onLaunchPasteOnly,
+  onSetDefault,
+  onOpenReference,
+  isDragging,
+  isDragOver,
+  dropPosition,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
+}: ProfileCardProps) {
+  const [mediaError, setMediaError] = useState(false)
+
+  // Extract emoji from name
+  const emojiMatch = profile.name.match(/^(\p{Emoji})\s*/u)
+  const emoji = emojiMatch?.[1]
+  const displayName = emoji ? profile.name.replace(emojiMatch[0], '') : profile.name
+
+  // Compute effective background
+  const effectiveGradientCSS = getGradientCSS(profile.backgroundGradient, isDark)
+  const effectivePanelColor = profile.panelColor ?? DEFAULT_PANEL_COLOR
+  const gradientOpacity = (profile.transparency ?? DEFAULT_TRANSPARENCY) / 100
+
+  // Get theme foreground color
+  const themeForeground = themes[profile.themeName]?.dark.colors.foreground ?? '#e0e0e0'
+
+  // Background media
+  const mediaUrl = getMediaUrl(profile.backgroundMedia)
+  const mediaOpacity = (profile.backgroundMediaOpacity ?? 50) / 100
+  const showMedia = profile.backgroundMediaType && profile.backgroundMediaType !== 'none' && mediaUrl && !mediaError
+
+  return (
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      className={`
+        group relative rounded-xl border overflow-hidden transition-all
+        ${isDragging ? 'opacity-50 border-primary scale-95' : 'border-border hover:border-primary/50 hover:shadow-lg'}
+      `}
+    >
+      {/* Drop indicators */}
+      {isDragOver && dropPosition === 'above' && (
+        <div className="absolute -top-[3px] left-0 right-0 h-[3px] bg-primary rounded-full shadow-[0_0_8px_var(--primary)] z-50" />
+      )}
+      {isDragOver && dropPosition === 'below' && (
+        <div className="absolute -bottom-[3px] left-0 right-0 h-[3px] bg-primary rounded-full shadow-[0_0_8px_var(--primary)] z-50" />
+      )}
+
+      {/* Layer 1: Panel color */}
+      <div
+        className="absolute inset-0 rounded-xl"
+        style={{ backgroundColor: effectivePanelColor }}
+      />
+
+      {/* Layer 2: Background media */}
+      {showMedia && profile.backgroundMediaType === 'video' && (
+        <video
+          key={mediaUrl}
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none rounded-xl"
+          style={{ opacity: mediaOpacity, zIndex: 0 }}
+          src={mediaUrl!}
+          autoPlay
+          loop
+          muted
+          playsInline
+          onError={() => setMediaError(true)}
+        />
+      )}
+      {showMedia && profile.backgroundMediaType === 'image' && (
+        <img
+          key={mediaUrl}
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none rounded-xl"
+          style={{ opacity: mediaOpacity, zIndex: 0 }}
+          src={mediaUrl!}
+          alt=""
+          onError={() => setMediaError(true)}
+        />
+      )}
+
+      {/* Layer 3: Gradient overlay */}
+      <div
+        className="absolute inset-0 rounded-xl"
+        style={{ background: effectiveGradientCSS, opacity: gradientOpacity, zIndex: 1 }}
+      />
+
+      {/* Content */}
+      <div className="relative z-10 p-4">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2">
+            {emoji ? (
+              <span className="text-2xl">{emoji}</span>
+            ) : (
+              <TerminalIcon className="w-5 h-5 text-white/80" />
+            )}
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold" style={{ color: themeForeground }}>
+                {displayName}
+              </h3>
+              {isDefault && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/20 text-primary text-[10px] font-medium">
+                  <Star className="w-2.5 h-2.5 fill-current" />
+                  Default
+                </span>
+              )}
+              {profile.reference && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[10px] font-medium">
+                  <Paperclip className="w-2.5 h-2.5" />
+                  Ref
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Drag handle */}
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+            <GripVertical className="w-4 h-4 text-white/50 cursor-grab active:cursor-grabbing" />
+          </div>
+        </div>
+
+        {/* Working dir */}
+        {profile.workingDir && profile.workingDir !== '~' && (
+          <p className="text-xs text-white/50 font-mono truncate mb-1">
+            {profile.workingDir}
+          </p>
+        )}
+
+        {/* Command */}
+        {profile.command && (
+          <p className="text-xs text-white/70 font-mono truncate mb-3">
+            $ {profile.command}
+          </p>
+        )}
+
+        {/* Theme/font info */}
+        <p className="text-[10px] text-white/40 mb-3">
+          {themes[profile.themeName]?.name || profile.themeName} · {profile.fontSize}px
+        </p>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={onLaunch}
+            className="p-1.5 rounded-md bg-white/10 hover:bg-white/20 transition-colors"
+            title={profile.command ? `Launch with: ${profile.command}` : 'Launch'}
+          >
+            <Play className="w-4 h-4 text-white/70" />
+          </button>
+          {profile.command && (
+            <button
+              onClick={onLaunchPasteOnly}
+              className="p-1.5 rounded-md hover:bg-white/10 transition-colors"
+              title="Launch with command pasted (edit before running)"
+            >
+              <SquareTerminal className="w-4 h-4 text-white/50" />
+            </button>
+          )}
+          <button
+            onClick={onEdit}
+            className="p-1.5 rounded-md hover:bg-white/10 transition-colors"
+            title="Edit profile"
+          >
+            <Edit className="w-4 h-4 text-white/50" />
+          </button>
+          <button
+            onClick={() => navigator.clipboard.writeText(profile.command || 'bash')}
+            className="p-1.5 rounded-md hover:bg-white/10 transition-colors"
+            title="Copy command"
+          >
+            <Copy className="w-4 h-4 text-white/50" />
+          </button>
+          {profile.reference && onOpenReference && (
+            <button
+              onClick={onOpenReference}
+              className="p-1.5 rounded-md hover:bg-blue-500/20 transition-colors"
+              title="Open reference"
+            >
+              <Paperclip className="w-4 h-4 text-blue-400/70" />
+            </button>
+          )}
+          {!isDefault && (
+            <button
+              onClick={onSetDefault}
+              className="p-1.5 rounded-md hover:bg-white/10 transition-colors"
+              title="Set as default"
+            >
+              <Star className="w-4 h-4 text-white/50" />
+            </button>
+          )}
+          <button
+            onClick={onDelete}
+            className="p-1.5 rounded-md hover:bg-red-500/20 transition-colors ml-auto"
+            title="Delete"
+          >
+            <Trash2 className="w-4 h-4 text-white/50 hover:text-red-400" />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Profile Edit Form Component
+interface ProfileEditFormProps {
+  profile: Profile
+  setProfile: (profile: Profile | null) => void
+  isNew: boolean
+  categories: string[]
+  audioSettings: AudioSettings
+  profileAudioExpanded: boolean
+  setProfileAudioExpanded: (expanded: boolean) => void
+  profileAudioTestPlaying: boolean
+  onAudioTest: () => void
+  onSave: () => void
+  onCancel: () => void
+  isDark: boolean
+}
+
+function ProfileEditForm({
+  profile,
+  setProfile,
+  isNew,
+  categories,
+  audioSettings,
+  profileAudioExpanded,
+  setProfileAudioExpanded,
+  profileAudioTestPlaying,
+  onAudioTest,
+  onSave,
+  onCancel,
+  isDark,
+}: ProfileEditFormProps) {
+  const updateProfile = (updates: Partial<Profile>) => {
+    setProfile({ ...profile, ...updates })
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold font-mono text-primary terminal-glow flex items-center gap-3">
+          <Grid3X3 className="w-7 h-7" />
+          {isNew ? 'New Profile' : 'Edit Profile'}
+        </h1>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onSave}
+            disabled={!profile.name || !profile.id}
+            className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium transition-colors disabled:opacity-50"
+          >
+            {isNew ? 'Create' : 'Save'}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column - Form Fields */}
+        <div className="space-y-4">
+          {/* Profile Name */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Profile Name *</label>
+            <input
+              type="text"
+              value={profile.name}
+              onChange={(e) => {
+                const name = e.target.value
+                const id = isNew ? name.toLowerCase().replace(/\s+/g, '-') : profile.id
+                updateProfile({ name, id })
+              }}
+              placeholder="e.g., Default, Claude Code, Dev Server"
+              className="w-full px-3 py-2 bg-card border border-border rounded-lg focus:border-primary focus:outline-none"
+            />
+            {profile.name && (
+              <p className="text-xs text-muted-foreground mt-1">ID: {profile.id}</p>
+            )}
+          </div>
+
+          {/* Working Directory */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Working Directory</label>
+            <input
+              type="text"
+              value={profile.workingDir}
+              onChange={(e) => updateProfile({ workingDir: e.target.value })}
+              placeholder="Leave empty to inherit from header"
+              className="w-full px-3 py-2 bg-card border border-border rounded-lg font-mono text-sm focus:border-primary focus:outline-none"
+            />
+          </div>
+
+          {/* Starting Command */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Starting Command</label>
+            <input
+              type="text"
+              value={profile.command || ''}
+              onChange={(e) => updateProfile({ command: e.target.value })}
+              placeholder="e.g., npm run dev, claude, htop"
+              className="w-full px-3 py-2 bg-card border border-border rounded-lg font-mono text-sm focus:border-primary focus:outline-none"
+            />
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Category</label>
+            <CategoryCombobox
+              value={profile.category || ''}
+              onChange={(category) => updateProfile({ category: category || undefined })}
+              categories={categories}
+            />
+          </div>
+
+          {/* Reference */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Reference URL/Path</label>
+            <input
+              type="text"
+              value={profile.reference || ''}
+              onChange={(e) => updateProfile({ reference: e.target.value || undefined })}
+              placeholder="https://docs.example.com or ~/docs/flags.md"
+              className="w-full px-3 py-2 bg-card border border-border rounded-lg font-mono text-sm focus:border-primary focus:outline-none"
+            />
+          </div>
+
+          {/* Font Size */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Font Size: {profile.fontSize}px
+            </label>
+            <input
+              type="range"
+              min="12"
+              max="24"
+              value={profile.fontSize}
+              onChange={(e) => updateProfile({ fontSize: parseInt(e.target.value) })}
+              className="w-full accent-primary"
+            />
+          </div>
+
+          {/* Font Family */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Font Family</label>
+            <select
+              value={profile.fontFamily}
+              onChange={(e) => updateProfile({ fontFamily: e.target.value })}
+              className="w-full px-3 py-2 bg-card border border-border rounded-lg focus:border-primary focus:outline-none"
+              style={{ fontFamily: profile.fontFamily }}
+            >
+              {getAvailableFonts().map((font) => (
+                <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+                  {font.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Audio Settings - Collapsible */}
+          <div className="border border-border rounded-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setProfileAudioExpanded(!profileAudioExpanded)}
+              className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted/50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Volume2 className="w-4 h-4" />
+                <span className="font-medium">Audio Settings</span>
+                {profile.audioOverrides?.mode && profile.audioOverrides.mode !== 'default' && (
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${
+                    profile.audioOverrides.mode === 'disabled'
+                      ? 'bg-muted text-muted-foreground'
+                      : 'bg-primary/20 text-primary'
+                  }`}>
+                    {profile.audioOverrides.mode === 'disabled' ? 'Off' : 'On'}
+                  </span>
+                )}
+              </div>
+              {profileAudioExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+
+            {profileAudioExpanded && (
+              <div className="px-4 py-4 border-t border-border space-y-4">
+                {/* Audio Mode */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Audio Mode</label>
+                  <select
+                    value={profile.audioOverrides?.mode || 'default'}
+                    onChange={(e) => {
+                      const mode = e.target.value as AudioMode
+                      updateProfile({
+                        audioOverrides: mode === 'default' && !profile.audioOverrides?.voice && !profile.audioOverrides?.rate
+                          ? undefined
+                          : { ...profile.audioOverrides, mode: mode === 'default' ? undefined : mode }
+                      })
+                    }}
+                    className="w-full px-3 py-2 bg-card border border-border rounded-lg focus:border-primary focus:outline-none"
+                  >
+                    <option value="default">Use default (follows header toggle)</option>
+                    <option value="enabled">Enabled (always on, respects mute)</option>
+                    <option value="disabled">Disabled (never plays audio)</option>
+                  </select>
+                </div>
+
+                {/* Voice Override */}
+                {profile.audioOverrides?.mode !== 'disabled' && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Voice</label>
+                    <select
+                      value={profile.audioOverrides?.voice || ''}
+                      onChange={(e) => {
+                        const voice = e.target.value || undefined
+                        const newOverrides = { ...profile.audioOverrides, voice }
+                        if (!newOverrides.mode && !newOverrides.voice && !newOverrides.rate) {
+                          updateProfile({ audioOverrides: undefined })
+                        } else {
+                          updateProfile({ audioOverrides: newOverrides })
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-card border border-border rounded-lg focus:border-primary focus:outline-none"
+                    >
+                      <option value="">
+                        Use default ({TTS_VOICES.find(v => v.value === audioSettings.voice)?.label || audioSettings.voice})
+                      </option>
+                      {TTS_VOICES.map((voice) => (
+                        <option key={voice.value} value={voice.value}>
+                          {voice.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Test Button */}
+                {profile.audioOverrides?.mode !== 'disabled' && (
+                  <button
+                    type="button"
+                    onClick={onAudioTest}
+                    disabled={profileAudioTestPlaying}
+                    className="w-full px-4 py-2 bg-muted hover:bg-muted/80 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <Volume2 className="w-4 h-4" />
+                    {profileAudioTestPlaying ? 'Playing...' : 'Test Voice'}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column - Appearance & Preview */}
+        <div className="space-y-4">
+          {/* Live Preview */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Live Preview</label>
+            <TerminalPreview
+              themeName={profile.themeName}
+              backgroundGradient={profile.backgroundGradient}
+              panelColor={profile.panelColor}
+              transparency={profile.transparency}
+              backgroundMedia={profile.backgroundMedia}
+              backgroundMediaType={profile.backgroundMediaType}
+              backgroundMediaOpacity={profile.backgroundMediaOpacity}
+              fontSize={profile.fontSize}
+              fontFamily={profile.fontFamily}
+              isDark={isDark}
+            />
+          </div>
+
+          {/* Theme */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              <Palette className="w-4 h-4 inline mr-1" />
+              Text Colors
+            </label>
+            <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+              {themeNames.map((themeName) => {
+                const theme = themes[themeName]
+                const isSelected = profile.themeName === themeName
+                const previewColors = theme.dark.colors
+
+                return (
+                  <button
+                    key={themeName}
+                    onClick={() => updateProfile({ themeName })}
+                    className={`
+                      px-3 py-2 rounded-lg border transition-all text-left
+                      ${isSelected
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border hover:border-primary/50'
+                      }
+                    `}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-0.5">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: previewColors.red }} />
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: previewColors.green }} />
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: previewColors.blue }} />
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: previewColors.magenta }} />
+                      </div>
+                      <span className="text-sm">{theme.name}</span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Background Gradient */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Background Gradient</label>
+            <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-1">
+              <button
+                onClick={() => updateProfile({ backgroundGradient: undefined })}
+                className={`
+                  px-3 py-2 rounded-lg border transition-all text-left
+                  ${profile.backgroundGradient === undefined
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border hover:border-primary/50'
+                  }
+                `}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-4 rounded border border-border bg-gradient-to-br from-muted to-muted-foreground/20" />
+                  <span className="text-sm">Theme Default</span>
+                </div>
+              </button>
+              {gradientNames.map((gradientKey) => {
+                const gradient = backgroundGradients[gradientKey]
+                const isSelected = profile.backgroundGradient === gradientKey
+
+                return (
+                  <button
+                    key={gradientKey}
+                    onClick={() => updateProfile({ backgroundGradient: gradientKey })}
+                    className={`
+                      px-3 py-2 rounded-lg border transition-all text-left
+                      ${isSelected
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border hover:border-primary/50'
+                      }
+                    `}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-6 h-4 rounded border border-border"
+                        style={{ background: gradient.gradient }}
+                      />
+                      <span className="text-sm truncate">{gradient.name}</span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Panel Color */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Panel Color</label>
+            <div className="flex flex-wrap gap-2">
+              {PANEL_COLORS.map((color) => (
+                <button
+                  key={color.value}
+                  onClick={() => updateProfile({ panelColor: color.value })}
+                  className={`
+                    w-8 h-8 rounded-lg border-2 transition-all
+                    ${(profile.panelColor || '#000000') === color.value
+                      ? 'border-primary scale-110'
+                      : 'border-border hover:border-primary/50'
+                    }
+                  `}
+                  style={{ backgroundColor: color.value }}
+                  title={color.name}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Transparency */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Gradient Transparency: {profile.transparency ?? 100}%
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={profile.transparency ?? 100}
+              onChange={(e) => updateProfile({ transparency: parseInt(e.target.value) })}
+              className="w-full accent-primary"
+            />
+          </div>
+
+          {/* Background Media */}
+          <div className="border border-border rounded-lg p-4 space-y-3">
+            <label className="block text-sm font-medium">Background Media</label>
+
+            {/* Media Type */}
+            <div className="flex gap-2">
+              {(['none', 'image', 'video'] as const).map((type) => (
+                <button
+                  key={type}
+                  onClick={() => updateProfile({ backgroundMediaType: type })}
+                  className={`
+                    flex-1 px-3 py-2 rounded-lg border text-sm capitalize transition-all
+                    ${(profile.backgroundMediaType || 'none') === type
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border hover:border-primary/50'
+                    }
+                  `}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+
+            {/* Media Path */}
+            {profile.backgroundMediaType && profile.backgroundMediaType !== 'none' && (
+              <>
+                <input
+                  type="text"
+                  value={profile.backgroundMedia || ''}
+                  onChange={(e) => updateProfile({ backgroundMedia: e.target.value })}
+                  placeholder={profile.backgroundMediaType === 'video'
+                    ? 'e.g., ~/Videos/space.mp4 or https://...'
+                    : 'e.g., ~/Pictures/bg.png or https://...'
+                  }
+                  className="w-full px-3 py-2 bg-card border border-border rounded-lg font-mono text-sm focus:border-primary focus:outline-none"
+                />
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">
+                    Media Opacity: {profile.backgroundMediaOpacity ?? 50}%
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={profile.backgroundMediaOpacity ?? 50}
+                    onChange={(e) => updateProfile({ backgroundMediaOpacity: parseInt(e.target.value) })}
+                    className="w-full accent-primary"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Category Combobox Component (simplified version for dashboard)
+interface CategoryComboboxProps {
+  value: string
+  onChange: (value: string) => void
+  categories: string[]
+}
+
+function CategoryCombobox({ value, onChange, categories }: CategoryComboboxProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [inputValue, setInputValue] = useState('')
+  const [isCreatingNew, setIsCreatingNew] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false)
+        setIsCreatingNew(false)
+        setInputValue('')
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  useEffect(() => {
+    if (isCreatingNew && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [isCreatingNew])
+
+  const handleSelect = (category: string) => {
+    onChange(category)
+    setIsOpen(false)
+    setIsCreatingNew(false)
+    setInputValue('')
+  }
+
+  const handleCreateNew = () => {
+    if (inputValue.trim()) {
+      onChange(inputValue.trim())
+      setIsOpen(false)
+      setIsCreatingNew(false)
+      setInputValue('')
+    }
+  }
+
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onChange('')
+    setIsOpen(false)
+  }
+
+  const filteredCategories = isCreatingNew && inputValue
+    ? categories.filter(cat => cat.toLowerCase().includes(inputValue.toLowerCase()))
+    : categories
+
+  const inputMatchesExisting = inputValue.trim() &&
+    categories.some(cat => cat.toLowerCase() === inputValue.trim().toLowerCase())
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-3 py-2 bg-card border border-border rounded-lg text-sm text-left flex items-center justify-between focus:border-primary focus:outline-none"
+      >
+        <span className={value ? '' : 'text-muted-foreground'}>
+          {value || 'Select or create category...'}
+        </span>
+        <div className="flex items-center gap-1">
+          {value && (
+            <span role="button" onClick={handleClear} className="p-0.5 hover:bg-muted rounded">
+              <X className="w-3.5 h-3.5 text-muted-foreground" />
+            </span>
+          )}
+          <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 mt-1 w-full bg-card border border-border rounded-lg shadow-xl overflow-hidden">
+          {filteredCategories.length > 0 && (
+            <div className="max-h-48 overflow-y-auto">
+              {filteredCategories.map(category => (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => handleSelect(category)}
+                  className={`w-full px-3 py-2 text-sm text-left hover:bg-primary/10 transition-colors ${
+                    value === category ? 'bg-primary/20 text-primary' : ''
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {filteredCategories.length > 0 && <div className="border-t border-border" />}
+
+          {isCreatingNew ? (
+            <div className="p-2">
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && inputValue.trim() && !inputMatchesExisting) {
+                    e.preventDefault()
+                    handleCreateNew()
+                  } else if (e.key === 'Escape') {
+                    setIsCreatingNew(false)
+                    setInputValue('')
+                  }
+                }}
+                placeholder="Type new category name..."
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:border-primary focus:outline-none"
+              />
+              {inputValue.trim() && !inputMatchesExisting && (
+                <button
+                  type="button"
+                  onClick={handleCreateNew}
+                  className="w-full mt-2 px-3 py-2 bg-primary/20 hover:bg-primary/30 text-primary rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create "{inputValue.trim()}"
+                </button>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsCreatingNew(true)}
+              className="w-full px-3 py-2 text-sm text-left text-primary hover:bg-primary/10 transition-colors flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Create new category...
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Import Dialog Component
+interface ImportDialogProps {
+  profileCount: number
+  categoryCount: number
+  warnings: string[]
+  onConfirm: (mode: 'merge' | 'replace') => void
+  onCancel: () => void
+}
+
+function ImportDialog({ profileCount, categoryCount, warnings, onConfirm, onCancel }: ImportDialogProps) {
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-card border border-border rounded-lg max-w-md w-full p-6 shadow-2xl">
+        <h3 className="text-lg font-semibold mb-4">Import Profiles</h3>
+        <p className="text-sm text-muted-foreground mb-2">
+          Found {profileCount} profile{profileCount !== 1 ? 's' : ''} to import
+          {categoryCount > 0 ? ` with ${categoryCount} category setting${categoryCount !== 1 ? 's' : ''}` : ''}.
+        </p>
+        {warnings.length > 0 && (
+          <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+            <p className="text-xs text-yellow-400 font-medium mb-1">Warnings:</p>
+            {warnings.map((warning, i) => (
+              <p key={i} className="text-xs text-yellow-300">{warning}</p>
+            ))}
+          </div>
+        )}
+        <p className="text-sm text-muted-foreground mb-4">
+          How would you like to handle existing profiles?
+        </p>
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => onConfirm('merge')}
+            className="w-full px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium transition-colors"
+          >
+            Merge (add new, keep existing)
+          </button>
+          <button
+            onClick={() => onConfirm('replace')}
+            className="w-full px-4 py-2 bg-muted hover:bg-muted/80 rounded-lg transition-colors"
+          >
+            Replace all
+          </button>
+          <button
+            onClick={onCancel}
+            className="w-full px-4 py-2 hover:bg-muted/50 rounded-lg transition-colors text-muted-foreground"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

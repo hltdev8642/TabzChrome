@@ -1,5 +1,5 @@
 import { sendMessage, type SpawnTerminalMessage, type QueueCommandMessage, type PasteCommandMessage } from '../../shared/messaging'
-import type { Profile } from '../../components/SettingsModal'
+import type { Profile } from '../../components/settings/types'
 
 // Backend API base URL - extension pages can access localhost directly
 const API_BASE = 'http://localhost:8129'

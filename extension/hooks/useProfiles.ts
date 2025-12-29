@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import type { Profile, CategorySettings } from '../components/SettingsModal'
+import type { Profile, CategorySettings } from '../components/settings/types'
+import { DEFAULT_CATEGORY_COLOR as DEFAULT_CAT_COLOR } from '../components/settings/types'
 import { migrateProfiles, profilesNeedMigration, getValidDefaultProfileId } from '../shared/profiles'
 
-export { DEFAULT_CATEGORY_COLOR } from '../components/SettingsModal'
+export const DEFAULT_CATEGORY_COLOR = DEFAULT_CAT_COLOR
 
 // Re-export types that consumers need
 export type { Profile, CategorySettings }
@@ -30,8 +31,6 @@ export interface UseProfilesReturn {
 interface UseProfilesParams {
   // No longer needs categorySettings - it's managed internally
 }
-
-const DEFAULT_CATEGORY_COLOR = '#6b7280'  // Gray for uncategorized
 
 /**
  * Hook to manage terminal profiles

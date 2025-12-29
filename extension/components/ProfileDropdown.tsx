@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { ChevronDown, ChevronRight, Search, X, Paperclip } from 'lucide-react'
-import { type Profile, DEFAULT_CATEGORY_COLOR } from './SettingsModal'
+import { type Profile, DEFAULT_CATEGORY_COLOR } from './settings/types'
 
 /**
  * Props for the ProfileDropdown component

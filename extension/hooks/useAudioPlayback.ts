@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import type { Profile, AudioSettings } from '../components/SettingsModal'
+import type { Profile, AudioSettings } from '../components/settings/types'
 import type { AudioEventType, AudioEventConfig, SoundEffect } from '../components/settings/types'
 import { playLowPriority, isHighPriorityPlaying } from '../utils/audioManager'
 import { stripEmojis } from '../utils/audioTextFormatting'

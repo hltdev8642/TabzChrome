@@ -15,7 +15,7 @@ import { Separator } from '../components/ui/separator'
 import { getLocal, SyncedSession, getActiveSessionCount } from '../shared/storage'
 import { sendMessage } from '../shared/messaging'
 import { formatTimestamp } from '../shared/utils'
-import type { Profile } from '../components/SettingsModal'
+import type { Profile } from '../components/settings/types'
 import '../styles/globals.css'
 
 // Helper to derive an icon from profile name/themeName

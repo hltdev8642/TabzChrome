@@ -1,4 +1,4 @@
-import type { AudioSettings } from '../components/SettingsModal'
+import type { AudioSettings } from '../components/settings/types'
 import type { ClaudeStatus } from './useClaudeStatus'
 import { useAudioPlayback, type TerminalSession } from './useAudioPlayback'
 import { useStatusTransitions } from './useStatusTransitions'

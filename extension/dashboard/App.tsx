@@ -23,12 +23,12 @@ import { useWorkingDirectory } from '../hooks/useWorkingDirectory'
 
 // Sections
 import HomeSection from './sections/Home'
-import ProfilesSection from './sections/Profiles'
 import TerminalsSection from './sections/Terminals'
 import ApiPlayground from './sections/ApiPlayground'
 import SettingsGeneral from './sections/SettingsGeneral'
 import SettingsMcp from './sections/SettingsMcp'
 import SettingsAudio from './sections/SettingsAudio'
+import SettingsProfiles from './sections/SettingsProfiles'
 import FilesSection from './sections/Files'
 import GitSection from './sections/Git'
 
@@ -50,7 +50,7 @@ interface CaptureData {
   }
 }
 
-type Section = 'home' | 'profiles' | 'terminals' | 'files' | 'git' | 'api' | 'settings' | 'settings-general' | 'settings-mcp' | 'settings-audio'
+type Section = 'home' | 'terminals' | 'files' | 'git' | 'api' | 'settings' | 'settings-general' | 'settings-mcp' | 'settings-audio' | 'settings-profiles'
 
 interface NavItem {
   id: Section
@@ -61,7 +61,6 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: 'home', label: 'Dashboard', icon: Home },
-  { id: 'profiles', label: 'Profiles', icon: Grid3X3 },
   { id: 'terminals', label: 'Terminals', icon: Terminal },
   { id: 'files', label: 'Files', icon: FolderOpen },
   { id: 'git', label: 'Source Control', icon: GitBranch },
@@ -71,6 +70,7 @@ const navItems: NavItem[] = [
     label: 'Settings',
     icon: Settings,
     children: [
+      { id: 'settings-profiles', label: 'Profiles', icon: Grid3X3 },
       { id: 'settings-general', label: 'General', icon: Sliders },
       { id: 'settings-mcp', label: 'Tabz MCP', icon: Wrench },
       { id: 'settings-audio', label: 'Audio', icon: Volume2 },
@@ -86,7 +86,7 @@ export default function App() {
     if (hash.startsWith('#/')) {
       const hashPath = hash.slice(2) // Remove '#/'
       const [section] = hashPath.split('?')
-      const validSections: Section[] = ['home', 'profiles', 'terminals', 'files', 'git', 'api', 'settings', 'settings-general', 'settings-mcp', 'settings-audio']
+      const validSections: Section[] = ['home', 'terminals', 'files', 'git', 'api', 'settings', 'settings-general', 'settings-mcp', 'settings-audio', 'settings-profiles']
       if (validSections.includes(section as Section)) {
         return section as Section
       }
@@ -153,7 +153,7 @@ export default function App() {
       if (hash.startsWith('#/')) {
         const hashPath = hash.slice(2) // Remove '#/'
         const [section] = hashPath.split('?')
-        const validSections: Section[] = ['home', 'profiles', 'terminals', 'files', 'git', 'api', 'settings', 'settings-general', 'settings-mcp', 'settings-audio']
+        const validSections: Section[] = ['home', 'terminals', 'files', 'git', 'api', 'settings', 'settings-general', 'settings-mcp', 'settings-audio', 'settings-profiles']
         if (validSections.includes(section as Section)) {
           setActiveSection(section as Section)
         }
@@ -217,8 +217,6 @@ export default function App() {
     switch (activeSection) {
       case 'home':
         return <HomeSection />
-      case 'profiles':
-        return <ProfilesSection />
       case 'terminals':
         return <TerminalsSection />
       case 'files':
@@ -234,6 +232,8 @@ export default function App() {
         return <SettingsMcp />
       case 'settings-audio':
         return <SettingsAudio />
+      case 'settings-profiles':
+        return <SettingsProfiles />
       default:
         return <HomeSection />
     }

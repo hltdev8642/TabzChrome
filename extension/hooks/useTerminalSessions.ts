@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { sendMessage } from '../shared/messaging'
-import type { Profile } from '../components/SettingsModal'
+import type { Profile } from '../components/settings/types'
 import type { BackgroundMediaType } from '../components/settings/types'
 
 // Per-terminal appearance overrides (not saved to profile)

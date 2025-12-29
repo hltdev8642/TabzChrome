@@ -1,7 +1,7 @@
 // Chrome Storage helpers
 
 import type { TerminalSession } from '../hooks/useTerminalSessions'
-import type { Profile, AudioSettings, CategorySettings } from '../components/SettingsModal'
+import type { Profile, AudioSettings, CategorySettings } from '../components/settings/types'
 
 export interface SyncedSession {
   name: string;
