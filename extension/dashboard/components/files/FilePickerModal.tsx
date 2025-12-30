@@ -155,16 +155,26 @@ export default function FilePickerModal({
     })
   }, [])
 
-  // Navigate to parent
+  // Navigate to parent (don't go above home directory)
   const navigateUp = useCallback(() => {
-    const parentPath = currentPath.split('/').slice(0, -1).join('/') || '/'
-    fetchFileTree(parentPath, true)
+    // Don't go above home directory
+    const homeDir = `/home/${currentPath.split('/')[2] || ''}`
+    if (currentPath === '~' || currentPath === homeDir || currentPath === '/') {
+      return  // Already at home or root, can't go higher
+    }
+    const parentPath = currentPath.split('/').slice(0, -1).join('/')
+    // Ensure we don't go above home
+    if (!parentPath || parentPath.length < homeDir.length) {
+      fetchFileTree('~', true)
+    } else {
+      fetchFileTree(parentPath, true)
+    }
   }, [currentPath, fetchFileTree])
 
-  // Navigate home
+  // Navigate home (always goes to ~ which backend expands reliably)
   const navigateHome = useCallback(() => {
-    fetchFileTree(basePath, true)
-  }, [basePath, fetchFileTree])
+    fetchFileTree('~', true)
+  }, [fetchFileTree])
 
   // Handle node click
   const handleNodeClick = useCallback((node: FileNode) => {
