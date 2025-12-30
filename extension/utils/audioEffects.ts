@@ -7,6 +7,9 @@ import type { SoundEffect } from '../components/settings/types'
 
 const BACKEND_URL = 'http://localhost:8129'
 
+// Sound effects are typically louder than TTS, so scale them down to match
+const SOUND_EFFECT_VOLUME_SCALE = 0.4
+
 /**
  * Get the playable URL for a sound effect
  * @param effect - The sound effect configuration
@@ -39,7 +42,8 @@ export async function playSoundEffect(effect: SoundEffect, volume: number): Prom
 
   return new Promise((resolve, reject) => {
     const audio = new Audio(url)
-    audio.volume = Math.max(0, Math.min(1, volume))
+    // Apply scaling to match TTS volume levels
+    audio.volume = Math.max(0, Math.min(1, volume * SOUND_EFFECT_VOLUME_SCALE))
     audio.onended = () => resolve()
     audio.onerror = (e) => {
       console.warn('[SoundEffect] Failed to play:', url, e)

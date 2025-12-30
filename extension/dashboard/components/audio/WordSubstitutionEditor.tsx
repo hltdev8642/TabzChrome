@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Plus, Trash2, Play, Volume2 } from 'lucide-react'
 import type { SoundEffect, SoundEffectType, SoundPreset } from '../../../components/settings/types'
 import { SOUND_PRESETS } from '../../../components/settings/types'
@@ -11,8 +11,63 @@ interface WordSubstitutionEditorProps {
 }
 
 interface SubstitutionEntry {
+  id: string  // Stable ID for React key
   word: string
   effect: SoundEffect
+}
+
+// Generate a stable ID for new entries
+let nextId = 0
+function generateId(): string {
+  return `sub-${Date.now()}-${nextId++}`
+}
+
+// WordInput component that maintains local state until blur
+function WordInput({
+  initialValue,
+  onCommit,
+  placeholder,
+}: {
+  initialValue: string
+  onCommit: (value: string) => void
+  placeholder?: string
+}) {
+  const [value, setValue] = useState(initialValue)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Sync with external changes (e.g., when entry is first created)
+  useEffect(() => {
+    setValue(initialValue)
+  }, [initialValue])
+
+  const handleBlur = () => {
+    const trimmed = value.trim()
+    if (trimmed && trimmed !== initialValue) {
+      onCommit(trimmed)
+    } else if (!trimmed) {
+      // Reset to original if empty
+      setValue(initialValue)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      inputRef.current?.blur()
+    }
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      placeholder={placeholder}
+      className="flex-1 px-2 py-1 bg-background border border-border rounded text-sm text-foreground focus:border-primary focus:outline-none"
+    />
+  )
 }
 
 export default function WordSubstitutionEditor({
@@ -21,14 +76,28 @@ export default function WordSubstitutionEditor({
   volume,
 }: WordSubstitutionEditorProps) {
   const [previewingWord, setPreviewingWord] = useState<string | null>(null)
+  // Track stable IDs for each word to prevent React key issues
+  const [wordIds, setWordIds] = useState<Record<string, string>>({})
 
-  const entries: SubstitutionEntry[] = Object.entries(substitutions).map(([word, effect]) => ({
-    word,
-    effect,
-  }))
+  // Generate entries with stable IDs
+  const entries: SubstitutionEntry[] = Object.entries(substitutions).map(([word, effect]) => {
+    // Get or create a stable ID for this word
+    let id = wordIds[word]
+    if (!id) {
+      id = generateId()
+      // Update wordIds in next render cycle to avoid state update during render
+      setTimeout(() => {
+        setWordIds(prev => ({ ...prev, [word]: id }))
+      }, 0)
+    }
+    return { id, word, effect }
+  })
 
   const handleAddEntry = () => {
     const newWord = `word${entries.length + 1}`
+    const newId = generateId()
+    // Track the ID for the new word
+    setWordIds(prev => ({ ...prev, [newWord]: newId }))
     onChange({
       ...substitutions,
       [newWord]: { type: 'preset', preset: 'beep' },
@@ -44,10 +113,22 @@ export default function WordSubstitutionEditor({
   const handleWordChange = (oldWord: string, newWord: string) => {
     if (!newWord.trim() || newWord === oldWord) return
 
+    const trimmedNew = newWord.trim()
+
+    // Transfer the ID from old word to new word
+    setWordIds(prev => {
+      const newIds = { ...prev }
+      if (prev[oldWord]) {
+        newIds[trimmedNew] = prev[oldWord]
+        delete newIds[oldWord]
+      }
+      return newIds
+    })
+
     const newSubs: Record<string, SoundEffect> = {}
     for (const [key, value] of Object.entries(substitutions)) {
       if (key === oldWord) {
-        newSubs[newWord.trim()] = value
+        newSubs[trimmedNew] = value
       } else {
         newSubs[key] = value
       }
@@ -120,19 +201,17 @@ export default function WordSubstitutionEditor({
         </p>
       ) : (
         <div className="space-y-3">
-          {entries.map(({ word, effect }) => (
+          {entries.map(({ id, word, effect }) => (
             <div
-              key={word}
+              key={id}
               className="p-3 bg-muted/30 rounded-lg border border-border space-y-2"
             >
               {/* Word and delete button */}
               <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={word}
-                  onChange={(e) => handleWordChange(word, e.target.value)}
+                <WordInput
+                  initialValue={word}
+                  onCommit={(newWord) => handleWordChange(word, newWord)}
                   placeholder="Word to replace"
-                  className="flex-1 px-2 py-1 bg-background border border-border rounded text-sm text-foreground focus:border-primary focus:outline-none"
                 />
                 <span className="text-xs text-muted-foreground">→</span>
                 <button

@@ -23,12 +23,11 @@ export default function PhraseEditor({
     const input = inputRef.current
     if (!input) return
 
-    const start = input.selectionStart || 0
-    const end = input.selectionEnd || 0
-    const currentValue = input.value
+    const start = input.selectionStart || currentTemplate.length
+    const end = input.selectionEnd || currentTemplate.length
 
     // Insert variable at cursor position
-    const newValue = currentValue.slice(0, start) + variable + currentValue.slice(end)
+    const newValue = currentTemplate.slice(0, start) + variable + currentTemplate.slice(end)
     onChange(newValue)
 
     // Restore cursor position after the inserted variable
@@ -56,10 +55,19 @@ export default function PhraseEditor({
         <input
           ref={inputRef}
           type="text"
-          value={phraseTemplate ?? ''}
-          onChange={(e) => onChange(e.target.value || undefined)}
-          placeholder={defaultPhrase}
-          className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+          value={currentTemplate}
+          onChange={(e) => {
+            const newValue = e.target.value
+            // If they clear it or type the exact default, reset to undefined
+            if (!newValue || newValue === defaultPhrase) {
+              onChange(undefined)
+            } else {
+              onChange(newValue)
+            }
+          }}
+          className={`flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm focus:border-primary focus:outline-none ${
+            isCustom ? 'text-foreground' : 'text-muted-foreground'
+          }`}
         />
         {isCustom && (
           <button

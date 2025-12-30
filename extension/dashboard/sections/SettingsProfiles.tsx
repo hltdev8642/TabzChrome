@@ -1399,9 +1399,9 @@ function SectionCard({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
   return (
-    <div className={`relative rounded-xl border border-border/60 bg-card/30 backdrop-blur-sm overflow-hidden ${className}`}>
+    <div className={`relative rounded-xl border border-border/60 bg-card/30 backdrop-blur-sm ${className}`}>
       {/* Accent line at top */}
-      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-primary/60 via-primary/20 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-primary/60 via-primary/20 to-transparent rounded-t-xl" />
 
       {/* Header */}
       {collapsible ? (

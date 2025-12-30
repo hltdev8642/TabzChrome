@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, RotateCcw, Volume2 } from 'lucide-react'
 import type { AudioEventConfig, AudioEventType, SoundEffect, SoundMode } from '../../../components/settings/types'
 import { TTS_VOICES } from '../../../components/settings/types'
 import { renderPreview, getDefaultPhrase } from '../../../utils/audioTemplates'
+import { playSoundEffect, isSoundEffectConfigured } from '../../../utils/audioEffects'
 import PhraseEditor from './PhraseEditor'
 import SoundEffectPicker from './SoundEffectPicker'
 import WordSubstitutionEditor from './WordSubstitutionEditor'
@@ -96,13 +97,49 @@ export default function EventCard({
     return renderPreview(template, eventType)
   }
 
-  // Play audio preview with current settings
+  // Play audio preview with current settings (including sound effects and word substitutions)
   const handlePreview = async () => {
     if (previewPlaying) return
     setPreviewPlaying(true)
 
     try {
-      const text = getSampleText()
+      let text = getSampleText()
+      const soundMode = config?.soundMode || 'tts'
+      const soundEffect = config?.soundEffect
+      const wordSubstitutions = config?.wordSubstitutions
+
+      // 1. Play main sound effect if mode is 'sound' or 'both'
+      if ((soundMode === 'sound' || soundMode === 'both') && isSoundEffectConfigured(soundEffect)) {
+        await playSoundEffect(soundEffect!, volume)
+        // If sound-only mode, we're done
+        if (soundMode === 'sound') {
+          setPreviewPlaying(false)
+          return
+        }
+      }
+
+      // 2. Process word substitutions - play sounds for matched words
+      if (wordSubstitutions && Object.keys(wordSubstitutions).length > 0) {
+        for (const [word, sound] of Object.entries(wordSubstitutions)) {
+          if (text.toLowerCase().includes(word.toLowerCase())) {
+            // Play sound for this word
+            if (isSoundEffectConfigured(sound)) {
+              await playSoundEffect(sound, volume)
+            }
+            // Remove the word from text (case-insensitive)
+            text = text.replace(new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '')
+          }
+        }
+        // Clean up extra spaces
+        text = text.replace(/\s+/g, ' ').trim()
+        // If all text was substituted, we're done
+        if (!text) {
+          setPreviewPlaying(false)
+          return
+        }
+      }
+
+      // 3. Play TTS for remaining text
       const response = await fetch('http://localhost:8129/api/audio/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
