@@ -7,7 +7,6 @@ import {
   FileCode,
   Folder,
   FolderOpen,
-  Settings,
   Zap,
   Bot,
   Terminal,
@@ -50,7 +49,7 @@ interface FilteredFileListProps {
 // Get icon for Claude file types
 function getClaudeIcon(claudeType: ClaudeFileType) {
   switch (claudeType) {
-    case 'claude-config': return Settings
+    case 'claude-config': return Bot  // CLAUDE.md gets robot icon
     case 'prompt': return FileText
     case 'skill': return Zap
     case 'agent': return Bot

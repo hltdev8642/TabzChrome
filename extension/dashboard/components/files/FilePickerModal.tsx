@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   X,
   ChevronRight,
@@ -12,6 +12,8 @@ import {
   Image,
   Video,
   FileCode,
+  ChevronsDownUp,
+  ChevronsUpDown,
 } from 'lucide-react'
 import { FILE_TYPE_FILTERS, type FilePickerFilterType } from '../../../components/settings/types'
 
@@ -54,6 +56,18 @@ function filterTree(node: FileNode, extensions: readonly string[]): FileNode | n
     : null
 }
 
+// Collect all folder paths from tree (for expand all)
+function collectFolderPaths(node: FileNode): string[] {
+  const paths: string[] = []
+  if (node.type === 'directory') {
+    paths.push(node.path)
+    node.children?.forEach(child => {
+      paths.push(...collectFolderPaths(child))
+    })
+  }
+  return paths
+}
+
 // Get icon based on file extension
 function getFileIcon(fileName: string) {
   const ext = fileName.split('.').pop()?.toLowerCase() || ''
@@ -85,6 +99,8 @@ export default function FilePickerModal({
   const [currentPath, setCurrentPath] = useState(basePath)
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
+  const [allExpanded, setAllExpanded] = useState(false)
+  const fallbackAttempted = useRef(false)
 
   // Determine which extensions to filter
   const extensions = useMemo(() => {
@@ -93,8 +109,8 @@ export default function FilePickerModal({
     return []  // No filter - show all files
   }, [filterType, customExtensions])
 
-  // Fetch file tree
-  const fetchFileTree = useCallback(async (path: string, forceRefresh = false) => {
+  // Fetch file tree (auto-fallback to ~ if path doesn't exist)
+  const fetchFileTree = useCallback(async (path: string, forceRefresh = false, isRetry = false) => {
     setLoading(true)
     setError(null)
 
@@ -115,12 +131,19 @@ export default function FilePickerModal({
       const data = await response.json()
       setFileTree(data)
       setCurrentPath(data.path || path)
+      setAllExpanded(false)  // Reset expand state on navigation
 
       // Expand root by default
       if (data?.path) {
         setExpandedFolders(new Set([data.path]))
       }
     } catch (err: any) {
+      // Auto-fallback to ~ if path doesn't exist (and we haven't already tried)
+      if (!isRetry && path !== '~' && !fallbackAttempted.current) {
+        fallbackAttempted.current = true
+        fetchFileTree('~', false, true)
+        return
+      }
       setError(err.message || 'Failed to load files')
     } finally {
       setLoading(false)
@@ -131,6 +154,8 @@ export default function FilePickerModal({
   useEffect(() => {
     if (isOpen) {
       setSelectedPath(null)
+      setAllExpanded(false)
+      fallbackAttempted.current = false  // Reset fallback flag for new modal open
       fetchFileTree(basePath)
     }
   }, [isOpen, basePath, fetchFileTree])
@@ -153,7 +178,24 @@ export default function FilePickerModal({
       }
       return newSet
     })
+    setAllExpanded(false)  // Manual toggle breaks "all expanded" state
   }, [])
+
+  // Expand/collapse all folders (uses filtered tree so only visible folders expand)
+  const toggleExpandAll = useCallback(() => {
+    if (!filteredTree) return
+
+    if (allExpanded) {
+      // Collapse all - just keep root expanded
+      setExpandedFolders(new Set([filteredTree.path]))
+      setAllExpanded(false)
+    } else {
+      // Expand all folders in filtered tree
+      const allPaths = collectFolderPaths(filteredTree)
+      setExpandedFolders(new Set(allPaths))
+      setAllExpanded(true)
+    }
+  }, [filteredTree, allExpanded])
 
   // Navigate to parent (don't go above home directory)
   const navigateUp = useCallback(() => {
@@ -305,6 +347,17 @@ export default function FilePickerModal({
               title="Up"
             >
               ↑
+            </button>
+            <button
+              onClick={toggleExpandAll}
+              className="p-1.5 hover:bg-muted rounded"
+              title={allExpanded ? 'Collapse All' : 'Expand All'}
+            >
+              {allExpanded ? (
+                <ChevronsDownUp className="w-4 h-4" />
+              ) : (
+                <ChevronsUpDown className="w-4 h-4" />
+              )}
             </button>
             <button
               onClick={() => fetchFileTree(currentPath, true)}

@@ -6,7 +6,7 @@ import { FilteredFileList } from '../components/files/FilteredFileList'
 import { PluginList } from '../components/files/PluginList'
 import { PromptyViewer } from '../components/files/PromptyViewer'
 import { isPromptyFile } from '../utils/promptyUtils'
-import { X, Copy, Send, FolderOpen, Square, MoreVertical, Loader2 } from 'lucide-react'
+import { X, Copy, Send, FolderOpen, Square, MoreVertical, Loader2, Music, Image, Video, Folder } from 'lucide-react'
 import { FileActionsMenu } from '../components/files/FileActionsMenu'
 import { useWorkingDirectory } from '../../hooks/useWorkingDirectory'
 import { useFileViewerSettings } from '../hooks/useFileViewerSettings'
@@ -19,6 +19,7 @@ import { VideoViewer } from '../components/files/VideoViewer'
 import { CsvViewer } from '../components/files/CsvViewer'
 import { MarkdownViewer } from '../components/files/MarkdownViewer'
 import { Settings } from 'lucide-react'
+import { type FilePickerDefaults, DEFAULT_FILE_PICKER_DEFAULTS } from '../../components/settings/types'
 
 // Filter button component
 function FilterButton({
@@ -76,6 +77,9 @@ export default function FilesSection() {
   const [imageDimensions, setImageDimensions] = useState<{width: number, height: number} | null>(null)
   const settingsRef = useRef<HTMLDivElement>(null)
 
+  // File picker defaults
+  const [filePickerDefaults, setFilePickerDefaults] = useState<FilePickerDefaults>(DEFAULT_FILE_PICKER_DEFAULTS)
+
   // Send to Chat state
   const [sendStatus, setSendStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
 
@@ -104,6 +108,22 @@ export default function FilesSection() {
       loadFilteredFiles(activeFilter, globalWorkingDir)
     }
   }, [activeFilter, globalWorkingDir, loadFilteredFiles])
+
+  // Load file picker defaults from storage
+  useEffect(() => {
+    chrome.storage.local.get(['filePickerDefaults'], (result) => {
+      if (result.filePickerDefaults) {
+        setFilePickerDefaults({ ...DEFAULT_FILE_PICKER_DEFAULTS, ...result.filePickerDefaults })
+      }
+    })
+  }, [])
+
+  // Save file picker defaults
+  const updateFilePickerDefault = useCallback((key: keyof FilePickerDefaults, value: string) => {
+    const newDefaults = { ...filePickerDefaults, [key]: value }
+    setFilePickerDefaults(newDefaults)
+    chrome.storage.local.set({ filePickerDefaults: newDefaults })
+  }, [filePickerDefaults])
 
   // Close settings dropdown when clicking outside
   useEffect(() => {
@@ -365,6 +385,56 @@ export default function FilesSection() {
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Lower values load faster
+                </p>
+              </div>
+
+              {/* File Picker Default Paths */}
+              <div className="pt-3 border-t border-border">
+                <label className="text-sm font-medium block mb-2">Browse Defaults</label>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Music className="w-3.5 h-3.5 text-pink-400 flex-shrink-0" />
+                    <input
+                      type="text"
+                      value={filePickerDefaults.audio || ''}
+                      onChange={(e) => updateFilePickerDefault('audio', e.target.value)}
+                      placeholder="~/sfx"
+                      className="flex-1 px-2 py-1 bg-background border border-border rounded text-xs font-mono focus:border-primary focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Image className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" />
+                    <input
+                      type="text"
+                      value={filePickerDefaults.images || ''}
+                      onChange={(e) => updateFilePickerDefault('images', e.target.value)}
+                      placeholder="~/Pictures"
+                      className="flex-1 px-2 py-1 bg-background border border-border rounded text-xs font-mono focus:border-primary focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Video className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
+                    <input
+                      type="text"
+                      value={filePickerDefaults.videos || ''}
+                      onChange={(e) => updateFilePickerDefault('videos', e.target.value)}
+                      placeholder="~/Videos"
+                      className="flex-1 px-2 py-1 bg-background border border-border rounded text-xs font-mono focus:border-primary focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Folder className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" />
+                    <input
+                      type="text"
+                      value={filePickerDefaults.general || ''}
+                      onChange={(e) => updateFilePickerDefault('general', e.target.value)}
+                      placeholder="~"
+                      className="flex-1 px-2 py-1 bg-background border border-border rounded text-xs font-mono focus:border-primary focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Start paths for file picker dialogs
                 </p>
               </div>
             </div>

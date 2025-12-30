@@ -107,7 +107,6 @@ export default function SettingsProfiles() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Audio section in profile edit form
-  const [profileAudioExpanded, setProfileAudioExpanded] = useState(false)
   const [profileAudioTestPlaying, setProfileAudioTestPlaying] = useState(false)
 
   // Working directory (for launching profiles)
@@ -715,8 +714,6 @@ export default function SettingsProfiles() {
           isNew={isAddingNew}
           categories={getUniqueCategories()}
           audioSettings={audioSettings}
-          profileAudioExpanded={profileAudioExpanded}
-          setProfileAudioExpanded={setProfileAudioExpanded}
           profileAudioTestPlaying={profileAudioTestPlaying}
           onAudioTest={handleProfileAudioTest}
           onSave={handleSaveProfile}
@@ -1466,8 +1463,6 @@ interface ProfileEditFormProps {
   isNew: boolean
   categories: string[]
   audioSettings: AudioSettings
-  profileAudioExpanded: boolean
-  setProfileAudioExpanded: (expanded: boolean) => void
   profileAudioTestPlaying: boolean
   onAudioTest: () => void
   onSave: () => void
@@ -1481,8 +1476,6 @@ function ProfileEditForm({
   isNew,
   categories,
   audioSettings,
-  profileAudioExpanded,
-  setProfileAudioExpanded,
   profileAudioTestPlaying,
   onAudioTest,
   onSave,
@@ -1657,8 +1650,6 @@ function ProfileEditForm({
           <SectionCard
             title="Audio"
             icon={<Volume2 className="w-4 h-4" />}
-            collapsible
-            defaultExpanded={profileAudioExpanded}
             badge={
               profile.audioOverrides?.mode && profile.audioOverrides.mode !== 'default' && (
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
@@ -1883,7 +1874,7 @@ function ProfileEditForm({
           </SectionCard>
 
           {/* Media Section */}
-          <SectionCard title="Background Media" icon={<span className="text-xs">▶</span>} collapsible defaultExpanded={profile.backgroundMediaType !== 'none' && profile.backgroundMediaType !== undefined}>
+          <SectionCard title="Background Media" icon={<span className="text-xs">▶</span>}>
             <FormField label="Media Type">
               <div className="flex gap-2">
                 {(['none', 'image', 'video'] as const).map((type) => (

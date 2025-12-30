@@ -15,6 +15,20 @@ For older versions (1.2.x, 1.1.x, 1.0.x, and pre-public 2.x), see [CHANGELOG-arc
 
 ---
 
+## [1.3.5] - 2025-12-30
+
+### Changed
+- **File Picker UX Improvements**:
+  - Auto-fallback to `~` when configured default path doesn't exist
+  - Added "Expand All" / "Collapse All" button to quickly see all compatible files
+  - Moved file picker defaults from Audio page to Files page settings dropdown
+
+- **Profile Editor UX** - Audio and Background Media sections now always expanded (no more clicking to expand + scrolling)
+
+- **CLAUDE.md Icon** - Now shows robot icon instead of gear (matches the 🤖 filter indicator)
+
+---
+
 ## [1.3.4] - 2025-12-30
 
 ### Added
