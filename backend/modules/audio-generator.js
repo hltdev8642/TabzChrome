@@ -15,11 +15,13 @@ const execFileAsync = promisify(execFile);
 const AUDIO_CACHE_DIR = '/tmp/claude-audio-cache';
 
 // Voice options for random selection (matches TTS_VOICES in extension settings)
+// IMPORTANT: Avoid "Multilingual" voices - they auto-detect language from text
+// and may speak German/other languages for short phrases like tool names
 const VOICE_OPTIONS = [
-  // US Voices
-  'en-US-AndrewMultilingualNeural',
-  'en-US-EmmaMultilingualNeural',
-  'en-US-BrianMultilingualNeural',
+  // US Voices (non-multilingual only)
+  'en-US-AndrewNeural',
+  'en-US-EmmaNeural',
+  'en-US-BrianNeural',
   'en-US-AriaNeural',
   'en-US-GuyNeural',
   'en-US-JennyNeural',
@@ -28,9 +30,9 @@ const VOICE_OPTIONS = [
   // UK Voices
   'en-GB-SoniaNeural',
   'en-GB-RyanNeural',
-  // AU Voices
+  // AU Voices (non-multilingual only)
   'en-AU-NatashaNeural',
-  'en-AU-WilliamMultilingualNeural',
+  'en-AU-WilliamNeural',
 ];
 
 /**

@@ -189,11 +189,11 @@ export default function FilesSection() {
       const audioSettings = (result.audioSettings || {}) as { voice?: string; rate?: string; pitch?: string; volume?: number }
 
       const TTS_VOICE_VALUES = [
-        'en-US-AndrewMultilingualNeural', 'en-US-EmmaMultilingualNeural', 'en-US-BrianMultilingualNeural',
+        'en-US-AndrewNeural', 'en-US-EmmaNeural', 'en-US-BrianNeural',
         'en-US-AriaNeural', 'en-US-GuyNeural', 'en-US-JennyNeural', 'en-US-ChristopherNeural', 'en-US-AvaNeural',
-        'en-GB-SoniaNeural', 'en-GB-RyanNeural', 'en-AU-NatashaNeural', 'en-AU-WilliamMultilingualNeural'
+        'en-GB-SoniaNeural', 'en-GB-RyanNeural', 'en-AU-NatashaNeural', 'en-AU-WilliamNeural'
       ]
-      let voice = audioSettings.voice || 'en-US-AndrewMultilingualNeural'
+      let voice = audioSettings.voice || 'en-US-AndrewNeural'
       if (voice === 'random') {
         voice = TTS_VOICE_VALUES[Math.floor(Math.random() * TTS_VOICE_VALUES.length)]
       }

@@ -134,7 +134,7 @@ function SidePanelTerminal() {
   } = useProfiles({})
 
   // Placeholder for getNextAvailableVoice - will be provided by audio hook below
-  const getNextAvailableVoiceRef = useRef<() => string>(() => 'en-US-AndrewMultilingualNeural')
+  const getNextAvailableVoiceRef = useRef<() => string>(() => 'en-US-AndrewNeural')
 
   // Terminal sessions hook - manages sessions, storage sync, and WebSocket message handling
   const {
@@ -328,7 +328,7 @@ function SidePanelTerminal() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   text: audioData.text,
-                  voice: settings.voice || 'en-US-AndrewMultilingualNeural',
+                  voice: settings.voice || 'en-US-AndrewNeural',
                   rate: settings.rate || '+0%',
                   pitch: settings.pitch || '+0Hz'
                 })

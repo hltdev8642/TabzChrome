@@ -464,9 +464,9 @@ export function FilteredFileList({ filter, filteredFiles, loading, onFileSelect 
       }
 
       const TTS_VOICE_VALUES = [
-        'en-US-AndrewMultilingualNeural', 'en-US-EmmaMultilingualNeural', 'en-US-BrianMultilingualNeural',
+        'en-US-AndrewNeural', 'en-US-EmmaNeural', 'en-US-BrianNeural',
         'en-US-AriaNeural', 'en-US-GuyNeural', 'en-US-JennyNeural', 'en-US-ChristopherNeural', 'en-US-AvaNeural',
-        'en-GB-SoniaNeural', 'en-GB-RyanNeural', 'en-AU-NatashaNeural', 'en-AU-WilliamMultilingualNeural'
+        'en-GB-SoniaNeural', 'en-GB-RyanNeural', 'en-AU-NatashaNeural', 'en-AU-WilliamNeural'
       ]
 
       // Check if contentReading has custom settings
@@ -474,7 +474,7 @@ export function FilteredFileList({ filter, filteredFiles, loading, onFileSelect 
 
       let voice = useContentReading && audioSettings.contentReading?.voice
         ? audioSettings.contentReading.voice
-        : (audioSettings.voice || 'en-US-AndrewMultilingualNeural')
+        : (audioSettings.voice || 'en-US-AndrewNeural')
       if (voice === 'random') {
         voice = TTS_VOICE_VALUES[Math.floor(Math.random() * TTS_VOICE_VALUES.length)]
       }

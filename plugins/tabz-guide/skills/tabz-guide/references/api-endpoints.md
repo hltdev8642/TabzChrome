@@ -121,12 +121,12 @@ curl -X POST http://localhost:8129/api/audio/speak \
   -H "Content-Type: application/json" \
   -d '{
     "text": "Hello, this is a test",
-    "voice": "en-US-AndrewMultilingualNeural",
+    "voice": "en-US-AndrewNeural",
     "rate": "+20%",
     "volume": 0.8
   }'
 ```
-[Paste TTS Example](tabz:paste?text=curl%20-X%20POST%20http%3A%2F%2Flocalhost%3A8129%2Fapi%2Faudio%2Fspeak%20%5C%0A%20%20-H%20%22Content-Type%3A%20application%2Fjson%22%20%5C%0A%20%20-d%20%27%7B%22text%22%3A%20%22Hello%2C%20this%20is%20a%20test%22%2C%20%22voice%22%3A%20%22en-US-AndrewMultilingualNeural%22%7D%27)
+[Paste TTS Example](tabz:paste?text=curl%20-X%20POST%20http%3A%2F%2Flocalhost%3A8129%2Fapi%2Faudio%2Fspeak%20%5C%0A%20%20-H%20%22Content-Type%3A%20application%2Fjson%22%20%5C%0A%20%20-d%20%27%7B%22text%22%3A%20%22Hello%2C%20this%20is%20a%20test%22%2C%20%22voice%22%3A%20%22en-US-AndrewNeural%22%7D%27)
 
 ---
 

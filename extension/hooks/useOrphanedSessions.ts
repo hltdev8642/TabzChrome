@@ -130,7 +130,7 @@ export function useOrphanedSessions(): UseOrphanedSessionsResult {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 text,
-                voice: audioSettings.voice || 'en-US-AndrewMultilingualNeural',
+                voice: audioSettings.voice || 'en-US-AndrewNeural',
                 rate: audioSettings.rate || '+0%',
                 volume: audioSettings.volume ?? 0.7
               })

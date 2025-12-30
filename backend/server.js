@@ -215,7 +215,7 @@ app.get('/api/audio/list', (req, res) => {
 app.post('/api/audio/generate', audioRateLimiter, async (req, res) => {
   const {
     text,
-    voice = 'en-US-AndrewMultilingualNeural',
+    voice = 'en-US-AndrewNeural',
     rate = '+0%',
     pitch = '+0Hz'
   } = req.body;
@@ -238,7 +238,7 @@ app.post('/api/audio/generate', audioRateLimiter, async (req, res) => {
 app.post('/api/audio/speak', async (req, res) => {
   const {
     text,
-    voice = 'en-US-AndrewMultilingualNeural',
+    voice = 'en-US-AndrewNeural',
     rate = '+0%',
     pitch = '+0Hz',
     volume = 0.7,

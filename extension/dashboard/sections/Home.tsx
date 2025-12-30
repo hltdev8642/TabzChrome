@@ -47,9 +47,13 @@ export default function HomeSection() {
 
   // Helper to find full profile name (with emoji) from extracted name
   const getProfileDisplayName = (extractedName: string, profilesList: Profile[]): string => {
+    // Normalize both sides for comparison (handles space→hyphen conversion in session IDs)
+    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+
     const profile = profilesList.find(p => {
+      // Strip emoji prefix from profile name
       const stripped = p.name.replace(/^\p{Emoji_Presentation}\s*|\p{Emoji}\uFE0F?\s*/gu, '').trim()
-      return stripped.toLowerCase() === extractedName.toLowerCase()
+      return normalize(stripped) === normalize(extractedName)
     })
     return profile?.name || extractedName
   }

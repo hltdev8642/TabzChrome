@@ -1,4 +1,5 @@
 import React from 'react'
+import { Palette, Settings, Paperclip, Pencil, ExternalLink, Box, Copy, Eye, Trash2 } from 'lucide-react'
 import { type Profile } from './settings/types'
 
 /**
@@ -108,7 +109,7 @@ export function SessionContextMenu({
             onClose()
           }}
         >
-          🎨 Customize...
+          <Palette className="w-4 h-4" /> Customize...
         </button>
       )}
       {onEditProfile && (
@@ -119,7 +120,7 @@ export function SessionContextMenu({
             onClose()
           }}
         >
-          ⚙️ Edit Profile...
+          <Settings className="w-4 h-4" /> Edit Profile...
         </button>
       )}
       {onOpenReference && (
@@ -130,7 +131,7 @@ export function SessionContextMenu({
             onClose()
           }}
         >
-          📎 Open Reference
+          <Paperclip className="w-4 h-4" /> Open Reference
         </button>
       )}
       <button
@@ -140,7 +141,7 @@ export function SessionContextMenu({
           onClose()
         }}
       >
-        ✏️ Rename Tab...
+        <Pencil className="w-4 h-4" /> Rename Tab...
       </button>
       {isTmuxSession && onPopOut && (
         <button
@@ -150,7 +151,7 @@ export function SessionContextMenu({
             onClose()
           }}
         >
-          🪟 Pop Out
+          <ExternalLink className="w-4 h-4" /> Pop Out
         </button>
       )}
       {isTmuxSession && (
@@ -161,7 +162,7 @@ export function SessionContextMenu({
             onClose()
           }}
         >
-          🧊 Open in 3D Focus
+          <Box className="w-4 h-4" /> Open in 3D Focus
         </button>
       )}
       {isTmuxSession && (
@@ -174,7 +175,7 @@ export function SessionContextMenu({
               onClose()
             }}
           >
-            📋 Copy Session ID
+            <Copy className="w-4 h-4" /> Copy Session ID
           </button>
           {onViewAsText && (
             <button
@@ -184,7 +185,7 @@ export function SessionContextMenu({
                 onClose()
               }}
             >
-              📄 View as Text
+              <Eye className="w-4 h-4" /> View as Text
             </button>
           )}
           <div className="context-menu-divider" />
@@ -204,7 +205,7 @@ export function SessionContextMenu({
               onClose()
             }}
           >
-            ❌ Kill Session
+            <Trash2 className="w-4 h-4" /> Kill Session
           </button>
         </>
       )}

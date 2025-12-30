@@ -1,7 +1,18 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { GitBranch, Copy, Trash2, Eye, Box } from 'lucide-react'
+import { GitBranch, Copy, Trash2, Eye, Box, PanelLeft, ExternalLink, Settings, Paperclip, Unplug } from 'lucide-react'
 import { compactPath } from '../../shared/utils'
-import { type TerminalItem } from './ActiveTerminalsList'
+import { type TerminalItem, type TerminalDisplayMode } from './ActiveTerminalsList'
+import { themes } from '../../styles/themes'
+import { getGradientCSS, DEFAULT_PANEL_COLOR, DEFAULT_TRANSPARENCY } from '../../styles/terminal-backgrounds'
+
+// Helper to get media URL (matches Terminal.tsx pattern)
+const getMediaUrl = (path: string | undefined): string | null => {
+  if (!path) return null
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('file://')) {
+    return path
+  }
+  return `http://localhost:8129/api/media?path=${encodeURIComponent(path)}`
+}
 
 interface StatusHistoryEntry {
   text: string
@@ -14,6 +25,8 @@ interface TerminalsGridProps {
   onKill?: (id: string) => void
   onViewAsText?: (id: string) => void
   onSwitchTo?: (id: string) => void
+  onDetach?: (id: string) => void
+  onPopOut?: (terminalId: string, sessionName: string) => void
   emptyMessage?: string
 }
 
@@ -56,6 +69,32 @@ const getContextColor = (pct: number | null | undefined): string => {
   if (pct >= 75) return '#f97316' // orange
   if (pct >= 50) return '#eab308' // yellow
   return '#22c55e' // green
+}
+
+// Display mode indicator component
+const DisplayModeIndicator = ({ mode }: { mode?: TerminalDisplayMode }) => {
+  if (!mode || mode === 'sidebar') {
+    return (
+      <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-gray-800 text-gray-400 border border-gray-700" title="In sidebar">
+        <PanelLeft className="w-3 h-3" />
+      </span>
+    )
+  }
+  if (mode === 'popout') {
+    return (
+      <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-blue-500/20 text-blue-400 border border-blue-500/50" title="Popped out">
+        <ExternalLink className="w-3 h-3" />
+      </span>
+    )
+  }
+  if (mode === '3d') {
+    return (
+      <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/50" title="3D Focus">
+        <Box className="w-3 h-3" />
+      </span>
+    )
+  }
+  return null
 }
 
 // Get rich Claude status display
@@ -129,6 +168,8 @@ export function TerminalsGrid({
   onKill,
   onViewAsText,
   onSwitchTo,
+  onDetach,
+  onPopOut,
   emptyMessage = 'No active terminals',
 }: TerminalsGridProps) {
   // Status history tracking (per terminal)
@@ -203,6 +244,36 @@ export function TerminalsGrid({
     setContextMenu({ show: false, x: 0, y: 0, terminalId: null })
   }
 
+  const handleEditProfile = (terminal: TerminalItem) => {
+    const profileId = terminal.profile?.id || 'default'
+    chrome.tabs.create({
+      url: chrome.runtime.getURL(`dashboard/index.html#/settings-profiles?edit=${encodeURIComponent(profileId)}`)
+    })
+    setContextMenu({ show: false, x: 0, y: 0, terminalId: null })
+  }
+
+  const handleOpenReference = (terminal: TerminalItem) => {
+    const reference = terminal.profile?.reference
+    if (!reference) return
+    if (reference.startsWith('http://') || reference.startsWith('https://')) {
+      window.open(reference, '_blank')
+    } else {
+      window.location.hash = `/files?path=${encodeURIComponent(reference)}`
+    }
+    setContextMenu({ show: false, x: 0, y: 0, terminalId: null })
+  }
+
+  const handlePopOut = (terminal: TerminalItem) => {
+    if (!terminal.sessionName) return
+    onPopOut?.(terminal.id, terminal.sessionName)
+    setContextMenu({ show: false, x: 0, y: 0, terminalId: null })
+  }
+
+  const handleDetach = (terminal: TerminalItem) => {
+    onDetach?.(terminal.id)
+    setContextMenu({ show: false, x: 0, y: 0, terminalId: null })
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -222,151 +293,206 @@ export function TerminalsGrid({
 
   return (
     <div className="p-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 items-stretch">
         {terminals.map((terminal) => {
           const history = statusHistory.get(terminal.id) || []
           const status = getClaudeStatusDisplay(terminal.claudeState)
           const contextPct = terminal.claudeState?.context_pct
+
+          // Compute themed background from profile
+          const profile = terminal.profile
+          const effectivePanelColor = profile?.panelColor ?? DEFAULT_PANEL_COLOR
+          const effectiveGradientCSS = getGradientCSS(profile?.backgroundGradient, true) // always dark mode
+          const gradientOpacity = (profile?.transparency ?? DEFAULT_TRANSPARENCY) / 100
+          const themeForeground = themes[profile?.themeName || 'tokyo-night']?.dark.colors.foreground ?? '#e0e0e0'
+          const themeGreen = themes[profile?.themeName || 'tokyo-night']?.dark.colors.green ?? '#00ff88'
+
+          // Background media
+          const mediaUrl = getMediaUrl(profile?.backgroundMedia)
+          const mediaOpacity = (profile?.backgroundMediaOpacity ?? 50) / 100
+          const showMedia = profile?.backgroundMediaType && profile.backgroundMediaType !== 'none' && mediaUrl
 
           return (
             <div
               key={terminal.id}
               onClick={() => onSwitchTo?.(terminal.sessionName || terminal.id)}
               onContextMenu={(e) => handleContextMenu(e, terminal.id)}
-              className="bg-[#1a1a1a] border border-[#333] rounded-lg hover:border-primary/50 transition-colors cursor-pointer overflow-hidden"
+              className="relative rounded-lg border border-[#333] hover:border-primary/50 transition-colors cursor-pointer overflow-hidden h-full flex flex-col"
             >
-              {/* Header: Name + AI Tool */}
-              <div className="px-4 py-3 border-b border-[#333]">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[14px] font-medium text-white truncate">
-                    {terminal.name || 'Unnamed'}
-                  </span>
-                  {terminal.aiTool && (
-                    <span className="px-1.5 py-0.5 text-xs rounded bg-black/40 text-orange-400 border border-orange-500/50 flex-shrink-0">
-                      {terminal.aiTool === 'claude-code' ? 'claude' : terminal.aiTool}
-                    </span>
-                  )}
-                </div>
-                {/* Session ID */}
-                {terminal.sessionName && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[11px] font-mono text-gray-500 truncate">
-                      {terminal.sessionName}
-                    </span>
-                    <button
-                      className="p-0.5 rounded hover:bg-[#00ff88]/20 text-gray-500 hover:text-[#00ff88] transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleCopySessionId(terminal.sessionName!)
-                      }}
-                      title="Copy session ID"
-                    >
-                      <Copy className="w-3 h-3" />
-                    </button>
-                  </div>
-                )}
-              </div>
+              {/* Layer 1: Panel color */}
+              <div
+                className="absolute inset-0"
+                style={{ backgroundColor: effectivePanelColor }}
+              />
 
-              {/* Working Dir & Git */}
-              <div className="px-4 py-2 border-b border-[#333] space-y-1">
-                {terminal.workingDir && (
-                  <div className="flex items-center gap-2 overflow-hidden">
-                    <span className="text-[#00ff88] text-sm flex-shrink-0">📁</span>
-                    <span
-                      className="text-[12px] text-[#00ff88] font-mono truncate"
-                      title={terminal.workingDir}
-                    >
-                      {compactPath(terminal.workingDir)}
-                    </span>
-                  </div>
-                )}
-                {terminal.gitBranch && (
-                  <div className="flex items-center gap-2">
-                    <GitBranch className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                    <span className="text-[12px] text-purple-400 truncate">{terminal.gitBranch}</span>
-                  </div>
-                )}
-              </div>
+              {/* Layer 2: Background media */}
+              {showMedia && profile?.backgroundMediaType === 'video' && (
+                <video
+                  key={mediaUrl}
+                  className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                  style={{ opacity: mediaOpacity }}
+                  src={mediaUrl!}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                />
+              )}
+              {showMedia && profile?.backgroundMediaType === 'image' && (
+                <img
+                  key={mediaUrl}
+                  className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                  style={{ opacity: mediaOpacity }}
+                  src={mediaUrl!}
+                  alt=""
+                />
+              )}
 
-              {/* Claude Status + Context */}
-              {terminal.claudeState && (
-                <div className="px-4 py-2 border-b border-[#333]">
-                  <div className="flex items-center gap-2 overflow-hidden">
-                    <span className="text-sm flex-shrink-0">🤖</span>
-                    <span className="text-[12px] text-gray-300 truncate min-w-0 flex-1">
-                      {status ? (
-                        status.detail
-                          ? `${status.emoji} ${status.label}: ${status.detail}`
-                          : `${status.label}`
-                      ) : 'Unknown'}
+              {/* Layer 3: Gradient overlay */}
+              <div
+                className="absolute inset-0"
+                style={{ background: effectiveGradientCSS, opacity: gradientOpacity }}
+              />
+
+              {/* Content */}
+              <div className="relative z-10 flex flex-col flex-1">
+                {/* Header: Name + Display Mode + AI Tool */}
+                <div className="px-4 py-3 border-b border-white/10">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[14px] font-medium truncate" style={{ color: themeForeground }}>
+                      {terminal.name || 'Unnamed'}
                     </span>
-                    {contextPct != null && (
-                      <span
-                        className="text-[11px] font-medium flex-shrink-0"
-                        style={{ color: getContextColor(contextPct) }}
-                      >
-                        {contextPct}%
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <DisplayModeIndicator mode={terminal.displayMode} />
+                      {terminal.aiTool && (
+                        <span className="px-1.5 py-0.5 text-xs rounded bg-black/40 text-orange-400 border border-orange-500/50">
+                          {terminal.aiTool === 'claude-code' ? 'claude' : terminal.aiTool}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {/* Session ID */}
+                  {terminal.sessionName && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[11px] font-mono text-white/40 truncate">
+                        {terminal.sessionName}
                       </span>
-                    )}
-                  </div>
-                  {/* Context bar */}
-                  {contextPct != null && (
-                    <div className="mt-1.5 h-1.5 bg-[#333] rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                          width: `${contextPct}%`,
-                          backgroundColor: getContextColor(contextPct),
+                      <button
+                        className="p-0.5 rounded hover:bg-white/10 text-white/40 hover:text-white/80 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleCopySessionId(terminal.sessionName!)
                         }}
-                      />
+                        title="Copy session ID"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
                     </div>
                   )}
                 </div>
-              )}
 
-              {/* Status History */}
-              {history.length > 0 && (
-                <div className="px-4 py-2 border-b border-[#333]">
-                  <div className="text-[10px] text-[#00ff88]/60 mb-1">Recent activity</div>
-                  <div className="space-y-0.5 max-h-[100px] overflow-y-auto">
-                    {history.slice(0, 5).map((entry, i) => (
-                      <div key={i} className="flex items-start gap-2 text-[11px]">
-                        <span className="text-gray-400 flex-1 truncate">{entry.text}</span>
-                        <span className="text-[#00ff88]/50 text-[9px] flex-shrink-0">
-                          {formatRelativeTime(entry.timestamp)}
+                {/* Working Dir & Git */}
+                <div className="px-4 py-2 border-b border-white/10 space-y-1">
+                  {terminal.workingDir && (
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <span className="text-sm flex-shrink-0" style={{ color: themeGreen }}>📁</span>
+                      <span
+                        className="text-[12px] font-mono truncate"
+                        style={{ color: themeGreen }}
+                        title={terminal.workingDir}
+                      >
+                        {compactPath(terminal.workingDir)}
+                      </span>
+                    </div>
+                  )}
+                  {terminal.gitBranch && (
+                    <div className="flex items-center gap-2">
+                      <GitBranch className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                      <span className="text-[12px] text-purple-400 truncate">{terminal.gitBranch}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Claude Status + Context */}
+                {terminal.claudeState && (
+                  <div className="px-4 py-2 border-b border-white/10">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <span className="text-sm flex-shrink-0">🤖</span>
+                      <span className="text-[12px] truncate min-w-0 flex-1" style={{ color: `${themeForeground}cc` }}>
+                        {status ? (
+                          status.detail
+                            ? `${status.emoji} ${status.label}: ${status.detail}`
+                            : `${status.label}`
+                        ) : 'Unknown'}
+                      </span>
+                      {contextPct != null && (
+                        <span
+                          className="text-[11px] font-medium flex-shrink-0"
+                          style={{ color: getContextColor(contextPct) }}
+                        >
+                          {contextPct}%
                         </span>
+                      )}
+                    </div>
+                    {/* Context bar */}
+                    {contextPct != null && (
+                      <div className="mt-1.5 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${contextPct}%`,
+                            backgroundColor: getContextColor(contextPct),
+                          }}
+                        />
                       </div>
-                    ))}
+                    )}
+                  </div>
+                )}
+
+                {/* Status History */}
+                {history.length > 0 && (
+                  <div className="px-4 py-2 border-b border-white/10">
+                    <div className="text-[10px] mb-1" style={{ color: `${themeGreen}99` }}>Recent activity</div>
+                    <div className="space-y-0.5 max-h-[80px] overflow-y-auto">
+                      {history.map((entry, i) => (
+                        <div key={i} className="flex items-start gap-2 text-[11px]">
+                          <span className="flex-1 truncate" style={{ color: `${themeForeground}99` }}>{entry.text}</span>
+                          <span className="text-[9px] flex-shrink-0" style={{ color: `${themeGreen}80` }}>
+                            {formatRelativeTime(entry.timestamp)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Footer: Created + Actions - mt-auto pushes to bottom */}
+                <div className="px-4 py-2 flex items-center justify-between mt-auto">
+                  <span className="text-[10px] text-white/40">
+                    {terminal.createdAt ? `Created ${formatRelativeTime(terminal.createdAt)}` : ''}
+                  </span>
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    {onViewAsText && (
+                      <button
+                        onClick={() => onViewAsText(terminal.sessionName || terminal.id)}
+                        className="p-1 rounded hover:bg-white/10 text-white/50 hover:text-white/80 transition-colors"
+                        title="View as text"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {onKill && (
+                      <button
+                        onClick={() => onKill(terminal.id)}
+                        className="p-1 rounded hover:bg-red-500/20 text-white/50 hover:text-red-400 transition-colors"
+                        title="Kill terminal"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
-              )}
-
-              {/* Footer: Created + Actions */}
-              <div className="px-4 py-2 flex items-center justify-between">
-                <span className="text-[10px] text-gray-500">
-                  {terminal.createdAt ? `Created ${formatRelativeTime(terminal.createdAt)}` : ''}
-                </span>
-                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                  {onViewAsText && (
-                    <button
-                      onClick={() => onViewAsText(terminal.sessionName || terminal.id)}
-                      className="p-1 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
-                      title="View as text"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                  {onKill && (
-                    <button
-                      onClick={() => onKill(terminal.id)}
-                      className="p-1 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
-                      title="Kill terminal"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
+              </div>{/* Close z-10 content wrapper */}
             </div>
           )
         })}
@@ -376,18 +502,60 @@ export function TerminalsGrid({
       {contextMenu.show && (() => {
         const terminal = terminals.find((t) => t.id === contextMenu.terminalId)
         if (!terminal) return null
+        const hasReference = !!terminal.profile?.reference
 
         return (
           <div
-            className="fixed z-[100] bg-[#1a1a1a] border border-[#333] rounded-lg shadow-xl py-1 min-w-[180px]"
+            className="fixed z-[100] bg-[#1a1a1a] border border-[#333] rounded-lg shadow-xl py-1 min-w-[200px]"
             style={{
-              left: Math.min(contextMenu.x, window.innerWidth - 200),
-              top: Math.min(contextMenu.y, window.innerHeight - 150),
+              left: Math.min(contextMenu.x, window.innerWidth - 220),
+              top: Math.min(contextMenu.y, window.innerHeight - 320),
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {terminal.sessionName && (
               <>
+                {/* Profile Actions */}
+                <button
+                  className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-[#00ff88]/10 hover:text-[#00ff88] flex items-center gap-2 transition-colors"
+                  onClick={() => handleEditProfile(terminal)}
+                >
+                  <Settings className="w-4 h-4" />
+                  Edit Profile...
+                </button>
+                {hasReference && (
+                  <button
+                    className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-blue-500/10 hover:text-blue-400 flex items-center gap-2 transition-colors"
+                    onClick={() => handleOpenReference(terminal)}
+                  >
+                    <Paperclip className="w-4 h-4" />
+                    Open Reference
+                  </button>
+                )}
+
+                <div className="h-px bg-[#333] my-1" />
+
+                {/* Window Actions */}
+                {onPopOut && (
+                  <button
+                    className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-[#00ff88]/10 hover:text-[#00ff88] flex items-center gap-2 transition-colors"
+                    onClick={() => handlePopOut(terminal)}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Pop Out
+                  </button>
+                )}
+                <button
+                  className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-cyan-500/10 hover:text-cyan-400 flex items-center gap-2 transition-colors"
+                  onClick={() => handleOpenIn3D(terminal)}
+                >
+                  <Box className="w-4 h-4" />
+                  Open in 3D Focus
+                </button>
+
+                <div className="h-px bg-[#333] my-1" />
+
+                {/* Session Actions */}
                 <button
                   className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-[#00ff88]/10 hover:text-[#00ff88] flex items-center gap-2 transition-colors"
                   onClick={() => handleCopySessionId(terminal.sessionName!)}
@@ -395,13 +563,15 @@ export function TerminalsGrid({
                   <Copy className="w-4 h-4" />
                   Copy Session ID
                 </button>
-                <button
-                  className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-[#00ff88]/10 hover:text-[#00ff88] flex items-center gap-2 transition-colors"
-                  onClick={() => handleOpenIn3D(terminal)}
-                >
-                  <Box className="w-4 h-4" />
-                  Open in 3D Focus
-                </button>
+                {onDetach && (
+                  <button
+                    className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 flex items-center gap-2 transition-colors"
+                    onClick={() => handleDetach(terminal)}
+                  >
+                    <Unplug className="w-4 h-4" />
+                    Detach Session
+                  </button>
+                )}
               </>
             )}
           </div>

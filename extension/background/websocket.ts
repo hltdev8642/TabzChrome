@@ -81,6 +81,19 @@ import {
   handleBrowserNotificationList
 } from './browserMcp'
 
+// Handler registry to prevent tree-shaking of notification handlers
+// Attaching to globalThis has side-effects that bundlers can't eliminate
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const NOTIFICATION_HANDLERS: Record<string, (message: any) => Promise<void>> = {
+  'browser-notification-show': handleBrowserNotificationShow,
+  'browser-notification-update': handleBrowserNotificationUpdate,
+  'browser-notification-clear': handleBrowserNotificationClear,
+  'browser-notification-list': handleBrowserNotificationList,
+}
+// Force inclusion by attaching to globalThis - can't be tree-shaken
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+;(globalThis as any).__NOTIFICATION_HANDLERS__ = NOTIFICATION_HANDLERS
+
 // Forward declaration - will be set by alarms module
 let scheduleReconnectFn: (() => void) | null = null
 
@@ -722,28 +735,11 @@ function routeWebSocketMessage(message: any): void {
     return
   }
 
-  // Notification handlers
-  if (message.type === 'browser-notification-show') {
-    console.log('Browser MCP: notification-show request', message.requestId, message.title)
-    handleBrowserNotificationShow(message)
-    return
-  }
-
-  if (message.type === 'browser-notification-update') {
-    console.log('Browser MCP: notification-update request', message.requestId, message.notificationId)
-    handleBrowserNotificationUpdate(message)
-    return
-  }
-
-  if (message.type === 'browser-notification-clear') {
-    console.log('Browser MCP: notification-clear request', message.requestId, message.notificationId)
-    handleBrowserNotificationClear(message)
-    return
-  }
-
-  if (message.type === 'browser-notification-list') {
-    console.log('Browser MCP: notification-list request', message.requestId)
-    handleBrowserNotificationList(message)
+  // Notification handlers - use registry to prevent tree-shaking
+  const notificationHandler = NOTIFICATION_HANDLERS[message.type as string]
+  if (notificationHandler) {
+    console.log(`Browser MCP: ${message.type} request`, message.requestId, message.title || message.notificationId || '')
+    notificationHandler(message)
     return
   }
 

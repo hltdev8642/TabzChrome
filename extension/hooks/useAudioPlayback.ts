@@ -159,7 +159,7 @@ export function useAudioPlayback({ sessions }: UseAudioPlaybackParams): UseAudio
     } else if (audioSettings.voice) {
       voice = audioSettings.voice
     } else {
-      voice = assignedVoice || 'en-US-AndrewMultilingualNeural'
+      voice = assignedVoice || 'en-US-AndrewNeural'
     }
 
     // Priority chain for rate/pitch: event config > profile override > global setting

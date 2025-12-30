@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { Terminal, Trash2, RefreshCw, LayoutGrid, LayoutList } from 'lucide-react'
 import { getTerminals, killSession, killSessions, getAllTmuxSessions, getProfiles } from '../hooks/useDashboard'
-import { ActiveTerminalsList, type TerminalItem } from '../components/ActiveTerminalsList'
+import { ActiveTerminalsList, type TerminalItem, type TerminalDisplayMode } from '../components/ActiveTerminalsList'
 import { TerminalsGrid } from '../components/TerminalsGrid'
+import type { Profile } from '../../components/settings/types'
 
 interface TerminalSession {
   id: string
@@ -12,10 +13,14 @@ interface TerminalSession {
   workingDir?: string
 }
 
-interface Profile {
-  name: string
-  [key: string]: any
+// Chrome storage terminal session (for display mode and profile tracking)
+interface ChromeTerminalSession {
+  id: string
+  focusedIn3D?: boolean
+  poppedOut?: boolean
+  profile?: Profile
 }
+
 
 interface TmuxSession {
   name: string
@@ -50,6 +55,7 @@ export default function TerminalsSection() {
   const [terminals, setTerminals] = useState<TerminalSession[]>([])
   const [tmuxSessions, setTmuxSessions] = useState<TmuxSession[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
+  const [chromeSessions, setChromeSessions] = useState<ChromeTerminalSession[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedTerminals, setSelectedTerminals] = useState<Set<string>>(new Set())
@@ -84,11 +90,15 @@ export default function TerminalsSection() {
 
   // Helper to find full profile name (with emoji) from extracted name
   const getProfileDisplayName = (extractedName: string): string => {
-    // Profile names may have emoji prefix like "🔧 DevOps"
-    // extractedName is just "DevOps" (from session ID)
+    // Profile names may have emoji prefix like "🟠 Amber Claude"
+    // extractedName from session ID is sanitized: "amber-claude" (spaces→hyphens, lowercase)
+    // We need to normalize both sides for comparison
+    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+
     const profile = profiles.find(p => {
+      // Strip emoji prefix from profile name
       const stripped = p.name.replace(/^\p{Emoji_Presentation}\s*|\p{Emoji}\uFE0F?\s*/gu, '').trim()
-      return stripped.toLowerCase() === extractedName.toLowerCase()
+      return normalize(stripped) === normalize(extractedName)
     })
     return profile?.name || extractedName
   }
@@ -103,6 +113,30 @@ export default function TerminalsSection() {
     fetchData(true) // Initial load with spinner
     const interval = setInterval(() => fetchData(false), 5000) // Refresh every 5s without spinner
     return () => clearInterval(interval)
+  }, [])
+
+  // Load Chrome storage terminal sessions (for display mode tracking)
+  useEffect(() => {
+    const loadChromeSessions = () => {
+      chrome.storage.local.get(['terminalSessions'], (result) => {
+        if (result.terminalSessions && Array.isArray(result.terminalSessions)) {
+          setChromeSessions(result.terminalSessions as ChromeTerminalSession[])
+        }
+      })
+    }
+
+    loadChromeSessions()
+
+    // Listen for changes to terminal sessions
+    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
+      if (changes.terminalSessions) {
+        const newValue = changes.terminalSessions.newValue
+        setChromeSessions(Array.isArray(newValue) ? newValue as ChromeTerminalSession[] : [])
+      }
+    }
+
+    chrome.storage.local.onChanged.addListener(handleStorageChange)
+    return () => chrome.storage.local.onChanged.removeListener(handleStorageChange)
   }, [])
 
   // Active terminal management
@@ -180,12 +214,48 @@ export default function TerminalsSection() {
     }
   }
 
+  // Detach session (keeps tmux running but removes from sidebar)
+  const detachSession = async (terminalId: string) => {
+    try {
+      await fetch(`http://localhost:8129/api/terminals/${terminalId}/detach`, {
+        method: 'POST',
+      })
+      // Refresh data to update UI
+      fetchData(false)
+    } catch (err) {
+      console.error('Failed to detach session:', err)
+    }
+  }
+
+  // Pop out terminal to standalone window
+  const popOutTerminal = async (terminalId: string, sessionName: string) => {
+    try {
+      await fetch('http://localhost:8129/api/browser/popout-terminal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ terminalId, sessionName }),
+      })
+    } catch (err) {
+      console.error('Failed to pop out terminal:', err)
+    }
+  }
+
+  // Helper to get Chrome session data (display mode + profile)
+  const getChromeSessionData = (terminalId: string): { displayMode: TerminalDisplayMode; profile?: Profile } => {
+    const chromeSession = chromeSessions.find(s => s.id === terminalId)
+    const displayMode: TerminalDisplayMode = chromeSession?.focusedIn3D ? '3d'
+      : chromeSession?.poppedOut ? 'popout'
+      : 'sidebar'
+    return { displayMode, profile: chromeSession?.profile }
+  }
+
   // Filter to only registered terminals (excludes orphans)
   const registeredIds = new Set(terminals.map(t => t.id))
   const activeTerminals: TerminalItem[] = tmuxSessions
     .filter(s => s.name.startsWith('ctt-') && registeredIds.has(s.name))
     .map((s): TerminalItem => {
       const extractedName = s.name.replace(/^ctt-/, '').replace(/-[a-f0-9]+$/, '')
+      const { displayMode, profile } = getChromeSessionData(s.name)
       return {
         id: s.name,
         name: getProfileDisplayName(extractedName),
@@ -196,6 +266,8 @@ export default function TerminalsSection() {
         gitBranch: s.gitBranch,
         claudeState: s.claudeState,
         aiTool: s.aiTool,
+        displayMode,
+        profile,
       }
     })
 
@@ -257,6 +329,8 @@ export default function TerminalsSection() {
           onKill={killTerminal}
           onViewAsText={handleViewAsText}
           onSwitchTo={switchToTerminal}
+          onDetach={detachSession}
+          onPopOut={popOutTerminal}
           emptyMessage="No active terminals in sidebar"
         />
       ) : (
@@ -287,6 +361,8 @@ export default function TerminalsSection() {
             onKill={killTerminal}
             onViewAsText={handleViewAsText}
             onSwitchTo={switchToTerminal}
+            onDetach={detachSession}
+            onPopOut={popOutTerminal}
           />
         </div>
       )}

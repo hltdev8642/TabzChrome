@@ -1,6 +1,10 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react'
-import { Terminal, Trash2, Eye, GitBranch, Folder, GripVertical, Copy, Box } from 'lucide-react'
+import { Terminal, Trash2, Eye, GitBranch, Folder, GripVertical, Copy, Box, PanelLeft, ExternalLink, Settings, Paperclip, Unplug } from 'lucide-react'
 import { compactPath } from '../../shared/utils'
+
+import type { Profile } from '../../components/settings/types'
+
+export type TerminalDisplayMode = 'sidebar' | 'popout' | '3d'
 
 export interface TerminalItem {
   id: string
@@ -26,6 +30,8 @@ export interface TerminalItem {
     } | null
   } | null
   aiTool?: string | null
+  displayMode?: TerminalDisplayMode
+  profile?: Profile  // Full profile for themed rendering
 }
 
 interface StatusHistoryEntry {
@@ -44,6 +50,8 @@ interface ActiveTerminalsListProps {
   onKill?: (id: string) => void
   onViewAsText?: (id: string) => void
   onSwitchTo?: (id: string) => void
+  onDetach?: (id: string) => void
+  onPopOut?: (terminalId: string, sessionName: string) => void
   emptyMessage?: string
 }
 
@@ -172,6 +180,32 @@ const getContextColor = (pct: number | null | undefined): string => {
   return '#22c55e' // green
 }
 
+// Display mode indicator component
+const DisplayModeIndicator = ({ mode }: { mode?: TerminalDisplayMode }) => {
+  if (!mode || mode === 'sidebar') {
+    return (
+      <span className="flex items-center gap-1 px-1 py-0.5 text-xs rounded bg-gray-800 text-gray-400 border border-gray-700" title="In sidebar">
+        <PanelLeft className="w-3 h-3" />
+      </span>
+    )
+  }
+  if (mode === 'popout') {
+    return (
+      <span className="flex items-center gap-1 px-1 py-0.5 text-xs rounded bg-blue-500/20 text-blue-400 border border-blue-500/50" title="Popped out">
+        <ExternalLink className="w-3 h-3" />
+      </span>
+    )
+  }
+  if (mode === '3d') {
+    return (
+      <span className="flex items-center gap-1 px-1 py-0.5 text-xs rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/50" title="3D Focus">
+        <Box className="w-3 h-3" />
+      </span>
+    )
+  }
+  return null
+}
+
 // Default column widths (in pixels)
 const DEFAULT_COLUMNS = {
   status: 24,
@@ -197,6 +231,8 @@ export function ActiveTerminalsList({
   onKill,
   onViewAsText,
   onSwitchTo,
+  onDetach,
+  onPopOut,
   emptyMessage = 'No active terminals',
 }: ActiveTerminalsListProps) {
   const displayTerminals = maxItems ? terminals.slice(0, maxItems) : terminals
@@ -209,7 +245,7 @@ export function ActiveTerminalsList({
   const startWidth = useRef(0)
 
   // Hover tooltip state
-  const [hoveredTerminal, setHoveredTerminal] = useState<{ id: string; rect: DOMRect } | null>(null)
+  const [hoveredTerminal, setHoveredTerminal] = useState<{ id: string; rect: DOMRect; mouseX: number } | null>(null)
   const tooltipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Status history tracking
@@ -288,8 +324,9 @@ export function ActiveTerminalsList({
   const handleRowMouseEnter = (e: React.MouseEvent, terminalId: string) => {
     if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current)
     const rect = e.currentTarget.getBoundingClientRect()
+    const mouseX = e.clientX
     tooltipTimeoutRef.current = setTimeout(() => {
-      setHoveredTerminal({ id: terminalId, rect })
+      setHoveredTerminal({ id: terminalId, rect, mouseX })
     }, 400)
   }
 
@@ -326,6 +363,36 @@ export function ActiveTerminalsList({
       `3d/3d-focus.html?session=${terminal.sessionName}&id=${terminal.id}`
     )
     chrome.tabs.create({ url })
+    setContextMenu({ show: false, x: 0, y: 0, terminalId: null })
+  }
+
+  const handleEditProfile = (terminal: TerminalItem) => {
+    const profileId = terminal.profile?.id || 'default'
+    chrome.tabs.create({
+      url: chrome.runtime.getURL(`dashboard/index.html#/settings-profiles?edit=${encodeURIComponent(profileId)}`)
+    })
+    setContextMenu({ show: false, x: 0, y: 0, terminalId: null })
+  }
+
+  const handleOpenReference = (terminal: TerminalItem) => {
+    const reference = terminal.profile?.reference
+    if (!reference) return
+    if (reference.startsWith('http://') || reference.startsWith('https://')) {
+      window.open(reference, '_blank')
+    } else {
+      window.location.hash = `/files?path=${encodeURIComponent(reference)}`
+    }
+    setContextMenu({ show: false, x: 0, y: 0, terminalId: null })
+  }
+
+  const handlePopOut = (terminal: TerminalItem) => {
+    if (!terminal.sessionName) return
+    onPopOut?.(terminal.id, terminal.sessionName)
+    setContextMenu({ show: false, x: 0, y: 0, terminalId: null })
+  }
+
+  const handleDetach = (terminal: TerminalItem) => {
+    onDetach?.(terminal.id)
     setContextMenu({ show: false, x: 0, y: 0, terminalId: null })
   }
 
@@ -461,12 +528,13 @@ export function ActiveTerminalsList({
                   />
                 </td>
 
-                {/* Name + AI badge */}
+                {/* Name + Display Mode + AI badge */}
                 <td className="px-2 py-3" style={{ width: columnWidths.name }}>
                   <div className="flex items-center gap-2 min-w-0">
                     <span className={`font-medium truncate ${isClickable ? 'text-primary' : ''}`}>
                       {terminal.name || 'Unnamed'}
                     </span>
+                    <DisplayModeIndicator mode={terminal.displayMode} />
                     {terminal.aiTool && (
                       <span className="flex-shrink-0 px-1.5 py-0.5 text-xs rounded bg-black/40 text-orange-400 border border-orange-500/50">
                         {terminal.aiTool === 'claude-code' ? 'claude' : terminal.aiTool}
@@ -498,7 +566,7 @@ export function ActiveTerminalsList({
                 </td>
 
                 {/* Context % */}
-                <td className="px-2 py-3 text-center" style={{ width: columnWidths.context }}>
+                <td className="px-2 py-3" style={{ width: columnWidths.context }}>
                   {terminal.claudeState?.context_pct != null ? (
                     <span
                       className="text-sm font-medium tabular-nums"
@@ -596,7 +664,8 @@ export function ActiveTerminalsList({
         <div
           className="fixed z-50 animate-in fade-in-0 zoom-in-95 duration-150"
           style={{
-            left: Math.min(hoveredTerminal.rect.left, window.innerWidth - 470),
+            // Center tooltip on mouse X, but keep within viewport
+            left: Math.max(16, Math.min(hoveredTerminal.mouseX - 160, window.innerWidth - 470)),
             top: hoveredTerminal.rect.bottom + 8,
           }}
           onMouseEnter={() => {
@@ -716,18 +785,60 @@ export function ActiveTerminalsList({
         const terminal = displayTerminals.find((t) => t.id === contextMenu.terminalId)
         if (!terminal) return null
         const isTmuxSession = terminal.sessionName?.startsWith('ctt-') || terminal.id.startsWith('ctt-')
+        const hasReference = !!terminal.profile?.reference
 
         return (
           <div
-            className="fixed z-[100] bg-[#1a1a1a] border border-[#333] rounded-lg shadow-xl py-1 min-w-[180px]"
+            className="fixed z-[100] bg-[#1a1a1a] border border-[#333] rounded-lg shadow-xl py-1 min-w-[200px]"
             style={{
-              left: Math.min(contextMenu.x, window.innerWidth - 200),
-              top: Math.min(contextMenu.y, window.innerHeight - 150),
+              left: Math.min(contextMenu.x, window.innerWidth - 220),
+              top: Math.min(contextMenu.y, window.innerHeight - 320),
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {isTmuxSession && terminal.sessionName && (
               <>
+                {/* Profile Actions */}
+                <button
+                  className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-[#00ff88]/10 hover:text-[#00ff88] flex items-center gap-2 transition-colors"
+                  onClick={() => handleEditProfile(terminal)}
+                >
+                  <Settings className="w-4 h-4" />
+                  Edit Profile...
+                </button>
+                {hasReference && (
+                  <button
+                    className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-blue-500/10 hover:text-blue-400 flex items-center gap-2 transition-colors"
+                    onClick={() => handleOpenReference(terminal)}
+                  >
+                    <Paperclip className="w-4 h-4" />
+                    Open Reference
+                  </button>
+                )}
+
+                <div className="h-px bg-[#333] my-1" />
+
+                {/* Window Actions */}
+                {onPopOut && (
+                  <button
+                    className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-[#00ff88]/10 hover:text-[#00ff88] flex items-center gap-2 transition-colors"
+                    onClick={() => handlePopOut(terminal)}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Pop Out
+                  </button>
+                )}
+                <button
+                  className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-cyan-500/10 hover:text-cyan-400 flex items-center gap-2 transition-colors"
+                  onClick={() => handleOpenIn3D(terminal)}
+                >
+                  <Box className="w-4 h-4" />
+                  Open in 3D Focus
+                </button>
+
+                <div className="h-px bg-[#333] my-1" />
+
+                {/* Session Actions */}
                 <button
                   className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-[#00ff88]/10 hover:text-[#00ff88] flex items-center gap-2 transition-colors"
                   onClick={() => handleCopySessionId(terminal.sessionName!)}
@@ -735,13 +846,15 @@ export function ActiveTerminalsList({
                   <Copy className="w-4 h-4" />
                   Copy Session ID
                 </button>
-                <button
-                  className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-[#00ff88]/10 hover:text-[#00ff88] flex items-center gap-2 transition-colors"
-                  onClick={() => handleOpenIn3D(terminal)}
-                >
-                  <Box className="w-4 h-4" />
-                  Open in 3D Focus
-                </button>
+                {onDetach && (
+                  <button
+                    className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-yellow-500/10 hover:text-yellow-400 flex items-center gap-2 transition-colors"
+                    onClick={() => handleDetach(terminal)}
+                  >
+                    <Unplug className="w-4 h-4" />
+                    Detach Session
+                  </button>
+                )}
               </>
             )}
             {!isTmuxSession && (

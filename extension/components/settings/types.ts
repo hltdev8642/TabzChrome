@@ -181,11 +181,13 @@ export interface SoundEffect {
 export type SoundMode = 'tts' | 'sound' | 'both'
 
 // Audio types
+// IMPORTANT: Using non-multilingual voices to prevent auto-language detection
+// (Multilingual voices may speak German/other languages for short phrases)
 export const TTS_VOICES = [
   // US Voices
-  { label: 'Andrew (US Male)', value: 'en-US-AndrewMultilingualNeural' },
-  { label: 'Emma (US Female)', value: 'en-US-EmmaMultilingualNeural' },
-  { label: 'Brian (US Male)', value: 'en-US-BrianMultilingualNeural' },
+  { label: 'Andrew (US Male)', value: 'en-US-AndrewNeural' },
+  { label: 'Emma (US Female)', value: 'en-US-EmmaNeural' },
+  { label: 'Brian (US Male)', value: 'en-US-BrianNeural' },
   { label: 'Aria (US Female)', value: 'en-US-AriaNeural' },
   { label: 'Guy (US Male)', value: 'en-US-GuyNeural' },
   { label: 'Jenny (US Female)', value: 'en-US-JennyNeural' },
@@ -196,7 +198,7 @@ export const TTS_VOICES = [
   { label: 'Ryan (UK Male)', value: 'en-GB-RyanNeural' },
   // AU Voices
   { label: 'Natasha (AU Female)', value: 'en-AU-NatashaNeural' },
-  { label: 'William (AU Male)', value: 'en-AU-WilliamMultilingualNeural' },
+  { label: 'William (AU Male)', value: 'en-AU-WilliamNeural' },
 ]
 
 // Per-event audio configuration (optional overrides for voice, rate, pitch, phrase, sounds)
@@ -346,7 +348,7 @@ export const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
   enabled: false,
   volume: 0.7,
   soundEffectsVolume: 0.4,  // Sound effects at 40% by default (often louder than TTS)
-  voice: 'en-US-AndrewMultilingualNeural',
+  voice: 'en-US-AndrewNeural',
   rate: '+0%',
   pitch: '+0Hz',
   userTitle: '',  // Empty = no title used in phrases

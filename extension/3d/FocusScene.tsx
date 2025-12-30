@@ -271,7 +271,7 @@ export default function FocusScene() {
   } = useTerminalSessions({
     wsConnected,
     profiles,
-    getNextAvailableVoice: () => 'en-US-AndrewMultilingualNeural',
+    getNextAvailableVoice: () => 'en-US-AndrewNeural',
   })
 
   // Find the target session from sessions list (includes appearance overrides)

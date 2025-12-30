@@ -1,17 +1,19 @@
 import type { AudioSettings } from '../components/settings/types'
 
 // Voice pool for auto-assignment (rotates through these when no profile override)
+// IMPORTANT: Avoid "Multilingual" voices - they auto-detect language from text
+// and may speak German/other languages for short phrases like tool names
 export const VOICE_POOL = [
-  'en-US-AndrewMultilingualNeural',  // Andrew (US Male)
-  'en-US-EmmaMultilingualNeural',    // Emma (US Female)
-  'en-GB-SoniaNeural',               // Sonia (UK Female)
-  'en-GB-RyanNeural',                // Ryan (UK Male)
-  'en-AU-NatashaNeural',             // Natasha (AU Female)
-  'en-AU-WilliamNeural',             // William (AU Male)
-  'en-US-BrianMultilingualNeural',   // Brian (US Male)
-  'en-US-AriaNeural',                // Aria (US Female)
-  'en-US-GuyNeural',                 // Guy (US Male)
-  'en-US-JennyNeural',               // Jenny (US Female)
+  'en-US-AndrewNeural',    // Andrew (US Male)
+  'en-US-EmmaNeural',      // Emma (US Female)
+  'en-GB-SoniaNeural',     // Sonia (UK Female)
+  'en-GB-RyanNeural',      // Ryan (UK Male)
+  'en-AU-NatashaNeural',   // Natasha (AU Female)
+  'en-AU-WilliamNeural',   // William (AU Male)
+  'en-US-BrianNeural',     // Brian (US Male)
+  'en-US-AriaNeural',      // Aria (US Female)
+  'en-US-GuyNeural',       // Guy (US Male)
+  'en-US-JennyNeural',     // Jenny (US Female)
 ] as const
 
 // Default audio settings for new users
@@ -19,7 +21,7 @@ export const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
   enabled: false,
   volume: 0.7,
   soundEffectsVolume: 0.4,  // Sound effects at 40% by default
-  voice: 'en-US-AndrewMultilingualNeural',
+  voice: 'en-US-AndrewNeural',
   rate: '+0%',
   pitch: '+0Hz',
   userTitle: '',  // Empty = no title used in phrases

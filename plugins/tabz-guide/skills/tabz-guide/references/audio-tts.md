@@ -22,13 +22,15 @@ Settings → Audio tab, or per-profile overrides in Settings → Profiles → [p
 
 ### Voice
 
-Neural voices from Microsoft Edge TTS. Default: `en-US-AndrewMultilingualNeural`
+Neural voices from Microsoft Edge TTS. Default: `en-US-AndrewNeural`
+
+> **Note:** We use non-multilingual voices to prevent auto-language detection issues (multilingual voices may speak German/other languages for short technical phrases).
 
 | Voice | Code |
 |-------|------|
-| Andrew (US Male) | `en-US-AndrewMultilingualNeural` |
-| Emma (US Female) | `en-US-EmmaMultilingualNeural` |
-| Brian (US Male) | `en-US-BrianMultilingualNeural` |
+| Andrew (US Male) | `en-US-AndrewNeural` |
+| Emma (US Female) | `en-US-EmmaNeural` |
+| Brian (US Male) | `en-US-BrianNeural` |
 | Aria (US Female) | `en-US-AriaNeural` |
 | Guy (US Male) | `en-US-GuyNeural` |
 | Jenny (US Female) | `en-US-JennyNeural` |
@@ -103,7 +105,7 @@ curl -X POST http://localhost:8129/api/audio/generate \
   -H "Content-Type: application/json" \
   -d '{
     "text": "Claude ready",
-    "voice": "en-US-AndrewMultilingualNeural",
+    "voice": "en-US-AndrewNeural",
     "rate": "+0%",
     "pitch": "+0Hz"
   }'
@@ -122,7 +124,7 @@ curl -X POST http://localhost:8129/api/audio/generate \
 | Param | Required | Default | Format |
 |-------|----------|---------|--------|
 | text | Yes | - | String |
-| voice | No | `en-US-AndrewMultilingualNeural` | Voice code |
+| voice | No | `en-US-AndrewNeural` | Voice code |
 | rate | No | `+0%` | `+N%` or `-N%` |
 | pitch | No | `+0Hz` | `+NHz` or `-NHz` |
 
@@ -137,7 +139,7 @@ curl -X POST http://localhost:8129/api/audio/speak \
   -H "Content-Type: application/json" \
   -d '{
     "text": "Task complete",
-    "voice": "en-US-EmmaMultilingualNeural",
+    "voice": "en-US-EmmaNeural",
     "rate": "+10%",
     "pitch": "+20Hz",
     "volume": 0.8,

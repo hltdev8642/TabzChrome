@@ -46,7 +46,7 @@ async function createTabGroup(options: {
 }): Promise<TabGroupResult> {
   try {
     const response = await axios.post<TabGroupResult>(
-      `${BACKEND_URL}/api/browser/tab-groups/create`,
+      `${BACKEND_URL}/api/browser/tab-groups`,
       options,
       { timeout: 10000 }
     );
@@ -66,9 +66,10 @@ async function updateTabGroup(options: {
   collapsed?: boolean;
 }): Promise<TabGroupResult> {
   try {
-    const response = await axios.post<TabGroupResult>(
-      `${BACKEND_URL}/api/browser/tab-groups/update`,
-      options,
+    const { groupId, ...updateProps } = options;
+    const response = await axios.put<TabGroupResult>(
+      `${BACKEND_URL}/api/browser/tab-groups/${groupId}`,
+      updateProps,
       { timeout: 10000 }
     );
     return response.data;
@@ -85,9 +86,10 @@ async function addToTabGroup(options: {
   tabIds: number[];
 }): Promise<TabGroupResult> {
   try {
+    const { groupId, tabIds } = options;
     const response = await axios.post<TabGroupResult>(
-      `${BACKEND_URL}/api/browser/tab-groups/add`,
-      options,
+      `${BACKEND_URL}/api/browser/tab-groups/${groupId}/tabs`,
+      { tabIds },
       { timeout: 10000 }
     );
     return response.data;
@@ -102,7 +104,7 @@ async function addToTabGroup(options: {
 async function ungroupTabs(tabIds: number[]): Promise<UngroupResult> {
   try {
     const response = await axios.post<UngroupResult>(
-      `${BACKEND_URL}/api/browser/tab-groups/ungroup`,
+      `${BACKEND_URL}/api/browser/ungroup-tabs`,
       { tabIds },
       { timeout: 10000 }
     );
@@ -118,7 +120,7 @@ async function ungroupTabs(tabIds: number[]): Promise<UngroupResult> {
 async function addToClaudeGroup(tabId: number): Promise<TabGroupResult> {
   try {
     const response = await axios.post<TabGroupResult>(
-      `${BACKEND_URL}/api/browser/tab-groups/claude/add`,
+      `${BACKEND_URL}/api/browser/claude-group/add`,
       { tabId },
       { timeout: 10000 }
     );
@@ -134,7 +136,7 @@ async function addToClaudeGroup(tabId: number): Promise<TabGroupResult> {
 async function removeFromClaudeGroup(tabId: number): Promise<{ success: boolean; message?: string; error?: string }> {
   try {
     const response = await axios.post<{ success: boolean; message?: string; error?: string }>(
-      `${BACKEND_URL}/api/browser/tab-groups/claude/remove`,
+      `${BACKEND_URL}/api/browser/claude-group/remove`,
       { tabId },
       { timeout: 10000 }
     );
@@ -150,7 +152,7 @@ async function removeFromClaudeGroup(tabId: number): Promise<{ success: boolean;
 async function getClaudeGroupStatus(): Promise<ClaudeGroupStatus> {
   try {
     const response = await axios.get<ClaudeGroupStatus>(
-      `${BACKEND_URL}/api/browser/tab-groups/claude/status`,
+      `${BACKEND_URL}/api/browser/claude-group/status`,
       { timeout: 10000 }
     );
     return response.data;

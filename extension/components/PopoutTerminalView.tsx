@@ -37,7 +37,7 @@ export function PopoutTerminalView({ terminalId }: PopoutTerminalViewProps) {
   } = useTerminalSessions({
     wsConnected,
     profiles,
-    getNextAvailableVoice: () => 'en-US-AndrewMultilingualNeural',
+    getNextAvailableVoice: () => 'en-US-AndrewNeural',
   })
 
   // Find our target session from the sessions list

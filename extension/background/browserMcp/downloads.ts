@@ -7,10 +7,11 @@ import { sendToWebSocket } from '../websocket'
 import { windowsToWslPath, waitForDownload } from '../utils'
 
 // Voice options for random selection (matches TTS_VOICES in extension settings)
+// Using non-multilingual voices to prevent auto-language detection
 const TTS_VOICE_VALUES = [
-  'en-US-AndrewMultilingualNeural', 'en-US-EmmaMultilingualNeural', 'en-US-BrianMultilingualNeural',
+  'en-US-AndrewNeural', 'en-US-EmmaNeural', 'en-US-BrianNeural',
   'en-US-AriaNeural', 'en-US-GuyNeural', 'en-US-JennyNeural', 'en-US-ChristopherNeural', 'en-US-AvaNeural',
-  'en-GB-SoniaNeural', 'en-GB-RyanNeural', 'en-AU-NatashaNeural', 'en-AU-WilliamMultilingualNeural'
+  'en-GB-SoniaNeural', 'en-GB-RyanNeural', 'en-AU-NatashaNeural', 'en-AU-WilliamNeural'
 ]
 
 // Per-event audio configuration type
@@ -69,7 +70,7 @@ async function announceDownload(filename: string): Promise<void> {
     const eventConfig = audioSettings.events?.mcpDownloadsConfig
 
     // Handle voice: event config > global setting > default
-    let voice = eventConfig?.voice || audioSettings.voice || 'en-US-AndrewMultilingualNeural'
+    let voice = eventConfig?.voice || audioSettings.voice || 'en-US-AndrewNeural'
     if (voice === 'random') {
       voice = TTS_VOICE_VALUES[Math.floor(Math.random() * TTS_VOICE_VALUES.length)]
     }
