@@ -19,7 +19,7 @@ export async function handleBrowserNotificationShow(message: {
   requestId: string
   title: string
   message: string
-  type?: 'basic' | 'image' | 'list' | 'progress'
+  notificationType?: 'basic' | 'image' | 'list' | 'progress'
   iconUrl?: string
   imageUrl?: string
   items?: Array<{ title: string; message: string }>
@@ -30,7 +30,7 @@ export async function handleBrowserNotificationShow(message: {
   requireInteraction?: boolean
 }): Promise<void> {
   try {
-    const notificationType = message.type || 'basic'
+    const notificationType = message.notificationType || 'basic'
 
     // Build notification options - using 'any' to bypass strict Chrome typing
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -64,24 +64,15 @@ export async function handleBrowserNotificationShow(message: {
     }
 
     // Create notification with optional custom ID
+    // Always pass ID as first arg (empty string for auto-generate)
     const notificationId = await new Promise<string>((resolve, reject) => {
-      if (message.notificationId) {
-        chrome.notifications.create(message.notificationId, options, (id) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message))
-          } else {
-            resolve(id)
-          }
-        })
-      } else {
-        chrome.notifications.create(options, (id) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message))
-          } else {
-            resolve(id)
-          }
-        })
-      }
+      chrome.notifications.create(message.notificationId || '', options, (id) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message || 'Unknown notification error'))
+        } else {
+          resolve(id)
+        }
+      })
     })
 
     sendToWebSocket({
@@ -95,7 +86,7 @@ export async function handleBrowserNotificationShow(message: {
       type: 'browser-notification-show-result',
       requestId: message.requestId,
       success: false,
-      error: (err as Error).message
+      error: (err as Error).message || String(err)
     })
   }
 }
@@ -109,13 +100,14 @@ export async function handleBrowserNotificationUpdate(message: {
   title?: string
   message?: string
   progress?: number
-  type?: 'basic' | 'image' | 'list' | 'progress'
+  notificationType?: 'basic' | 'image' | 'list' | 'progress'
 }): Promise<void> {
   try {
     // Build update options - only include fields that are provided
+    const notificationType = message.notificationType || 'basic'
     const options: chrome.notifications.NotificationOptions = {
       // Type is required for update - default to basic if changing type or not specified
-      type: message.type || 'basic',
+      type: notificationType,
       iconUrl: getDefaultIconUrl()
     }
 
@@ -127,14 +119,14 @@ export async function handleBrowserNotificationUpdate(message: {
       options.message = message.message
     }
 
-    if (message.type === 'progress' && typeof message.progress === 'number') {
+    if (notificationType === 'progress' && typeof message.progress === 'number') {
       options.progress = message.progress
     }
 
     const wasUpdated = await new Promise<boolean>((resolve, reject) => {
       chrome.notifications.update(message.notificationId, options, (updated) => {
         if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message))
+          reject(new Error(chrome.runtime.lastError.message || 'Unknown error'))
         } else {
           resolve(updated)
         }
@@ -168,7 +160,7 @@ export async function handleBrowserNotificationClear(message: {
     const wasCleared = await new Promise<boolean>((resolve, reject) => {
       chrome.notifications.clear(message.notificationId, (cleared) => {
         if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message))
+          reject(new Error(chrome.runtime.lastError.message || 'Unknown error'))
         } else {
           resolve(cleared)
         }
@@ -202,7 +194,7 @@ export async function handleBrowserNotificationList(message: {
     const notifications = await new Promise<Record<string, boolean>>((resolve, reject) => {
       chrome.notifications.getAll((notifs) => {
         if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message))
+          reject(new Error(chrome.runtime.lastError.message || 'Unknown error'))
         } else {
           resolve(notifs)
         }

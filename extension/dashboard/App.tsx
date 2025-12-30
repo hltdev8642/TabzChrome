@@ -1,22 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react'
 import {
-  Home,
-  Grid3X3,
-  Terminal,
-  Code2,
-  Wrench,
   ChevronLeft,
   ChevronRight,
-  Github,
   Wifi,
   WifiOff,
-  FolderOpen,
   Folder,
   ChevronDown,
   Trash2,
-  GitBranch,
-  Volume2,
 } from 'lucide-react'
+// Animated icons for sidebar
+import {
+  HomeIcon,
+  TerminalIcon,
+  FolderOpenIcon,
+  GitBranchIcon,
+  CodeIcon,
+  SettingsIcon,
+  VolumeIcon,
+  GridIcon,
+  GithubIcon,
+} from '../components/icons'
 import { useWorkingDirectory } from '../hooks/useWorkingDirectory'
 
 // Sections
@@ -53,19 +56,88 @@ type Section = 'home' | 'terminals' | 'files' | 'git' | 'api' | 'profiles' | 'mc
 interface NavItem {
   id: Section
   label: string
-  icon: React.ComponentType<{ className?: string }>
+  icon: React.ComponentType<{ className?: string; size?: number; isHovered?: boolean }>
   children?: NavItem[]
 }
 
+// GithubLink component with hover state for animated icon
+function GithubLink({ sidebarCollapsed }: { sidebarCollapsed: boolean }) {
+  const [isHovered, setIsHovered] = useState(false)
+
+  return (
+    <a
+      href="https://github.com/GGPrompts/TabzChrome"
+      target="_blank"
+      rel="noopener noreferrer"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${
+        sidebarCollapsed ? 'justify-center' : ''
+      }`}
+      title="View on GitHub"
+    >
+      <GithubIcon size={20} isHovered={isHovered} />
+      {!sidebarCollapsed && <span className="text-sm">GitHub</span>}
+    </a>
+  )
+}
+
+// NavButton component to handle hover state for animated icons
+function NavButton({
+  item,
+  isActive,
+  sidebarCollapsed,
+  hasChildren,
+  isExpanded,
+  isChildActive,
+  onClick
+}: {
+  item: NavItem
+  isActive: boolean
+  sidebarCollapsed: boolean
+  hasChildren: boolean
+  isExpanded: boolean
+  isChildActive: boolean
+  onClick: () => void
+}) {
+  const [isHovered, setIsHovered] = useState(false)
+  const Icon = item.icon
+
+  return (
+    <button
+      data-section={item.id}
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+        isActive || isChildActive
+          ? 'bg-primary/20 text-primary'
+          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+      }`}
+      title={sidebarCollapsed ? item.label : undefined}
+    >
+      <Icon size={20} className="flex-shrink-0" isHovered={isHovered} />
+      {!sidebarCollapsed && (
+        <>
+          <span className="flex-1 text-left text-sm font-medium">{item.label}</span>
+          {hasChildren && (
+            <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
+          )}
+        </>
+      )}
+    </button>
+  )
+}
+
 const navItems: NavItem[] = [
-  { id: 'home', label: 'Dashboard', icon: Home },
-  { id: 'terminals', label: 'Active Terminals', icon: Terminal },
-  { id: 'files', label: 'Files', icon: FolderOpen },
-  { id: 'git', label: 'Source Control', icon: GitBranch },
-  { id: 'api', label: 'API Playground', icon: Code2 },
-  { id: 'profiles', label: 'Profiles', icon: Grid3X3 },
-  { id: 'mcp', label: 'Tabz MCP', icon: Wrench },
-  { id: 'audio', label: 'Audio', icon: Volume2 },
+  { id: 'home', label: 'Dashboard', icon: HomeIcon },
+  { id: 'terminals', label: 'Active Terminals', icon: TerminalIcon },
+  { id: 'files', label: 'Files', icon: FolderOpenIcon },
+  { id: 'git', label: 'Source Control', icon: GitBranchIcon },
+  { id: 'api', label: 'API Playground', icon: CodeIcon },
+  { id: 'profiles', label: 'Profiles', icon: GridIcon },
+  { id: 'mcp', label: 'Tabz MCP', icon: SettingsIcon },
+  { id: 'audio', label: 'Audio', icon: VolumeIcon },
 ]
 
 export default function App() {
@@ -251,7 +323,7 @@ export default function App() {
         </div>
 
         {/* Working Directory Selector */}
-        <div className="p-2 border-b border-border" ref={dropdownRef}>
+        <div className="relative p-2 border-b border-border" ref={dropdownRef}>
           {sidebarCollapsed ? (
             <button
               onClick={() => setShowDirDropdown(!showDirDropdown)}
@@ -334,7 +406,6 @@ export default function App() {
         {/* Navigation */}
         <nav className="flex-1 p-2 space-y-1">
           {navItems.map((item) => {
-            const Icon = item.icon
             const isActive = activeSection === item.id
             const hasChildren = item.children && item.children.length > 0
             const isExpanded = expandedNav.has(item.id)
@@ -342,8 +413,13 @@ export default function App() {
 
             return (
               <div key={item.id}>
-                <button
-                  data-section={item.id}
+                <NavButton
+                  item={item}
+                  isActive={isActive}
+                  sidebarCollapsed={sidebarCollapsed}
+                  hasChildren={!!hasChildren}
+                  isExpanded={isExpanded}
+                  isChildActive={!!isChildActive}
                   onClick={() => {
                     if (hasChildren) {
                       // Toggle expansion
@@ -364,23 +440,7 @@ export default function App() {
                       setActiveSection(item.id)
                     }
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                    isActive || isChildActive
-                      ? 'bg-primary/20 text-primary'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
-                  title={sidebarCollapsed ? item.label : undefined}
-                >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  {!sidebarCollapsed && (
-                    <>
-                      <span className="flex-1 text-left text-sm font-medium">{item.label}</span>
-                      {hasChildren && (
-                        <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
-                      )}
-                    </>
-                  )}
-                </button>
+                />
                 {/* Children */}
                 {hasChildren && isExpanded && (
                   <div className={`mt-1 space-y-1 ${sidebarCollapsed ? '' : 'ml-4'}`}>
@@ -399,7 +459,7 @@ export default function App() {
                           } ${sidebarCollapsed ? 'justify-center' : ''}`}
                           title={sidebarCollapsed ? child.label : undefined}
                         >
-                          <ChildIcon className="w-4 h-4 flex-shrink-0" />
+                          <ChildIcon size={16} className="flex-shrink-0" />
                           {!sidebarCollapsed && <span className="text-sm">{child.label}</span>}
                         </button>
                       )
@@ -413,18 +473,7 @@ export default function App() {
 
         {/* Footer */}
         <div className="p-2 border-t border-border">
-          <a
-            href="https://github.com/GGPrompts/TabzChrome"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${
-              sidebarCollapsed ? 'justify-center' : ''
-            }`}
-            title="View on GitHub"
-          >
-            <Github className="w-5 h-5" />
-            {!sidebarCollapsed && <span className="text-sm">GitHub</span>}
-          </a>
+          <GithubLink sidebarCollapsed={sidebarCollapsed} />
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className="w-full flex items-center justify-center gap-2 px-3 py-2 mt-1 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"

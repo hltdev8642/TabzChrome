@@ -24,7 +24,7 @@ interface TerminalsGridProps {
   loading?: boolean
   onKill?: (id: string) => void
   onViewAsText?: (id: string) => void
-  onSwitchTo?: (id: string) => void
+  onSwitchTo?: (id: string, displayMode?: TerminalDisplayMode) => void
   onDetach?: (id: string) => void
   onPopOut?: (terminalId: string, sessionName: string) => void
   emptyMessage?: string
@@ -315,7 +315,7 @@ export function TerminalsGrid({
           return (
             <div
               key={terminal.id}
-              onClick={() => onSwitchTo?.(terminal.sessionName || terminal.id)}
+              onClick={() => onSwitchTo?.(terminal.sessionName || terminal.id, terminal.displayMode)}
               onContextMenu={(e) => handleContextMenu(e, terminal.id)}
               className="relative rounded-lg border border-[#333] hover:border-primary/50 transition-colors cursor-pointer overflow-hidden h-full flex flex-col"
             >

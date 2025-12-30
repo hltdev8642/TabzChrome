@@ -148,6 +148,40 @@ const PRESET_CATEGORIES: PresetCategory[] = [
 // Flatten for health checks (GET endpoints only)
 const ALL_PRESETS = PRESET_CATEGORIES.flatMap((cat) => cat.presets)
 
+// Path param resolvers - maps path param patterns to list endpoints
+interface PathResolver {
+  listEndpoint: string
+  extractId: (item: Record<string, unknown>) => string
+}
+
+// Response extractors for different API formats
+const PATH_RESOLVERS: Record<string, PathResolver> = {
+  ':id': {
+    listEndpoint: '/api/agents',
+    // Response: { success: true, data: [{ id: "ctt-...", ... }] }
+    extractId: (response) => {
+      const data = response.data as Record<string, unknown>[]
+      return data?.[0]?.id ? String(data[0].id) : ''
+    },
+  },
+  ':name': {
+    listEndpoint: '/api/tmux/sessions',
+    // Response: { success: true, data: { sessions: ["session1", ...] } }
+    extractId: (response) => {
+      const data = response.data as { sessions?: string[] }
+      return data?.sessions?.[0] || ''
+    },
+  },
+  ':repo': {
+    listEndpoint: '/api/git/repos',
+    // Response: { success: true, data: { repos: [{ name: "...", ... }] } }
+    extractId: (response) => {
+      const data = response.data as { repos?: Array<{ name: string }> }
+      return data?.repos?.[0]?.name || ''
+    },
+  },
+}
+
 export default function ApiPlayground() {
   const [method, setMethod] = useState<HttpMethod>('GET')
   const [url, setUrl] = useState('/api/health')
@@ -163,43 +197,96 @@ export default function ApiPlayground() {
   const [showAuth, setShowAuth] = useState(true)
   const [showPresets, setShowPresets] = useState(true)
   const [healthStatus, setHealthStatus] = useState<Record<string, HealthStatus>>({})
+  const [resolvedParams, setResolvedParams] = useState<Record<string, string>>({})
 
   const checkHealth = useCallback(async () => {
+    console.log('[ApiPlayground] Starting health check...')
     const newStatus: Record<string, HealthStatus> = {}
 
-    // Set all GET endpoints (without params) to 'checking', others to 'neutral'
+    // First, fetch resolved values for path params
+    const newResolvedParams: Record<string, string> = {}
+    await Promise.allSettled(
+      Object.entries(PATH_RESOLVERS).map(async ([param, resolver]) => {
+        try {
+          const res = await fetch(`${API_BASE}${resolver.listEndpoint}`, { method: 'GET' })
+          if (res.ok) {
+            const data = await res.json()
+            const resolved = resolver.extractId(data)
+            console.log(`[ApiPlayground] Resolved ${param} = "${resolved}"`)
+            if (resolved) {
+              newResolvedParams[param] = resolved
+            }
+          }
+        } catch (err) {
+          console.warn(`[ApiPlayground] Failed to resolve ${param}:`, err)
+        }
+      })
+    )
+
+    // Determine which endpoints can be checked
     ALL_PRESETS.forEach((preset) => {
-      // Only check GET endpoints that don't have path params or query params
-      const hasParams = preset.url.includes(':') || preset.url.includes('?')
-      if (preset.method === 'GET' && !hasParams) {
+      if (preset.method !== 'GET') {
+        newStatus[preset.url] = 'neutral'
+        return
+      }
+
+      const hasPathParams = preset.url.includes(':')
+
+      // Query params are fine - the URL already has values
+      if (!hasPathParams) {
+        newStatus[preset.url] = 'checking'
+        return
+      }
+
+      // Check if we can resolve path params
+      const pathParam = Object.keys(PATH_RESOLVERS).find((p) => preset.url.includes(p))
+      if (pathParam && newResolvedParams[pathParam]) {
         newStatus[preset.url] = 'checking'
       } else {
         newStatus[preset.url] = 'neutral'
       }
     })
-    setHealthStatus(newStatus)
 
-    // Check GET endpoints in parallel (only those without params)
-    const getPresets = ALL_PRESETS.filter((p) => {
-      const hasParams = p.url.includes(':') || p.url.includes('?')
-      return p.method === 'GET' && !hasParams
-    })
+    const checkingCount = Object.values(newStatus).filter(s => s === 'checking').length
+    const neutralCount = Object.values(newStatus).filter(s => s === 'neutral').length
+    console.log(`[ApiPlayground] Status determined: ${checkingCount} checking, ${neutralCount} neutral`)
+    console.log('[ApiPlayground] Resolved params:', newResolvedParams)
+
+    setHealthStatus(newStatus)
+    setResolvedParams(newResolvedParams)
+
+    // Check GET endpoints that we marked as 'checking'
+    const checkablePresets = ALL_PRESETS.filter(
+      (p) => p.method === 'GET' && newStatus[p.url] === 'checking'
+    )
+
     const results = await Promise.allSettled(
-      getPresets.map(async (preset) => {
-        const res = await fetch(`${API_BASE}${preset.url}`, { method: 'GET' })
+      checkablePresets.map(async (preset) => {
+        // Resolve path params in URL
+        let resolvedUrl = preset.url
+        Object.entries(newResolvedParams).forEach(([param, value]) => {
+          resolvedUrl = resolvedUrl.replace(param, value)
+        })
+
+        const res = await fetch(`${API_BASE}${resolvedUrl}`, { method: 'GET' })
         return { url: preset.url, ok: res.ok }
       })
     )
 
     const finalStatus = { ...newStatus }
     results.forEach((result, i) => {
-      const url = getPresets[i].url
+      const url = checkablePresets[i].url
       if (result.status === 'fulfilled') {
         finalStatus[url] = result.value.ok ? 'healthy' : 'unhealthy'
       } else {
         finalStatus[url] = 'unhealthy'
       }
     })
+
+    const healthyCount = Object.values(finalStatus).filter(s => s === 'healthy').length
+    const unhealthyCount = Object.values(finalStatus).filter(s => s === 'unhealthy').length
+    console.log(`[ApiPlayground] Health check complete: ${healthyCount} healthy, ${unhealthyCount} unhealthy`)
+
     setHealthStatus(finalStatus)
   }, [])
 
@@ -303,7 +390,14 @@ export default function ApiPlayground() {
 
   const applyPreset = (preset: Preset) => {
     setMethod(preset.method)
-    setUrl(preset.url)
+    // Resolve path params in URL if we have values
+    let resolvedUrl = preset.url
+    Object.entries(resolvedParams).forEach(([param, value]) => {
+      if (value) {
+        resolvedUrl = resolvedUrl.replace(param, value)
+      }
+    })
+    setUrl(resolvedUrl)
     if (preset.body) {
       setBody(JSON.stringify(preset.body, null, 2))
     } else {

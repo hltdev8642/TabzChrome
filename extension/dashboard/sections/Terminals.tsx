@@ -205,10 +205,18 @@ export default function TerminalsSection() {
     }
   }
 
-  // Switch to a terminal tab in the sidebar
-  const switchToTerminal = async (terminalId: string) => {
+  // Switch to a terminal tab in the sidebar, or focus popout/3D window
+  const switchToTerminal = async (terminalId: string, displayMode?: 'sidebar' | 'popout' | '3d') => {
     try {
-      await chrome.runtime.sendMessage({ type: 'SWITCH_TO_TERMINAL', terminalId })
+      if (displayMode === 'popout') {
+        // Focus the popout window instead of switching sidebar tabs
+        await chrome.runtime.sendMessage({ type: 'FOCUS_POPOUT_TERMINAL', terminalId })
+      } else if (displayMode === '3d') {
+        // Focus the 3D Focus tab instead of switching sidebar tabs
+        await chrome.runtime.sendMessage({ type: 'FOCUS_3D_TERMINAL', terminalId })
+      } else {
+        await chrome.runtime.sendMessage({ type: 'SWITCH_TO_TERMINAL', terminalId })
+      }
     } catch (err) {
       console.error('Failed to switch to terminal:', err)
     }

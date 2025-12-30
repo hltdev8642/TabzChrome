@@ -40,6 +40,10 @@ export type MessageType =
   | 'OPEN_SETTINGS_EDIT_PROFILE'
   // Dashboard -> Sidebar: Switch to a specific terminal tab
   | 'SWITCH_TO_TERMINAL'
+  // Dashboard -> Background: Focus a popped out terminal window
+  | 'FOCUS_POPOUT_TERMINAL'
+  // Dashboard -> Background: Focus a 3D Focus tab
+  | 'FOCUS_3D_TERMINAL'
   // Browser MCP - Console capture
   | 'CONSOLE_LOG'
   | 'GET_CONSOLE_LOGS'
@@ -308,6 +312,18 @@ export interface SwitchToTerminalMessage extends BaseMessage {
   terminalId: string;
 }
 
+// Focus a popped out terminal window (dashboard -> background)
+export interface FocusPopoutTerminalMessage extends BaseMessage {
+  type: 'FOCUS_POPOUT_TERMINAL';
+  terminalId: string;
+}
+
+// Focus a 3D Focus tab (dashboard -> background)
+export interface Focus3DTerminalMessage extends BaseMessage {
+  type: 'FOCUS_3D_TERMINAL';
+  terminalId: string;
+}
+
 // 3D Focus Mode - notify sidebar when opening in 3D view
 export interface FocusIn3DMessage extends BaseMessage {
   type: 'FOCUS_IN_3D';
@@ -390,6 +406,8 @@ export type ExtensionMessage =
   | OpenTabMessage
   | OpenSettingsEditProfileMessage
   | SwitchToTerminalMessage
+  | FocusPopoutTerminalMessage
+  | Focus3DTerminalMessage
   // Browser MCP messages
   | ConsoleLogMessage
   | GetConsoleLogsMessage

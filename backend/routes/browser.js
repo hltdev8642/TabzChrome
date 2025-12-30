@@ -1759,7 +1759,8 @@ router.post('/notification/show', async (req, res) => {
   const broadcast = req.app.get('broadcast');
   if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
   try {
-    const result = await makeBrowserRequest(broadcast, 'browser-notification-show', { title, message, type, iconUrl, imageUrl, items, progress, buttons, priority, notificationId });
+    // Use notificationType to avoid collision with WebSocket message 'type' field
+    const result = await makeBrowserRequest(broadcast, 'browser-notification-show', { title, message, notificationType: type, iconUrl, imageUrl, items, progress, buttons, priority, notificationId });
     res.json(result);
   } catch (error) {
     log.error('notification-show error:', error);
@@ -1774,7 +1775,8 @@ router.post('/notification/update', async (req, res) => {
   const broadcast = req.app.get('broadcast');
   if (!broadcast) return res.status(500).json({ success: false, error: 'WebSocket broadcast not available' });
   try {
-    const result = await makeBrowserRequest(broadcast, 'browser-notification-update', { notificationId, title, message, type, progress });
+    // Use notificationType to avoid collision with WebSocket message 'type' field
+    const result = await makeBrowserRequest(broadcast, 'browser-notification-update', { notificationId, title, message, notificationType: type, progress });
     res.json(result);
   } catch (error) {
     log.error('notification-update error:', error);

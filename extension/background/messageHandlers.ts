@@ -108,6 +108,54 @@ export function setupMessageHandlers(): void {
         }, 300)
         break
 
+      case 'FOCUS_POPOUT_TERMINAL':
+        // Focus a popped out terminal window (from dashboard click)
+        {
+          const terminalId = (message as any).terminalId
+          // Find the window ID for this terminal from popoutWindows map
+          let windowId: number | null = null
+          for (const [wid, tid] of popoutWindows.entries()) {
+            if (tid === terminalId) {
+              windowId = wid
+              break
+            }
+          }
+          if (windowId) {
+            try {
+              await chrome.windows.update(windowId, { focused: true })
+            } catch (err) {
+              console.error('Failed to focus popout window:', err)
+            }
+          } else {
+            console.warn('No popout window found for terminal:', terminalId)
+          }
+        }
+        break
+
+      case 'FOCUS_3D_TERMINAL':
+        // Focus a 3D Focus tab (from dashboard click)
+        {
+          const terminalId = (message as any).terminalId
+          // Find the Chrome tab with the 3D Focus page for this terminal
+          // URL pattern: chrome-extension://[id]/3d/3d-focus.html?...&id=[terminalId]
+          const tabs = await chrome.tabs.query({})
+          const focusTab = tabs.find(tab =>
+            tab.url?.includes('3d/3d-focus.html') && tab.url?.includes(`id=${terminalId}`)
+          )
+          if (focusTab?.id && focusTab.windowId) {
+            try {
+              // Focus the window first, then activate the tab
+              await chrome.windows.update(focusTab.windowId, { focused: true })
+              await chrome.tabs.update(focusTab.id, { active: true })
+            } catch (err) {
+              console.error('Failed to focus 3D tab:', err)
+            }
+          } else {
+            console.warn('No 3D Focus tab found for terminal:', terminalId)
+          }
+        }
+        break
+
       case 'FOCUS_IN_3D':
         // 3D Focus page opened/refreshed - broadcast to sidepanel to show placeholder
         broadcastToClients({

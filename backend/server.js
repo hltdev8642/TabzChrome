@@ -1353,6 +1353,50 @@ wss.on('connection', (ws, req) => {
           break;
 
         // ============================================
+        // NOTIFICATION RESULTS
+        // ============================================
+        case 'browser-notification-show-result':
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              notificationId: data.notificationId,
+              error: data.error
+            });
+          }
+          break;
+
+        case 'browser-notification-update-result':
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              wasUpdated: data.wasUpdated,
+              error: data.error
+            });
+          }
+          break;
+
+        case 'browser-notification-clear-result':
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              wasCleared: data.wasCleared,
+              error: data.error
+            });
+          }
+          break;
+
+        case 'browser-notification-list-result':
+          if (data.requestId) {
+            browserRouter.resolvePendingRequest(data.requestId, {
+              success: data.success,
+              notificationIds: data.notificationIds,
+              count: data.count,
+              error: data.error
+            });
+          }
+          break;
+
+        // ============================================
         // QUEUE_COMMAND - Forward to Chrome extension
         // ============================================
         case 'QUEUE_COMMAND':

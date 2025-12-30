@@ -15,6 +15,21 @@ For older versions (1.2.x, 1.1.x, 1.0.x, and pre-public 2.x), see [CHANGELOG-arc
 
 ---
 
+## [1.3.8] - 2025-12-30
+
+### Fixed
+- **MCP Notification Tools** - `tabz_notification_show/update/clear/list` now work correctly:
+  - Fixed tree-shaking eliminating notification handlers from build (added handler registry)
+  - Fixed payload `type` collision - notification template type was overwriting WebSocket message type
+  - Added missing backend response handlers for notification results in `server.js`
+  - Fixed `chrome.notifications.create` API call signature (always pass ID as first arg)
+
+- **TTS German Language Detection** - Audio announcements no longer randomly speak German:
+  - Removed "Multilingual" voices from `VOICE_OPTIONS` in audio generator
+  - Multilingual voices auto-detect language and misidentified short phrases like tool names
+
+---
+
 ## [1.3.7] - 2025-12-30
 
 ### Added

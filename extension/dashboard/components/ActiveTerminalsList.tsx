@@ -49,7 +49,7 @@ interface ActiveTerminalsListProps {
   onSelectAll?: () => void
   onKill?: (id: string) => void
   onViewAsText?: (id: string) => void
-  onSwitchTo?: (id: string) => void
+  onSwitchTo?: (id: string, displayMode?: TerminalDisplayMode) => void
   onDetach?: (id: string) => void
   onPopOut?: (terminalId: string, sessionName: string) => void
   emptyMessage?: string
@@ -499,7 +499,7 @@ export function ActiveTerminalsList({
                 `}
                 onClick={
                   isClickable && onSwitchTo
-                    ? () => onSwitchTo(terminal.sessionName || terminal.id)
+                    ? () => onSwitchTo(terminal.sessionName || terminal.id, terminal.displayMode)
                     : undefined
                 }
                 title={isClickable ? 'Click to switch to this terminal' : undefined}
