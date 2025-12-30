@@ -1,9 +1,9 @@
 # Changelog Archive
 
-This file contains older changelog entries. See [CHANGELOG.md](CHANGELOG.md) for recent changes (1.2.x).
+This file contains older changelog entries. See [CHANGELOG.md](CHANGELOG.md) for recent changes (1.3.x).
 
 **Contents:**
-- [Public Versions (Archived)](#public-versions-archived): 1.1.x, 1.0.x
+- [Public Versions (Archived)](#public-versions-archived): 1.2.x, 1.1.x, 1.0.x
 - [Pre-Public Development History](#pre-public-development-history): 2.7.x - 1.0.0 (development versions before public release)
 
 ---
@@ -11,6 +11,320 @@ This file contains older changelog entries. See [CHANGELOG.md](CHANGELOG.md) for
 # Public Versions (Archived)
 
 These are older public releases that have been archived to keep the main changelog manageable.
+
+---
+
+## [1.2.22] - 2025-12-26
+
+### Added
+- **Profile Reference Text** - New optional field for custom instructions/context:
+  - Rich text editor with markdown support (bold, italic, code, links)
+  - Reference button (📎) in profile card action bar
+  - Full-screen popup viewer on click
+  - Useful for storing prompts, setup notes, or project context
+
+### Fixed
+- **Default profile spacing** - Fixed CSS gap causing extra space in profile cards
+
+---
+
+## [1.2.21] - 2025-12-26
+
+### Added
+- **Background Media for Terminals** - Terminal profiles now support video/image backgrounds:
+  - Video loops (local files or URLs, plays silently behind terminal)
+  - Image backgrounds (PNG, JPG, GIF, WebP)
+  - Opacity slider (0-100%) for readability
+  - Works with all themes, gradients layer on top
+  - Supports `~` paths expanded server-side
+- **Backend Media Endpoint** - `GET /api/media/local?path=` serves local files with MIME detection
+
+### Changed
+- **Dashboard Profile Cards** - Now show background media preview when configured
+- **Profile Edit Form** - Added "Background Media" section with type selector, path input, and opacity slider
+
+### Technical
+- Files: `extension/components/Terminal.tsx`, `extension/dashboard/sections/Profiles.tsx`, `backend/server.js`
+- New types: `BackgroundMediaType`, profile fields `backgroundMedia`, `backgroundMediaType`, `backgroundMediaOpacity`
+
+---
+
+## [1.2.20] - 2025-12-25
+
+### Added
+- **Dashboard Profile Management** - Full profile editor accessible from Dashboard → Profiles:
+  - Grid and list view toggle
+  - Search profiles by name or command
+  - Inline edit form with all profile settings
+  - Live category color picker
+  - "Paste Only" launch option (pastes command without executing)
+  - Visual theme preview in cards
+
+### Changed
+- **Profile Cards in Dashboard** - Now show theme gradient backgrounds instead of just category color
+- **Category Management** - Categories now managed inline in profile cards (no separate modal)
+
+### Fixed
+- **Profile Dropdown in Sidebar** - No longer clips at window edge when near bottom
+
+---
+
+## [1.2.19] - 2025-12-25 (simplify-codebase branch)
+
+### Changed
+- **Simplified Dashboard Architecture** - Merged complexity into simpler patterns:
+  - Removed separate `ProfileCard.tsx` component (inlined into Profiles.tsx)
+  - Removed `ProfileEditModal.tsx` (edit form now inline in dashboard)
+  - Removed `useProfileManagement.ts` hook (logic moved to component)
+  - Theme preview now uses CSS background-image instead of Three.js
+
+### Fixed
+- **Profile Grid Layout** - Fixed cards not aligning properly in grid view
+- **Edit Form Validation** - Fixed profile name validation not showing errors
+- **Category Picker** - Fixed category colors not updating immediately
+
+---
+
+## [1.2.18] - 2025-12-25
+
+### Added
+- **Dashboard Files Section** - File browser accessible from Dashboard → Files:
+  - Tree view with expand/collapse
+  - File type icons and syntax highlighting preview
+  - Breadcrumb navigation
+  - Open files in default editor
+
+### Fixed
+- **Backend File API** - Fixed path traversal vulnerability in `/api/files/tree`
+
+---
+
+## [1.2.17] - 2025-12-25
+
+### Fixed
+- **Terminal Focus on Spawn** - Terminals now correctly receive focus when spawned via + button
+
+---
+
+## [1.2.16] - 2025-12-25
+
+### Fixed
+- **Theme Gradient Rendering** - Fixed gradients not applying to terminals in some edge cases
+
+---
+
+## [1.2.15] - 2025-12-25
+
+### Added
+- **Dashboard Terminals Section** - Live terminal list accessible from Dashboard → Terminals:
+  - Shows all active tmux sessions with ctt- prefix
+  - Kill terminals directly from dashboard
+  - View terminal metadata (profile, working directory)
+
+### Changed
+- **Ghost Badge** - Now links to Dashboard Terminals instead of inline dropdown
+
+---
+
+## [1.2.14] - 2025-12-25
+
+### Fixed
+- **MCP Tool Timeouts** - Increased default timeout for screenshot tools from 5s to 30s
+- **CDP Connection Stability** - Better error handling for Chrome disconnects
+
+---
+
+## [1.2.13] - 2025-12-24
+
+### Added
+- **Dashboard Home Section** - Quick stats and system overview:
+  - Active terminal count
+  - Backend connection status
+  - Recent activity feed
+  - Quick actions (spawn terminal, open settings)
+
+### Changed
+- **Dashboard Navigation** - Added Home icon and reordered sections
+
+---
+
+## [1.2.12] - 2025-12-24
+
+### Added
+- **Dashboard MCP Playground** - Interactive MCP tool testing:
+  - Select any registered MCP tool
+  - Fill in parameters with form UI
+  - Execute and see results
+  - View raw JSON request/response
+
+### Fixed
+- **MCP Server Discovery** - Fixed tools not appearing when server starts after Claude Code
+
+---
+
+## [1.2.11] - 2025-12-24
+
+### Fixed
+- **Sidebar Width Persistence** - Fixed sidebar width not being saved between sessions
+- **Tab Scroll Position** - Fixed tab bar losing scroll position when switching tabs
+
+---
+
+## [1.2.10] - 2025-12-23
+
+### Added
+- **Full Dashboard Page** - New full-page dashboard accessible via header grid icon:
+  - Sidebar navigation with sections
+  - Dark theme matching extension
+  - Responsive layout
+  - Opens in new browser tab
+
+### Changed
+- **Header Grid Icon** - Now opens dashboard instead of showing inline panel
+
+---
+
+## [1.2.9] - 2025-12-23
+
+### Added
+- **9 New Theme Gradients** - Expanded from 6 to 15 themes:
+  - Forest Depths, Sunset Glow, Arctic Frost, Neon Dreams, Volcanic Ash
+  - Golden Hour, Deep Space, Emerald Isle, Twilight Zone
+- **Theme Preview in Dropdown** - Small gradient preview swatch next to each theme name
+
+### Changed
+- **Theme Picker UI** - Grid layout with larger preview areas
+
+---
+
+## [1.2.8] - 2025-12-23
+
+### Added
+- **Performance Coverage Tool** - `tabz_get_coverage` MCP tool:
+  - Start/stop CSS and JavaScript coverage collection
+  - Returns unused bytes percentage
+  - Helps identify dead code on pages
+
+- **Performance Profiling Tool** - `tabz_profile_performance` MCP tool:
+  - CPU profiling with configurable duration
+  - Returns top functions by self-time
+  - Useful for identifying performance bottlenecks
+
+### Changed
+- **MCP Tools Organized by Category** - Tools now grouped in documentation:
+  - Core (tabs, screenshot, page info)
+  - Interaction (click, fill, DOM)
+  - Network (capture, downloads)
+  - Performance (coverage, profiling)
+
+---
+
+## [1.2.7] - 2025-12-23
+
+### Fixed
+- **MCP Server Stability** - Fixed crash when Chrome debugging port unavailable
+- **Screenshot Path Handling** - Fixed paths with spaces not working on Windows
+
+---
+
+## [1.2.6] - 2025-12-22
+
+### Added
+- **DOM Tree Tool** - `tabz_get_dom_tree` MCP tool:
+  - Returns simplified DOM structure
+  - Configurable depth limit
+  - Includes element attributes and text content
+  - Useful for understanding page layout
+
+### Fixed
+- **Element Selector Robustness** - Click and fill now retry with different selector strategies
+
+---
+
+## [1.2.5] - 2025-12-22
+
+### Added
+- **Network Capture Tools** - 3 new MCP tools for monitoring network requests:
+  - `tabz_enable_network_capture` - Start capturing XHR/fetch requests
+  - `tabz_get_network_requests` - Get captured requests with timing
+  - `tabz_clear_network_requests` - Clear captured requests buffer
+
+### Changed
+- **Tool Count** - Now 29 MCP tools total
+
+---
+
+## [1.2.4] - 2025-12-22
+
+### Added
+- **Download Management** - 3 new MCP tools:
+  - `tabz_download_file` - Download file from URL to specified path
+  - `tabz_get_downloads` - List recent Chrome downloads
+  - `tabz_cancel_download` - Cancel in-progress download
+
+### Fixed
+- **Download Path Expansion** - `~` in paths now properly expands to home directory
+
+---
+
+## [1.2.3] - 2025-12-22
+
+### Added
+- **Console Log Filtering** - `tabz_get_console_logs` now supports:
+  - `level` filter (log, warn, error, info, debug)
+  - `limit` parameter (default 50)
+  - `clear` option to reset log buffer
+
+### Changed
+- **Console Log Format** - Now includes timestamp and source URL
+
+---
+
+## [1.2.2] - 2025-12-22
+
+### Fixed
+- **Tab Groups API** - Fixed error when Chrome doesn't support tab groups
+- **Extension Permissions** - Added `tabGroups` permission for Chrome 89+
+
+---
+
+## [1.2.1] - 2025-12-22
+
+### Added
+- **Tab Group Tools** - 5 new MCP tools for Chrome tab groups:
+  - `tabz_list_groups` - List all tab groups
+  - `tabz_create_group` - Create new group with color/title
+  - `tabz_update_group` - Update group properties
+  - `tabz_add_to_group` - Add tabs to existing group
+  - `tabz_ungroup_tabs` - Remove tabs from groups
+
+### Changed
+- **Tool Naming** - All tools now use `tabz_` prefix consistently
+
+---
+
+## [1.2.0] - 2025-12-22
+
+### Major Features
+
+#### Full Dashboard Integration
+- **Dashboard App** - Complete React dashboard at `/dashboard/`:
+  - Profiles management with drag-drop reordering
+  - MCP tools configuration and testing
+  - Terminal session management
+  - Settings and preferences
+
+#### Window Management
+- **Window Tools** - 5 new MCP tools:
+  - `tabz_list_windows` - List Chrome windows
+  - `tabz_create_window` - Open new window
+  - `tabz_update_window` - Resize/move window
+  - `tabz_close_window` - Close window
+  - `tabz_tile_windows` - Arrange windows in grid
+
+### Changed
+- **Architecture** - Dashboard now uses Vite build, shared components with sidebar
+- **Tool Count** - Increased from 20 to 26 MCP tools
 
 ---
 

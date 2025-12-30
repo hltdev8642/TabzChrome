@@ -21,6 +21,7 @@ import {
   Bot,
   Terminal,
   Plug,
+  Music,
   // New icons for AI-relevant files
   Container,  // Docker
   GitBranch,  // .gitignore
@@ -226,12 +227,14 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
     const imageExts = ["png", "jpg", "jpeg", "gif", "svg", "ico", "webp", "bmp"]
     const jsonExts = ["json", "jsonc", "json5"]
     const videoExts = ["mp4", "webm", "ogg", "ogv", "mov", "avi", "mkv", "m4v"]
+    const audioExts = ["mp3", "wav", "flac", "aac", "m4a", "wma"]
 
     if (codeExts.includes(ext || "")) return <FileCode className="w-4 h-4 text-green-400" />
     if (docExts.includes(ext || "")) return <FileText className="w-4 h-4 text-blue-400" />
     if (imageExts.includes(ext || "")) return <Image className="w-4 h-4 text-yellow-400" />
     if (jsonExts.includes(ext || "")) return <FileJson className="w-4 h-4 text-orange-400" />
     if (videoExts.includes(ext || "")) return <Video className="w-4 h-4 text-purple-400" />
+    if (audioExts.includes(ext || "")) return <Music className="w-4 h-4 text-pink-400" />
     if (ext === "csv") return <Table className="w-4 h-4 text-emerald-400" />
     return <File className="w-4 h-4" />
   }
@@ -432,6 +435,17 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
 
   // State for audio loading
   const [isLoadingAudio, setIsLoadingAudio] = useState(false)
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false)
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
+
+  // Audio file extensions
+  const AUDIO_EXTENSIONS = ['mp3', 'wav', 'ogg', 'm4a', 'webm', 'flac', 'aac']
+
+  // Check if file is an audio file
+  const isAudioFile = (fileName: string): boolean => {
+    const ext = fileName.split('.').pop()?.toLowerCase() || ''
+    return AUDIO_EXTENSIONS.includes(ext)
+  }
 
   // Helper to fetch file content
   const fetchFileContent = useCallback(async (path: string): Promise<string | null> => {
@@ -467,6 +481,58 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
       })
     }
   }, [contextMenu.node, fetchFileContent])
+
+  // Play audio file directly
+  const handlePlayAudio = useCallback(async () => {
+    if (!contextMenu.node || contextMenu.node.type !== 'file') return
+    if (!isAudioFile(contextMenu.node.name)) return
+
+    // Stop any currently playing audio
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause()
+      currentAudioRef.current = null
+    }
+
+    setIsPlayingAudio(true)
+
+    try {
+      // Get audio settings for volume
+      const result = await chrome.storage.local.get(['audioSettings'])
+      const audioSettings = (result.audioSettings || {}) as { soundEffectsVolume?: number }
+      const volume = audioSettings.soundEffectsVolume ?? 0.4
+
+      // Build URL for local file
+      const audioUrl = `${API_BASE}/api/audio/local-file?path=${encodeURIComponent(contextMenu.node.path)}`
+
+      const audio = new Audio(audioUrl)
+      audio.volume = volume
+      currentAudioRef.current = audio
+
+      audio.onended = () => {
+        setIsPlayingAudio(false)
+        currentAudioRef.current = null
+      }
+      audio.onerror = (e) => {
+        console.error('Failed to play audio:', e)
+        setIsPlayingAudio(false)
+        currentAudioRef.current = null
+      }
+
+      await audio.play()
+    } catch (err) {
+      console.error('Failed to play audio:', err)
+      setIsPlayingAudio(false)
+    }
+  }, [contextMenu.node])
+
+  // Stop currently playing audio
+  const handleStopAudio = useCallback(() => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause()
+      currentAudioRef.current = null
+      setIsPlayingAudio(false)
+    }
+  }, [])
 
   // Read file aloud
   const handleReadAloud = useCallback(async () => {
@@ -798,6 +864,11 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
         onReadAloud={handleReadAloud}
         isLoadingAudio={isLoadingAudio}
         onSetWorkingDir={handleSetWorkingDir}
+        // Audio playback for audio files
+        isAudioFile={contextMenu.node ? isAudioFile(contextMenu.node.name) : false}
+        onPlayAudio={handlePlayAudio}
+        onStopAudio={handleStopAudio}
+        isPlayingAudio={isPlayingAudio}
         // Script actions
         scriptInfo={contextMenuScriptInfo}
         onRunScript={handleRunScript}

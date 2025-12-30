@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react'
-import { Copy, AtSign, Star, Pin, Terminal, Send, Volume2, Loader2, FolderOpen, Play, CheckCircle, Brain, X } from 'lucide-react'
+import { Copy, AtSign, Star, Pin, Terminal, Send, Volume2, Loader2, FolderOpen, Play, CheckCircle, Brain, X, Square, Music } from 'lucide-react'
 import type { ScriptInfo } from '../../utils/claudeFileTypes'
 
 interface FileNode {
@@ -27,6 +27,11 @@ interface FileTreeContextMenuProps {
   isLoadingAudio?: boolean
   // New action for directories
   onSetWorkingDir?: () => void
+  // Audio file playback
+  isAudioFile?: boolean
+  onPlayAudio?: () => void
+  onStopAudio?: () => void
+  isPlayingAudio?: boolean
   // Script actions
   scriptInfo?: ScriptInfo | null
   onRunScript?: () => void
@@ -76,6 +81,11 @@ export function FileTreeContextMenu({
   onReadAloud,
   isLoadingAudio,
   onSetWorkingDir,
+  // Audio file playback
+  isAudioFile,
+  onPlayAudio,
+  onStopAudio,
+  isPlayingAudio,
   // Script actions
   scriptInfo,
   onRunScript,
@@ -242,7 +252,34 @@ export function FileTreeContextMenu({
               Paste to Terminal
             </button>
           )}
-          {onReadAloud && (
+          {/* Play Audio - for audio files */}
+          {isAudioFile && onPlayAudio && (
+            <button
+              className={`context-menu-item text-green-400 ${isPlayingAudio ? 'bg-green-400/10' : ''}`}
+              onClick={() => {
+                if (isPlayingAudio && onStopAudio) {
+                  onStopAudio()
+                } else {
+                  onPlayAudio()
+                }
+                // Don't close - let user control playback
+              }}
+            >
+              {isPlayingAudio ? (
+                <>
+                  <Square className="w-4 h-4 inline mr-2" />
+                  Stop Audio
+                </>
+              ) : (
+                <>
+                  <Music className="w-4 h-4 inline mr-2" />
+                  Play Audio
+                </>
+              )}
+            </button>
+          )}
+          {/* Read Aloud - for text files (not audio files) */}
+          {onReadAloud && !isAudioFile && (
             <button
               className={`context-menu-item ${isLoadingAudio ? 'opacity-50 cursor-wait' : ''}`}
               onClick={() => {
@@ -262,7 +299,7 @@ export function FileTreeContextMenu({
             </button>
           )}
 
-          {(onSendToChat || onPasteToTerminal || onReadAloud) && (
+          {(onSendToChat || onPasteToTerminal || onReadAloud || isAudioFile) && (
             <div className="context-menu-divider" />
           )}
 

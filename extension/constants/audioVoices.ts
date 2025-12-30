@@ -18,6 +18,7 @@ export const VOICE_POOL = [
 export const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
   enabled: false,
   volume: 0.7,
+  soundEffectsVolume: 0.4,  // Sound effects at 40% by default
   voice: 'en-US-AndrewMultilingualNeural',
   rate: '+0%',
   pitch: '+0Hz',

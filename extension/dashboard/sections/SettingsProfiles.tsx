@@ -25,6 +25,7 @@ import {
   SquareTerminal,
   PanelLeft,
   ExternalLink,
+  FolderOpen,
 } from 'lucide-react'
 import { Terminal as TerminalIcon } from 'lucide-react'
 import { TerminalPreview } from '../components/TerminalPreview'
@@ -35,13 +36,16 @@ import {
   type CategorySettings,
   type AudioSettings,
   type AudioMode,
+  type FilePickerDefaults,
   CATEGORY_COLORS,
   DEFAULT_CATEGORY_COLOR,
   DEFAULT_PROFILE,
   DEFAULT_AUDIO_SETTINGS,
+  DEFAULT_FILE_PICKER_DEFAULTS,
   getAvailableFonts,
   TTS_VOICES,
 } from '../../components/settings/types'
+import FilePickerModal from '../components/files/FilePickerModal'
 import { useDragDrop } from '../../hooks/useDragDrop'
 import { spawnTerminal, spawnTerminalPopout } from '../hooks/useDashboard'
 import { useWorkingDirectory } from '../../hooks/useWorkingDirectory'
@@ -1490,8 +1494,40 @@ function ProfileEditForm({
   onCancel,
   isDark,
 }: ProfileEditFormProps) {
+  const [showMediaPicker, setShowMediaPicker] = useState(false)
+  const [filePickerDefaults, setFilePickerDefaults] = useState<FilePickerDefaults>(DEFAULT_FILE_PICKER_DEFAULTS)
+
+  // Load file picker defaults
+  useEffect(() => {
+    chrome.storage.local.get(['filePickerDefaults'], (result) => {
+      if (result.filePickerDefaults) {
+        setFilePickerDefaults({ ...DEFAULT_FILE_PICKER_DEFAULTS, ...result.filePickerDefaults })
+      }
+    })
+  }, [])
+
   const updateProfile = (updates: Partial<Profile>) => {
     setProfile({ ...profile, ...updates })
+  }
+
+  // Handle file selection from picker
+  const handleMediaFileSelected = (filePath: string) => {
+    updateProfile({ backgroundMedia: filePath })
+    setShowMediaPicker(false)
+  }
+
+  // Determine filter type based on current media type
+  const getMediaFilterType = () => {
+    if (profile.backgroundMediaType === 'video') return 'videos'
+    if (profile.backgroundMediaType === 'image') return 'images'
+    return undefined  // No filter if not set
+  }
+
+  // Get default path based on media type
+  const getMediaDefaultPath = () => {
+    if (profile.backgroundMediaType === 'video') return filePickerDefaults.videos || '~/Videos'
+    if (profile.backgroundMediaType === 'image') return filePickerDefaults.images || '~/Pictures'
+    return filePickerDefaults.general || '~'
   }
 
   return (
@@ -1876,16 +1912,26 @@ function ProfileEditForm({
             {profile.backgroundMediaType && profile.backgroundMediaType !== 'none' && (
               <>
                 <FormField label="Media Path" hint="Local file path or URL">
-                  <input
-                    type="text"
-                    value={profile.backgroundMedia || ''}
-                    onChange={(e) => updateProfile({ backgroundMedia: e.target.value })}
-                    placeholder={profile.backgroundMediaType === 'video'
-                      ? 'e.g., ~/Videos/space.mp4 or https://...'
-                      : 'e.g., ~/Pictures/bg.png or https://...'
-                    }
-                    className="w-full px-3 py-2.5 bg-background/50 border border-border/60 rounded-lg font-mono text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={profile.backgroundMedia || ''}
+                      onChange={(e) => updateProfile({ backgroundMedia: e.target.value })}
+                      placeholder={profile.backgroundMediaType === 'video'
+                        ? 'e.g., ~/Videos/space.mp4 or https://...'
+                        : 'e.g., ~/Pictures/bg.png or https://...'
+                      }
+                      className="flex-1 px-3 py-2.5 bg-background/50 border border-border/60 rounded-lg font-mono text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowMediaPicker(true)}
+                      className="p-2.5 rounded-lg bg-muted/50 hover:bg-muted border border-border/60 transition-colors"
+                      title="Browse files"
+                    >
+                      <FolderOpen className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  </div>
                 </FormField>
 
                 <FormField label={`Media Opacity: ${profile.backgroundMediaOpacity ?? 50}%`}>
@@ -1908,6 +1954,16 @@ function ProfileEditForm({
           </SectionCard>
         </div>
       </div>
+
+      {/* File picker modal for background media */}
+      <FilePickerModal
+        isOpen={showMediaPicker}
+        title={`Select ${profile.backgroundMediaType === 'video' ? 'Video' : 'Image'} File`}
+        basePath={getMediaDefaultPath()}
+        filterType={getMediaFilterType()}
+        onSelect={handleMediaFileSelected}
+        onClose={() => setShowMediaPicker(false)}
+      />
     </div>
   )
 }

@@ -175,6 +175,7 @@ export interface SoundEffect {
   preset?: SoundPreset        // If type === 'preset'
   url?: string                // If type === 'url'
   filePath?: string           // If type === 'file' (local path like ~/sounds/alert.mp3)
+  volume?: number             // Per-effect volume multiplier (0-1, default 1.0)
 }
 
 export type SoundMode = 'tts' | 'sound' | 'both'
@@ -274,7 +275,8 @@ export interface ContentReadingSettings {
 
 export interface AudioSettings {
   enabled: boolean
-  volume: number  // 0-1
+  volume: number  // 0-1 (TTS/master volume)
+  soundEffectsVolume: number  // 0-1 (sound effects volume, separate from TTS)
   voice: string
   rate: string    // e.g., "+30%", "-10%"
   pitch: string   // e.g., "+20Hz", "-10Hz" (higher = more urgent/alert tone)
@@ -292,9 +294,34 @@ export interface ProfileAudioOverrides {
   pitch?: string       // Override pitch (undefined = use global default)
 }
 
+// File picker default directories
+export interface FilePickerDefaults {
+  audio?: string      // Default: ~/sfx
+  images?: string     // Default: ~/Pictures
+  videos?: string     // Default: ~/Videos
+  general?: string    // Default: ~
+}
+
+export const DEFAULT_FILE_PICKER_DEFAULTS: FilePickerDefaults = {
+  audio: '~/sfx',
+  images: '~/Pictures',
+  videos: '~/Videos',
+  general: '~',
+}
+
+// File type filters for file picker
+export const FILE_TYPE_FILTERS = {
+  audio: ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'webm'],
+  images: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'],
+  videos: ['mp4', 'webm', 'mov', 'avi', 'mkv', 'ogv', 'm4v'],
+} as const
+
+export type FilePickerFilterType = keyof typeof FILE_TYPE_FILTERS
+
 export const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
   enabled: false,
   volume: 0.7,
+  soundEffectsVolume: 0.4,  // Sound effects at 40% by default (often louder than TTS)
   voice: 'en-US-AndrewMultilingualNeural',
   rate: '+0%',
   pitch: '+0Hz',

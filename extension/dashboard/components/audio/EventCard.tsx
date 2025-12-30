@@ -1,12 +1,13 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ChevronDown, ChevronUp, RotateCcw, Volume2 } from 'lucide-react'
-import type { AudioEventConfig, AudioEventType, SoundEffect, SoundMode } from '../../../components/settings/types'
-import { TTS_VOICES } from '../../../components/settings/types'
+import type { AudioEventConfig, AudioEventType, SoundEffect, SoundMode, FilePickerDefaults } from '../../../components/settings/types'
+import { TTS_VOICES, DEFAULT_FILE_PICKER_DEFAULTS } from '../../../components/settings/types'
 import { renderPreview, getDefaultPhrase } from '../../../utils/audioTemplates'
 import { playSoundEffect, isSoundEffectConfigured } from '../../../utils/audioEffects'
 import PhraseEditor from './PhraseEditor'
 import SoundEffectPicker from './SoundEffectPicker'
 import WordSubstitutionEditor from './WordSubstitutionEditor'
+import FilePickerModal from '../files/FilePickerModal'
 
 interface EventCardProps {
   eventType: AudioEventType
@@ -18,7 +19,8 @@ interface EventCardProps {
   onConfigChange: (config: AudioEventConfig | undefined) => void
   nested?: boolean
   children?: React.ReactNode  // For nested content like toolDetails
-  volume?: number  // For sound preview
+  volume?: number  // For TTS preview
+  soundEffectsVolume?: number  // For sound effects preview (separate from TTS)
   globalVoice?: string  // Global voice setting for fallback
   globalRate?: string   // Global rate setting for fallback
   globalPitch?: string  // Global pitch setting for fallback
@@ -71,13 +73,25 @@ export default function EventCard({
   nested = false,
   children,
   volume = 0.7,
+  soundEffectsVolume = 0.4,
   globalVoice = 'en-US-AriaNeural',
   globalRate = '+0%',
   globalPitch = '+0Hz',
 }: EventCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [previewPlaying, setPreviewPlaying] = useState(false)
+  const [showFilePicker, setShowFilePicker] = useState(false)
+  const [filePickerDefaults, setFilePickerDefaults] = useState<FilePickerDefaults>(DEFAULT_FILE_PICKER_DEFAULTS)
   const isCustom = hasOverrides(config)
+
+  // Load file picker defaults
+  useEffect(() => {
+    chrome.storage.local.get(['filePickerDefaults'], (result) => {
+      if (result.filePickerDefaults) {
+        setFilePickerDefaults({ ...DEFAULT_FILE_PICKER_DEFAULTS, ...result.filePickerDefaults })
+      }
+    })
+  }, [])
 
   // Get effective settings (custom or global fallback)
   const getEffectiveVoice = () => {
@@ -110,7 +124,7 @@ export default function EventCard({
 
       // 1. Play main sound effect if mode is 'sound' or 'both'
       if ((soundMode === 'sound' || soundMode === 'both') && isSoundEffectConfigured(soundEffect)) {
-        await playSoundEffect(soundEffect!, volume)
+        await playSoundEffect(soundEffect!, soundEffectsVolume)
         // If sound-only mode, we're done
         if (soundMode === 'sound') {
           setPreviewPlaying(false)
@@ -124,7 +138,7 @@ export default function EventCard({
           if (text.toLowerCase().includes(word.toLowerCase())) {
             // Play sound for this word
             if (isSoundEffectConfigured(sound)) {
-              await playSoundEffect(sound, volume)
+              await playSoundEffect(sound, soundEffectsVolume)
             }
             // Remove the word from text (case-insensitive)
             text = text.replace(new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '')
@@ -245,6 +259,18 @@ export default function EventCard({
     } else {
       onConfigChange({ ...config, wordSubstitutions })
     }
+  }
+
+  // Handle file selection from picker
+  const handleFileSelected = (filePath: string) => {
+    // Update the sound effect with the selected file path
+    const newSoundEffect: SoundEffect = {
+      type: 'file',
+      filePath,
+      volume: config?.soundEffect?.volume ?? 1.0,
+    }
+    onConfigChange({ ...config, soundEffect: newSoundEffect, soundMode: config?.soundMode || 'sound' })
+    setShowFilePicker(false)
   }
 
   return (
@@ -430,7 +456,8 @@ export default function EventCard({
                 soundEffect={config?.soundEffect}
                 onModeChange={handleSoundModeChange}
                 onEffectChange={handleSoundEffectChange}
-                volume={volume}
+                soundEffectsVolume={soundEffectsVolume}
+                onBrowseFile={() => setShowFilePicker(true)}
               />
             </div>
 
@@ -439,7 +466,7 @@ export default function EventCard({
               <WordSubstitutionEditor
                 substitutions={config?.wordSubstitutions}
                 onChange={handleWordSubstitutionsChange}
-                volume={volume}
+                soundEffectsVolume={soundEffectsVolume}
               />
             </div>
 
@@ -470,6 +497,16 @@ export default function EventCard({
 
       {/* Nested children (e.g., toolDetails under tools) */}
       {children}
+
+      {/* File picker modal */}
+      <FilePickerModal
+        isOpen={showFilePicker}
+        title="Select Audio File"
+        basePath={filePickerDefaults.audio || '~/sfx'}
+        filterType="audio"
+        onSelect={handleFileSelected}
+        onClose={() => setShowFilePicker(false)}
+      />
     </div>
   )
 }

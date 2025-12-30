@@ -7,9 +7,6 @@ import type { SoundEffect } from '../components/settings/types'
 
 const BACKEND_URL = 'http://localhost:8129'
 
-// Sound effects are typically louder than TTS, so scale them down to match
-const SOUND_EFFECT_VOLUME_SCALE = 0.4
-
 /**
  * Get the playable URL for a sound effect
  * @param effect - The sound effect configuration
@@ -33,17 +30,18 @@ export function getSoundEffectUrl(effect: SoundEffect): string | null {
 /**
  * Play a sound effect
  * @param effect - The sound effect configuration
- * @param volume - Volume level (0-1)
+ * @param globalSoundEffectsVolume - Global sound effects volume (0-1, from AudioSettings)
  * @returns Promise that resolves when playback completes
  */
-export async function playSoundEffect(effect: SoundEffect, volume: number): Promise<void> {
+export async function playSoundEffect(effect: SoundEffect, globalSoundEffectsVolume: number): Promise<void> {
   const url = getSoundEffectUrl(effect)
   if (!url) return
 
   return new Promise((resolve, reject) => {
     const audio = new Audio(url)
-    // Apply scaling to match TTS volume levels
-    audio.volume = Math.max(0, Math.min(1, volume * SOUND_EFFECT_VOLUME_SCALE))
+    // Apply global sound effects volume, then per-effect volume multiplier
+    const effectVolume = effect.volume ?? 1.0
+    audio.volume = Math.max(0, Math.min(1, globalSoundEffectsVolume * effectVolume))
     audio.onended = () => resolve()
     audio.onerror = (e) => {
       console.warn('[SoundEffect] Failed to play:', url, e)
@@ -59,11 +57,11 @@ export async function playSoundEffect(effect: SoundEffect, volume: number): Prom
 /**
  * Preview a sound effect (for settings UI)
  * @param effect - The sound effect configuration
- * @param volume - Volume level (0-1)
+ * @param globalSoundEffectsVolume - Global sound effects volume (0-1)
  */
-export async function previewSoundEffect(effect: SoundEffect, volume: number): Promise<void> {
+export async function previewSoundEffect(effect: SoundEffect, globalSoundEffectsVolume: number): Promise<void> {
   try {
-    await playSoundEffect(effect, volume)
+    await playSoundEffect(effect, globalSoundEffectsVolume)
   } catch {
     // Ignore errors during preview
   }

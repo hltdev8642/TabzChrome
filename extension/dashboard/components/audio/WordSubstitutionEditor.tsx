@@ -7,7 +7,7 @@ import { previewSoundEffect, isSoundEffectConfigured } from '../../../utils/audi
 interface WordSubstitutionEditorProps {
   substitutions?: Record<string, SoundEffect>
   onChange: (substitutions: Record<string, SoundEffect> | undefined) => void
-  volume: number
+  soundEffectsVolume: number  // Global sound effects volume for preview
 }
 
 interface SubstitutionEntry {
@@ -73,7 +73,7 @@ function WordInput({
 export default function WordSubstitutionEditor({
   substitutions = {},
   onChange,
-  volume,
+  soundEffectsVolume,
 }: WordSubstitutionEditorProps) {
   const [previewingWord, setPreviewingWord] = useState<string | null>(null)
   // Track stable IDs for each word to prevent React key issues
@@ -174,7 +174,7 @@ export default function WordSubstitutionEditor({
 
     setPreviewingWord(word)
     try {
-      await previewSoundEffect(effect, volume)
+      await previewSoundEffect(effect, soundEffectsVolume)
     } finally {
       setPreviewingWord(null)
     }

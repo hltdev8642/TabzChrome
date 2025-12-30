@@ -1,29 +1,37 @@
 import React, { useState, useEffect } from 'react'
-import { Volume2, RefreshCw } from 'lucide-react'
+import { Volume2, RefreshCw, FolderOpen, Music, Image, Video, Folder } from 'lucide-react'
 import {
   AudioSettings,
   AudioEventSettings,
   AudioEventConfig,
   AudioEventType,
   ContentReadingSettings,
+  FilePickerDefaults,
   TTS_VOICES,
   DEFAULT_AUDIO_SETTINGS,
+  DEFAULT_FILE_PICKER_DEFAULTS,
 } from '../../components/settings/types'
 import EventCard from '../components/audio/EventCard'
+import FilePickerModal from '../components/files/FilePickerModal'
 
 export default function AudioSection() {
   const [audioSettings, setAudioSettings] = useState<AudioSettings>(DEFAULT_AUDIO_SETTINGS)
   const [loading, setLoading] = useState(true)
   const [audioTestPlaying, setAudioTestPlaying] = useState(false)
+  const [filePickerDefaults, setFilePickerDefaults] = useState<FilePickerDefaults>(DEFAULT_FILE_PICKER_DEFAULTS)
+  const [showDirectoryPicker, setShowDirectoryPicker] = useState<keyof FilePickerDefaults | null>(null)
 
   // Load settings from Chrome storage
   useEffect(() => {
     const loadSettings = async () => {
       try {
         if (typeof chrome !== 'undefined' && chrome.storage) {
-          chrome.storage.local.get(['audioSettings'], (result: { audioSettings?: AudioSettings }) => {
+          chrome.storage.local.get(['audioSettings', 'filePickerDefaults'], (result: { audioSettings?: AudioSettings; filePickerDefaults?: FilePickerDefaults }) => {
             if (result.audioSettings) {
               setAudioSettings({ ...DEFAULT_AUDIO_SETTINGS, ...result.audioSettings })
+            }
+            if (result.filePickerDefaults) {
+              setFilePickerDefaults({ ...DEFAULT_FILE_PICKER_DEFAULTS, ...result.filePickerDefaults })
             }
             setLoading(false)
           })
@@ -45,6 +53,9 @@ export default function AudioSection() {
         if (areaName !== 'local') return
         if (changes.audioSettings?.newValue) {
           setAudioSettings({ ...DEFAULT_AUDIO_SETTINGS, ...changes.audioSettings.newValue })
+        }
+        if (changes.filePickerDefaults?.newValue) {
+          setFilePickerDefaults({ ...DEFAULT_FILE_PICKER_DEFAULTS, ...changes.filePickerDefaults.newValue })
         }
       }
       chrome.storage.onChanged.addListener(listener)
@@ -69,6 +80,26 @@ export default function AudioSection() {
       ...audioSettings,
       events: { ...audioSettings.events, ...updates },
     })
+  }
+
+  // Save file picker defaults
+  const saveFilePickerDefaults = (newDefaults: FilePickerDefaults) => {
+    setFilePickerDefaults(newDefaults)
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      chrome.storage.local.set({ filePickerDefaults: newDefaults })
+    }
+  }
+
+  const updateFilePickerDefault = (key: keyof FilePickerDefaults, value: string) => {
+    saveFilePickerDefaults({ ...filePickerDefaults, [key]: value })
+  }
+
+  // Handle directory selection from picker
+  const handleDirectorySelected = (path: string) => {
+    if (showDirectoryPicker) {
+      updateFilePickerDefault(showDirectoryPicker, path)
+    }
+    setShowDirectoryPicker(null)
   }
 
   // Update per-event audio config (voice/rate/pitch overrides)
@@ -245,10 +276,10 @@ export default function AudioSection() {
             </p>
           </div>
 
-          {/* Volume Slider */}
+          {/* TTS Volume Slider */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium">Volume</label>
+              <label className="text-sm font-medium">Voice Volume</label>
               <span className="text-sm text-muted-foreground">{Math.round(audioSettings.volume * 100)}%</span>
             </div>
             <input
@@ -260,6 +291,29 @@ export default function AudioSection() {
               onChange={(e) => updateAudioSettings({ volume: parseFloat(e.target.value) })}
               className="w-full accent-primary"
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              Volume for text-to-speech announcements
+            </p>
+          </div>
+
+          {/* Sound Effects Volume Slider */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">Sound Effects Volume</label>
+              <span className="text-sm text-muted-foreground">{Math.round((audioSettings.soundEffectsVolume ?? 0.4) * 100)}%</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
+              value={audioSettings.soundEffectsVolume ?? 0.4}
+              onChange={(e) => updateAudioSettings({ soundEffectsVolume: parseFloat(e.target.value) })}
+              className="w-full accent-primary"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Global volume for sound effects. Individual effects can adjust relative to this.
+            </p>
           </div>
 
           {/* Test Button */}
@@ -293,6 +347,7 @@ export default function AudioSection() {
             onToggle={(checked) => updateAudioEvents({ ready: checked })}
             onConfigChange={(config) => updateEventConfig('ready', config)}
             volume={audioSettings.volume}
+            soundEffectsVolume={audioSettings.soundEffectsVolume ?? 0.4}
             globalVoice={audioSettings.voice}
             globalRate={audioSettings.rate}
             globalPitch={audioSettings.pitch}
@@ -308,6 +363,7 @@ export default function AudioSection() {
             onToggle={(checked) => updateAudioEvents({ tools: checked })}
             onConfigChange={(config) => updateEventConfig('tools', config)}
             volume={audioSettings.volume}
+            soundEffectsVolume={audioSettings.soundEffectsVolume ?? 0.4}
             globalVoice={audioSettings.voice}
             globalRate={audioSettings.rate}
             globalPitch={audioSettings.pitch}
@@ -346,6 +402,7 @@ export default function AudioSection() {
             onToggle={(checked) => updateAudioEvents({ subagents: checked })}
             onConfigChange={(config) => updateEventConfig('subagents', config)}
             volume={audioSettings.volume}
+            soundEffectsVolume={audioSettings.soundEffectsVolume ?? 0.4}
             globalVoice={audioSettings.voice}
             globalRate={audioSettings.rate}
             globalPitch={audioSettings.pitch}
@@ -361,6 +418,7 @@ export default function AudioSection() {
             onToggle={(checked) => updateAudioEvents({ contextWarning: checked })}
             onConfigChange={(config) => updateEventConfig('contextWarning', config)}
             volume={audioSettings.volume}
+            soundEffectsVolume={audioSettings.soundEffectsVolume ?? 0.4}
             globalVoice={audioSettings.voice}
             globalRate={audioSettings.rate}
             globalPitch={audioSettings.pitch}
@@ -376,6 +434,7 @@ export default function AudioSection() {
             onToggle={(checked) => updateAudioEvents({ contextCritical: checked })}
             onConfigChange={(config) => updateEventConfig('contextCritical', config)}
             volume={audioSettings.volume}
+            soundEffectsVolume={audioSettings.soundEffectsVolume ?? 0.4}
             globalVoice={audioSettings.voice}
             globalRate={audioSettings.rate}
             globalPitch={audioSettings.pitch}
@@ -400,6 +459,7 @@ export default function AudioSection() {
             onToggle={(checked) => updateAudioEvents({ sessionStart: checked })}
             onConfigChange={(config) => updateEventConfig('sessionStart', config)}
             volume={audioSettings.volume}
+            soundEffectsVolume={audioSettings.soundEffectsVolume ?? 0.4}
             globalVoice={audioSettings.voice}
             globalRate={audioSettings.rate}
             globalPitch={audioSettings.pitch}
@@ -424,6 +484,7 @@ export default function AudioSection() {
             onToggle={(checked) => updateAudioEvents({ mcpDownloads: checked })}
             onConfigChange={(config) => updateEventConfig('mcpDownloads', config)}
             volume={audioSettings.volume}
+            soundEffectsVolume={audioSettings.soundEffectsVolume ?? 0.4}
             globalVoice={audioSettings.voice}
             globalRate={audioSettings.rate}
             globalPitch={audioSettings.pitch}
@@ -582,6 +643,111 @@ export default function AudioSection() {
         </section>
       )}
 
+      {/* File Picker Defaults */}
+      <section className="mb-8">
+        <h2 className="text-lg font-semibold mb-2">File Picker Defaults</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Default directories when browsing for files. Used in profile settings and audio event configurations.
+        </p>
+        <div className="rounded-xl bg-card border border-border p-6 space-y-4">
+          {/* Audio Default */}
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium mb-2">
+              <Music className="w-4 h-4 text-pink-400" />
+              Audio Files
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={filePickerDefaults.audio || ''}
+                onChange={(e) => updateFilePickerDefault('audio', e.target.value)}
+                placeholder="~/sfx"
+                className="flex-1 px-3 py-2 bg-background border border-border rounded-lg font-mono text-sm focus:border-primary focus:outline-none"
+              />
+              <button
+                onClick={() => setShowDirectoryPicker('audio')}
+                className="p-2 rounded-lg bg-muted/50 hover:bg-muted border border-border transition-colors"
+                title="Browse"
+              >
+                <FolderOpen className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+          </div>
+
+          {/* Images Default */}
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium mb-2">
+              <Image className="w-4 h-4 text-yellow-400" />
+              Images
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={filePickerDefaults.images || ''}
+                onChange={(e) => updateFilePickerDefault('images', e.target.value)}
+                placeholder="~/Pictures"
+                className="flex-1 px-3 py-2 bg-background border border-border rounded-lg font-mono text-sm focus:border-primary focus:outline-none"
+              />
+              <button
+                onClick={() => setShowDirectoryPicker('images')}
+                className="p-2 rounded-lg bg-muted/50 hover:bg-muted border border-border transition-colors"
+                title="Browse"
+              >
+                <FolderOpen className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+          </div>
+
+          {/* Videos Default */}
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium mb-2">
+              <Video className="w-4 h-4 text-purple-400" />
+              Videos
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={filePickerDefaults.videos || ''}
+                onChange={(e) => updateFilePickerDefault('videos', e.target.value)}
+                placeholder="~/Videos"
+                className="flex-1 px-3 py-2 bg-background border border-border rounded-lg font-mono text-sm focus:border-primary focus:outline-none"
+              />
+              <button
+                onClick={() => setShowDirectoryPicker('videos')}
+                className="p-2 rounded-lg bg-muted/50 hover:bg-muted border border-border transition-colors"
+                title="Browse"
+              >
+                <FolderOpen className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+          </div>
+
+          {/* General Default */}
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium mb-2">
+              <Folder className="w-4 h-4 text-yellow-400" />
+              General
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={filePickerDefaults.general || ''}
+                onChange={(e) => updateFilePickerDefault('general', e.target.value)}
+                placeholder="~"
+                className="flex-1 px-3 py-2 bg-background border border-border rounded-lg font-mono text-sm focus:border-primary focus:outline-none"
+              />
+              <button
+                onClick={() => setShowDirectoryPicker('general')}
+                className="p-2 rounded-lg bg-muted/50 hover:bg-muted border border-border transition-colors"
+                title="Browse"
+              >
+                <FolderOpen className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Info */}
       <section>
         <div className="rounded-xl bg-muted/50 border border-border p-4">
@@ -590,6 +756,15 @@ export default function AudioSection() {
           </p>
         </div>
       </section>
+
+      {/* Directory Picker Modal */}
+      <FilePickerModal
+        isOpen={showDirectoryPicker !== null}
+        title={`Select ${showDirectoryPicker ? showDirectoryPicker.charAt(0).toUpperCase() + showDirectoryPicker.slice(1) : ''} Directory`}
+        basePath={showDirectoryPicker ? filePickerDefaults[showDirectoryPicker] || '~' : '~'}
+        onSelect={handleDirectorySelected}
+        onClose={() => setShowDirectoryPicker(null)}
+      />
     </div>
   )
 }

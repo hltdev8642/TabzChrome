@@ -211,10 +211,13 @@ export function useAudioPlayback({ sessions }: UseAudioPlaybackParams): UseAudio
       lastAudioTimeRef.current = now
     }
 
+    // Use global sound effects volume (with fallback for older settings)
+    const soundEffectsVolume = audioSettings.soundEffectsVolume ?? 0.4
+
     // Handle sound mode: 'sound' or 'both'
     if ((soundMode === 'sound' || soundMode === 'both') && isSoundEffectConfigured(soundEffect)) {
       try {
-        await playSoundEffect(soundEffect!, settings.volume)
+        await playSoundEffect(soundEffect!, soundEffectsVolume)
         // If sound-only mode, we're done
         if (soundMode === 'sound') return
       } catch {
@@ -229,7 +232,7 @@ export function useAudioPlayback({ sessions }: UseAudioPlaybackParams): UseAudio
           // Play sound for this word
           if (isSoundEffectConfigured(sound)) {
             try {
-              await playSoundEffect(sound, settings.volume)
+              await playSoundEffect(sound, soundEffectsVolume)
             } catch {
               // Ignore sound failures
             }
