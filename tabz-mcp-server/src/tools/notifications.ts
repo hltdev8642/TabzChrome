@@ -145,7 +145,7 @@ interface NotificationListResult {
  */
 async function showNotification(params: ShowNotificationInput): Promise<NotificationResult> {
   try {
-    const response = await axios.post(`${BACKEND_URL}/api/browser/notifications/show`, params, { timeout: 10000 });
+    const response = await axios.post(`${BACKEND_URL}/api/browser/notification/show`, params, { timeout: 10000 });
     return response.data;
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) };
@@ -157,7 +157,7 @@ async function showNotification(params: ShowNotificationInput): Promise<Notifica
  */
 async function updateNotification(params: UpdateNotificationInput): Promise<NotificationUpdateResult> {
   try {
-    const response = await axios.post(`${BACKEND_URL}/api/browser/notifications/update`, params, { timeout: 10000 });
+    const response = await axios.post(`${BACKEND_URL}/api/browser/notification/update`, params, { timeout: 10000 });
     return response.data;
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) };
@@ -169,7 +169,7 @@ async function updateNotification(params: UpdateNotificationInput): Promise<Noti
  */
 async function clearNotification(params: ClearNotificationInput): Promise<NotificationClearResult> {
   try {
-    const response = await axios.post(`${BACKEND_URL}/api/browser/notifications/clear`, params, { timeout: 10000 });
+    const response = await axios.post(`${BACKEND_URL}/api/browser/notification/clear`, params, { timeout: 10000 });
     return response.data;
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) };
@@ -181,7 +181,7 @@ async function clearNotification(params: ClearNotificationInput): Promise<Notifi
  */
 async function listNotifications(): Promise<NotificationListResult> {
   try {
-    const response = await axios.get(`${BACKEND_URL}/api/browser/notifications/list`, { timeout: 10000 });
+    const response = await axios.get(`${BACKEND_URL}/api/browser/notification/list`, { timeout: 10000 });
     return response.data;
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) };

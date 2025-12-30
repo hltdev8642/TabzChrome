@@ -58,6 +58,8 @@ export function useStatusTransitions({
   const prevContextPctRef = useRef<Map<string, number>>(new Map())
   const lastReadyAnnouncementRef = useRef<Map<string, number>>(new Map())
   const lastStatusUpdateRef = useRef<Map<string, string>>(new Map())
+  const announcedQuestionsRef = useRef<Map<string, string>>(new Map())  // Track announced questions to avoid repeats
+  const announcedPlanApprovalRef = useRef<Map<string, boolean>>(new Map())  // Track plan approval announcements
 
   // Helper to get phrase template for an event type
   const getPhraseTemplate = (eventType: AudioEventType, variant?: string): string => {
@@ -155,13 +157,17 @@ export function useStatusTransitions({
         switch (currentToolName) {
           case 'Read': toolAction = 'Reading'; break
           case 'Write': toolAction = 'Writing'; break
-          case 'Edit': toolAction = 'Edit'; break
+          case 'Edit': toolAction = 'Editing'; break
           case 'Bash': toolAction = 'Running command'; break
           case 'Glob': toolAction = 'Searching files'; break
           case 'Grep': toolAction = 'Searching code'; break
           case 'Task': toolAction = 'Spawning agent'; break
           case 'WebFetch': toolAction = 'Fetching web'; break
           case 'WebSearch': toolAction = 'Searching web'; break
+          case 'AskUserQuestion': toolAction = 'Asking question'; break
+          case 'EnterPlanMode': toolAction = 'Entering plan mode'; break
+          case 'ExitPlanMode': toolAction = 'Presenting plan'; break
+          case 'TodoWrite': toolAction = 'Updating tasks'; break
           default: toolAction = `Using ${currentToolName}`
         }
 
@@ -257,6 +263,70 @@ export function useStatusTransitions({
         }
       }
 
+      // AskUserQuestion event - announce when Claude asks a question
+      if (audioSettings.events.askUserQuestion && status.current_tool === 'AskUserQuestion') {
+        const questions = status.details?.args?.questions
+        if (questions && questions.length > 0) {
+          const firstQuestion = questions[0]
+          const questionKey = `${firstQuestion.question}:${firstQuestion.options?.map(o => o.label).join(',')}`
+          const lastAnnouncedQuestion = announcedQuestionsRef.current.get(terminalId)
+
+          // Only announce if this is a new question
+          if (questionKey !== lastAnnouncedQuestion) {
+            announcedQuestionsRef.current.set(terminalId, questionKey)
+
+            let optionsText = ''
+            if (audioSettings.events.askUserQuestionReadOptions && firstQuestion.options) {
+              const optionLabels = firstQuestion.options.map(o => o.label)
+              if (optionLabels.length === 2) {
+                optionsText = `${optionLabels[0]} or ${optionLabels[1]}`
+              } else if (optionLabels.length > 2) {
+                optionsText = optionLabels.slice(0, -1).join(', ') + ', or ' + optionLabels[optionLabels.length - 1]
+              } else if (optionLabels.length === 1) {
+                optionsText = optionLabels[0]
+              }
+            }
+
+            const template = getPhraseTemplate('askUserQuestion')
+            const phrase = renderTemplate(template, {
+              title: audioSettings.userTitle,
+              profile: getDisplayName(),
+              question: firstQuestion.question,
+              options: optionsText,
+            })
+            playAudio(phrase, session, false, { eventType: 'askUserQuestion' })
+          }
+        }
+      }
+
+      // Plan approval event - announce when ExitPlanMode is called
+      if (audioSettings.events.planApproval && status.current_tool === 'ExitPlanMode') {
+        const wasAnnounced = announcedPlanApprovalRef.current.get(terminalId)
+
+        // Only announce once per plan mode session
+        if (!wasAnnounced) {
+          announcedPlanApprovalRef.current.set(terminalId, true)
+
+          let optionsText = ''
+          if (audioSettings.events.planApprovalReadOptions) {
+            optionsText = 'Yes and bypass, Yes manual, or type to change'
+          }
+
+          const template = getPhraseTemplate('planApproval')
+          const phrase = renderTemplate(template, {
+            title: audioSettings.userTitle,
+            profile: getDisplayName(),
+            options: optionsText,
+          })
+          playAudio(phrase, session, false, { eventType: 'planApproval' })
+        }
+      }
+
+      // Reset plan approval tracking when not in ExitPlanMode
+      if (status.current_tool !== 'ExitPlanMode') {
+        announcedPlanApprovalRef.current.delete(terminalId)
+      }
+
       // Update previous values
       prevClaudeStatusesRef.current.set(terminalId, currentStatus)
       prevSubagentCountsRef.current.set(terminalId, currentSubagentCount)
@@ -272,6 +342,8 @@ export function useStatusTransitions({
         prevToolNamesRef.current.delete(id)
         prevSubagentCountsRef.current.delete(id)
         prevContextPctRef.current.delete(id)
+        announcedQuestionsRef.current.delete(id)
+        announcedPlanApprovalRef.current.delete(id)
       }
     }
   }, [claudeStatuses, audioSettings, audioGlobalMute, settingsLoaded, sessions, getAudioSettingsForProfile, playAudio])

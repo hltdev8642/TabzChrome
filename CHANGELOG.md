@@ -15,6 +15,43 @@ For older versions (1.2.x, 1.1.x, 1.0.x, and pre-public 2.x), see [CHANGELOG-arc
 
 ---
 
+## [1.3.7] - 2025-12-30
+
+### Added
+- **User Title Setting** - Personalize how Claude addresses you in audio announcements:
+  - New "How should Claude address you?" input in Audio settings
+  - Use `{title}` variable in any phrase template (e.g., "Sir, Claude ready")
+  - Test Sound button now includes title in test phrase
+
+- **AskUserQuestion Audio Event** - Get notified when Claude asks a question:
+  - New "Question asked" toggle in Audio settings
+  - Reads the question and available options aloud
+  - Sub-toggle to enable/disable reading options
+  - Template variables: `{title}`, `{profile}`, `{question}`, `{options}`
+
+- **Plan Approval Audio Event** - Get notified when Claude presents a plan:
+  - New "Plan approval" toggle in Audio settings
+  - Announces when ExitPlanMode is called
+  - Sub-toggle to read approval options aloud
+  - Template variables: `{title}`, `{profile}`, `{options}`
+
+- **Personality Presets** (types only) - Foundation for future voice personas:
+  - Butler ("Sir"), Captain, Medieval ("My liege"), Casual presets defined
+
+### Fixed
+- **Negative Speech Rate** - Rates like "-50%" now work correctly:
+  - Changed edge-tts command from `--rate -50%` to `--rate=-50%`
+  - Prevents shell from interpreting negative values as flags
+
+- **Tool Action Phrasing** - Consistent present tense for all tool announcements:
+  - "Editing" instead of "Edit"
+  - Added: "Asking question", "Entering plan mode", "Presenting plan", "Updating tasks"
+
+### Changed
+- **State Tracker Hook** - Now captures `permission_mode` field for plan mode detection
+
+---
+
 ## [1.3.6] - 2025-12-30
 
 ### Added

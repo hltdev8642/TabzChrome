@@ -193,10 +193,12 @@ async function generateAudio({
   try {
     const args = ['-v', resolvedVoice];
     if (rate && rate !== '+0%') {
-      args.push('--rate', rate);
+      // Use --rate=value format to avoid negative values being parsed as flags
+      args.push(`--rate=${rate}`);
     }
     if (pitch && pitch !== '+0Hz') {
-      args.push('--pitch', pitch);
+      // Use --pitch=value format for consistency
+      args.push(`--pitch=${pitch}`);
     }
 
     // Always use file input - special characters break -t flag

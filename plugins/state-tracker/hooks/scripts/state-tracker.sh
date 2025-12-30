@@ -219,6 +219,13 @@ esac
 
 SUBAGENT_COUNT=$(get_subagent_count)
 
+# Extract permission_mode from stdin data (indicates plan mode, etc.)
+PERMISSION_MODE=$(echo "$STDIN_DATA" | jq -r '.permission_mode // ""' 2>/dev/null || echo "")
+PERMISSION_MODE_JSON="null"
+if [ -n "$PERMISSION_MODE" ] && [ "$PERMISSION_MODE" != "null" ]; then
+    PERMISSION_MODE_JSON="\"$PERMISSION_MODE\""
+fi
+
 # Preserve claude_session_id if it exists (set by statusline for context % display)
 CLAUDE_SID_JSON="null"
 if [ -f "$STATE_FILE" ]; then
@@ -241,6 +248,7 @@ STATE_JSON=$(cat <<EOF
   "pid": $$,
   "hook_type": "$HOOK_TYPE",
   "details": $DETAILS,
+  "permission_mode": $PERMISSION_MODE_JSON,
   "claude_session_id": $CLAUDE_SID_JSON
 }
 EOF

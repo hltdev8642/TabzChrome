@@ -6,11 +6,14 @@
 import { TEMPLATE_VARIABLES, DEFAULT_PHRASES } from '../components/settings/types'
 
 export interface TemplateContext {
+  title?: string      // User's preferred title (Sir, Captain, etc.)
   profile?: string
   tool?: string
   filename?: string
   count?: number
   percentage?: number
+  question?: string   // For AskUserQuestion events
+  options?: string    // Comma-separated list of options
 }
 
 /**
@@ -22,6 +25,9 @@ export interface TemplateContext {
 export function renderTemplate(template: string, context: TemplateContext): string {
   let result = template
 
+  if (context.title) {
+    result = result.replace(/\{title\}/g, context.title)
+  }
   if (context.profile) {
     result = result.replace(/\{profile\}/g, context.profile)
   }
@@ -36,6 +42,12 @@ export function renderTemplate(template: string, context: TemplateContext): stri
   }
   if (context.percentage !== undefined) {
     result = result.replace(/\{percentage\}/g, String(context.percentage))
+  }
+  if (context.question) {
+    result = result.replace(/\{question\}/g, context.question)
+  }
+  if (context.options) {
+    result = result.replace(/\{options\}/g, context.options)
   }
 
   // Remove any unreplaced variables (clean output)
@@ -75,13 +87,16 @@ export function getDefaultPhrase(eventType: string, variant?: string): string {
  * @param eventType - Event type (used to determine which sample values to use)
  * @returns Rendered preview string
  */
-export function renderPreview(template: string, eventType: string): string {
+export function renderPreview(template: string, eventType: string, userTitle?: string): string {
   const sampleContext: TemplateContext = {
+    title: userTitle || 'Sir',
     profile: 'Claude',
     tool: 'Reading',
     filename: 'example.ts',
     count: 2,
     percentage: 50,
+    question: 'Which approach should we use?',
+    options: 'Option A, Option B, or Other',
   }
 
   return renderTemplate(template, sampleContext)

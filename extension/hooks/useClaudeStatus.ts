@@ -7,12 +7,18 @@ export interface ClaudeStatus {
   tmuxPane?: string  // Pane ID (e.g., '%42') for targeted send to Claude in split layouts
   subagent_count?: number  // Number of active subagents (for 🤖🤖🤖 display)
   context_pct?: number  // Context window usage percentage (0-100)
+  permission_mode?: string  // 'plan' when in plan mode, null otherwise
   details?: {
     args?: {
       file_path?: string
       command?: string
       pattern?: string
       description?: string
+      questions?: Array<{
+        question: string
+        options: Array<{ label: string; description?: string }>
+        multiSelect?: boolean
+      }>
       [key: string]: any
     }
     [key: string]: any

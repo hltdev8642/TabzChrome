@@ -212,14 +212,16 @@ export interface AudioEventConfig {
 
 // Template variables available by event type
 export const TEMPLATE_VARIABLES: Record<string, string[]> = {
-  ready: ['{profile}'],
-  sessionStart: ['{profile}'],
-  sessionClose: ['{profile}'],
-  tools: ['{profile}', '{tool}', '{filename}'],
-  subagents: ['{profile}', '{count}'],
-  contextWarning: ['{profile}', '{percentage}'],
-  contextCritical: ['{profile}', '{percentage}'],
-  mcpDownloads: ['{profile}', '{filename}'],
+  ready: ['{title}', '{profile}'],
+  sessionStart: ['{title}', '{profile}'],
+  sessionClose: ['{title}', '{profile}'],
+  tools: ['{title}', '{profile}', '{tool}', '{filename}'],
+  subagents: ['{title}', '{profile}', '{count}'],
+  contextWarning: ['{title}', '{profile}', '{percentage}'],
+  contextCritical: ['{title}', '{profile}', '{percentage}'],
+  mcpDownloads: ['{title}', '{profile}', '{filename}'],
+  askUserQuestion: ['{title}', '{profile}', '{question}', '{options}'],
+  planApproval: ['{title}', '{profile}', '{options}'],
 }
 
 // Default phrases for each event type (what was previously hardcoded)
@@ -234,7 +236,20 @@ export const DEFAULT_PHRASES: Record<string, string> = {
   contextWarning: 'Warning! {profile} {percentage} percent context!',
   contextCritical: 'Alert! {profile} context critical!',
   mcpDownloads: 'Downloaded {filename}',
+  askUserQuestion: '{title}, {profile} asks: {question}. Options: {options}',
+  planApproval: '{title}, {profile} plan ready. {options}',
 }
+
+// Personality presets that set title + phrase style
+export const PERSONALITY_PRESETS = {
+  none: { title: '', description: 'No title' },
+  butler: { title: 'Sir', description: 'Formal butler style' },
+  captain: { title: 'Captain', description: 'Starship commander' },
+  medieval: { title: 'My liege', description: 'Royal court style' },
+  casual: { title: '', description: 'First name basis' },
+} as const
+
+export type PersonalityPreset = keyof typeof PERSONALITY_PRESETS
 
 // Event type identifiers for per-event config lookup
 export type AudioEventType =
@@ -245,6 +260,8 @@ export type AudioEventType =
   | 'contextWarning'
   | 'contextCritical'
   | 'mcpDownloads'
+  | 'askUserQuestion'
+  | 'planApproval'
 
 export interface AudioEventSettings {
   ready: boolean
@@ -255,6 +272,10 @@ export interface AudioEventSettings {
   contextWarning: boolean   // Announce when context hits warning threshold (default 50%)
   contextCritical: boolean  // Announce when context hits critical threshold (default 75%)
   mcpDownloads: boolean     // Announce when MCP downloads complete (tabz_download_file, tabz_download_image)
+  askUserQuestion: boolean  // Announce when Claude asks a question with options
+  askUserQuestionReadOptions: boolean  // Read out the available options
+  planApproval: boolean     // Announce when plan mode presents approval menu
+  planApprovalReadOptions: boolean  // Read out the approval options
   // Per-event configs (optional overrides)
   readyConfig?: AudioEventConfig
   sessionStartConfig?: AudioEventConfig
@@ -263,6 +284,8 @@ export interface AudioEventSettings {
   contextWarningConfig?: AudioEventConfig
   contextCriticalConfig?: AudioEventConfig
   mcpDownloadsConfig?: AudioEventConfig
+  askUserQuestionConfig?: AudioEventConfig
+  planApprovalConfig?: AudioEventConfig
 }
 
 // Settings for content reading (highlighted text, file reading)
@@ -280,6 +303,7 @@ export interface AudioSettings {
   voice: string
   rate: string    // e.g., "+30%", "-10%"
   pitch: string   // e.g., "+20Hz", "-10Hz" (higher = more urgent/alert tone)
+  userTitle: string  // How Claude should address the user (e.g., "Sir", "Captain", "My liege")
   events: AudioEventSettings
   toolDebounceMs: number
   contentReading?: ContentReadingSettings  // Settings for reading highlighted text, files
@@ -325,6 +349,7 @@ export const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
   voice: 'en-US-AndrewMultilingualNeural',
   rate: '+0%',
   pitch: '+0Hz',
+  userTitle: '',  // Empty = no title used in phrases
   events: {
     ready: true,
     sessionStart: false,
@@ -334,6 +359,10 @@ export const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
     contextWarning: false,
     contextCritical: false,
     mcpDownloads: true,
+    askUserQuestion: false,
+    askUserQuestionReadOptions: true,  // When enabled, read options by default
+    planApproval: false,
+    planApprovalReadOptions: true,  // When enabled, read options by default
   },
   toolDebounceMs: 1000,
   contentReading: {

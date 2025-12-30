@@ -96,11 +96,16 @@ export default function AudioSection() {
         ? TTS_VOICES[Math.floor(Math.random() * TTS_VOICES.length)].value
         : audioSettings.voice
 
+      // Build test phrase with title if set
+      const testPhrase = audioSettings.userTitle
+        ? `${audioSettings.userTitle}, Claude ready`
+        : 'Claude ready'
+
       const response = await fetch('http://localhost:8129/api/audio/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: 'Claude ready',
+          text: testPhrase,
           voice: testVoice,
           rate: audioSettings.rate,
           pitch: audioSettings.pitch,
@@ -242,6 +247,21 @@ export default function AudioSection() {
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               Context alerts auto-elevate: warning (+100Hz, +15% rate), critical (+200Hz, +30% rate)
+            </p>
+          </div>
+
+          {/* User Title */}
+          <div>
+            <label className="block text-sm font-medium mb-2">How should Claude address you?</label>
+            <input
+              type="text"
+              value={audioSettings.userTitle || ''}
+              onChange={(e) => updateAudioSettings({ userTitle: e.target.value })}
+              placeholder="Sir, Captain, My liege..."
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:border-primary focus:outline-none"
+            />
+            <p className="text-xs text-muted-foreground mt-2">
+              Use <code className="bg-muted px-1 rounded">{'{title}'}</code> in phrase templates. Leave empty for no title.
             </p>
           </div>
 
@@ -408,6 +428,84 @@ export default function AudioSection() {
             globalRate={audioSettings.rate}
             globalPitch={audioSettings.pitch}
           />
+
+          {/* Ask User Question */}
+          <EventCard
+            eventType="askUserQuestion"
+            label="Question asked"
+            description="When Claude asks a question with options"
+            enabled={audioSettings.events.askUserQuestion}
+            config={getEventConfig('askUserQuestion')}
+            onToggle={(checked) => updateAudioEvents({ askUserQuestion: checked })}
+            onConfigChange={(config) => updateEventConfig('askUserQuestion', config)}
+            volume={audioSettings.volume}
+            soundEffectsVolume={audioSettings.soundEffectsVolume ?? 0.4}
+            globalVoice={audioSettings.voice}
+            globalRate={audioSettings.rate}
+            globalPitch={audioSettings.pitch}
+          >
+            {/* Read Options (nested under askUserQuestion) */}
+            {audioSettings.events.askUserQuestion && (
+              <div className="bg-muted/30 border-t border-border">
+                <div className="flex items-center justify-between p-4 pl-8">
+                  <div>
+                    <span className="text-sm font-medium">Read options aloud</span>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      "Option A, Option B, or Other"
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={audioSettings.events.askUserQuestionReadOptions}
+                      onChange={(e) => updateAudioEvents({ askUserQuestionReadOptions: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-muted rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                  </label>
+                </div>
+              </div>
+            )}
+          </EventCard>
+
+          {/* Plan Approval */}
+          <EventCard
+            eventType="planApproval"
+            label="Plan approval"
+            description="When Claude presents a plan for your approval"
+            enabled={audioSettings.events.planApproval}
+            config={getEventConfig('planApproval')}
+            onToggle={(checked) => updateAudioEvents({ planApproval: checked })}
+            onConfigChange={(config) => updateEventConfig('planApproval', config)}
+            volume={audioSettings.volume}
+            soundEffectsVolume={audioSettings.soundEffectsVolume ?? 0.4}
+            globalVoice={audioSettings.voice}
+            globalRate={audioSettings.rate}
+            globalPitch={audioSettings.pitch}
+          >
+            {/* Read Options (nested under planApproval) */}
+            {audioSettings.events.planApproval && (
+              <div className="bg-muted/30 border-t border-border">
+                <div className="flex items-center justify-between p-4 pl-8">
+                  <div>
+                    <span className="text-sm font-medium">Read approval options</span>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      "Yes and bypass, Yes manual, or type to change"
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={audioSettings.events.planApprovalReadOptions}
+                      onChange={(e) => updateAudioEvents({ planApprovalReadOptions: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-muted rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                  </label>
+                </div>
+              </div>
+            )}
+          </EventCard>
         </div>
       </section>
 

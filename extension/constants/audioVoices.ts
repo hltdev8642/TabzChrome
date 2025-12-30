@@ -22,6 +22,7 @@ export const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
   voice: 'en-US-AndrewMultilingualNeural',
   rate: '+0%',
   pitch: '+0Hz',
+  userTitle: '',  // Empty = no title used in phrases
   events: {
     ready: true,
     sessionStart: false,
@@ -31,6 +32,10 @@ export const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
     contextWarning: false,
     contextCritical: false,
     mcpDownloads: true,
+    askUserQuestion: false,
+    askUserQuestionReadOptions: true,
+    planApproval: false,
+    planApprovalReadOptions: true,
   },
   toolDebounceMs: 1000,
 }
