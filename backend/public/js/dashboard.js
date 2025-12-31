@@ -26,6 +26,7 @@ const Dashboard = (function() {
         health: null,
         lastUpdate: null,
         authToken: null,
+        claudeStatuses: new Map(),  // Map of terminal ID -> Claude status
     };
 
     const listeners = {
@@ -33,6 +34,7 @@ const Dashboard = (function() {
         terminals: [],
         health: [],
         message: [],
+        claudeStatuses: [],
     };
 
     // ==========================================================================
@@ -282,6 +284,99 @@ const Dashboard = (function() {
         });
     }
 
+    /**
+     * Fetch Claude status for all terminals that have Claude profiles
+     * Returns a Map of terminal ID -> status object
+     */
+    async function fetchClaudeStatuses() {
+        // Filter terminals that have Claude in their profile command
+        const claudeTerminals = state.terminals.filter(t =>
+            t.workingDir &&
+            (t.profile?.command?.toLowerCase().includes('claude') ||
+             t.terminalType?.toLowerCase().includes('claude'))
+        );
+
+        if (claudeTerminals.length === 0) {
+            return;
+        }
+
+        const results = await Promise.all(
+            claudeTerminals.map(async (terminal) => {
+                try {
+                    const encodedDir = encodeURIComponent(terminal.workingDir);
+                    // Use session name (id for ctt- terminals) for precise matching
+                    const sessionName = terminal.id?.startsWith('ctt-') ? terminal.id : null;
+                    const sessionParam = sessionName
+                        ? `&sessionName=${encodeURIComponent(sessionName)}`
+                        : '';
+
+                    const response = await fetch(
+                        `${API_BASE}/api/claude-status?dir=${encodedDir}${sessionParam}`
+                    );
+                    const result = await response.json();
+
+                    if (result.success && result.status !== 'unknown') {
+                        return {
+                            id: terminal.id,
+                            status: result.status,
+                            current_tool: result.current_tool,
+                            pane_title: result.pane_title,
+                            context_pct: result.context_window?.context_pct,
+                            subagent_count: result.subagent_count || 0,
+                        };
+                    }
+                    return { id: terminal.id, status: null };
+                } catch (err) {
+                    return { id: terminal.id, status: null };
+                }
+            })
+        );
+
+        // Update state
+        let changed = false;
+        for (const result of results) {
+            if (result.status) {
+                const prev = state.claudeStatuses.get(result.id);
+                if (!prev || prev.status !== result.status || prev.pane_title !== result.pane_title) {
+                    changed = true;
+                }
+                state.claudeStatuses.set(result.id, result);
+            }
+        }
+
+        if (changed) {
+            emit('claudeStatuses', state.claudeStatuses);
+        }
+    }
+
+    /**
+     * Get Claude status display text for a terminal
+     * Shows pane_title when idle, tool info when working
+     */
+    function getClaudeStatusText(terminalId, fallbackName) {
+        const status = state.claudeStatuses.get(terminalId);
+        if (!status) return null;
+
+        if (status.status === 'idle' || status.status === 'awaiting_input') {
+            return {
+                text: status.pane_title || fallbackName,
+                isIdle: true,
+            };
+        }
+
+        // Working state - show tool
+        const toolEmojis = {
+            'Read': '📖', 'Write': '📝', 'Edit': '✏️', 'Bash': '🔺',
+            'Glob': '🔍', 'Grep': '🔎', 'Task': '🤖', 'WebFetch': '🌐',
+            'WebSearch': '🔍', 'TodoWrite': '📋', 'NotebookEdit': '📓',
+        };
+        const emoji = status.current_tool ? (toolEmojis[status.current_tool] || '🔧') : '⏳';
+        return {
+            text: `${emoji} ${status.current_tool || 'Working'}`,
+            isIdle: false,
+        };
+    }
+
     // ==========================================================================
     // Utility Functions
     // ==========================================================================
@@ -370,6 +465,13 @@ const Dashboard = (function() {
             }
         }, 10000); // Refresh health every 10 seconds
 
+        // Poll Claude status every 2 seconds (matches extension polling rate)
+        setInterval(() => {
+            if (wsConnected && state.terminals.length > 0) {
+                fetchClaudeStatuses();
+            }
+        }, 2000);
+
         console.log('[Dashboard] Initialized');
     }
 
@@ -387,6 +489,7 @@ const Dashboard = (function() {
         // State
         get state() { return state; },
         get connected() { return wsConnected; },
+        get claudeStatuses() { return state.claudeStatuses; },
 
         // Events
         on,
@@ -397,11 +500,15 @@ const Dashboard = (function() {
         fetchHealth,
         fetchOrphanedSessions,
         fetchTmuxSessions,
+        fetchClaudeStatuses,
         killTerminal,
         killTmuxSession,
         reattachSessions,
         killOrphanedSessions,
         spawnTerminal,
+
+        // Claude Status
+        getClaudeStatusText,
 
         // Utilities
         formatUptime,

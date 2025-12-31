@@ -144,38 +144,6 @@ const getClaudeStatusDisplay = (claudeState: TerminalItem['claudeState']) => {
   return { label, detail, emoji, isWorking }
 }
 
-// Generate status text for history
-const getStatusTextForHistory = (claudeState: TerminalItem['claudeState']): string => {
-  if (!claudeState) return ''
-  if (claudeState.status === 'idle' || claudeState.status === 'awaiting_input') return ''
-
-  const emoji = claudeState.currentTool ? (toolEmojis[claudeState.currentTool] || '🔧') : '⏳'
-
-  if (claudeState.currentTool && claudeState.details?.args) {
-    const args = claudeState.details.args
-    if (args.file_path?.includes('/.claude/')) return ''
-
-    if (args.file_path) {
-      const parts = args.file_path.split('/')
-      return `${emoji} ${claudeState.currentTool}: ${parts[parts.length - 1]}`
-    } else if (args.description) {
-      const desc = args.description.length > 25 ? args.description.slice(0, 25) + '…' : args.description
-      return `${emoji} ${claudeState.currentTool}: ${desc}`
-    } else if (args.command) {
-      const cmd = args.command.length > 25 ? args.command.slice(0, 25) + '…' : args.command
-      return `${emoji} ${claudeState.currentTool}: ${cmd}`
-    } else if (args.pattern) {
-      return `${emoji} ${claudeState.currentTool}: ${args.pattern}`
-    }
-    return `${emoji} ${claudeState.currentTool}`
-  }
-
-  if (claudeState.status === 'processing') return '⏳ Processing'
-  if (claudeState.status === 'working') return '⚙️ Working'
-
-  return ''
-}
-
 export function TerminalsGrid({
   terminals,
   loading = false,
@@ -189,6 +157,48 @@ export function TerminalsGrid({
   // Status history tracking (per terminal)
   const [statusHistory, setStatusHistory] = useState<Map<string, StatusHistoryEntry[]>>(new Map())
   const lastStatusTextRef = useRef<Map<string, string>>(new Map())
+  const initialLoadDone = useRef(false)
+
+  // Load initial history from Chrome storage (synced from sidebar)
+  useEffect(() => {
+    if (initialLoadDone.current) return
+    initialLoadDone.current = true
+
+    chrome.storage.local.get(['claudeStatusHistory'], (result) => {
+      if (result.claudeStatusHistory) {
+        const historyObj = result.claudeStatusHistory as Record<string, StatusHistoryEntry[]>
+        const historyMap = new Map<string, StatusHistoryEntry[]>()
+        for (const [id, entries] of Object.entries(historyObj)) {
+          historyMap.set(id, entries)
+          // Set last status text to avoid duplicating on first poll
+          if (entries.length > 0) {
+            lastStatusTextRef.current.set(id, entries[0].text)
+          }
+        }
+        setStatusHistory(historyMap)
+      }
+    })
+  }, [])
+
+  // Listen for history updates from sidebar
+  useEffect(() => {
+    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
+      if (changes.claudeStatusHistory?.newValue) {
+        const historyObj = changes.claudeStatusHistory.newValue as Record<string, StatusHistoryEntry[]>
+        const historyMap = new Map<string, StatusHistoryEntry[]>()
+        for (const [id, entries] of Object.entries(historyObj)) {
+          historyMap.set(id, entries)
+          if (entries.length > 0) {
+            lastStatusTextRef.current.set(id, entries[0].text)
+          }
+        }
+        setStatusHistory(historyMap)
+      }
+    }
+
+    chrome.storage.local.onChanged.addListener(handleStorageChange)
+    return () => chrome.storage.local.onChanged.removeListener(handleStorageChange)
+  }, [])
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -197,31 +207,6 @@ export function TerminalsGrid({
     y: number
     terminalId: string | null
   }>({ show: false, x: 0, y: 0, terminalId: null })
-
-  // Track status changes and build history
-  useEffect(() => {
-    terminals.forEach((terminal) => {
-      if (terminal.claudeState) {
-        const statusText = getStatusTextForHistory(terminal.claudeState)
-        const lastText = lastStatusTextRef.current.get(terminal.id)
-
-        if (statusText && statusText !== lastText) {
-          lastStatusTextRef.current.set(terminal.id, statusText)
-          setStatusHistory((prev) => {
-            const newHistory = new Map(prev)
-            const terminalHistory = newHistory.get(terminal.id) || []
-            const newEntry: StatusHistoryEntry = {
-              text: statusText,
-              timestamp: Date.now(),
-            }
-            const updatedHistory = [newEntry, ...terminalHistory].slice(0, MAX_HISTORY_ENTRIES)
-            newHistory.set(terminal.id, updatedHistory)
-            return newHistory
-          })
-        }
-      }
-    })
-  }, [terminals])
 
   // Close context menu on click outside
   useEffect(() => {

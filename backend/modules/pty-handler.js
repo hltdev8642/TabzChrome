@@ -282,6 +282,13 @@ class PTYHandler extends EventEmitter {
             // This allows tabs to auto-close when you type 'exit' or Ctrl+D
             execSync(`tmux set-option -t "${sessionName}" remain-on-exit off`);
 
+            // Set profile name as tmux user option for status bar display
+            // This is shown in the tmux status bar for popped-out/3D focus views
+            if (profile?.name) {
+              execSync(`tmux set-option -t "${sessionName}" @profile "${profile.name}"`);
+              log.debug(`Set tmux @profile option: ${profile.name}`);
+            }
+
             log.success(`Tmux session created: ${sessionName}`);
           } catch (tmuxError) {
             log.error('Failed to create tmux session:', tmuxError);

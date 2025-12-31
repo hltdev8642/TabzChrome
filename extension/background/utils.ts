@@ -121,9 +121,9 @@ export async function spawnQuickTerminal(): Promise<{ success: boolean; terminal
     const newWindow = await chrome.windows.create({
       url: sidepanelUrl,
       type: 'popup',
-      width: 600,
-      height: 500,
-      focused: true
+      width: 800,
+      height: 600,
+      focused: true,
     })
 
     // Notify sidebar that this terminal is in a popout window

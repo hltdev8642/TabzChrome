@@ -478,7 +478,7 @@ export default function FilesSection() {
                 onClick={() => setActiveFileId(file.id)}
                 onDoubleClick={() => pinFile(file.id)}
                 onContextMenu={(e) => handleTabContextMenu(e, file.id)}
-                title={file.pinned ? file.name : `${file.name} (preview - double-click to pin)`}
+                title={file.pinned ? file.path : `${file.path}\n(preview - double-click to pin)`}
               >
                 <FileIcon className={`w-4 h-4 ${iconColor}`} />
                 <span className={`text-sm truncate max-w-32 ${!file.pinned ? 'italic opacity-75' : ''}`}>

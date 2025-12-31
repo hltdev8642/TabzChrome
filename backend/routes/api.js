@@ -1029,13 +1029,21 @@ router.get('/claude-status', asyncHandler(async (req, res) => {
     const stateDir = '/tmp/claude-code-state';
     let tmuxPaneId = null;
 
-    // If sessionName provided, get the tmux pane ID for precise matching
+    // If sessionName provided, get the tmux pane ID and pane_title for precise matching
+    let paneTitle = null;
     if (sessionName) {
       try {
         // First check if session exists (silent check)
         execSync(`tmux has-session -t "${sessionName}" 2>/dev/null`);
         // Get pane ID for this session (format: %123)
         tmuxPaneId = execSync(`tmux list-panes -t "${sessionName}" -F "#{pane_id}"`, { encoding: 'utf-8' }).trim().split('\n')[0];
+        // Get pane_title - this is set by Claude Code's TodoWrite when there's an in_progress task
+        const rawPaneTitle = execSync(`tmux display-message -t "${sessionName}" -p "#{pane_title}"`, { encoding: 'utf-8' }).trim();
+        // Only use pane_title if it's meaningful (not hostname, bash, or empty)
+        const hostnamePattern = /^(localhost|[\w]+-?(desktop|laptop)|ip-[\d-]+|bash)$/i;
+        if (rawPaneTitle && !hostnamePattern.test(rawPaneTitle)) {
+          paneTitle = rawPaneTitle;
+        }
       } catch (err) {
         // Session doesn't exist - silently fall back to dir matching
         // This is expected during backend restart before terminals reconnect
@@ -1140,6 +1148,10 @@ router.get('/claude-status', asyncHandler(async (req, res) => {
         } catch (err) {
           // Context file not found or invalid - that's okay, statusline may not have run yet
         }
+      }
+      // Add pane_title from tmux (set by Claude Code when there's an in_progress todo)
+      if (paneTitle) {
+        bestMatch.pane_title = paneTitle;
       }
       res.json(bestMatch);
     } else {

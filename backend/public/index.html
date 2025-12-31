@@ -184,6 +184,10 @@
         // Listen for Dashboard events
         Dashboard.on('terminals', updateTerminalsPreview);
         Dashboard.on('health', updateHealth);
+        Dashboard.on('claudeStatuses', () => {
+            // Re-render terminals when Claude statuses update
+            updateTerminalsPreview(Dashboard.state.terminals);
+        });
         Dashboard.on('connection', (data) => {
             if (data.connected) {
                 fetchOrphanedCount();
@@ -226,17 +230,26 @@
 
             // Show first 5 terminals
             const preview = terminals.slice(0, 5);
-            container.innerHTML = preview.map(t => `
-                <div class="activity-item ${t.state === 'active' ? 'success' : ''}">
-                    <div class="activity-time">${Dashboard.formatRelativeTime(t.createdAt)}</div>
-                    <div class="activity-content">
-                        <strong>${Dashboard.escapeHtml(t.name || t.id)}</strong>
-                        <span class="text-muted"> - ${t.terminalType || 'bash'}</span>
-                        ${t.workingDir ? `<br><span class="mono text-muted" style="font-size: 0.8rem;">${Dashboard.shortenPath(t.workingDir)}</span>` : ''}
+            container.innerHTML = preview.map(t => {
+                // Get Claude status if available
+                const claudeStatus = Dashboard.getClaudeStatusText(t.id, t.name || t.id);
+                const displayName = claudeStatus ? claudeStatus.text : (t.name || t.id);
+                const statusIndicator = claudeStatus
+                    ? (claudeStatus.isIdle ? '<span style="color: #00ff88;">✓</span> ' : '')
+                    : '';
+
+                return `
+                    <div class="activity-item ${t.state === 'active' ? 'success' : ''}">
+                        <div class="activity-time">${Dashboard.formatRelativeTime(t.createdAt)}</div>
+                        <div class="activity-content">
+                            <strong>${statusIndicator}${Dashboard.escapeHtml(displayName)}</strong>
+                            <span class="text-muted"> - ${t.terminalType || 'bash'}</span>
+                            ${t.workingDir ? `<br><span class="mono text-muted" style="font-size: 0.8rem;">${Dashboard.shortenPath(t.workingDir)}</span>` : ''}
+                        </div>
+                        <span class="badge ${t.state === 'active' ? 'badge-green' : 'badge-yellow'}">${t.state || 'unknown'}</span>
                     </div>
-                    <span class="badge ${t.state === 'active' ? 'badge-green' : 'badge-yellow'}">${t.state || 'unknown'}</span>
-                </div>
-            `).join('');
+                `;
+            }).join('');
 
             if (terminals.length > 5) {
                 container.innerHTML += `

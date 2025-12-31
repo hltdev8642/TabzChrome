@@ -172,6 +172,44 @@ export function useTerminalSessions({
     }
   }, [sessions])
 
+  // Listen for session changes from other contexts (e.g., sidebar updates appearance, popout receives it)
+  // Only update appearance-related properties to avoid overwriting local terminal state
+  useEffect(() => {
+    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
+      if (changes.terminalSessions?.newValue) {
+        const newSessions = changes.terminalSessions.newValue as TerminalSession[]
+        setSessions(prev => {
+          // Check if any appearance overrides actually changed
+          let hasChanges = false
+          const updated = prev.map(session => {
+            const incoming = newSessions.find(s => s.id === session.id)
+            if (!incoming) return session
+
+            // Check if appearance-related fields changed
+            const overridesChanged = JSON.stringify(session.appearanceOverrides) !== JSON.stringify(incoming.appearanceOverrides)
+            const fontOffsetChanged = session.fontSizeOffset !== incoming.fontSizeOffset
+            const profileChanged = session.profile?.id !== incoming.profile?.id
+
+            if (overridesChanged || fontOffsetChanged || profileChanged) {
+              hasChanges = true
+              return {
+                ...session,
+                appearanceOverrides: incoming.appearanceOverrides,
+                fontSizeOffset: incoming.fontSizeOffset,
+                profile: incoming.profile,
+              }
+            }
+            return session
+          })
+          return hasChanges ? updated : prev
+        })
+      }
+    }
+
+    chrome.storage.local.onChanged.addListener(handleStorageChange)
+    return () => chrome.storage.local.onChanged.removeListener(handleStorageChange)
+  }, [])
+
   // Save current terminal ID to Chrome storage (persists across sidebar refresh)
   useEffect(() => {
     if (currentSession) {

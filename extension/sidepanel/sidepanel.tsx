@@ -1039,7 +1039,7 @@ function SidePanelTerminal() {
                             {(claudeStatuses.get(session.id)?.status === 'idle' || claudeStatuses.get(session.id)?.status === 'awaiting_input') ? (
                               <>
                                 <span style={{ color: '#00ff88' }}>✓</span>
-                                <span>{session.profile?.name || session.name}</span>
+                                <span>{claudeStatuses.get(session.id)?.pane_title || session.profile?.name || session.name}</span>
                               </>
                             ) : (
                               <span style={{ color: getStatusColor(claudeStatuses.get(session.id)) || undefined }}>

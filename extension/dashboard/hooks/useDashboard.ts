@@ -78,8 +78,8 @@ export async function spawnTerminalPopout(options: {
     const newWindow = await chrome.windows.create({
       url: sidepanelUrl,
       type: 'popup',
-      width: 700,
-      height: 550,
+      width: 800,
+      height: 600,
       focused: true
     })
 

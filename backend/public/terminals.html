@@ -261,6 +261,10 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             Dashboard.on('terminals', updateTerminalsTable);
+            Dashboard.on('claudeStatuses', () => {
+                // Re-render terminals when Claude statuses update
+                updateTerminalsTable(Dashboard.state.terminals);
+            });
             Dashboard.on('connection', (data) => {
                 if (data.connected) {
                     refreshOrphans();
@@ -289,39 +293,48 @@
                 return;
             }
 
-            tbody.innerHTML = terminals.map(t => `
-                <tr class="terminal-row">
-                    <td class="checkbox-cell">
-                        <input type="checkbox"
-                               data-id="${t.id}"
-                               ${selectedTerminals.has(t.id) ? 'checked' : ''}
-                               onchange="toggleTerminalSelection('${t.id}')">
-                    </td>
-                    <td>
-                        <strong>${Dashboard.escapeHtml(t.name || 'Unnamed')}</strong>
-                    </td>
-                    <td>
-                        <code class="mono" style="font-size: 0.8rem;">${Dashboard.shortenPath(t.id, 25)}</code>
-                    </td>
-                    <td>${t.terminalType || 'bash'}</td>
-                    <td>
-                        <span class="badge ${t.state === 'active' ? 'badge-green' : 'badge-yellow'}">
-                            ${t.state || 'unknown'}
-                        </span>
-                    </td>
-                    <td>
-                        <span class="mono text-muted" style="font-size: 0.85rem;">
-                            ${Dashboard.shortenPath(t.workingDir || '-', 30)}
-                        </span>
-                    </td>
-                    <td>${Dashboard.formatRelativeTime(t.createdAt)}</td>
-                    <td class="terminal-actions">
-                        <button class="btn btn-danger btn-sm" onclick="killTerminal('${t.id}')">
-                            Kill
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
+            tbody.innerHTML = terminals.map(t => {
+                // Get Claude status if available
+                const claudeStatus = Dashboard.getClaudeStatusText(t.id, t.name || 'Unnamed');
+                const displayName = claudeStatus ? claudeStatus.text : (t.name || 'Unnamed');
+                const statusIndicator = claudeStatus
+                    ? (claudeStatus.isIdle ? '<span style="color: #00ff88;">✓</span> ' : '')
+                    : '';
+
+                return `
+                    <tr class="terminal-row">
+                        <td class="checkbox-cell">
+                            <input type="checkbox"
+                                   data-id="${t.id}"
+                                   ${selectedTerminals.has(t.id) ? 'checked' : ''}
+                                   onchange="toggleTerminalSelection('${t.id}')">
+                        </td>
+                        <td>
+                            <strong>${statusIndicator}${Dashboard.escapeHtml(displayName)}</strong>
+                        </td>
+                        <td>
+                            <code class="mono" style="font-size: 0.8rem;">${Dashboard.shortenPath(t.id, 25)}</code>
+                        </td>
+                        <td>${t.terminalType || 'bash'}</td>
+                        <td>
+                            <span class="badge ${t.state === 'active' ? 'badge-green' : 'badge-yellow'}">
+                                ${t.state || 'unknown'}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="mono text-muted" style="font-size: 0.85rem;">
+                                ${Dashboard.shortenPath(t.workingDir || '-', 30)}
+                            </span>
+                        </td>
+                        <td>${Dashboard.formatRelativeTime(t.createdAt)}</td>
+                        <td class="terminal-actions">
+                            <button class="btn btn-danger btn-sm" onclick="killTerminal('${t.id}')">
+                                Kill
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
 
             updateBulkActionsVisibility();
         }

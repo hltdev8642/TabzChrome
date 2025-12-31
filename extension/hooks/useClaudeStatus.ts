@@ -8,6 +8,7 @@ export interface ClaudeStatus {
   subagent_count?: number  // Number of active subagents (for 🤖🤖🤖 display)
   context_pct?: number  // Context window usage percentage (0-100)
   permission_mode?: string  // 'plan' when in plan mode, null otherwise
+  pane_title?: string  // Tmux pane title - set by Claude Code when there's an in_progress todo
   details?: {
     args?: {
       file_path?: string
@@ -183,6 +184,7 @@ export function useClaudeStatus(terminals: TerminalInfo[]): ClaudeStatusResult {
                   tmuxPane: result.tmuxPane,
                   subagent_count: result.subagent_count || 0,
                   context_pct: result.context_window?.context_pct,
+                  pane_title: result.pane_title,
                   details: result.details,
                 } as ClaudeStatus,
                 success: true,
@@ -233,6 +235,7 @@ export function useClaudeStatus(terminals: TerminalInfo[]): ClaudeStatusResult {
       // Update history for terminals with new status changes
       setHistory(prevHistory => {
         const newHistory = new Map(prevHistory)
+        let changed = false
 
         for (const result of results) {
           if (result.success && result.status) {
@@ -253,8 +256,18 @@ export function useClaudeStatus(terminals: TerminalInfo[]): ClaudeStatusResult {
               // Add to front, keep max entries
               const updatedHistory = [newEntry, ...terminalHistory].slice(0, MAX_HISTORY_ENTRIES)
               newHistory.set(result.id, updatedHistory)
+              changed = true
             }
           }
+        }
+
+        // Persist to Chrome storage so dashboard can read it
+        if (changed) {
+          const historyObj: Record<string, StatusHistoryEntry[]> = {}
+          newHistory.forEach((entries, id) => {
+            historyObj[id] = entries
+          })
+          chrome.storage.local.set({ claudeStatusHistory: historyObj })
         }
 
         return newHistory
