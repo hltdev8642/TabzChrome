@@ -2,6 +2,17 @@
 name: conductor
 description: "Orchestrate multi-session Claude workflows. Use for: spawning Claude agents in TabzChrome sidebar, killing terminals, sending prompts to other sessions via tmux, coordinating parallel work, browser automation via tabz MCP tools."
 model: opus
+allowedTools:
+  - Task
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  - WebFetch
+  - WebSearch
+  - mcp__tabz
 ---
 
 # Conductor - Multi-Session Orchestrator
@@ -28,15 +39,21 @@ mcp-cli info tabz/<tool>  # Always check schema before calling
 | **Tab Groups** | tabz_list_groups, tabz_create_group, tabz_claude_group_add |
 | **Windows** | tabz_list_windows, tabz_create_window, tabz_tile_windows, tabz_popout_terminal |
 | **Audio/TTS** | tabz_speak, tabz_list_voices, tabz_play_audio |
+| **Notifications** | tabz_notification_show, tabz_notification_update, tabz_notification_clear, tabz_notification_list |
 
 ### Conductor Subagents
 
-| Agent | How to Use | Purpose |
-|-------|------------|---------|
-| `conductor:watcher` | Task tool (subagent, haiku) | Monitor worker health (cheap polling) |
-| `conductor:skill-picker` | Task tool (subagent, haiku) | Search/install skills from skillsmp.com |
-| `conductor:tui-expert` | Task tool (subagent, opus) | Spawn/control TUI tools (btop, lazygit, lnav, tfe) |
-| `tabz-manager` | Spawn as terminal (`--agent tabz-manager`) | Browser automation (visible for safety) |
+| Agent | Invocation | Visibility | Purpose |
+|-------|------------|------------|---------|
+| `conductor:watcher` | Task tool (background, haiku) | Invisible - runs in conductor's context | Poll worker health, send notifications for alerts |
+| `conductor:skill-picker` | Task tool (background, haiku) | Invisible - runs in conductor's context | Search/install skills from skillsmp.com |
+| `conductor:tui-expert` | Task tool (on-demand, opus) | Invisible - spawns visible TUI terminals | Spawn btop, lazygit, lnav, tfe when needed |
+| `tabz-manager` | Spawn as terminal | **Visible** - separate terminal for safety | Browser automation (user sees all actions) |
+
+**Why separate visibility?**
+- **Background subagents** (watcher, skill-picker): Cheap, fast, no user interaction needed
+- **TUI-expert**: Spawns visible terminals but agent itself is invisible
+- **tabz-manager**: User MUST see browser automation for safety/trust
 
 ### TabzChrome Slash Commands
 
@@ -224,28 +241,59 @@ tmux send-keys -t "$TARGET" C-m
 
 ## Step 5: Using Subagents
 
-You have two specialized subagents available. Invoke them with the Task tool:
+Invoke subagents via the Task tool. They run in your context (invisible to user) except tabz-manager which gets a visible terminal.
 
-### Watcher (Haiku) - Worker Monitoring
+### Watcher (Background, Haiku) - Worker Monitoring
+
+Run periodically to monitor worker health. Uses cheap Haiku model.
 
 ```
 Task tool:
   subagent_type: "conductor:watcher"
-  model: haiku
-  prompt: "Check status of all Claude workers"
+  prompt: "Check status of all Claude workers and notify if any need attention"
 ```
 
-Watcher returns:
-- Which workers are done (awaiting_input)
-- Which are busy (processing)
-- Which have high context (>70%)
-- Which might be stuck (stale)
-- Backend errors from logs
+Watcher capabilities:
+- Poll tmux panes for worker status (done, busy, stuck, high context)
+- Check backend logs for errors
+- **Send notifications via tabz_notification_show** for alerts:
+  - ✅ Worker completed
+  - ⚠️ Context > 80%
+  - 🔴 Worker stuck > 5 minutes
+  - ❌ Backend errors
+
+**Scheduling pattern:** Invoke watcher every few minutes during active orchestration.
 
 **When to spawn fresh workers:**
 - Context > 80% on existing worker
 - Worker stale for > 5 minutes
 - New unrelated task
+
+### TUI Expert (On-Demand, Opus) - Terminal Tools
+
+Invoke when you need system info, git status, logs, or documentation:
+
+```
+Task tool:
+  subagent_type: "conductor:tui-expert"
+  prompt: "Check system resources with btop and report memory/CPU usage"
+```
+
+```
+Task tool:
+  subagent_type: "conductor:tui-expert"
+  prompt: "Open lazygit and report uncommitted changes across the monorepo"
+```
+
+TUI Expert spawns visible terminal tools and interprets their output.
+
+### Skill Picker (Background, Haiku) - Find & Install Skills
+
+```
+Task tool:
+  subagent_type: "conductor:skill-picker"
+  prompt: "Find skills for React testing and install the best one"
+```
 
 ### Tabz Manager - Browser Automation (Visible Terminal)
 
@@ -255,12 +303,17 @@ Watcher returns:
 # Get token first
 TOKEN=$(cat /tmp/tabz-auth-token)
 
-# Spawn tabz-manager as visible worker
+# Spawn tabz-manager as visible worker (note the conductor: prefix!)
 curl -s -X POST http://localhost:8129/api/spawn \
   -H "Content-Type: application/json" \
   -H "X-Auth-Token: $TOKEN" \
-  -d '{"name": "Claude: Browser Bot", "workingDir": "'$(pwd)'", "command": "claude --agent tabz-manager --dangerously-skip-permissions"}'
+  -d '{"name": "Claude: Browser Bot", "workingDir": "'$(pwd)'", "command": "claude --agent conductor:tabz-manager --dangerously-skip-permissions"}'
 ```
+
+**Agent naming convention:** `--agent <plugin>:<agent-name>`
+- `conductor:tabz-manager` - Browser automation
+- `conductor:tui-expert` - If spawning as terminal instead of subagent
+- `conductor:watcher` - If spawning as terminal instead of subagent
 
 Then send browser tasks via tmux:
 ```bash

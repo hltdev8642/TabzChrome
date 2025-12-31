@@ -1,7 +1,12 @@
 ---
 name: watcher
-description: "Monitor Claude worker sessions - check progress, context usage, completion status. Use for polling worker health before assigning new tasks."
+description: "Monitor Claude worker sessions - check progress, context usage, completion status. Sends notifications for important events. Use for polling worker health before assigning new tasks."
 model: haiku
+allowedTools:
+  - Bash
+  - Read
+  - Glob
+  - mcp__tabz
 ---
 
 # Watcher - Worker Health Monitor
@@ -179,10 +184,35 @@ cat /tmp/claude-code-state/*.json | jq -r 'select(.status == "stale" or .details
 tmux capture-pane -t ctt-tabzchrome-logs-* -p -S -100 2>/dev/null | grep -i "error\|fail\|exception" | tail -10
 ```
 
+## Sending Notifications
+
+Use tabz_notification_show to alert the user about important events:
+
+```bash
+# Worker completed
+mcp-cli call tabz/tabz_notification_show '{"title": "✅ Worker Done", "message": "ctt-worker-abc finished task", "type": "basic"}'
+
+# High context warning
+mcp-cli call tabz/tabz_notification_show '{"title": "⚠️ High Context", "message": "ctt-worker-xyz at 85% - consider fresh worker", "type": "basic"}'
+
+# Worker stuck
+mcp-cli call tabz/tabz_notification_show '{"title": "🔴 Worker Stuck", "message": "ctt-worker-def stale for 5+ minutes", "type": "basic"}'
+
+# Backend error
+mcp-cli call tabz/tabz_notification_show '{"title": "❌ Backend Error", "message": "WebSocket connection failed", "type": "basic"}'
+```
+
+**When to notify:**
+- ✅ Any worker transitions to `awaiting_input` (completed)
+- ⚠️ Any worker exceeds 75% context (critical threshold)
+- 🔴 Any worker stale for 5+ minutes
+- ❌ Backend errors detected in logs
+
 ## Usage
 
 The conductor will invoke you with prompts like:
 - "Check status of all workers"
+- "Check status and notify if any need attention"
 - "Is ctt-worker-abc done?"
 - "Which workers are ready for new tasks?"
 - "Any workers running low on context?"
