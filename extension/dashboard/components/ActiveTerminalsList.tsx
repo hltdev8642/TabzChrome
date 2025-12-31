@@ -9,6 +9,8 @@ import {
   MaximizeIcon,
   SettingsIcon,
   AttachFileIcon,
+  BotIcon,
+  BotMessageSquareIcon,
 } from '../../components/icons'
 import { AnimatedMenuItem } from '../../components/AnimatedMenuItem'
 import { compactPath } from '../../shared/utils'
@@ -147,7 +149,8 @@ const getClaudeStatusDisplay = (claudeState: TerminalItem['claudeState']) => {
     label = claudeState.status === 'processing' ? 'Processing' : claudeState.status
   }
 
-  return { color, label, detail, fullDetail, emoji }
+  const isWorking = claudeState.status !== 'idle' && claudeState.status !== 'awaiting_input'
+  return { color, label, detail, fullDetail, emoji, isWorking }
 }
 
 // Generate status text for history
@@ -557,7 +560,19 @@ export function ActiveTerminalsList({
                 <td className="px-2 py-3" style={{ width: columnWidths.activity }}>
                   {claudeStatus ? (
                     <div className="flex items-center gap-1.5 min-w-0">
-                      {claudeStatus.emoji && (
+                      {/* Animated bot icon - orange color */}
+                      <span className="flex-shrink-0 text-orange-400">
+                        {claudeStatus.isWorking ? (
+                          <BotMessageSquareIcon size={16} />
+                        ) : (
+                          <BotIcon size={16} />
+                        )}
+                      </span>
+                      {/* Green checkmark when ready */}
+                      {!claudeStatus.isWorking && (
+                        <span className="flex-shrink-0 text-sm" style={{ color: '#00ff88' }}>✓</span>
+                      )}
+                      {claudeStatus.emoji && claudeStatus.isWorking && (
                         <span className="flex-shrink-0 text-sm">{claudeStatus.emoji}</span>
                       )}
                       <span className={`text-sm ${claudeStatus.color}`}>{claudeStatus.label}</span>

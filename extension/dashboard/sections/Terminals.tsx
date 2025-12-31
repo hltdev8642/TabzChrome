@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { Terminal, Trash2, RefreshCw, LayoutGrid, LayoutList } from 'lucide-react'
+import { TerminalIcon, type AnimatedIconHandle } from '../../components/icons'
 import { getTerminals, killSession, killSessions, getAllTmuxSessions, getProfiles } from '../hooks/useDashboard'
 import { ActiveTerminalsList, type TerminalItem, type TerminalDisplayMode } from '../components/ActiveTerminalsList'
 import { TerminalsGrid } from '../components/TerminalsGrid'
@@ -64,6 +65,13 @@ export default function TerminalsSection() {
     const saved = localStorage.getItem('tabz-terminals-view-mode')
     return (saved as ViewMode) || 'grid'
   })
+
+  // Animated icon ref - play animation on mount
+  const iconRef = useRef<AnimatedIconHandle>(null)
+  useEffect(() => {
+    const timer = setTimeout(() => iconRef.current?.startAnimation(), 100)
+    return () => clearTimeout(timer)
+  }, [])
 
   const fetchData = async (isInitial = false) => {
     try {
@@ -292,7 +300,7 @@ export default function TerminalsSection() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold font-mono text-primary terminal-glow flex items-center gap-3">
-            <Terminal className="w-8 h-8" />
+            <TerminalIcon ref={iconRef} size={32} />
             Active Terminals
           </h1>
           <p className="text-muted-foreground mt-1">

@@ -27,9 +27,14 @@ export { PanelLeftOpenIcon } from './PanelLeftOpenIcon'
 // Context menu icons
 export { CopyIcon } from './CopyIcon'
 export { EyeIcon } from './EyeIcon'
+export { EyeOffIcon } from './EyeOffIcon'
 export { DeleteIcon } from './DeleteIcon'
 export { SquarePenIcon } from './SquarePenIcon'
 export { SparklesIcon } from './SparklesIcon'
 export { MaximizeIcon } from './MaximizeIcon'
 export { ExpandIcon } from './ExpandIcon'
 export { AttachFileIcon } from './AttachFileIcon'
+
+// Claude status icons
+export { BotIcon } from './BotIcon'
+export { BotMessageSquareIcon } from './BotMessageSquareIcon'

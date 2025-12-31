@@ -31,6 +31,8 @@ import {
   MaximizeIcon,
   FolderOpenIcon,
   TerminalIcon,
+  GridIcon,
+  type AnimatedIconHandle,
 } from '../../components/icons'
 import { TerminalPreview } from '../components/TerminalPreview'
 import { themes, themeNames } from '../../styles/themes'
@@ -109,6 +111,13 @@ export default function SettingsProfiles() {
   const [pendingImportCategorySettings, setPendingImportCategorySettings] = useState<CategorySettings | undefined>()
   const [importWarnings, setImportWarnings] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Animated icon ref - play animation on mount
+  const iconRef = useRef<AnimatedIconHandle>(null)
+  useEffect(() => {
+    const timer = setTimeout(() => iconRef.current?.startAnimation(), 100)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Audio section in profile edit form
   const [profileAudioTestPlaying, setProfileAudioTestPlaying] = useState(false)
@@ -780,7 +789,7 @@ export default function SettingsProfiles() {
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
         <div className="min-w-0 flex-shrink-0">
           <h1 className="text-2xl sm:text-3xl font-bold font-mono text-primary terminal-glow truncate flex items-center gap-3">
-            <Grid3X3 className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0" />
+            <GridIcon ref={iconRef} size={32} className="flex-shrink-0" />
             Profiles
           </h1>
           <p className="text-sm text-muted-foreground mt-1">

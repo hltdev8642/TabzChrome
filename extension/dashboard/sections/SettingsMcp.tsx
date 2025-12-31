@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react'
-import { Wrench, Search, RefreshCw, ChevronDown, ChevronRight, ExternalLink, CheckCircle, Circle, Settings, Zap, Terminal, Microscope } from 'lucide-react'
+import React, { useEffect, useState, useRef } from 'react'
+import { Search, RefreshCw, ChevronDown, ChevronRight, ExternalLink, CheckCircle, Circle, Settings, Zap, Terminal, Microscope } from 'lucide-react'
+import { SettingsIcon, type AnimatedIconHandle } from '../../components/icons'
 import { spawnTerminal } from '../hooks/useDashboard'
 
 // MCP Tools configuration (matches extension/components/settings/types.ts)
@@ -127,6 +128,13 @@ export default function McpPlayground() {
   const [inspectorCommand, setInspectorCommand] = useState<string>('')
   const [inspectorUrl, setInspectorUrl] = useState<string>('http://localhost:6274')
 
+  // Animated icon ref - play animation on mount
+  const iconRef = useRef<AnimatedIconHandle>(null)
+  useEffect(() => {
+    const timer = setTimeout(() => iconRef.current?.startAnimation(), 100)
+    return () => clearTimeout(timer)
+  }, [])
+
   // Fetch config and inspector command on mount
   useEffect(() => {
     const fetchConfig = async () => {
@@ -238,7 +246,7 @@ export default function McpPlayground() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold font-mono text-primary terminal-glow flex items-center gap-3">
-            <Wrench className="w-8 h-8" />
+            <SettingsIcon ref={iconRef} size={32} />
             MCP Settings
           </h1>
           <p className="text-muted-foreground mt-1">

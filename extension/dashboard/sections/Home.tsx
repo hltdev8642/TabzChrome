@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react'
-import { Terminal, Clock, HardDrive, Ghost, RefreshCw, Server, ChevronRight, Home, AlertTriangle, RotateCcw, Trash2, Cpu, Eye, GitBranch } from 'lucide-react'
+import React, { useEffect, useState, useRef } from 'react'
+import { Terminal, Clock, HardDrive, Ghost, RefreshCw, Server, ChevronRight, AlertTriangle, RotateCcw, Trash2, Cpu, Eye, GitBranch } from 'lucide-react'
+import { HomeIcon, type AnimatedIconHandle } from '../../components/icons'
 import { getHealth, getOrphanedSessions, getTerminals, getAllTmuxSessions, reattachSessions, killSession, killTmuxSession, getProfiles } from '../hooks/useDashboard'
 import { ActiveTerminalsList, type TerminalItem } from '../components/ActiveTerminalsList'
 import { compactPath } from '../../shared/utils'
@@ -44,6 +45,13 @@ export default function HomeSection() {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Animated icon ref - play animation on mount
+  const iconRef = useRef<AnimatedIconHandle>(null)
+  useEffect(() => {
+    const timer = setTimeout(() => iconRef.current?.startAnimation(), 100)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Helper to find full profile name (with emoji) from extracted name
   const getProfileDisplayName = (extractedName: string, profilesList: Profile[]): string => {
@@ -222,7 +230,7 @@ export default function HomeSection() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold font-mono text-primary terminal-glow flex items-center gap-3">
-            <Home className="w-8 h-8" />
+            <HomeIcon ref={iconRef} size={32} />
             Dashboard
           </h1>
           <p className="text-muted-foreground mt-1">

@@ -39,7 +39,7 @@ import {
   Gem,        // Gemfile
 } from "lucide-react"
 // Animated icons
-import { HomeIcon, RefreshCwIcon, EyeIcon, ExpandIcon, ChevronDownIcon } from "../../../components/icons"
+import { HomeIcon, RefreshCwIcon, EyeIcon, EyeOffIcon, ExpandIcon, ChevronDownIcon } from "../../../components/icons"
 import { useFilesContext } from "../../contexts/FilesContext"
 import { getClaudeFileType, claudeFileColors, ClaudeFileType, getScriptInfo } from "../../utils/claudeFileTypes"
 import { FileTreeContextMenu } from "./FileTreeContextMenu"
@@ -825,9 +825,9 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
           <button
             onClick={() => setShowHidden(!showHidden)}
             className={`p-1.5 hover:bg-muted rounded ${showHidden ? "text-yellow-400" : ""}`}
-            title={showHidden ? "Hide hidden" : "Show hidden"}
+            title={showHidden ? "Hide hidden files" : "Show hidden files"}
           >
-            <EyeIcon size={16} className={showHidden ? "" : "opacity-50"} />
+            {showHidden ? <EyeIcon size={16} /> : <EyeOffIcon size={16} />}
           </button>
           <button onClick={expandAll} className="p-1.5 hover:bg-muted rounded" title="Expand all">
             <ExpandIcon size={16} />

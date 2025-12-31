@@ -9,6 +9,8 @@ import {
   MaximizeIcon,
   SettingsIcon,
   AttachFileIcon,
+  BotIcon,
+  BotMessageSquareIcon,
 } from '../../components/icons'
 import { AnimatedMenuItem } from '../../components/AnimatedMenuItem'
 import { compactPath } from '../../shared/utils'
@@ -138,7 +140,8 @@ const getClaudeStatusDisplay = (claudeState: TerminalItem['claudeState']) => {
     label = claudeState.status === 'processing' ? 'Processing' : claudeState.status
   }
 
-  return { label, detail, emoji }
+  const isWorking = claudeState.status !== 'idle' && claudeState.status !== 'awaiting_input'
+  return { label, detail, emoji, isWorking }
 }
 
 // Generate status text for history
@@ -427,17 +430,28 @@ export function TerminalsGrid({
                 {terminal.claudeState && (
                   <div className="px-4 py-2 border-b border-white/10">
                     <div className="flex items-center gap-2 overflow-hidden">
-                      <span className="text-sm flex-shrink-0">🤖</span>
-                      <span className="text-[12px] truncate min-w-0 flex-1" style={{ color: `${themeForeground}cc` }}>
+                      {/* Animated bot icon - orange */}
+                      <span className="flex-shrink-0 text-orange-400">
+                        {status?.isWorking ? (
+                          <BotMessageSquareIcon size={16} />
+                        ) : (
+                          <BotIcon size={16} />
+                        )}
+                      </span>
+                      {/* Green checkmark when ready */}
+                      {status && !status.isWorking && (
+                        <span className="flex-shrink-0 text-sm" style={{ color: '#00ff88' }}>✓</span>
+                      )}
+                      <span className="text-sm truncate min-w-0 flex-1" style={{ color: themeForeground }}>
                         {status ? (
                           status.detail
-                            ? `${status.emoji} ${status.label}: ${status.detail}`
+                            ? `${status.isWorking ? status.emoji + ' ' : ''}${status.label}: ${status.detail}`
                             : `${status.label}`
                         ) : 'Unknown'}
                       </span>
                       {contextPct != null && (
                         <span
-                          className="text-[11px] font-medium flex-shrink-0"
+                          className="text-sm font-medium flex-shrink-0"
                           style={{ color: getContextColor(contextPct) }}
                         >
                           {contextPct}%
@@ -462,12 +476,12 @@ export function TerminalsGrid({
                 {/* Status History */}
                 {history.length > 0 && (
                   <div className="px-4 py-2 border-b border-white/10">
-                    <div className="text-[10px] mb-1" style={{ color: `${themeGreen}99` }}>Recent activity</div>
-                    <div className="space-y-0.5 max-h-[80px] overflow-y-auto">
+                    <div className="text-xs font-medium mb-1.5" style={{ color: themeGreen }}>Recent activity</div>
+                    <div className="space-y-1 max-h-[100px] overflow-y-auto">
                       {history.map((entry, i) => (
-                        <div key={i} className="flex items-start gap-2 text-[11px]">
-                          <span className="flex-1 truncate" style={{ color: `${themeForeground}99` }}>{entry.text}</span>
-                          <span className="text-[9px] flex-shrink-0" style={{ color: `${themeGreen}80` }}>
+                        <div key={i} className="flex items-start gap-2 text-sm">
+                          <span className="flex-1 truncate" style={{ color: themeForeground }}>{entry.text}</span>
+                          <span className="text-xs flex-shrink-0" style={{ color: `${themeGreen}cc` }}>
                             {formatRelativeTime(entry.timestamp)}
                           </span>
                         </div>

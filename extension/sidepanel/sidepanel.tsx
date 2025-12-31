@@ -9,6 +9,8 @@ import {
   ChevronDownIcon,
   KeyboardIcon,
   XIcon,
+  BotIcon,
+  BotMessageSquareIcon,
 } from '../components/icons'
 import { Badge } from '../components/ui/badge'
 import { Terminal } from '../components/Terminal'
@@ -1022,7 +1024,13 @@ function SidePanelTerminal() {
                         <span className="flex-shrink-0 opacity-70" title="Click to focus popout window">🪟</span>
                       )}
                       {claudeStatuses.has(session.id) && (
-                        <span className="flex-shrink-0">{getRobotEmojis(claudeStatuses.get(session.id))}</span>
+                        <span className="flex-shrink-0 text-orange-400">
+                          {(claudeStatuses.get(session.id)?.status === 'idle' || claudeStatuses.get(session.id)?.status === 'awaiting_input') ? (
+                            <BotIcon size={14} />
+                          ) : (
+                            <BotMessageSquareIcon size={14} />
+                          )}
+                        </span>
                       )}
                       <span className="flex-1 min-w-0 truncate flex items-center gap-0.5">
                         {claudeStatuses.has(session.id) ? (
@@ -1555,7 +1563,13 @@ function SidePanelTerminal() {
               {/* Claude Status (if present) */}
               {claudeStatus && (
                 <div className="flex items-center gap-2 pt-2 border-t border-[#333] overflow-hidden">
-                  <span className="text-sm flex-shrink-0">{getRobotEmojis(claudeStatus)}</span>
+                  <span className="flex-shrink-0 text-orange-400">
+                    {(claudeStatus.status === 'idle' || claudeStatus.status === 'awaiting_input') ? (
+                      <BotIcon size={16} />
+                    ) : (
+                      <BotMessageSquareIcon size={16} />
+                    )}
+                  </span>
                   <span className="text-[13px] text-gray-300 truncate min-w-0" title={getFullStatusText(claudeStatus)}>
                     {getFullStatusText(claudeStatus)}
                   </span>

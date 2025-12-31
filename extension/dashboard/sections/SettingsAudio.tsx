@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react'
-import { Volume2, RefreshCw } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
+import { RefreshCw, Volume2 } from 'lucide-react'
+import { VolumeIcon, type AnimatedIconHandle } from '../../components/icons'
 import {
   AudioSettings,
   AudioEventSettings,
@@ -15,6 +16,13 @@ export default function AudioSection() {
   const [audioSettings, setAudioSettings] = useState<AudioSettings>(DEFAULT_AUDIO_SETTINGS)
   const [loading, setLoading] = useState(true)
   const [audioTestPlaying, setAudioTestPlaying] = useState(false)
+
+  // Animated icon ref - play animation on mount
+  const iconRef = useRef<AnimatedIconHandle>(null)
+  useEffect(() => {
+    const timer = setTimeout(() => iconRef.current?.startAnimation(), 100)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Load settings from Chrome storage
   useEffect(() => {
@@ -141,7 +149,7 @@ export default function AudioSection() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold font-mono text-primary terminal-glow flex items-center gap-3">
-          <Volume2 className="w-8 h-8" />
+          <VolumeIcon ref={iconRef} size={32} />
           Audio
         </h1>
         <p className="text-muted-foreground mt-1">

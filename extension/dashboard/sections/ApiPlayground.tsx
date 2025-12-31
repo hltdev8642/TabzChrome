@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { Send, Copy, Check, Clock, ChevronDown, ChevronRight, Plus, Trash2, Code2, Key } from 'lucide-react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { Send, Copy, Check, Clock, ChevronDown, ChevronRight, Plus, Trash2, Key } from 'lucide-react'
+import { CodeIcon, type AnimatedIconHandle } from '../../components/icons'
 
 const API_BASE = 'http://localhost:8129'
 
@@ -206,6 +207,13 @@ export default function ApiPlayground() {
     })
     return initial
   })
+
+  // Animated icon ref - play animation on mount
+  const iconRef = useRef<AnimatedIconHandle>(null)
+  useEffect(() => {
+    const timer = setTimeout(() => iconRef.current?.startAnimation(), 100)
+    return () => clearTimeout(timer)
+  }, [])
 
   const checkHealth = useCallback(async () => {
     const newStatus: Record<string, HealthStatus> = {}
@@ -421,7 +429,7 @@ export default function ApiPlayground() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold font-mono text-primary terminal-glow flex items-center gap-3">
-          <Code2 className="w-8 h-8" />
+          <CodeIcon ref={iconRef} size={32} />
           API Playground
         </h1>
         <p className="text-muted-foreground mt-1">Test TabzChrome REST API endpoints</p>
