@@ -31,6 +31,7 @@ export interface TerminalItem {
     status: string
     currentTool?: string | null
     context_pct?: number | null
+    subagent_count?: number  // Number of active subagents (for multiple bot icon display)
     details?: {
       args?: {
         file_path?: string
@@ -539,13 +540,16 @@ export function ActiveTerminalsList({
                 <td className="px-2 py-3" style={{ width: columnWidths.activity }}>
                   {claudeStatus ? (
                     <div className="flex items-center gap-1.5 min-w-0">
-                      {/* Animated bot icon - orange color, loops continuously */}
-                      <span className="flex-shrink-0 text-orange-400">
-                        {claudeStatus.isWorking ? (
-                          <BotMessageSquareIcon size={16} animate />
-                        ) : (
-                          <BotIcon size={16} animate />
-                        )}
+                      {/* Animated bot icons - orange color, loops continuously */}
+                      {/* Show multiple icons: 1 base + 1 per subagent */}
+                      <span className="flex-shrink-0 text-orange-400 flex items-center">
+                        {Array(1 + (terminal.claudeState?.subagent_count || 0)).fill(0).map((_, i) => (
+                          claudeStatus.isWorking ? (
+                            <BotMessageSquareIcon key={i} size={16} animate />
+                          ) : (
+                            <BotIcon key={i} size={16} animate />
+                          )
+                        ))}
                       </span>
                       {/* Green checkmark when ready */}
                       {!claudeStatus.isWorking && (

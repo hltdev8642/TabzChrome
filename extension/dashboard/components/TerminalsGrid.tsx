@@ -420,13 +420,15 @@ export function TerminalsGrid({
                 {terminal.claudeState && (
                   <div className="px-4 py-2 border-b border-white/10">
                     <div className="flex items-center gap-2 overflow-hidden">
-                      {/* Animated bot icon - orange, loops continuously */}
-                      <span className="flex-shrink-0 text-orange-400">
-                        {status?.isWorking ? (
-                          <BotMessageSquareIcon size={16} animate />
-                        ) : (
-                          <BotIcon size={16} animate />
-                        )}
+                      {/* Animated bot icons - orange, show multiple for subagents */}
+                      <span className="flex-shrink-0 text-orange-400 flex items-center">
+                        {Array(1 + (terminal.claudeState?.subagent_count || 0)).fill(0).map((_, i) => (
+                          status?.isWorking ? (
+                            <BotMessageSquareIcon key={i} size={16} animate />
+                          ) : (
+                            <BotIcon key={i} size={16} animate />
+                          )
+                        ))}
                       </span>
                       {/* Green checkmark when ready */}
                       {status && !status.isWorking && (

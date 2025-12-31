@@ -1034,12 +1034,15 @@ function SidePanelTerminal() {
                         <span className="flex-shrink-0 opacity-70" title="Click to focus popout window">🪟</span>
                       )}
                       {claudeStatuses.has(session.id) && (
-                        <span className="flex-shrink-0 text-orange-400">
-                          {(claudeStatuses.get(session.id)?.status === 'idle' || claudeStatuses.get(session.id)?.status === 'awaiting_input') ? (
-                            <BotIcon size={14} animate />
-                          ) : (
-                            <BotMessageSquareIcon size={14} animate />
-                          )}
+                        <span className="flex-shrink-0 text-orange-400 flex items-center">
+                          {/* Show multiple icons: 1 base + 1 per subagent */}
+                          {Array(1 + (claudeStatuses.get(session.id)?.subagent_count || 0)).fill(0).map((_, i) => (
+                            (claudeStatuses.get(session.id)?.status === 'idle' || claudeStatuses.get(session.id)?.status === 'awaiting_input') ? (
+                              <BotIcon key={i} size={14} animate />
+                            ) : (
+                              <BotMessageSquareIcon key={i} size={14} animate />
+                            )
+                          ))}
                         </span>
                       )}
                       <span className="flex-1 min-w-0 truncate flex items-center gap-0.5">
@@ -1585,12 +1588,15 @@ function SidePanelTerminal() {
               {/* Claude Status (if present) */}
               {claudeStatus && (
                 <div className="flex items-center gap-2 pt-2 border-t border-[#333] overflow-hidden">
-                  <span className="flex-shrink-0 text-orange-400">
-                    {(claudeStatus.status === 'idle' || claudeStatus.status === 'awaiting_input') ? (
-                      <BotIcon size={16} animate />
-                    ) : (
-                      <BotMessageSquareIcon size={16} animate />
-                    )}
+                  <span className="flex-shrink-0 text-orange-400 flex items-center">
+                    {/* Show multiple icons: 1 base + 1 per subagent */}
+                    {Array(1 + (claudeStatus.subagent_count || 0)).fill(0).map((_, i) => (
+                      (claudeStatus.status === 'idle' || claudeStatus.status === 'awaiting_input') ? (
+                        <BotIcon key={i} size={16} animate />
+                      ) : (
+                        <BotMessageSquareIcon key={i} size={16} animate />
+                      )
+                    ))}
                   </span>
                   <span className="text-[13px] text-gray-300 truncate min-w-0" title={getFullStatusText(claudeStatus)}>
                     {getFullStatusText(claudeStatus)}

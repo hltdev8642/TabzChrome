@@ -36,6 +36,7 @@ interface TmuxSession {
     status: string
     currentTool?: string
     context_pct?: number | null
+    subagent_count?: number  // Number of active subagents (for multiple bot icon display)
     details?: {
       args?: {
         file_path?: string
