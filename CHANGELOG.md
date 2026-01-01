@@ -18,26 +18,54 @@ For older versions (1.2.x, 1.1.x, 1.0.x, and pre-public 2.x), see [CHANGELOG-arc
 ## [1.3.11] - 2026-01-01
 
 ### Added
-- **Command Queue** - New prompt staging system replaces unused history feature:
-  - **Queue Panel** - Collapsible panel above chat input showing staged prompts
-  - **Per-item Targets** - Each queued command can target different terminals
-  - **Queue Operations** - Drag-and-drop reorder, inline edit, move up/down buttons
+
+- **New Tab Page** - Beautiful custom new tab page replaces Chrome default:
+  - **Clock Widget** - LED-style display with Orbitron font
+  - **Profile Cards** - Quick-launch terminals with one click
+  - **Active Terminals** - See running terminals with status indicators
+  - **Command Bar** - Search, open URLs, or spawn terminals with commands
+  - **Recent Directories** - Quick access to frequently used paths
+  - **Keyboard Shortcuts** - Power user friendly with hints overlay
+  - **Dark Theme** - Terminal-inspired aesthetic, not generic AI look
+  - Uses `chrome_url_overrides.newtab` manifest entry
+
+- **Floating Command Composer** - Pop-out window for enhanced prompt editing:
+  - **Multi-line Editor** - Large textarea for complex prompts
+  - **AI Enhancement** - Optional background prompt improvement
+  - **Target Selection** - Choose existing terminal or spawn new
+  - **New Terminal Options** - Profile, directory, and name selection
+  - **Mode Options**: Execute (Enter), Paste only, Paste + focus
+  - **Close After Send** - Optional auto-close behavior
+  - **Context Menu** - Right-click → "Open Command Composer"
+  - **Keyboard Shortcut** - `Alt+Shift+C`
+  - Uses `chrome.windows.create({ type: 'popup' })`
+
+- **Command Queue** - Prompt staging system replaces unused history:
+  - **Queue Panel** - Collapsible panel above chat input
+  - **Per-item Targets** - Each command can target different terminals
+  - **Queue Operations** - Drag-and-drop reorder, inline edit, move up/down
   - **Dispatch Modes**:
     - "Next" - Run top pending item only
     - "Sequential" - Run all one-by-one with 500ms delay
     - "Parallel" - Fire all commands at once with 50ms stagger
   - **Visual Feedback** - Running items show pulse animation and spinner
-  - **Persistence** - Queue saved to Chrome storage, survives sidebar close
-  - **Keyboard Shortcuts**:
-    - `Ctrl+Q` - Add current input to queue
-    - `Ctrl+Shift+Enter` - Run next queue item
-    - `Ctrl+Shift+A` - Run all sequential
-  - **Queue Button** - New button in chat input bar with pending count badge
+  - **Persistence** - Queue saved to Chrome storage
+  - **Keyboard Shortcuts**: `Ctrl+Q` (queue), `Ctrl+Shift+Enter` (run next)
+  - **Queue Button** - New button with pending count badge
+
+### New Entry Points
+- `extension/newtab/` - New tab page with React components
+- `extension/composer/` - Floating composer popup window
 
 ### New Files
-- `extension/hooks/useCommandQueue.ts` - Queue state management hook
+- `extension/newtab/NewTab.tsx` - Main new tab component
+- `extension/newtab/components/` - ClockWidget, CommandBar, ProfilesGrid, RecentDirs, StatusWidget, ShortcutsHint
+- `extension/newtab/hooks/` - useNewTabProfiles, useNewTabTerminals, useNewTabWorkingDir
+- `extension/newtab/styles/newtab.css` - Custom styles with CSS variables
+- `extension/composer/composer.tsx` - Floating composer React app
+- `extension/hooks/useCommandQueue.ts` - Queue state management
 - `extension/components/CommandQueuePanel.tsx` - Collapsible queue UI
-- `extension/components/CommandQueueItem.tsx` - Individual queue entry with controls
+- `extension/components/CommandQueueItem.tsx` - Individual queue entry
 
 ---
 

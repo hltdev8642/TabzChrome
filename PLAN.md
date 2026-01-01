@@ -44,27 +44,15 @@ Detailed analysis in `audit-results/`:
 
 **Goal**: With dynamic tool discovery (`mcp-cli`), there's no context cost for having many tools. Expand MCP capabilities using Chrome Extension APIs.
 
-### Planned Tools
+### Completed (v1.3.5+)
 
-#### `chrome.cookies` - Authentication Debugging
-**Permission**: `"cookies"` + host patterns
+- ✅ **Cookies** (5 tools): `tabz_cookies_get`, `tabz_cookies_list`, `tabz_cookies_set`, `tabz_cookies_delete`, `tabz_cookies_audit`
+- ✅ **History** (5 tools): `tabz_history_search`, `tabz_history_visits`, `tabz_history_recent`, `tabz_history_delete_url`, `tabz_history_delete_range`
+- ✅ **Sessions** (3 tools): `tabz_sessions_recently_closed`, `tabz_sessions_restore`, `tabz_sessions_devices`
+- ✅ **Emulation** (6 tools): Device, geolocation, network, media, vision simulation
+- ✅ **Notifications** (4 tools): Desktop notifications with progress support
 
-| Tool | Description |
-|------|-------------|
-| `tabz_get_cookies` | Get all cookies for a domain |
-| `tabz_check_auth` | Check if logged into a service (has session cookie) |
-| `tabz_clear_cookies` | Clear cookies for a domain (logout) |
-
-#### `chrome.history` - Research Assistant
-**Permission**: `"history"`
-
-| Tool | Description |
-|------|-------------|
-| `tabz_search_history` | Search browsing history by text/date |
-| `tabz_frequent_sites` | Get most visited sites |
-| `tabz_delete_history` | Remove specific URLs from history |
-
-### Lower Priority / Complex
+### Future Ideas (Lower Priority)
 
 | Tool | Description | Why Lower |
 |------|-------------|-----------|
@@ -103,16 +91,17 @@ Detailed analysis in `audit-results/`:
   - Open in Viewer (files)
 - Reference: `~/projects/opustrator/frontend/src/components/EnhancedFileViewer.tsx` (lines 750-1270)
 
-### Floating Command Composer
-- [ ] **Pop-out composer window** - More space for editing prompts before sending
-- [ ] **Features**:
+### Floating Command Composer ✅ DONE (v1.3.11)
+- [x] **Pop-out composer window** - More space for editing prompts before sending
+- [x] **Features**:
   - Multi-line editor for complex prompts
   - Target selection: existing terminals OR spawn new
   - "New Terminal" option with profile/directory/name selection
   - Mode: Execute (Enter) / Paste only / Paste + focus
-  - Non-interactive mode (--print, one-shot)
+  - AI prompt enhancement option
   - Close after send option
-- [ ] **Implementation**: `chrome.windows.create({ type: 'popup' })` for true floating window
+- [x] **Implementation**: `chrome.windows.create({ type: 'popup' })` for true floating window
+- [x] **Access**: Right-click context menu or `Alt+Shift+C` keyboard shortcut
 
 ### Command Queue (Replace History) ✅ DONE (v1.3.11)
 - [x] **Replace unused history with queue** - Stage multiple prompts before dispatch
@@ -198,6 +187,17 @@ Power-saving and performance improvements for video backgrounds:
   - Scan `~/Videos/terminal-backgrounds/` for local files
   - Thumbnail previews
   - "Use as background" action from file viewer
+
+### Chrome URL Overrides ✅ DONE (v1.3.11)
+
+- [x] **New Tab Override** - Replace Chrome's new tab with TabzChrome Dashboard
+  - Beautiful clock widget with Orbitron LED font
+  - Profile cards for quick terminal launch
+  - Active terminals widget with status
+  - Command bar for search/URLs/commands
+  - Recent directories quick access
+  - Dark theme, terminal-inspired aesthetic
+  - Uses `chrome_url_overrides.newtab` in manifest
 
 ### Waiting on Chrome Updates
 
