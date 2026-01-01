@@ -33,7 +33,7 @@
   /* Text hierarchy */
   --text-primary: #f0f0f0;
   --text-secondary: #888888;
-  --text-muted: #555555;
+  --text-muted: #4ade80; /* Green for better readability */
 
   /* Borders and dividers */
   --border: #222225;
