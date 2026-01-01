@@ -12,7 +12,7 @@ import {
 } from './state'
 import { sendToWebSocket, updateBadge } from './websocket'
 import { addConsoleLog, getConsoleLogs, getConsoleLogCount } from './consoleCapture'
-import { tryOpenSidebar } from './utils'
+import { tryOpenSidebar, openComposer } from './utils'
 
 /**
  * Setup Chrome message listeners
@@ -83,6 +83,15 @@ export function setupMessageHandlers(): void {
           chrome.tabs.create({ url: message.url })
         } catch (err) {
           console.error('[Background] Failed to open tab:', err)
+        }
+        break
+
+      case 'OPEN_COMPOSER':
+        // Open Command Composer popup window
+        try {
+          await openComposer({ text: message.text, target: message.target })
+        } catch (err) {
+          console.error('[Background] Failed to open composer:', err)
         }
         break
 

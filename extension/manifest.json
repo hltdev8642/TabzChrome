@@ -64,6 +64,12 @@
     "spawn-quick-terminal": {
       "description": "Spawn quick popout terminal"
     },
+    "open-composer": {
+      "suggested_key": {
+        "default": "Alt+Shift+C"
+      },
+      "description": "Open Command Composer"
+    },
     "new-tab": {
       "suggested_key": {
         "default": "Alt+T"
