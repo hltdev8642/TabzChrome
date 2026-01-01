@@ -203,6 +203,11 @@ Power-saving and performance improvements for video backgrounds:
   - Notes tagged by working directory
   - Quick capture for project-specific thoughts
   - Could store in `~/.tabz-notes/{project}/`
+- [ ] **Active terminals rich status** - Show same info as sidebar terminal tabs
+  - PyRadio current song
+  - Claude's current todo item from tmux pane title
+  - TUI app status (lazygit branch, btop stats, etc.)
+  - Use existing `usePaneTitles` hook logic
 
 ### Waiting on Chrome Updates
 
