@@ -197,8 +197,13 @@ export function CommandBar({ profiles, recentDirs, onSpawnTerminal, onNavigate }
 
     switch (e.key) {
       case 'ArrowDown':
+      case 'Tab':
         e.preventDefault()
-        setSelectedIndex(i => (i + 1) % suggestions.length)
+        if (e.shiftKey) {
+          setSelectedIndex(i => (i - 1 + suggestions.length) % suggestions.length)
+        } else {
+          setSelectedIndex(i => (i + 1) % suggestions.length)
+        }
         break
       case 'ArrowUp':
         e.preventDefault()
