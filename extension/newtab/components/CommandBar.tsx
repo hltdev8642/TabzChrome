@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
-import { Search, Terminal, Globe, Folder, Clock, ArrowRight } from 'lucide-react'
+import { Search, Terminal, Globe, Folder, Bookmark, Star } from 'lucide-react'
 
 interface Profile {
   id: string
@@ -16,8 +16,14 @@ interface CommandBarProps {
   onNavigate: (url: string) => void
 }
 
+interface BookmarkResult {
+  id: string
+  title: string
+  url?: string
+}
+
 interface Suggestion {
-  type: 'profile' | 'url' | 'search' | 'dir' | 'history'
+  type: 'profile' | 'url' | 'search' | 'dir' | 'bookmark'
   id: string
   title: string
   subtitle?: string
@@ -37,6 +43,7 @@ export function CommandBar({ profiles, recentDirs, onSpawnTerminal, onNavigate }
   const [query, setQuery] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [bookmarks, setBookmarks] = useState<BookmarkResult[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
 
@@ -56,6 +63,29 @@ export function CommandBar({ profiles, recentDirs, onSpawnTerminal, onNavigate }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  // Search bookmarks when query changes
+  useEffect(() => {
+    const q = query.trim()
+    if (q.length < 2) {
+      setBookmarks([])
+      return
+    }
+
+    // Debounce bookmark search
+    const timer = setTimeout(() => {
+      chrome.bookmarks.search(q, (results) => {
+        // Filter to only bookmarks with URLs (not folders)
+        const filtered = results
+          .filter(b => b.url)
+          .slice(0, 5)
+          .map(b => ({ id: b.id, title: b.title, url: b.url }))
+        setBookmarks(filtered)
+      })
+    }, 150)
+
+    return () => clearTimeout(timer)
+  }, [query])
 
   // Generate suggestions based on query
   const suggestions = useMemo((): Suggestion[] => {
@@ -118,7 +148,20 @@ export function CommandBar({ profiles, recentDirs, onSpawnTerminal, onNavigate }
       })
     })
 
-    // Default: search query
+    // Add bookmarks
+    bookmarks.forEach(bookmark => {
+      results.push({
+        type: 'bookmark',
+        id: `bookmark-${bookmark.id}`,
+        title: bookmark.title || bookmark.url || 'Bookmark',
+        subtitle: bookmark.url ? new URL(bookmark.url).hostname : undefined,
+        icon: <Bookmark className="w-4 h-4" />,
+        color: '#f59e0b', // amber color for bookmarks
+        action: () => onNavigate(bookmark.url!),
+      })
+    })
+
+    // Default: search query (only if no other results)
     if (!isValidUrl(query) && results.length === 0) {
       results.push({
         type: 'search',
@@ -131,7 +174,7 @@ export function CommandBar({ profiles, recentDirs, onSpawnTerminal, onNavigate }
     }
 
     return results
-  }, [query, profiles, recentDirs, onSpawnTerminal, onNavigate])
+  }, [query, profiles, recentDirs, bookmarks, onSpawnTerminal, onNavigate])
 
   // Reset selection when suggestions change
   useEffect(() => {
@@ -230,6 +273,7 @@ export function CommandBar({ profiles, recentDirs, onSpawnTerminal, onNavigate }
                 {suggestion.type === 'url' && 'Open'}
                 {suggestion.type === 'search' && 'Search'}
                 {suggestion.type === 'dir' && 'Open'}
+                {suggestion.type === 'bookmark' && 'Open'}
               </div>
             </button>
           ))}

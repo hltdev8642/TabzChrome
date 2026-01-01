@@ -347,6 +347,7 @@ body {
    COMMAND BAR - THE HEART OF THE PAGE
    ============================================ */
 .command-bar-wrapper {
+  position: relative;
   width: 100%;
   max-width: 700px;
   margin: 0 auto;
