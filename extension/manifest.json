@@ -68,10 +68,7 @@
       "description": "Spawn quick popout terminal"
     },
     "open-composer": {
-      "suggested_key": {
-        "default": "Alt+Shift+C"
-      },
-      "description": "Open Command Composer"
+      "description": "Open Command Composer (set shortcut in chrome://extensions/shortcuts)"
     },
     "new-tab": {
       "suggested_key": {
