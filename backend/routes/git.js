@@ -579,20 +579,23 @@ router.post('/repos/:repo/generate-message', requireAuth, async (req, res) => {
       : diff;
 
     // Build the prompt - very strict to avoid conversational responses
-    const prompt = `<task>
-Write a git commit message for this diff. Output the commit message ONLY - no preamble, no explanation, no "Here's a commit message:" prefix.
+    const prompt = `Write a git commit message for the following diff.
 
-Rules:
-- Use conventional commit format: feat:, fix:, refactor:, docs:, chore:
+CRITICAL OUTPUT RULES:
+- Output ONLY the commit message text, nothing else
+- NO code fences, NO backticks, NO markdown
+- NO XML tags like <output> or </output>
+- NO "Here's a commit message:" or similar preamble
+- NO "Co-Authored-By" or attribution lines
+- NO trailing explanations
+
+FORMAT:
+- Use conventional commit prefix: feat:, fix:, refactor:, docs:, chore:
 - First line under 72 chars
 - Optional: blank line + bullet points for details
-</task>
 
-<diff>
-${truncatedDiff}
-</diff>
-
-<output>`;
+DIFF:
+${truncatedDiff}`;
 
     // Run claude CLI with haiku model, passing prompt via stdin to avoid shell escaping issues
     const model = req.body.model || 'haiku';
