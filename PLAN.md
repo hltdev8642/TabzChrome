@@ -75,6 +75,15 @@ Detailed analysis in `audit-results/`:
 
 ---
 
+## Bug Fixes
+
+- [ ] **Invalid working directory notification** - When spawning terminal with non-existent directory:
+  - Currently fails silently or uses previous valid directory
+  - Add notification popup warning user the directory doesn't exist
+  - Offer to create directory or use fallback
+
+---
+
 ## Dashboard File Tree Improvements
 
 **Status**: Planning
