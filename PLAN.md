@@ -191,6 +191,12 @@ Power-saving and performance improvements for video backgrounds:
   - Dark theme, terminal-inspired aesthetic
   - Uses `chrome_url_overrides.newtab` in manifest
 
+#### New Tab Page Enhancements
+- [ ] **Dashboard button** - Quick link to open the full dashboard page
+- [ ] **Configurable profile grid** - Setting to choose which 8 profiles display on new tab
+  - Could use favorites, most used, or manual selection
+  - Store in Chrome storage
+
 ### Waiting on Chrome Updates
 
 - [ ] **`sidePanel.close()` (Chrome 141+)** - Add "Close Terminal Sidebar" to context menu. Currently only `open()` exists and requires user gesture. [Chrome API docs](https://developer.chrome.com/docs/extensions/reference/api/sidePanel)
