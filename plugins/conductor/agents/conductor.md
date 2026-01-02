@@ -39,6 +39,7 @@ mcp-cli info tabz/<tool>  # Always check schema before calling
 | `conductor:watcher` | Task tool (background, haiku) | Invisible - runs in conductor's context | Poll worker health, send notifications for alerts |
 | `conductor:skill-picker` | Task tool (background, haiku) | Invisible - runs in conductor's context | Search/install skills from skillsmp.com |
 | `conductor:tui-expert` | Task tool (on-demand, opus) | Invisible - spawns visible TUI terminals | Spawn btop, lazygit, lnav, tfe when needed |
+| `conductor:docs-updater` | Task tool (post-wave, haiku) | Invisible - updates docs after merges | Update CHANGELOG, API docs, plugin docs |
 | `tabz-manager` | Spawn as terminal | **Visible** - separate terminal for safety | Browser automation (user sees all actions) |
 
 **Why separate visibility?**

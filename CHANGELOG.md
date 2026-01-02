@@ -15,6 +15,64 @@ For older versions (1.2.x, 1.1.x, 1.0.x, and pre-public 2.x), see [CHANGELOG-arc
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Keyboard Navigation in File Tree** - Navigate files with arrow keys:
+  - Arrow Up/Down to move between files
+  - Arrow Left/Right to expand/collapse folders
+  - Enter to open files or spawn terminals
+  - Home/End to jump to first/last file
+  - Requires focus on file tree (click to focus)
+
+- **Cmd+P Fuzzy File Search** - Quick file finder in dashboard:
+  - Press Cmd+P in Files section to open search modal
+  - Fuzzy match against file names and paths
+  - Arrow keys to navigate results, Enter to open
+  - Escape to close
+
+- **Git Status Indicators** - Visual file tree status markers:
+  - Modified files (yellow dot)
+  - Untracked files (light gray dot)
+  - Staged files (green dot)
+  - Live git status updates as you edit
+
+- **Drag Files to Terminal** - Drag-and-drop file paths to terminal:
+  - Drag any file from tree onto terminal
+  - Pastes absolute file path at cursor
+  - Works with all file types
+  - Useful for quick file references in commands
+
+- **Profile Theme Inheritance** - Themes apply across terminal aspects:
+  - Panel background color
+  - Text foreground color
+  - Gradient overlay (optional)
+  - Media/image background (new)
+
+- **Watcher Idle Detection** - Conductor agent nudges idle workers:
+  - Monitors tmux sessions for inactivity
+  - Auto-sends reminder after timeout
+  - Helps keep parallel workers engaged
+  - Configurable via conductor settings
+
+- **Profile CRUD API Endpoints** - Programmatic profile management:
+  - `GET /api/browser/profiles` - List all profiles
+  - `POST /api/browser/profiles` - Create profile
+  - `PUT /api/browser/profiles/:id` - Update profile
+  - `DELETE /api/browser/profiles/:id` - Delete profile
+  - `POST /api/browser/profiles/import` - Bulk import with merge/replace modes
+  - See docs/API.md for full documentation
+
+### Fixed
+
+- **Working Directory Notifications** - Invalid path warning now displays UI:
+  - Shows notification when spawning terminal with invalid working directory
+  - Allows user to correct path before spawn
+  - Prevents silent failures with bad paths
+
+---
+
 ## [1.3.11] - 2026-01-01
 
 ### Added
