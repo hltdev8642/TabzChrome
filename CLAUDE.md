@@ -80,7 +80,6 @@ extension/                          backend/
 - Don't add complex terminal types - bash only
 - Don't over-engineer - simple solutions win
 - Don't break WebSocket protocol - backend compatibility critical
-- Don't bundle static JSON - default profiles load once, user edits in settings
 
 ### Versioning (Public Project)
 - `1.0.x` - Bug fixes, safe to update
