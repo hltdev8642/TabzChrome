@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Settings } from 'lucide-react'
 import { ClockWidget } from './components/ClockWidget'
+import { WeatherWidget } from './components/WeatherWidget'
 import { StatusWidget } from './components/StatusWidget'
 import { CommandBar } from './components/CommandBar'
 import { ProfilesGrid } from './components/ProfilesGrid'
@@ -77,9 +78,12 @@ export default function NewTab() {
 
       {/* Main layout */}
       <div className={`newtab-container ${isReady ? 'animate-fade-in' : 'opacity-0'}`}>
-        {/* Header: Clock + Status */}
+        {/* Header: Clock + Weather + Status */}
         <header className="newtab-header">
-          <ClockWidget />
+          <div className="header-left">
+            <ClockWidget />
+            <WeatherWidget />
+          </div>
           <div className="header-right">
             <StatusWidget
               terminals={terminals}
