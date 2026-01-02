@@ -74,14 +74,48 @@ Map issue characteristics to skill triggers:
 | "Chrome", "extension", "manifest" | "use the chrome-extension skill" |
 | Complex/architectural | Prepend "ultrathink" |
 
-### Identify Relevant Files
+### Identify Relevant Files (Size-Aware)
+
+**CRITICAL: Check file sizes before adding @ references!**
+
+Large files (>500 lines / >20KB) can consume 50%+ of worker context immediately.
 
 ```bash
-# Based on issue keywords, find relevant files
+# Find relevant files by keyword
 KEYWORDS="profile theme inherit"  # extracted from issue
-for kw in $KEYWORDS; do
-  grep -ril "$kw" --include="*.ts" --include="*.tsx" | head -5
-done
+CANDIDATES=$(for kw in $KEYWORDS; do
+  grep -ril "$kw" --include="*.ts" --include="*.tsx" 2>/dev/null
+done | sort -u)
+
+# Filter by size - only include files < 500 lines
+for file in $CANDIDATES; do
+  LINES=$(wc -l < "$file" 2>/dev/null || echo 9999)
+  SIZE=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null || echo 99999)
+
+  if [ "$LINES" -lt 500 ] && [ "$SIZE" -lt 20000 ]; then
+    echo "@$file"  # Safe to include
+  else
+    echo "# LARGE: $file ($LINES lines) - use Glob/Grep instead"
+  fi
+done | head -10
+```
+
+### File Size Guidelines
+
+| File Size | Action |
+|-----------|--------|
+| < 200 lines | ✅ Include with @ reference |
+| 200-500 lines | ⚠️ Include if highly relevant |
+| 500-1000 lines | ❌ Don't @ reference - tell worker to use Glob/Grep |
+| > 1000 lines | ❌ Never @ reference - point to specific functions/sections |
+
+### For Large Files
+
+Instead of `@large-file.ts`, tell the worker:
+```markdown
+## Large Files (explore with subagents)
+- `src/sidepanel/sidepanel.tsx` (1655 lines) - search for "handleProfile"
+- `src/dashboard/SettingsProfiles.tsx` (2230 lines) - focus on lines 300-400
 ```
 
 ## Phase 3: Craft Worker Prompt

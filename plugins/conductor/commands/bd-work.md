@@ -60,14 +60,26 @@ Map the issue to relevant skill triggers:
 | style, CSS, theme | "use the ui-styling skill" |
 | Complex architecture | Prepend "ultrathink" |
 
-### 7. Find Relevant Files
+### 7. Find Relevant Files (Size-Aware)
 
-Based on issue keywords:
+**CRITICAL: Don't @ reference large files - they consume too much context!**
+
 ```bash
-# Extract keywords from issue title
-# Search for relevant files
-grep -ril "keyword" --include="*.ts" --include="*.tsx" src/ | head -10
+# Find files by keyword, filter by size
+for file in $(grep -ril "keyword" --include="*.ts" --include="*.tsx" src/ 2>/dev/null); do
+  LINES=$(wc -l < "$file" 2>/dev/null || echo 9999)
+  if [ "$LINES" -lt 500 ]; then
+    echo "@$file"
+  else
+    echo "# LARGE ($LINES lines): $file - explore with subagents"
+  fi
+done | head -10
 ```
+
+**Size Guidelines:**
+- < 200 lines: ✅ Safe to @ reference
+- 200-500 lines: ⚠️ Only if highly relevant
+- 500+ lines: ❌ Don't @ reference - tell worker to explore specific sections
 
 ### 8. Craft Skill-Aware Prompt
 
