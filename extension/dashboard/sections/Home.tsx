@@ -77,6 +77,13 @@ export default function HomeSection() {
         getProfiles(),
       ])
 
+      // Get Chrome storage sessions for sidebar order
+      const storageResult = await new Promise<{ terminalSessions?: any[] }>((resolve) =>
+        chrome.storage.local.get(['terminalSessions'], (result) => resolve(result as { terminalSessions?: any[] }))
+      )
+      const chromeSessions = storageResult.terminalSessions || []
+      const sidebarOrder = new Map(chromeSessions.map((s: any, index: number) => [s.id, index]))
+
       setHealth(healthRes.data)
       setProfiles(profilesRes || [])
 
@@ -106,6 +113,12 @@ export default function HomeSection() {
             claudeState: s.claudeState,
             aiTool: s.aiTool,
           }
+        })
+        // Sort to match sidebar tab order (terminals not in sidebar go to end)
+        .sort((a: TerminalItem, b: TerminalItem) => {
+          const orderA = sidebarOrder.get(a.id) ?? Infinity
+          const orderB = sidebarOrder.get(b.id) ?? Infinity
+          return orderA - orderB
         })
       setTerminals(mappedTerminals)
 

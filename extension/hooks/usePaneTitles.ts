@@ -97,6 +97,9 @@ export function usePaneTitles(terminals: TerminalInfo[]): Map<string, string> {
 /**
  * Check if a pane_title looks like a hostname or generic shell name
  * These should not be displayed as dynamic tab names
+ *
+ * We want to SHOW: Claude task names, PyRadio songs, etc. (dynamic content)
+ * We want to HIDE: hostnames, shell names (static/generic content)
  */
 export function isGenericPaneTitle(paneTitle: string | undefined): boolean {
   if (!paneTitle) return true
@@ -104,15 +107,39 @@ export function isGenericPaneTitle(paneTitle: string | undefined): boolean {
   // Strip the " @ path" suffix that the API adds before checking
   const cleanTitle = cleanPaneTitle(paneTitle)
 
-  // Hostname patterns: MattDesktop, Matt-Desktop, localhost, ip-xxx
-  const hostnamePattern = /^(localhost|[\w]+-?(desktop|laptop)|ip-[\d-]+)$/i
-  if (hostnamePattern.test(cleanTitle)) return true
+  // Empty or whitespace only
+  if (!cleanTitle.trim()) return true
 
   // Generic shell names
-  if (/^(bash|zsh|sh|fish|python|node)$/i.test(cleanTitle)) return true
+  if (/^(bash|zsh|sh|fish|python|node|ruby|perl)$/i.test(cleanTitle)) return true
 
   // Path-like names that aren't meaningful
   if (cleanTitle.startsWith('~') || cleanTitle.startsWith('/')) return true
+
+  // Hostname patterns - expanded to catch more cases:
+  // - localhost
+  // - MattDesktop, Matt-Desktop, matt-laptop (word + desktop/laptop)
+  // - DESKTOP-ABC123 (Windows default)
+  // - MacBook-Pro, MacBook-Air, iMac, Mac-mini, Mac-Studio (Apple)
+  // - ip-xxx-xxx (AWS/cloud)
+  // - Single short word that looks like a hostname (lowercase, no spaces, 3-15 chars)
+  const hostnamePatterns = [
+    /^localhost$/i,
+    /^[\w]+-?(desktop|laptop)$/i,                    // MattDesktop, Matt-Laptop
+    /^desktop-[a-z0-9]+$/i,                          // DESKTOP-ABC123 (Windows)
+    /^(macbook|imac|mac-?(mini|pro|studio))/i,       // Apple devices
+    /^ip-[\d-]+$/i,                                  // AWS instances
+    /^[a-z][a-z0-9-]{1,14}$/,                        // Short lowercase hostnames (matt, dev-box)
+  ]
+
+  if (hostnamePatterns.some(pattern => pattern.test(cleanTitle))) return true
+
+  // Single word with no spaces is likely a hostname (e.g., "LappityToppity")
+  // Real content like song titles or task names almost always have spaces
+  // Exception: allow single words that look like app names (contain numbers or special chars)
+  if (/^\w+$/.test(cleanTitle) && cleanTitle.length <= 20 && !/\d/.test(cleanTitle)) {
+    return true
+  }
 
   return false
 }

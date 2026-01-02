@@ -152,6 +152,15 @@ export function useTerminals(): UseTerminalsReturn {
         })
 
         const terminalsWithStatus = await Promise.all(statusPromises)
+
+        // Sort to match sidebar tab order (use Chrome storage order)
+        const sidebarOrder = new Map(chromeSessions.map((s: any, index: number) => [s.id, index]))
+        terminalsWithStatus.sort((a, b) => {
+          const orderA = sidebarOrder.get(a.id) ?? Infinity
+          const orderB = sidebarOrder.get(b.id) ?? Infinity
+          return orderA - orderB
+        })
+
         setTerminals(terminalsWithStatus)
       } catch (e) {
         // Silently fail - just use existing state

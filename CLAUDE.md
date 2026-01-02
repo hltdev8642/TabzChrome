@@ -135,8 +135,7 @@ ps aux | grep "node server"                   # Check backend running
 
 ### Build & Deploy
 ```bash
-npm run build
-# WSL: rsync -av --delete dist-extension/ /mnt/c/Users/$USER/Desktop/TabzChrome/dist-extension/
+/rebuild                      # Build extension (auto-copies to Windows on WSL)
 # Then reload at chrome://extensions
 ```
 
@@ -270,6 +269,14 @@ tail -50 backend/logs/unified.log              # Unified log (backend + browser)
 - `tabz_screenshot` cannot capture Chrome sidebar (Chrome limitation)
 - Keep dependencies minimal - avoid adding npm packages
 - Follow semantic versioning - project is public with active users
+
+### Clickable File Paths
+File paths in terminal output and chat are clickable and open in the dashboard Files viewer.
+For paths to be detected as links, use absolute paths:
+- ✅ `/home/matt/projects/TabzChrome/extension/file.ts`
+- ✅ `~/projects/TabzChrome/extension/file.ts`
+- ❌ `./extension/file.ts` (relative paths don't resolve in chat)
+- ❌ `extension/file.ts` (needs leading `/` or `~`)
 
 ### Tmux Send-Keys Pattern
 ```bash

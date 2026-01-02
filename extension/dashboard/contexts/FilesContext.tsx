@@ -89,6 +89,11 @@ interface FilesContextType {
   fileTreePath: string | null  // Track which path the tree was loaded for
   setFileTreePath: (path: string | null) => void
 
+  // Tree navigation (for external navigation requests like terminal hyperlinks)
+  pendingTreeNavigation: string | null
+  navigateTreeTo: (path: string) => void
+  clearPendingNavigation: () => void
+
   // Open files state
   openFiles: OpenFile[]
   setOpenFiles: React.Dispatch<React.SetStateAction<OpenFile[]>>
@@ -144,6 +149,18 @@ export function FilesProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('tabz-files-tree-path')
     }
   }
+
+  // Pending navigation - for external requests (terminal hyperlinks) to navigate the tree
+  // without changing global working directory
+  const [pendingTreeNavigation, setPendingTreeNavigation] = useState<string | null>(null)
+
+  const navigateTreeTo = useCallback((path: string) => {
+    setPendingTreeNavigation(path)
+  }, [])
+
+  const clearPendingNavigation = useCallback(() => {
+    setPendingTreeNavigation(null)
+  }, [])
 
   // Open files state
   const [openFiles, setOpenFiles] = useState<OpenFile[]>([])
@@ -454,7 +471,7 @@ export function FilesProvider({ children }: { children: ReactNode }) {
     })
   }, [activeFileId])
 
-  // Check for file path from URL hash (e.g., from "Open Reference" context menu)
+  // Check for file path from URL hash (e.g., from terminal hyperlinks or "Open Reference")
   // URL format: dashboard/index.html#/files?path=/path/to/file
   // For directories: dashboard/index.html#/files?path=/path/to/dir&dir=true
   useEffect(() => {
@@ -469,10 +486,17 @@ export function FilesProvider({ children }: { children: ReactNode }) {
           if (filePath) {
             // Clear the query part but keep #/files for navigation
             window.history.replaceState({}, '', window.location.pathname + '#/files')
+
+            // Reset filter to 'all' so file tree shows (not filtered list)
+            setActiveFilter('all')
+
             if (isDir) {
-              // Navigate to directory in file tree
-              setFileTreePath(filePath)
+              // Navigate file tree to directory (doesn't change global working dir)
+              navigateTreeTo(filePath)
             } else {
+              // Navigate file tree to file's parent directory, then open the file
+              const parentDir = filePath.split('/').slice(0, -1).join('/') || '/'
+              navigateTreeTo(parentDir)
               // Open the file with pin=true so it stays open
               openFile(filePath, true)
             }
@@ -487,7 +511,7 @@ export function FilesProvider({ children }: { children: ReactNode }) {
     // Listen for hash changes (e.g., from Profiles page reference links)
     window.addEventListener('hashchange', handleHashPath)
     return () => window.removeEventListener('hashchange', handleHashPath)
-  }, []) // openFile and setFileTreePath are stable
+  }, [navigateTreeTo]) // openFile and navigateTreeTo are stable
 
   return (
     <FilesContext.Provider value={{
@@ -495,6 +519,9 @@ export function FilesProvider({ children }: { children: ReactNode }) {
       setFileTree,
       fileTreePath,
       setFileTreePath,
+      pendingTreeNavigation,
+      navigateTreeTo,
+      clearPendingNavigation,
       openFiles,
       setOpenFiles,
       activeFileId,

@@ -78,7 +78,7 @@ const API_BASE = "http://localhost:8129"
 
 export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenProp = false, maxDepth = 5, waitForLoad = false }: FileTreeProps) {
   // Use context for caching file tree across tab switches
-  const { fileTree, setFileTree, fileTreePath, setFileTreePath, toggleFavorite, isFavorite, openFile, pinFile } = useFilesContext()
+  const { fileTree, setFileTree, fileTreePath, setFileTreePath, pendingTreeNavigation, clearPendingNavigation, toggleFavorite, isFavorite, openFile, pinFile } = useFilesContext()
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [focusedPath, setFocusedPath] = useState<string | null>(null)
@@ -231,6 +231,17 @@ export function FileTree({ onFileSelect, basePath = "~", showHidden: showHiddenP
     fetchFileTree()
     fetchGitStatus()
   }, [currentPath, showHidden, maxDepth, waitForLoad, basePath, fetchGitStatus])
+
+  // Handle external navigation requests (e.g., terminal hyperlinks)
+  // This navigates the file tree without changing the global working directory
+  useEffect(() => {
+    if (pendingTreeNavigation) {
+      setCurrentPath(pendingTreeNavigation)
+      fetchFileTree(pendingTreeNavigation, true)
+      fetchGitStatus(pendingTreeNavigation)
+      clearPendingNavigation()
+    }
+  }, [pendingTreeNavigation, clearPendingNavigation, fetchFileTree, fetchGitStatus])
 
   // Get icon for Claude file types
   const getClaudeIcon = (claudeType: ClaudeFileType) => {
