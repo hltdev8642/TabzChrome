@@ -308,6 +308,205 @@ Enable or disable a Claude Code plugin.
 
 ---
 
+## Browser Profiles
+
+Manage terminal profiles programmatically. Profiles define appearance, startup command, and category for terminals.
+
+### GET /api/browser/profiles
+
+List all terminal profiles with their settings.
+
+**Response:**
+```json
+{
+  "success": true,
+  "profiles": [
+    {
+      "id": "default",
+      "name": "Bash",
+      "workingDir": "",
+      "command": "",
+      "fontSize": 16,
+      "fontFamily": "monospace",
+      "themeName": "high-contrast",
+      "category": "General"
+    }
+  ],
+  "defaultProfileId": "default",
+  "globalWorkingDir": "~"
+}
+```
+
+**Example:**
+```bash
+TOKEN=$(cat /tmp/tabz-auth-token)
+curl http://localhost:8129/api/browser/profiles \
+  -H "X-Auth-Token: $TOKEN"
+```
+
+---
+
+### POST /api/browser/profiles
+
+Create a new terminal profile.
+
+**Body:**
+```json
+{
+  "profile": {
+    "name": "My Profile",
+    "workingDir": "~/projects",
+    "command": "claude",
+    "category": "Claude Code",
+    "themeName": "dracula"
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `profile.name` | string | Yes | Display name |
+| `profile.id` | string | No | Custom ID (auto-generated from name if not provided) |
+| `profile.workingDir` | string | No | Starting directory |
+| `profile.command` | string | No | Command to run on spawn |
+| `profile.category` | string | No | Category for grouping |
+| `profile.themeName` | string | No | Theme (high-contrast, dracula, ocean, etc.) |
+| `profile.fontSize` | number | No | Font size in pixels (default: 16) |
+| `profile.fontFamily` | string | No | Font family (default: monospace) |
+
+**Response:**
+```json
+{
+  "success": true,
+  "profile": {
+    "id": "my-profile-m1a2b3c",
+    "name": "My Profile",
+    "workingDir": "~/projects",
+    "command": "claude",
+    "category": "Claude Code",
+    "themeName": "dracula",
+    "fontSize": 16,
+    "fontFamily": "monospace"
+  }
+}
+```
+
+**Example:**
+```bash
+TOKEN=$(cat /tmp/tabz-auth-token)
+curl -X POST http://localhost:8129/api/browser/profiles \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: $TOKEN" \
+  -d '{"profile": {"name": "Claude Worker", "category": "Claude Code", "command": "claude"}}'
+```
+
+---
+
+### PUT /api/browser/profiles/:id
+
+Update an existing profile. Only provided fields are updated.
+
+**Body:**
+```json
+{
+  "name": "Updated Name",
+  "themeName": "ocean"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "profile": {
+    "id": "my-profile",
+    "name": "Updated Name",
+    "themeName": "ocean"
+  }
+}
+```
+
+**Example:**
+```bash
+TOKEN=$(cat /tmp/tabz-auth-token)
+curl -X PUT http://localhost:8129/api/browser/profiles/my-profile \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: $TOKEN" \
+  -d '{"name": "Renamed Profile", "category": "Development"}'
+```
+
+---
+
+### DELETE /api/browser/profiles/:id
+
+Delete a profile by ID. Cannot delete the last remaining profile.
+
+**Response:**
+```json
+{
+  "success": true,
+  "deletedProfile": {
+    "id": "my-profile",
+    "name": "My Profile"
+  }
+}
+```
+
+**Example:**
+```bash
+TOKEN=$(cat /tmp/tabz-auth-token)
+curl -X DELETE http://localhost:8129/api/browser/profiles/my-profile \
+  -H "X-Auth-Token: $TOKEN"
+```
+
+---
+
+### POST /api/browser/profiles/import
+
+Bulk import profiles from JSON.
+
+**Body:**
+```json
+{
+  "profiles": [
+    { "name": "Profile 1", "category": "Dev" },
+    { "name": "Profile 2", "category": "Dev", "command": "htop" }
+  ],
+  "mode": "merge"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `profiles` | array | Yes | Array of profile objects (each must have `name`) |
+| `mode` | string | No | `merge` (default) or `replace` |
+
+**Modes:**
+- `merge`: Add new profiles, skip duplicates by ID
+- `replace`: Replace all existing profiles with imported ones
+
+**Response:**
+```json
+{
+  "success": true,
+  "imported": 2,
+  "skipped": 0,
+  "skippedIds": [],
+  "total": 5
+}
+```
+
+**Example:**
+```bash
+TOKEN=$(cat /tmp/tabz-auth-token)
+curl -X POST http://localhost:8129/api/browser/profiles/import \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: $TOKEN" \
+  -d '{"profiles": [{"name": "Dev", "category": "Work"}, {"name": "Test", "category": "Work"}], "mode": "merge"}'
+```
+
+---
+
 ## Security Model
 
 - **CLI/Conductor**: Full access via token file

@@ -121,12 +121,77 @@ curl -X POST http://localhost:8129/api/audio/speak \
   -H "Content-Type: application/json" \
   -d '{
     "text": "Hello, this is a test",
-    "voice": "en-US-AndrewNeural",
+    "voice": "en-US-AndrewMultilingualNeural",
     "rate": "+20%",
     "volume": 0.8
   }'
 ```
-[Paste TTS Example](tabz:paste?text=curl%20-X%20POST%20http%3A%2F%2Flocalhost%3A8129%2Fapi%2Faudio%2Fspeak%20%5C%0A%20%20-H%20%22Content-Type%3A%20application%2Fjson%22%20%5C%0A%20%20-d%20%27%7B%22text%22%3A%20%22Hello%2C%20this%20is%20a%20test%22%2C%20%22voice%22%3A%20%22en-US-AndrewNeural%22%7D%27)
+[Paste TTS Example](tabz:paste?text=curl%20-X%20POST%20http%3A%2F%2Flocalhost%3A8129%2Fapi%2Faudio%2Fspeak%20%5C%0A%20%20-H%20%22Content-Type%3A%20application%2Fjson%22%20%5C%0A%20%20-d%20%27%7B%22text%22%3A%20%22Hello%2C%20this%20is%20a%20test%22%2C%20%22voice%22%3A%20%22en-US-AndrewMultilingualNeural%22%7D%27)
+
+---
+
+## Browser Profiles
+
+CRUD operations for terminal profiles.
+
+### GET /api/browser/profiles
+
+List all profiles.
+
+```bash
+curl http://localhost:8129/api/browser/profiles
+# Returns: profiles[], defaultProfileId, globalWorkingDir
+```
+
+### POST /api/browser/profiles
+
+Create a new profile.
+
+```bash
+TOKEN=$(cat /tmp/tabz-auth-token)
+curl -X POST http://localhost:8129/api/browser/profiles \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: $TOKEN" \
+  -d '{"profile": {"name": "My Profile", "category": "Dev", "command": "claude"}}'
+```
+
+**Body:** `{ profile: { name (required), workingDir, command, category, themeName, fontSize, fontFamily } }`
+
+### PUT /api/browser/profiles/:id
+
+Update an existing profile.
+
+```bash
+TOKEN=$(cat /tmp/tabz-auth-token)
+curl -X PUT http://localhost:8129/api/browser/profiles/my-profile \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: $TOKEN" \
+  -d '{"name": "Updated Name", "category": "Work"}'
+```
+
+### DELETE /api/browser/profiles/:id
+
+Delete a profile (cannot delete last one).
+
+```bash
+TOKEN=$(cat /tmp/tabz-auth-token)
+curl -X DELETE http://localhost:8129/api/browser/profiles/my-profile \
+  -H "X-Auth-Token: $TOKEN"
+```
+
+### POST /api/browser/profiles/import
+
+Bulk import profiles.
+
+```bash
+TOKEN=$(cat /tmp/tabz-auth-token)
+curl -X POST http://localhost:8129/api/browser/profiles/import \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: $TOKEN" \
+  -d '{"profiles": [{"name": "P1"}, {"name": "P2"}], "mode": "merge"}'
+```
+
+**Modes:** `merge` (add new, skip duplicates) | `replace` (overwrite all)
 
 ---
 

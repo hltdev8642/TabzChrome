@@ -104,6 +104,10 @@ const PRESET_CATEGORIES: PresetCategory[] = [
     name: 'Configuration',
     presets: [
       { method: 'GET', url: '/api/browser/profiles', name: 'Get Profiles' },
+      { method: 'POST', url: '/api/browser/profiles', name: 'Create Profile', body: { profile: { name: 'New Profile', category: 'API' } } },
+      { method: 'PUT', url: '/api/browser/profiles/:id', name: 'Update Profile', body: { name: 'Updated Name' } },
+      { method: 'DELETE', url: '/api/browser/profiles/:id', name: 'Delete Profile' },
+      { method: 'POST', url: '/api/browser/profiles/import', name: 'Import Profiles', body: { profiles: [{ name: 'Imported Profile' }], mode: 'merge' } },
       { method: 'GET', url: '/api/mcp-config', name: 'Get MCP Config' },
       { method: 'POST', url: '/api/mcp-config', name: 'Save MCP Config', body: { tools: {} } },
       { method: 'GET', url: '/api/settings/working-dir', name: 'Get Working Dir Settings' },
