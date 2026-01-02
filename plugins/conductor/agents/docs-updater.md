@@ -1,7 +1,7 @@
 ---
 name: docs-updater
 description: "Update documentation after a wave of features. Reviews recent commits, updates CHANGELOG.md, API docs, and plugin docs as needed. Uses progressive disclosure - minimal updates focused on what changed."
-model: haiku
+model: opus
 tools: Bash, Read, Write, Edit, Glob, Grep
 ---
 
