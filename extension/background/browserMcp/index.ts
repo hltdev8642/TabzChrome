@@ -14,7 +14,11 @@ export {
 // Profiles and settings
 export {
   handleBrowserGetProfiles,
-  handleBrowserGetSettings
+  handleBrowserGetSettings,
+  handleBrowserCreateProfile,
+  handleBrowserUpdateProfile,
+  handleBrowserDeleteProfile,
+  handleBrowserImportProfiles
 } from './profiles'
 
 // Downloads and file capture

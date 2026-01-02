@@ -21,6 +21,10 @@ import {
   handleBrowserOpenUrl,
   handleBrowserGetProfiles,
   handleBrowserGetSettings,
+  handleBrowserCreateProfile,
+  handleBrowserUpdateProfile,
+  handleBrowserDeleteProfile,
+  handleBrowserImportProfiles,
   handleBrowserDownloadFile,
   handleBrowserGetDownloads,
   handleBrowserCancelDownload,
@@ -311,6 +315,17 @@ function routeWebSocketMessage(message: any): void {
     return
   }
 
+  if (message.type === 'spawn-error') {
+    // Terminal spawn failed (e.g., invalid working directory)
+    // Broadcast to sidepanel so it can show a notification
+    console.log('[WS] Spawn error:', message.error)
+    broadcastToClients({
+      type: 'WS_MESSAGE',
+      data: message,
+    })
+    return
+  }
+
   if (message.type === 'terminal-reconnected') {
     // Terminal reconnected after backend restart - broadcast to terminals
     broadcastToClients({
@@ -394,6 +409,30 @@ function routeWebSocketMessage(message: any): void {
   if (message.type === 'browser-get-settings') {
     console.log('Browser MCP: get-settings request', message.requestId)
     handleBrowserGetSettings(message)
+    return
+  }
+
+  if (message.type === 'browser-create-profile') {
+    console.log('Browser MCP: create-profile request', message.requestId, message.profile?.name)
+    handleBrowserCreateProfile(message)
+    return
+  }
+
+  if (message.type === 'browser-update-profile') {
+    console.log('Browser MCP: update-profile request', message.requestId, message.id)
+    handleBrowserUpdateProfile(message)
+    return
+  }
+
+  if (message.type === 'browser-delete-profile') {
+    console.log('Browser MCP: delete-profile request', message.requestId, message.id)
+    handleBrowserDeleteProfile(message)
+    return
+  }
+
+  if (message.type === 'browser-import-profiles') {
+    console.log('Browser MCP: import-profiles request', message.requestId, message.profiles?.length, 'profiles')
+    handleBrowserImportProfiles(message)
     return
   }
 

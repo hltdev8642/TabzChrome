@@ -474,6 +474,122 @@ router.get('/profiles', async (req, res) => {
   }
 });
 
+// POST /api/browser/profiles - Create a new terminal profile
+router.post('/profiles', async (req, res) => {
+  const { profile } = req.body;
+
+  if (!profile || !profile.name) {
+    return res.status(400).json({ success: false, error: 'profile.name is required' });
+  }
+
+  log.debug('POST /profiles', { name: profile.name, id: profile.id });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-create-profile', { profile });
+    res.json(result);
+  } catch (error) {
+    log.error('create-profile error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/browser/profiles/:id - Update an existing terminal profile
+router.put('/profiles/:id', async (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+
+  if (!id) {
+    return res.status(400).json({ success: false, error: 'Profile ID is required' });
+  }
+
+  log.debug('PUT /profiles/:id', { id, updates: Object.keys(updates) });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-update-profile', { id, updates });
+    res.json(result);
+  } catch (error) {
+    log.error('update-profile error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/browser/profiles/:id - Delete a terminal profile
+router.delete('/profiles/:id', async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({ success: false, error: 'Profile ID is required' });
+  }
+
+  log.debug('DELETE /profiles/:id', { id });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-delete-profile', { id });
+    res.json(result);
+  } catch (error) {
+    log.error('delete-profile error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/browser/profiles/import - Bulk import profiles from JSON
+router.post('/profiles/import', async (req, res) => {
+  const { profiles, mode } = req.body;
+
+  if (!profiles || !Array.isArray(profiles)) {
+    return res.status(400).json({ success: false, error: 'profiles array is required' });
+  }
+
+  // Validate each profile has a name
+  for (let i = 0; i < profiles.length; i++) {
+    if (!profiles[i].name) {
+      return res.status(400).json({ success: false, error: `Profile at index ${i} is missing required 'name' field` });
+    }
+  }
+
+  log.debug('POST /profiles/import', { count: profiles.length, mode: mode || 'merge' });
+
+  const broadcast = req.app.get('broadcast');
+  if (!broadcast) {
+    return res.status(500).json({
+      success: false,
+      error: 'WebSocket broadcast not available'
+    });
+  }
+
+  try {
+    const result = await makeBrowserRequest(broadcast, 'browser-import-profiles', { profiles, mode });
+    res.json(result);
+  } catch (error) {
+    log.error('import-profiles error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
 // ============================================
 // INTERACTION ROUTES (Click, Fill, Get Element)
 // ============================================
