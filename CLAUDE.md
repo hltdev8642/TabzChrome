@@ -135,7 +135,7 @@ ps aux | grep "node server"                   # Check backend running
 
 ### Build & Deploy
 ```bash
-/rebuild                      # Build extension (auto-copies to Windows on WSL)
+/rebuild                      # Build extension (WSL: also copies to Windows)
 # Then reload at chrome://extensions
 ```
 
@@ -213,7 +213,7 @@ Use these skills when working on TabzChrome itself:
 
 | Command | Purpose |
 |---------|---------|
-| `/rebuild` | Build extension and copy to Windows (WSL) |
+| `/rebuild` | Build extension (WSL: also copies to Windows) |
 | `/ctthandoff` | Generate handoff summary, copy to clipboard, speak via TTS |
 | `/bd-work` | Pick top beads issue and start working |
 | `/bd-swarm` | Spawn parallel workers for multiple issues |
