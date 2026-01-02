@@ -1,42 +1,132 @@
 ---
-description: "Pick the top ready beads issue and start working on it"
+description: "Pick the top ready beads issue, prepare environment, and start working with skill-aware prompting"
 ---
 
 # Beads Work - Start on Top Ready Issue
 
-Pick the highest priority ready issue from beads and begin working on it.
+Pick the highest priority ready issue, prepare the environment, and begin working with optimized skill-aware prompting.
 
 ## Workflow
 
-1. **Get ready issues**:
+### 1. Get Ready Issues
 ```bash
-bd ready --json
+bd ready --json | jq -r '.[] | "\(.id): [\(.priority)] [\(.type)] \(.title)"' | head -5
 ```
 
-2. **Select the top priority issue** (lowest P number = highest priority)
+### 2. Select Issue
+- If user provided an issue ID as argument, use that
+- Otherwise, pick the top priority (lowest P number)
 
-3. **Show the issue details**:
+### 3. Get Issue Details
 ```bash
 bd show <issue-id>
 ```
 
-4. **Claim it**:
+### 4. Claim the Issue
 ```bash
 bd update <issue-id> --status in_progress
 ```
 
-5. **Start working** on the issue based on its description
+### 5. Prepare Environment (Initializer Pattern)
 
-6. **When complete**, close it:
+**Check for init script:**
 ```bash
+if [ -f ".claude/init.sh" ]; then
+  echo "Found .claude/init.sh - running..."
+  bash .claude/init.sh
+fi
+```
+
+**Check dependencies:**
+```bash
+if [ -f "package.json" ] && [ ! -d "node_modules" ]; then
+  echo "Installing dependencies..."
+  npm install
+fi
+```
+
+### 6. Analyze Task for Skills
+
+Map the issue to relevant skill triggers:
+
+| If issue mentions... | Include in prompt... |
+|---------------------|---------------------|
+| UI, component, button, modal | "use the shadcn-ui skill" |
+| terminal, xterm, pty | "use the xterm-js skill" |
+| keyboard, navigation | "use the accessibility skill" |
+| test, spec | "use the testing skill" |
+| debug, error, fix, bug | "use the debugging skill" |
+| API, endpoint | "use the api-design skill" |
+| style, CSS, theme | "use the ui-styling skill" |
+| Complex architecture | Prepend "ultrathink" |
+
+### 7. Find Relevant Files
+
+Based on issue keywords:
+```bash
+# Extract keywords from issue title
+# Search for relevant files
+grep -ril "keyword" --include="*.ts" --include="*.tsx" src/ | head -10
+```
+
+### 8. Craft Skill-Aware Prompt
+
+Build a structured prompt:
+
+```markdown
+## Task
+<issue-id>: <title>
+
+<full description from bd show>
+
+## Approach
+- <skill trigger based on task type>
+- Use subagents in parallel to explore the codebase first
+- Follow existing patterns in the codebase
+
+## Relevant Files
+@path/to/file1.ts
+@path/to/file2.tsx
+
+## Constraints
+- Follow existing code patterns
+- Add tests for new functionality
+- Update CHANGELOG.md if user-facing change
+
+## Verification (Required Before Closing)
+1. `npm test` - all tests pass
+2. `npm run build` - builds without errors
+3. Manually verify the feature works
+
+## Completion
+When verified and done:
+1. Commit: `git add . && git commit -m "feat(<scope>): <description>"`
+2. Close: `bd close <issue-id> --reason "Implemented: <summary>"`
+```
+
+### 9. Begin Work
+
+Start working on the issue with the prepared context.
+
+### 10. On Completion
+
+```bash
+# Verify first
+npm test
+npm run build
+
+# Then close
 bd close <issue-id> --reason "Completed: <brief summary>"
+
+# Sync
+bd sync && git push
 ```
 
 ## Notes
 
-- If user provided an issue ID as argument, use that instead of picking top
-- Always show the issue details before starting work
-- Commit changes with issue ID in commit message
-- Push and sync beads when done: `bd sync && git push`
+- Always run verification before closing
+- Commit with issue ID in message for traceability
+- If context gets high (>75%), use `/wipe` to handoff to fresh session
+- Update beads with progress: `bd comments <id> add "Progress: ..."`
 
 Execute this workflow now.
