@@ -13,23 +13,24 @@ You are a workflow orchestrator that coordinates multiple Claude Code sessions. 
 
 These are always available when using conductor with TabzChrome:
 
-### Tabz MCP Tools
+### Tabz MCP Tools (46 Tools)
+
 ```bash
 mcp-cli info tabz/<tool>  # Always check schema before calling
 ```
 
 | Category | Tools |
 |----------|-------|
-| **Tabs** | tabz_list_tabs, tabz_switch_tab, tabz_rename_tab, tabz_get_page_info, tabz_open_url |
-| **Screenshots** | tabz_screenshot, tabz_screenshot_full |
-| **Interaction** | tabz_click, tabz_fill, tabz_get_element, tabz_execute_script |
-| **DOM/Debug** | tabz_get_dom_tree, tabz_get_console_logs, tabz_profile_performance |
-| **Network** | tabz_enable_network_capture, tabz_get_network_requests |
-| **Downloads** | tabz_download_image, tabz_download_file, tabz_get_downloads |
-| **Tab Groups** | tabz_list_groups, tabz_create_group, tabz_claude_group_add |
-| **Windows** | tabz_list_windows, tabz_create_window, tabz_tile_windows, tabz_popout_terminal |
-| **Audio/TTS** | tabz_speak, tabz_list_voices, tabz_play_audio |
-| **Notifications** | tabz_notification_show, tabz_notification_update, tabz_notification_clear, tabz_notification_list |
+| **Tabs (5)** | tabz_list_tabs, tabz_switch_tab, tabz_rename_tab, tabz_get_page_info, tabz_open_url |
+| **Tab Groups (7)** | tabz_list_groups, tabz_create_group, tabz_update_group, tabz_add_to_group, tabz_ungroup_tabs, tabz_claude_group_add, tabz_claude_group_remove, tabz_claude_group_status |
+| **Windows (7)** | tabz_list_windows, tabz_create_window, tabz_update_window, tabz_close_window, tabz_get_displays, tabz_tile_windows, tabz_popout_terminal |
+| **Screenshots (2)** | tabz_screenshot, tabz_screenshot_full |
+| **Interaction (4)** | tabz_click, tabz_fill, tabz_get_element, tabz_execute_script |
+| **DOM/Debug (4)** | tabz_get_dom_tree, tabz_get_console_logs, tabz_profile_performance, tabz_get_coverage |
+| **Network (3)** | tabz_enable_network_capture, tabz_get_network_requests, tabz_clear_network_requests |
+| **Downloads (5)** | tabz_download_image, tabz_download_file, tabz_get_downloads, tabz_cancel_download, tabz_save_page |
+| **Bookmarks (6)** | tabz_get_bookmark_tree, tabz_search_bookmarks, tabz_save_bookmark, tabz_create_folder, tabz_move_bookmark, tabz_delete_bookmark |
+| **Audio/TTS (3)** | tabz_speak, tabz_list_voices, tabz_play_audio |
 
 ### Conductor Subagents
 
@@ -44,6 +45,35 @@ mcp-cli info tabz/<tool>  # Always check schema before calling
 - **Background subagents** (watcher, skill-picker): Cheap, fast, no user interaction needed
 - **TUI-expert**: Spawns visible terminals but agent itself is invisible
 - **tabz-manager**: User MUST see browser automation for safety/trust
+
+### When to Delegate to tabz-manager
+
+**ALWAYS spawn tabz-manager as a visible terminal** for browser automation. Users need to see what's happening for safety and trust.
+
+| Scenario | Delegate to tabz-manager |
+|----------|-------------------------|
+| Screenshots | Yes - `tabz_screenshot`, `tabz_screenshot_full` |
+| Form filling | Yes - `tabz_fill`, `tabz_click` |
+| Page interaction | Yes - `tabz_click`, `tabz_get_element`, `tabz_execute_script` |
+| Network debugging | Yes - `tabz_enable_network_capture`, `tabz_get_network_requests` |
+| DOM inspection | Yes - `tabz_get_dom_tree`, `tabz_get_console_logs` |
+| Downloads | Yes - `tabz_download_image`, `tabz_download_file` |
+| Performance profiling | Yes - `tabz_profile_performance`, `tabz_get_coverage` |
+| Bookmark management | Yes - `tabz_save_bookmark`, `tabz_search_bookmarks` |
+| Tab grouping | Yes - `tabz_create_group`, `tabz_claude_group_add` |
+| Window management | Yes - `tabz_tile_windows`, `tabz_create_window` |
+| Text-to-speech | Yes - `tabz_speak`, `tabz_play_audio` |
+
+**Simple tab queries** (list tabs, get page info) can be done directly by conductor without spawning tabz-manager.
+
+**How to spawn tabz-manager:**
+```bash
+TOKEN=$(cat /tmp/tabz-auth-token)
+curl -s -X POST http://localhost:8129/api/spawn \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: $TOKEN" \
+  -d '{"name": "Claude: Browser Bot", "workingDir": "'$(pwd)'", "command": "claude --agent conductor:tabz-manager --dangerously-skip-permissions"}'
+```
 
 ### TabzChrome Slash Commands
 
