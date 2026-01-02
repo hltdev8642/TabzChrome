@@ -5,52 +5,17 @@
 
 ---
 
-## Active Work: Codebase Simplification
-
-**Branch:** `simplify-codebase`
-**Status:** Wave 1-2 complete, Wave 3 pending
-
-### Wave 3: Larger Refactors (Pending)
-
-#### Consolidate Profile Management
-**Impact:** -800 LOC | **Effort:** Medium-High
-
-Same profile CRUD in 3 places (2,793 LOC total). Create shared `ProfileManager` component.
-Reference: `~/projects/Tabz` for cleaner theme/customization UI.
-
-#### Unify Messaging Systems
-**Impact:** Type safety | **Effort:** Medium
-
-Three overlapping systems (Chrome, WebSocket, Broadcast). Create single transformation layer.
-
-### Wave 4: Nice to Have
-
-- Extract `DropdownBase` component (-200 LOC)
-- Extract terminal reconciliation to pure testable function
-- Document magic timing values (150ms, 300ms)
-
-### Audit Reference
-
-Detailed analysis in `audit-results/`:
-- `SUMMARY.md` - Executive summary
-- `architecture.md` - Overall architecture
-- `backend-api.md` - API/MCP analysis
-- `components.md` - UI component duplication map
-- `hooks-state.md` - State management review
-
----
-
 ## MCP Tool Expansion
 
 **Goal**: With dynamic tool discovery (`mcp-cli`), there's no context cost for having many tools. Expand MCP capabilities using Chrome Extension APIs.
 
 ### Completed (v1.3.5+)
 
-- ✅ **Cookies** (5 tools): `tabz_cookies_get`, `tabz_cookies_list`, `tabz_cookies_set`, `tabz_cookies_delete`, `tabz_cookies_audit`
-- ✅ **History** (5 tools): `tabz_history_search`, `tabz_history_visits`, `tabz_history_recent`, `tabz_history_delete_url`, `tabz_history_delete_range`
-- ✅ **Sessions** (3 tools): `tabz_sessions_recently_closed`, `tabz_sessions_restore`, `tabz_sessions_devices`
-- ✅ **Emulation** (6 tools): Device, geolocation, network, media, vision simulation
-- ✅ **Notifications** (4 tools): Desktop notifications with progress support
+- **Cookies** (5 tools): `tabz_cookies_get`, `tabz_cookies_list`, `tabz_cookies_set`, `tabz_cookies_delete`, `tabz_cookies_audit`
+- **History** (5 tools): `tabz_history_search`, `tabz_history_visits`, `tabz_history_recent`, `tabz_history_delete_url`, `tabz_history_delete_range`
+- **Sessions** (3 tools): `tabz_sessions_recently_closed`, `tabz_sessions_restore`, `tabz_sessions_devices`
+- **Emulation** (6 tools): Device, geolocation, network, media, vision simulation
+- **Notifications** (4 tools): Desktop notifications with progress support
 
 ### Future Ideas (Lower Priority)
 
@@ -64,8 +29,11 @@ Detailed analysis in `audit-results/`:
 
 ## Documentation & Testing
 
+### Completed
+- [x] **Archived docs cleaned** - `docs/archived/` contains only `.gitkeep`
+- [x] **Magic timing documented** - 150ms, 300ms, 1000ms in `docs/lessons-learned/terminal-rendering.md`
+
 ### TODO
-- [ ] **Clean archived docs** - Personal paths remain in `docs/archived/*` files
 - [ ] Add homepage/bugs fields to backend/package.json
 - [ ] **Cross-platform testing matrix**
   - [ ] Windows 11 + WSL2 + Chrome (current setup)
@@ -86,78 +54,24 @@ Detailed analysis in `audit-results/`:
 
 ## Dashboard File Tree Improvements
 
-**Status**: Planning
+**Status**: Partial
 
-### Context Menu for File Tree
-- [ ] **Right-click context menu** - Disable Chrome default menu on tree only (not viewers)
-- [ ] **Menu options**:
+### Completed
+- [x] **Right-click context menu** - `FileTreeContextMenu.tsx` with 15+ options
   - Copy Path / Copy Relative Path
   - Copy @filename (Claude/Codex style)
-  - Favorite (files AND folders - currently files only)
+  - Favorite (files AND folders)
   - Set as Working Directory (folders)
-  - Spawn Terminal Here (folders) → submenu with profiles
+  - Spawn Terminal Here (folders) with profile submenu
   - Send to Terminal (files)
   - Open in Viewer (files)
-- Reference: `~/projects/opustrator/frontend/src/components/EnhancedFileViewer.tsx` (lines 750-1270)
+  - TTS read file
 
-### Floating Command Composer
-- [ ] **Consider TUI approach instead** - Chrome popups too bulky
-- [ ] **TUI alternative ideas**:
-  - Run in tmux pane or popout terminal
-  - Use `gum` or `charm` tools for nice inputs
-  - Send to terminals via spawn API / tmux send-keys
-  - No Chrome UI overhead
-
-### Command Queue (Replace History)
-- [ ] **Consider TUI approach instead** - Chrome UI too heavy
-- [ ] **TUI alternative ideas**:
-  - Queue manager as terminal app
-  - Integrate with prompt composer TUI
-  - Stage commands in a simple text file or SQLite
-
-### Other File Tree Ideas
+### TODO
 - [ ] Keyboard navigation (arrow keys, Enter to open)
 - [ ] Fuzzy search (Cmd+P style)
 - [ ] Git status indicators (modified/untracked)
 - [ ] Drag file path to terminal
-
----
-
-## Tmux MCP Server
-
-**Status**: Researching
-
-Existing projects to evaluate:
-- [jonrad/tmux-mcp](https://github.com/jonrad/tmux-mcp) - POC, basic control
-- [nickgnd/tmux-mcp](https://github.com/nickgnd/tmux-mcp) - Claude Desktop integration
-- [michael-abdo/tmux-claude-mcp-server](https://github.com/michael-abdo/tmux-claude-mcp-server) - Hierarchical Claude orchestration
-
-**Why tmux API > send-keys**: Terminals can be in states that don't accept keys (vim, TUI apps). API calls always work.
-
-Potential tools:
-| Tool | Description |
-|------|-------------|
-| `tmux_list_sessions` | List all sessions with metadata |
-| `tmux_capture_pane` | Get pane contents (what you see) |
-| `tmux_run_shell` | Run command, wait for exit, return output |
-| `tmux_wait_for_prompt` | Wait until shell is idle |
-| `tmux_get_pane_pid` | Get foreground process |
-
----
-
-## Agent Coordination Board
-
-**Status**: Idea
-
-Could use **GitHub Projects** as shared kanban for agent coordination:
-```bash
-# Agent posts note to project board
-gh project item-create 4 --owner GGPrompts \
-  --title "Worker-1: Refactor complete" \
-  --body "Split into 8 modules, tests pass"
-```
-
-Benefits: No infrastructure to build, works from CLI, real-time sync, mobile app.
 
 ---
 
@@ -189,7 +103,7 @@ Power-saving and performance improvements for video backgrounds:
   - Thumbnail previews
   - "Use as background" action from file viewer
 
-### Chrome URL Overrides ✅ DONE (v1.3.11)
+### Chrome URL Overrides (v1.3.11)
 
 - [x] **New Tab Override** - Replace Chrome's new tab with TabzChrome Dashboard
   - Beautiful clock widget with Orbitron LED font
@@ -200,11 +114,12 @@ Power-saving and performance improvements for video backgrounds:
   - Dark theme, terminal-inspired aesthetic
   - Uses `chrome_url_overrides.newtab` in manifest
 
-#### New Tab Page Enhancements
-- [ ] **Dashboard button** - Quick link to open the full dashboard page
-- [ ] **Configurable profile grid** - Setting to choose which 8 profiles display on new tab
-  - Could use favorites, most used, or manual selection
-  - Store in Chrome storage
+#### New Tab Page - Completed
+- [x] **Dashboard button** - Settings icon opens full dashboard
+- [x] **Configurable profile grid** - Bookmarks on profiles page
+- [x] **Active terminals rich status** - `StatusWidget.tsx` with Claude status, context %, pane titles
+
+#### New Tab Page - TODO
 - [ ] **Weather widget** - Use free weather API from another project
   - Minimal display: temp, conditions, icon
   - Cache results to avoid API spam
@@ -212,11 +127,6 @@ Power-saving and performance improvements for video backgrounds:
   - Notes tagged by working directory
   - Quick capture for project-specific thoughts
   - Could store in `~/.tabz-notes/{project}/`
-- [ ] **Active terminals rich status** - Show same info as sidebar terminal tabs
-  - PyRadio current song
-  - Claude's current todo item from tmux pane title
-  - TUI app status (lazygit branch, btop stats, etc.)
-  - Use existing `usePaneTitles` hook logic
 
 ### Waiting on Chrome Updates
 
@@ -228,6 +138,14 @@ Power-saving and performance improvements for video backgrounds:
 ### Other Features
 - **Tab Context Menu** - Right-click for Rename, Close, Close Others
 - **Chrome Web Store Publication** - Privacy policy, screenshots, version management
+
+---
+
+## Agent Coordination
+
+**Status**: Using beads (`bd`) for issue tracking
+
+See `.beads/` directory and run `bd ready` to see open work items.
 
 ---
 
