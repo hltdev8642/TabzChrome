@@ -196,6 +196,46 @@ See `docs/API.md` for full API documentation.
 
 ## AI Assistant Notes
 
+### Skills for TabzChrome Development
+
+Use these skills when working on TabzChrome itself:
+
+| Skill | When to Use |
+|-------|-------------|
+| `xterm-js` | Terminal.tsx changes, resize handling, input/output, WebSocket I/O |
+| `tabz-guide` | Understanding TabzChrome features, API, MCP tools, audio/TTS |
+| `tabz-mcp` | Browser automation, testing MCP tools, screenshot workflows |
+| `shadcn-ui` | Dashboard UI components, settings modals, forms |
+| `tailwindcss` | Styling sidepanel, dashboard, responsive layouts |
+
+**Trigger with:** "use the xterm-js skill to debug terminal rendering"
+
+### Slash Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/rebuild` | Build extension and copy to Windows (WSL) |
+| `/ctthandoff` | Generate handoff summary, copy to clipboard, speak via TTS |
+| `/bd-work` | Pick top beads issue and start working |
+| `/bd-swarm` | Spawn parallel workers for multiple issues |
+| `/bd-status` | Show beads issue tracker overview |
+| `/plan-backlog` | Groom issues into parallelizable waves |
+
+### Conductor Agents
+
+For orchestrating multi-session work on TabzChrome:
+
+| Agent | When to Use |
+|-------|-------------|
+| `conductor:watcher` | Monitor Claude workers, send notifications |
+| `conductor:tabz-manager` | Browser automation (spawn as visible terminal) |
+| `conductor:tui-expert` | Spawn btop, lazygit, lnav for system info |
+
+**Spawn tabz-manager for browser testing:**
+```bash
+claude --agent conductor:tabz-manager --dangerously-skip-permissions
+```
+
 ### Autonomous Debugging
 ```bash
 # Check backend + terminals without asking user
