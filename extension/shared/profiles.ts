@@ -78,3 +78,46 @@ export function getValidDefaultProfileId(savedDefaultId: string | undefined, pro
   // Fallback to first profile or 'default'
   return profiles.length > 0 ? profiles[0].id : 'default'
 }
+
+/**
+ * Theme-related fields that can be inherited from default profile
+ */
+const THEME_FIELDS = [
+  'themeName',
+  'backgroundGradient',
+  'panelColor',
+  'transparency',
+  'backgroundMedia',
+  'backgroundMediaType',
+  'backgroundMediaOpacity',
+] as const
+
+/**
+ * Returns a profile with effective theme settings.
+ * If the profile has useDefaultTheme enabled, theme fields are inherited from the default profile.
+ *
+ * @param profile - The profile to get effective settings for
+ * @param defaultProfile - The default profile to inherit from (if useDefaultTheme is true)
+ * @returns Profile with effective theme settings applied
+ */
+export function getEffectiveProfile(profile: Profile, defaultProfile: Profile | undefined): Profile {
+  // If not using default theme, or no default profile exists, return as-is
+  if (!profile.useDefaultTheme || !defaultProfile) {
+    return profile
+  }
+
+  // Don't inherit if this IS the default profile
+  if (profile.id === defaultProfile.id) {
+    return profile
+  }
+
+  // Merge theme fields from default profile
+  const effectiveProfile = { ...profile }
+  for (const field of THEME_FIELDS) {
+    if (defaultProfile[field] !== undefined) {
+      (effectiveProfile as any)[field] = defaultProfile[field]
+    }
+  }
+
+  return effectiveProfile
+}

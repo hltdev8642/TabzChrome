@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import type { Profile, CategorySettings } from '../components/settings/types'
 import { DEFAULT_CATEGORY_COLOR as DEFAULT_CAT_COLOR } from '../components/settings/types'
-import { migrateProfiles, profilesNeedMigration, getValidDefaultProfileId } from '../shared/profiles'
+import { migrateProfiles, profilesNeedMigration, getValidDefaultProfileId, getEffectiveProfile } from '../shared/profiles'
 
 export const DEFAULT_CATEGORY_COLOR = DEFAULT_CAT_COLOR
 
@@ -26,6 +26,8 @@ export interface UseProfilesReturn {
   getSessionCategoryColor: (session: TerminalSession, categorySettings: CategorySettings) => string | null
   categorySettings: CategorySettings
   setCategorySettings: React.Dispatch<React.SetStateAction<CategorySettings>>
+  getDefaultProfile: () => Profile | undefined
+  getEffectiveProfileFor: (profile: Profile) => Profile
 }
 
 interface UseProfilesParams {
@@ -182,6 +184,17 @@ export function useProfiles(_params: UseProfilesParams): UseProfilesReturn {
     return categorySettings[category]?.color || DEFAULT_CATEGORY_COLOR
   }, [categorySettings])
 
+  // Get the default profile
+  const getDefaultProfile = useCallback((): Profile | undefined => {
+    return profiles.find(p => p.id === defaultProfileId)
+  }, [profiles, defaultProfileId])
+
+  // Get effective profile with theme inheritance applied
+  const getEffectiveProfileFor = useCallback((profile: Profile): Profile => {
+    const defaultProfile = profiles.find(p => p.id === defaultProfileId)
+    return getEffectiveProfile(profile, defaultProfile)
+  }, [profiles, defaultProfileId])
+
   return {
     profiles,
     setProfiles,
@@ -194,5 +207,7 @@ export function useProfiles(_params: UseProfilesParams): UseProfilesReturn {
     getSessionCategoryColor,
     categorySettings,
     setCategorySettings,
+    getDefaultProfile,
+    getEffectiveProfileFor,
   }
 }

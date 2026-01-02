@@ -17,6 +17,7 @@ import {
   PanelLeft,
   Pin,
   PinOff,
+  Link2,
 } from 'lucide-react'
 import { Terminal as LucideTerminal } from 'lucide-react'
 // Animated icons
@@ -58,6 +59,7 @@ import { useDragDrop } from '../../hooks/useDragDrop'
 import { spawnTerminal, spawnTerminalPopout } from '../hooks/useDashboard'
 import { useWorkingDirectory } from '../../hooks/useWorkingDirectory'
 import { getEffectiveWorkingDir } from '../../shared/utils'
+import { getEffectiveProfile } from '../../shared/profiles'
 
 // Helper to get media URL (matches Terminal.tsx pattern)
 const getMediaUrl = (path: string | undefined): string | null => {
@@ -755,12 +757,17 @@ export default function SettingsProfiles() {
 
   // Show edit form if editing
   if (editingProfile) {
+    const currentDefaultProfile = profiles.find(p => p.id === defaultProfile)
+    const isEditingDefault = editingProfile.id === defaultProfile
+
     return (
       <div className="p-6 max-w-4xl mx-auto">
         <ProfileEditForm
           profile={editingProfile}
           setProfile={setEditingProfile}
           isNew={isAddingNew}
+          isDefault={isEditingDefault}
+          defaultProfile={currentDefaultProfile}
           categories={getUniqueCategories()}
           audioSettings={audioSettings}
           profileAudioTestPlaying={profileAudioTestPlaying}
@@ -1534,6 +1541,8 @@ interface ProfileEditFormProps {
   profile: Profile
   setProfile: (profile: Profile | null) => void
   isNew: boolean
+  isDefault: boolean
+  defaultProfile: Profile | undefined
   categories: string[]
   audioSettings: AudioSettings
   profileAudioTestPlaying: boolean
@@ -1547,6 +1556,8 @@ function ProfileEditForm({
   profile,
   setProfile,
   isNew,
+  isDefault,
+  defaultProfile,
   categories,
   audioSettings,
   profileAudioTestPlaying,
@@ -1798,202 +1809,193 @@ function ProfileEditForm({
         {/* Right Column - Appearance */}
         <div className="space-y-5">
           {/* Live Preview - Prominent */}
-          <div className="rounded-xl border border-primary/30 bg-card/20 p-4 backdrop-blur-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              <span className="text-sm font-semibold tracking-wide uppercase text-primary/90">Live Preview</span>
-            </div>
-            <TerminalPreview
-              themeName={profile.themeName}
-              backgroundGradient={profile.backgroundGradient}
-              panelColor={profile.panelColor}
-              transparency={profile.transparency}
-              backgroundMedia={profile.backgroundMedia}
-              backgroundMediaType={profile.backgroundMediaType}
-              backgroundMediaOpacity={profile.backgroundMediaOpacity}
-              fontSize={profile.fontSize}
-              fontFamily={profile.fontFamily}
-              isDark={isDark}
-            />
-          </div>
+          {/* Compute effective profile for preview when using default theme */}
+          {(() => {
+            const effectiveProfile = profile.useDefaultTheme && defaultProfile
+              ? getEffectiveProfile(profile, defaultProfile)
+              : profile
 
-          {/* Color Scheme Section */}
-          <SectionCard title="Color Scheme" icon={<SparklesIcon size={16} />}>
-            <FormField label="Text Colors">
-              <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1 -mr-1">
-                {themeNames.map((themeName) => {
-                  const theme = themes[themeName]
-                  const isSelected = profile.themeName === themeName
-                  const previewColors = theme.dark.colors
-
-                  return (
-                    <button
-                      key={themeName}
-                      onClick={() => updateProfile({ themeName })}
-                      className={`
-                        px-3 py-2 rounded-lg border transition-all text-left
-                        ${isSelected
-                          ? 'border-primary bg-primary/10 ring-1 ring-primary/30'
-                          : 'border-border/60 hover:border-primary/50 bg-background/30'
-                        }
-                      `}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-0.5">
-                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: previewColors.red }} />
-                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: previewColors.green }} />
-                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: previewColors.blue }} />
-                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: previewColors.magenta }} />
-                        </div>
-                        <span className="text-sm truncate" style={{ color: previewColors.foreground }}>{theme.name}</span>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            </FormField>
-          </SectionCard>
-
-          {/* Background Section */}
-          <SectionCard title="Background" icon={<span className="text-xs">◐</span>}>
-            {/* Panel Color */}
-            <FormField label="Base Color">
-              <div className="flex flex-wrap gap-2">
-                {PANEL_COLORS.map((color) => (
-                  <button
-                    key={color.value}
-                    onClick={() => updateProfile({ panelColor: color.value })}
-                    className={`
-                      w-9 h-9 rounded-lg border-2 transition-all relative group
-                      ${(profile.panelColor || '#000000') === color.value
-                        ? 'border-primary scale-110 ring-2 ring-primary/30'
-                        : 'border-border/60 hover:border-primary/50 hover:scale-105'
-                      }
-                    `}
-                    style={{ backgroundColor: color.value }}
-                    title={color.name}
-                  >
-                    {(profile.panelColor || '#000000') === color.value && (
-                      <Check className="absolute inset-0 m-auto w-4 h-4 text-white drop-shadow-md" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </FormField>
-
-            {/* Gradient */}
-            <FormField label="Gradient Overlay">
-              <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1 -mr-1">
-                <button
-                  onClick={() => updateProfile({ backgroundGradient: undefined })}
-                  className={`
-                    px-3 py-2 rounded-lg border transition-all text-left
-                    ${profile.backgroundGradient === undefined
-                      ? 'border-primary bg-primary/10 ring-1 ring-primary/30'
-                      : 'border-border/60 hover:border-primary/50 bg-background/30'
-                    }
-                  `}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-4 rounded border border-border/60 bg-gradient-to-br from-muted to-muted-foreground/20" />
-                    <span className="text-sm">Theme Default</span>
-                  </div>
-                </button>
-                {gradientNames.map((gradientKey) => {
-                  const gradient = backgroundGradients[gradientKey]
-                  const isSelected = profile.backgroundGradient === gradientKey
-
-                  return (
-                    <button
-                      key={gradientKey}
-                      onClick={() => updateProfile({ backgroundGradient: gradientKey })}
-                      className={`
-                        px-3 py-2 rounded-lg border transition-all text-left
-                        ${isSelected
-                          ? 'border-primary bg-primary/10 ring-1 ring-primary/30'
-                          : 'border-border/60 hover:border-primary/50 bg-background/30'
-                        }
-                      `}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-6 h-4 rounded border border-border/60 flex-shrink-0"
-                          style={{ background: gradient.gradient }}
-                        />
-                        <span className="text-sm truncate">{gradient.name}</span>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            </FormField>
-
-            {/* Transparency */}
-            <FormField label={`Gradient Opacity: ${profile.transparency ?? 100}%`}>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground">0%</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  value={profile.transparency ?? 100}
-                  onChange={(e) => updateProfile({ transparency: parseInt(e.target.value) })}
-                  className="flex-1 accent-primary"
+            return (
+              <div className="rounded-xl border border-primary/30 bg-card/20 p-4 backdrop-blur-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  <span className="text-sm font-semibold tracking-wide uppercase text-primary/90">Live Preview</span>
+                  {profile.useDefaultTheme && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-medium">
+                      Inherited
+                    </span>
+                  )}
+                </div>
+                <TerminalPreview
+                  themeName={effectiveProfile.themeName}
+                  backgroundGradient={effectiveProfile.backgroundGradient}
+                  panelColor={effectiveProfile.panelColor}
+                  transparency={effectiveProfile.transparency}
+                  backgroundMedia={effectiveProfile.backgroundMedia}
+                  backgroundMediaType={effectiveProfile.backgroundMediaType}
+                  backgroundMediaOpacity={effectiveProfile.backgroundMediaOpacity}
+                  fontSize={profile.fontSize}
+                  fontFamily={profile.fontFamily}
+                  isDark={isDark}
                 />
-                <span className="text-xs text-muted-foreground">100%</span>
               </div>
-            </FormField>
-          </SectionCard>
+            )
+          })()}
 
-          {/* Media Section */}
-          <SectionCard title="Background Media" icon={<span className="text-xs">▶</span>}>
-            <FormField label="Media Type">
-              <div className="flex gap-2">
-                {(['none', 'image', 'video'] as const).map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => updateProfile({ backgroundMediaType: type })}
-                    className={`
-                      flex-1 px-3 py-2.5 rounded-lg border text-sm capitalize transition-all
-                      ${(profile.backgroundMediaType || 'none') === type
-                        ? 'border-primary bg-primary/10 ring-1 ring-primary/30'
-                        : 'border-border/60 hover:border-primary/50 bg-background/30'
-                      }
-                    `}
-                  >
-                    {type}
-                  </button>
-                ))}
+          {/* Use Default Theme Toggle - only show for non-default profiles */}
+          {!isDefault && (
+            <div
+              className={`
+                p-4 rounded-xl border transition-all cursor-pointer
+                ${profile.useDefaultTheme
+                  ? 'bg-blue-500/10 border-blue-500/40 ring-1 ring-blue-500/20'
+                  : 'bg-card/30 border-border/60 hover:border-primary/50'
+                }
+              `}
+              onClick={() => updateProfile({ useDefaultTheme: !profile.useDefaultTheme })}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`
+                  w-10 h-6 rounded-full relative transition-colors
+                  ${profile.useDefaultTheme ? 'bg-blue-500' : 'bg-muted'}
+                `}>
+                  <div className={`
+                    absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all
+                    ${profile.useDefaultTheme ? 'left-5' : 'left-1'}
+                  `} />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Link2 className="w-4 h-4 text-blue-400" />
+                    <span className="font-medium">Use Default Theme</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {profile.useDefaultTheme
+                      ? `Inheriting theme from "${defaultProfile?.name || 'Default'}"`
+                      : 'Inherit colors, gradients, and background media from the default profile'
+                    }
+                  </p>
+                </div>
               </div>
-            </FormField>
+            </div>
+          )}
 
-            {profile.backgroundMediaType && profile.backgroundMediaType !== 'none' && (
-              <>
-                <FormField label="Media Path" hint="Local file path or URL">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={profile.backgroundMedia || ''}
-                      onChange={(e) => updateProfile({ backgroundMedia: e.target.value })}
-                      placeholder={profile.backgroundMediaType === 'video'
-                        ? 'e.g., ~/Videos/space.mp4 or https://...'
-                        : 'e.g., ~/Pictures/bg.png or https://...'
-                      }
-                      className="flex-1 px-3 py-2.5 bg-background/50 border border-border/60 rounded-lg font-mono text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowMediaPicker(true)}
-                      className="p-2.5 rounded-lg bg-muted/50 hover:bg-muted border border-border/60 transition-colors"
-                      title="Browse files"
-                    >
-                      <FolderOpenIcon size={16} className="text-muted-foreground" />
-                    </button>
+          {/* Theme sections - hidden when using default theme */}
+          {!profile.useDefaultTheme && (
+            <>
+              {/* Color Scheme Section */}
+              <SectionCard title="Color Scheme" icon={<SparklesIcon size={16} />}>
+                <FormField label="Text Colors">
+                  <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1 -mr-1">
+                    {themeNames.map((themeName) => {
+                      const theme = themes[themeName]
+                      const isSelected = profile.themeName === themeName
+                      const previewColors = theme.dark.colors
+
+                      return (
+                        <button
+                          key={themeName}
+                          onClick={() => updateProfile({ themeName })}
+                          className={`
+                            px-3 py-2 rounded-lg border transition-all text-left
+                            ${isSelected
+                              ? 'border-primary bg-primary/10 ring-1 ring-primary/30'
+                              : 'border-border/60 hover:border-primary/50 bg-background/30'
+                            }
+                          `}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="flex gap-0.5">
+                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: previewColors.red }} />
+                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: previewColors.green }} />
+                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: previewColors.blue }} />
+                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: previewColors.magenta }} />
+                            </div>
+                            <span className="text-sm truncate" style={{ color: previewColors.foreground }}>{theme.name}</span>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </FormField>
+              </SectionCard>
+
+              {/* Background Section */}
+              <SectionCard title="Background" icon={<span className="text-xs">◐</span>}>
+                {/* Panel Color */}
+                <FormField label="Base Color">
+                  <div className="flex flex-wrap gap-2">
+                    {PANEL_COLORS.map((color) => (
+                      <button
+                        key={color.value}
+                        onClick={() => updateProfile({ panelColor: color.value })}
+                        className={`
+                          w-9 h-9 rounded-lg border-2 transition-all relative group
+                          ${(profile.panelColor || '#000000') === color.value
+                            ? 'border-primary scale-110 ring-2 ring-primary/30'
+                            : 'border-border/60 hover:border-primary/50 hover:scale-105'
+                          }
+                        `}
+                        style={{ backgroundColor: color.value }}
+                        title={color.name}
+                      >
+                        {(profile.panelColor || '#000000') === color.value && (
+                          <Check className="absolute inset-0 m-auto w-4 h-4 text-white drop-shadow-md" />
+                        )}
+                      </button>
+                    ))}
                   </div>
                 </FormField>
 
-                <FormField label={`Media Opacity: ${profile.backgroundMediaOpacity ?? 50}%`}>
+                {/* Gradient */}
+                <FormField label="Gradient Overlay">
+                  <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1 -mr-1">
+                    <button
+                      onClick={() => updateProfile({ backgroundGradient: undefined })}
+                      className={`
+                        px-3 py-2 rounded-lg border transition-all text-left
+                        ${profile.backgroundGradient === undefined
+                          ? 'border-primary bg-primary/10 ring-1 ring-primary/30'
+                          : 'border-border/60 hover:border-primary/50 bg-background/30'
+                        }
+                      `}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-4 rounded border border-border/60 bg-gradient-to-br from-muted to-muted-foreground/20" />
+                        <span className="text-sm">Theme Default</span>
+                      </div>
+                    </button>
+                    {gradientNames.map((gradientKey) => {
+                      const gradient = backgroundGradients[gradientKey]
+                      const isSelected = profile.backgroundGradient === gradientKey
+
+                      return (
+                        <button
+                          key={gradientKey}
+                          onClick={() => updateProfile({ backgroundGradient: gradientKey })}
+                          className={`
+                            px-3 py-2 rounded-lg border transition-all text-left
+                            ${isSelected
+                              ? 'border-primary bg-primary/10 ring-1 ring-primary/30'
+                              : 'border-border/60 hover:border-primary/50 bg-background/30'
+                            }
+                          `}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-6 h-4 rounded border border-border/60 flex-shrink-0"
+                              style={{ background: gradient.gradient }}
+                            />
+                            <span className="text-sm truncate">{gradient.name}</span>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </FormField>
+
+                {/* Transparency */}
+                <FormField label={`Gradient Opacity: ${profile.transparency ?? 100}%`}>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-muted-foreground">0%</span>
                     <input
@@ -2001,16 +2003,82 @@ function ProfileEditForm({
                       min="0"
                       max="100"
                       step="5"
-                      value={profile.backgroundMediaOpacity ?? 50}
-                      onChange={(e) => updateProfile({ backgroundMediaOpacity: parseInt(e.target.value) })}
+                      value={profile.transparency ?? 100}
+                      onChange={(e) => updateProfile({ transparency: parseInt(e.target.value) })}
                       className="flex-1 accent-primary"
                     />
                     <span className="text-xs text-muted-foreground">100%</span>
                   </div>
                 </FormField>
-              </>
-            )}
-          </SectionCard>
+              </SectionCard>
+
+              {/* Media Section */}
+              <SectionCard title="Background Media" icon={<span className="text-xs">▶</span>}>
+                <FormField label="Media Type">
+                  <div className="flex gap-2">
+                    {(['none', 'image', 'video'] as const).map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => updateProfile({ backgroundMediaType: type })}
+                        className={`
+                          flex-1 px-3 py-2.5 rounded-lg border text-sm capitalize transition-all
+                          ${(profile.backgroundMediaType || 'none') === type
+                            ? 'border-primary bg-primary/10 ring-1 ring-primary/30'
+                            : 'border-border/60 hover:border-primary/50 bg-background/30'
+                          }
+                        `}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+                </FormField>
+
+                {profile.backgroundMediaType && profile.backgroundMediaType !== 'none' && (
+                  <>
+                    <FormField label="Media Path" hint="Local file path or URL">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={profile.backgroundMedia || ''}
+                          onChange={(e) => updateProfile({ backgroundMedia: e.target.value })}
+                          placeholder={profile.backgroundMediaType === 'video'
+                            ? 'e.g., ~/Videos/space.mp4 or https://...'
+                            : 'e.g., ~/Pictures/bg.png or https://...'
+                          }
+                          className="flex-1 px-3 py-2.5 bg-background/50 border border-border/60 rounded-lg font-mono text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowMediaPicker(true)}
+                          className="p-2.5 rounded-lg bg-muted/50 hover:bg-muted border border-border/60 transition-colors"
+                          title="Browse files"
+                        >
+                          <FolderOpenIcon size={16} className="text-muted-foreground" />
+                        </button>
+                      </div>
+                    </FormField>
+
+                    <FormField label={`Media Opacity: ${profile.backgroundMediaOpacity ?? 50}%`}>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-muted-foreground">0%</span>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="5"
+                          value={profile.backgroundMediaOpacity ?? 50}
+                          onChange={(e) => updateProfile({ backgroundMediaOpacity: parseInt(e.target.value) })}
+                          className="flex-1 accent-primary"
+                        />
+                        <span className="text-xs text-muted-foreground">100%</span>
+                      </div>
+                    </FormField>
+                  </>
+                )}
+              </SectionCard>
+            </>
+          )}
         </div>
       </div>
 
