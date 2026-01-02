@@ -755,9 +755,12 @@ export default function SettingsProfiles() {
     )
   }
 
+  // Compute default profile object for theme inheritance
+  const defaultProfileObj = profiles.find(p => p.id === defaultProfile)
+
   // Show edit form if editing
   if (editingProfile) {
-    const currentDefaultProfile = profiles.find(p => p.id === defaultProfile)
+    const currentDefaultProfile = defaultProfileObj
     const isEditingDefault = editingProfile.id === defaultProfile
 
     return (
@@ -1122,6 +1125,7 @@ export default function SettingsProfiles() {
                       profile={profile}
                       originalIndex={originalIndex}
                       isDefault={profile.id === defaultProfile}
+                      defaultProfileObj={defaultProfileObj}
                       category={category}
                       isDark={isDark}
                       onEdit={() => handleEditProfile(profile)}
@@ -1165,6 +1169,7 @@ interface ProfileCardProps {
   profile: Profile
   originalIndex: number
   isDefault: boolean
+  defaultProfileObj?: Profile
   category: string
   isDark: boolean
   onEdit: () => void
@@ -1188,6 +1193,7 @@ interface ProfileCardProps {
 function ProfileCard({
   profile,
   isDefault,
+  defaultProfileObj,
   category,
   isDark,
   onEdit,
@@ -1214,18 +1220,23 @@ function ProfileCard({
   const emoji = emojiMatch?.[1]
   const displayName = emoji ? profile.name.replace(emojiMatch[0], '') : profile.name
 
-  // Compute effective background
-  const effectiveGradientCSS = getGradientCSS(profile.backgroundGradient, isDark)
-  const effectivePanelColor = profile.panelColor ?? DEFAULT_PANEL_COLOR
-  const gradientOpacity = (profile.transparency ?? DEFAULT_TRANSPARENCY) / 100
+  // Resolve effective profile for theme inheritance
+  const effectiveProfile = profile.useDefaultTheme && defaultProfileObj
+    ? getEffectiveProfile(profile, defaultProfileObj)
+    : profile
+
+  // Compute effective background using resolved profile
+  const effectiveGradientCSS = getGradientCSS(effectiveProfile.backgroundGradient, isDark)
+  const effectivePanelColor = effectiveProfile.panelColor ?? DEFAULT_PANEL_COLOR
+  const gradientOpacity = (effectiveProfile.transparency ?? DEFAULT_TRANSPARENCY) / 100
 
   // Get theme foreground color
-  const themeForeground = themes[profile.themeName]?.dark.colors.foreground ?? '#e0e0e0'
+  const themeForeground = themes[effectiveProfile.themeName]?.dark.colors.foreground ?? '#e0e0e0'
 
-  // Background media
-  const mediaUrl = getMediaUrl(profile.backgroundMedia)
-  const mediaOpacity = (profile.backgroundMediaOpacity ?? 50) / 100
-  const showMedia = profile.backgroundMediaType && profile.backgroundMediaType !== 'none' && mediaUrl && !mediaError
+  // Background media - use effective profile
+  const mediaUrl = getMediaUrl(effectiveProfile.backgroundMedia)
+  const mediaOpacity = (effectiveProfile.backgroundMediaOpacity ?? 50) / 100
+  const showMedia = effectiveProfile.backgroundMediaType && effectiveProfile.backgroundMediaType !== 'none' && mediaUrl && !mediaError
 
   return (
     <div
@@ -1356,7 +1367,10 @@ function ProfileCard({
 
           {/* Theme/font info */}
           <p className="text-[10px] text-white/40">
-            {themes[profile.themeName]?.name || profile.themeName} · {profile.fontSize}px
+            {themes[effectiveProfile.themeName]?.name || effectiveProfile.themeName} · {profile.fontSize}px
+            {profile.useDefaultTheme && (
+              <span className="ml-1.5 px-1 py-0.5 rounded bg-blue-500/30 text-blue-300/80 text-[9px]">inherited</span>
+            )}
           </p>
         </div>
 
