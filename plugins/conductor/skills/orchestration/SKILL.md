@@ -55,10 +55,19 @@ Since you're running as vanilla Claude (not via `--agent`), the Task tool is ava
 
 | Subagent | Model | Purpose | Invocation |
 |----------|-------|---------|------------|
+| `conductor:initializer` | opus | Create isolated worktrees, install deps, return assignments | `Task(subagent_type="conductor:initializer")` |
 | `conductor:watcher` | haiku | Poll worker health, send notifications | `Task(subagent_type="conductor:watcher")` |
+| `conductor:code-reviewer` | sonnet | Autonomous review, auto-fix, quality gate | `Task(subagent_type="conductor:code-reviewer")` |
 | `conductor:skill-picker` | haiku | Search/install skills from skillsmp.com | `Task(subagent_type="conductor:skill-picker")` |
 | `conductor:tui-expert` | opus | Spawn btop, lazygit, lnav, tfe | `Task(subagent_type="conductor:tui-expert")` |
 | `conductor:docs-updater` | opus | Update docs after merges | `Task(subagent_type="conductor:docs-updater")` |
+
+**Example - Prepare worktrees for parallel workers:**
+```
+Task tool:
+  subagent_type: "conductor:initializer"
+  prompt: "Prepare 3 workers for issues beads-abc, beads-def, beads-ghi in /home/matt/projects/myapp"
+```
 
 **Example - Start background watcher:**
 ```
@@ -71,9 +80,21 @@ Task tool:
 ### Terminal Workers
 
 Workers are spawned as separate Claude sessions via TabzChrome API. Each worker:
-- Has full Task tool (can spawn their own explore subagents)
-- Gets an assigned tab group for browser isolation
-- Runs independently with its own context window
+- Has full Task tool (can spawn their own subagents)
+- Runs in isolated worktree with own `node_modules`
+- Gets assigned port for dev server (no conflicts)
+- Uses build lock for test/build (serialized)
+
+**Worker internal flow:**
+```
+1. Code the solution (main work)
+2. Task(conductor:code-reviewer) → quality gate
+   - If passed=false → fix blockers, re-review
+   - If passed=true → continue
+3. Acquire build lock → npm test && npm build
+4. git commit
+5. bd close <issue> --reason "..."
+```
 
 ## Terminal Management
 
