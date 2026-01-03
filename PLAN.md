@@ -54,7 +54,7 @@
 
 ## Dashboard File Tree Improvements
 
-**Status**: Partial
+**Status**: Mostly Complete
 
 ### Completed
 - [x] **Right-click context menu** - `FileTreeContextMenu.tsx` with 15+ options
@@ -66,12 +66,13 @@
   - Send to Terminal (files)
   - Open in Viewer (files)
   - TTS read file
+- [x] **Keyboard navigation** - Arrow keys to navigate, Enter to open
+- [x] **Git status indicators** - Staged (blue), modified (yellow), untracked (green)
+- [x] **File/folder search** - Filter inputs for folder names and file names
+- [x] **Drag file to terminal** - Drag files from tree to insert path in terminal
 
 ### TODO
-- [ ] Keyboard navigation (arrow keys, Enter to open)
-- [ ] Fuzzy search (Cmd+P style)
-- [ ] Git status indicators (modified/untracked)
-- [ ] Drag file path to terminal
+- [ ] Fuzzy search (Cmd+P style modal)
 
 ---
 
@@ -119,18 +120,16 @@ Power-saving and performance improvements for video backgrounds:
 - [x] **Configurable profile grid** - Bookmarks on profiles page
 - [x] **Active terminals rich status** - `StatusWidget.tsx` with Claude status, context %, pane titles
 
+#### New Tab Page - Completed (v1.3.11+)
+- [x] **Weather widget** - Location-based weather with OpenWeatherMap API
+  - Temperature, conditions, icon display
+  - Cached results to avoid API spam
+
 #### New Tab Page - TODO
-- [ ] **Weather widget** - Use free weather API from another project
-  - Minimal display: temp, conditions, icon
-  - Cache results to avoid API spam
 - [ ] **Quick notes terminal** - Spawn popup terminal with micro/default editor
   - Notes tagged by working directory
   - Quick capture for project-specific thoughts
   - Could store in `~/.tabz-notes/{project}/`
-
-### Waiting on Chrome Updates
-
-- [ ] **`sidePanel.close()` (Chrome 141+)** - Add "Close Terminal Sidebar" to context menu. Currently only `open()` exists and requires user gesture. [Chrome API docs](https://developer.chrome.com/docs/extensions/reference/api/sidePanel)
 
 ### GitHub FAB
 - **Fork + Clone Combo** - Fork first, then clone user's fork (proper OSS contribution flow)
