@@ -1581,6 +1581,7 @@ function ProfileEditForm({
   isDark,
 }: ProfileEditFormProps) {
   const [showMediaPicker, setShowMediaPicker] = useState(false)
+  const [showReferencePicker, setShowReferencePicker] = useState(false)
   const [filePickerDefaults, setFilePickerDefaults] = useState<FilePickerDefaults>(DEFAULT_FILE_PICKER_DEFAULTS)
 
   // Load file picker defaults
@@ -1698,15 +1699,25 @@ function ProfileEditForm({
             </FormField>
 
             <FormField label="Reference" hint="URL or file path for quick access">
-              <div className="relative">
-                <AttachFileIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
-                <input
-                  type="text"
-                  value={profile.reference || ''}
-                  onChange={(e) => updateProfile({ reference: e.target.value || undefined })}
-                  placeholder="https://docs.example.com or ~/docs/flags.md"
-                  className="w-full pl-9 pr-3 py-2.5 bg-background/50 border border-border/60 rounded-lg font-mono text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all"
-                />
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <AttachFileIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
+                  <input
+                    type="text"
+                    value={profile.reference || ''}
+                    onChange={(e) => updateProfile({ reference: e.target.value || undefined })}
+                    placeholder="https://docs.example.com or ~/docs/flags.md"
+                    className="w-full pl-9 pr-3 py-2.5 bg-background/50 border border-border/60 rounded-lg font-mono text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowReferencePicker(true)}
+                  className="p-2.5 rounded-lg bg-background/50 border border-border/60 hover:bg-muted/50 transition-colors"
+                  title="Browse files"
+                >
+                  <FolderOpenIcon size={16} className="text-muted-foreground" />
+                </button>
               </div>
             </FormField>
           </SectionCard>
@@ -2104,6 +2115,18 @@ function ProfileEditForm({
         filterType={getMediaFilterType()}
         onSelect={handleMediaFileSelected}
         onClose={() => setShowMediaPicker(false)}
+      />
+
+      {/* File picker modal for reference file */}
+      <FilePickerModal
+        isOpen={showReferencePicker}
+        title="Select Reference File"
+        basePath={filePickerDefaults.general || '~'}
+        onSelect={(filePath) => {
+          updateProfile({ reference: filePath })
+          setShowReferencePicker(false)
+        }}
+        onClose={() => setShowReferencePicker(false)}
       />
     </div>
   )

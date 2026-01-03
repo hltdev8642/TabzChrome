@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Plus, Trash2, Play, Volume2 } from 'lucide-react'
-import type { SoundEffect, SoundEffectType, SoundPreset } from '../../../components/settings/types'
-import { SOUND_PRESETS } from '../../../components/settings/types'
+import { Plus, Trash2, Play, Volume2, FolderOpen } from 'lucide-react'
+import type { SoundEffect, SoundEffectType, SoundPreset, FilePickerDefaults } from '../../../components/settings/types'
+import { SOUND_PRESETS, DEFAULT_FILE_PICKER_DEFAULTS } from '../../../components/settings/types'
 import { previewSoundEffect, isSoundEffectConfigured } from '../../../utils/audioEffects'
+import FilePickerModal from '../files/FilePickerModal'
 
 interface WordSubstitutionEditorProps {
   substitutions?: Record<string, SoundEffect>
@@ -78,6 +79,18 @@ export default function WordSubstitutionEditor({
   const [previewingWord, setPreviewingWord] = useState<string | null>(null)
   // Track stable IDs for each word to prevent React key issues
   const [wordIds, setWordIds] = useState<Record<string, string>>({})
+  // File picker state
+  const [browsingWord, setBrowsingWord] = useState<string | null>(null)
+  const [filePickerDefaults, setFilePickerDefaults] = useState<FilePickerDefaults>(DEFAULT_FILE_PICKER_DEFAULTS)
+
+  // Load file picker defaults from storage
+  useEffect(() => {
+    chrome.storage.local.get(['filePickerDefaults'], (result) => {
+      if (result.filePickerDefaults) {
+        setFilePickerDefaults({ ...DEFAULT_FILE_PICKER_DEFAULTS, ...result.filePickerDefaults })
+      }
+    })
+  }, [])
 
   // Generate entries with stable IDs
   const entries: SubstitutionEntry[] = Object.entries(substitutions).map(([word, effect]) => {
@@ -260,13 +273,22 @@ export default function WordSubstitutionEditor({
                 )}
 
                 {effect.type === 'file' && (
-                  <input
-                    type="text"
-                    value={effect.filePath || ''}
-                    onChange={(e) => handleFilePathChange(word, e.target.value)}
-                    placeholder="~/sounds/..."
-                    className="flex-1 px-2 py-1 bg-background border border-border rounded text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-                  />
+                  <>
+                    <input
+                      type="text"
+                      value={effect.filePath || ''}
+                      onChange={(e) => handleFilePathChange(word, e.target.value)}
+                      placeholder="~/sounds/..."
+                      className="flex-1 px-2 py-1 bg-background border border-border rounded text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                    />
+                    <button
+                      onClick={() => setBrowsingWord(word)}
+                      className="p-1 rounded bg-muted hover:bg-muted/80 transition-colors"
+                      title="Browse files"
+                    >
+                      <FolderOpen className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  </>
                 )}
 
                 <button
@@ -290,6 +312,21 @@ export default function WordSubstitutionEditor({
       <p className="text-xs text-muted-foreground">
         Words matching these patterns will play a sound instead of being spoken.
       </p>
+
+      {/* File picker modal */}
+      <FilePickerModal
+        isOpen={browsingWord !== null}
+        title="Select Audio File"
+        basePath={filePickerDefaults.audio || '~/sfx'}
+        filterType="audio"
+        onSelect={(filePath) => {
+          if (browsingWord) {
+            handleFilePathChange(browsingWord, filePath)
+          }
+          setBrowsingWord(null)
+        }}
+        onClose={() => setBrowsingWord(null)}
+      />
     </div>
   )
 }

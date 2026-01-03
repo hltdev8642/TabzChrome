@@ -15,7 +15,7 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
 } from 'lucide-react'
-import { FILE_TYPE_FILTERS, type FilePickerFilterType } from '../../../components/settings/types'
+import { FILE_TYPE_FILTERS, type FilePickerFilterType, type FilePickerDefaults, DEFAULT_FILE_PICKER_DEFAULTS } from '../../../components/settings/types'
 
 interface FileNode {
   name: string
@@ -101,6 +101,16 @@ export default function FilePickerModal({
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [allExpanded, setAllExpanded] = useState(false)
   const fallbackAttempted = useRef(false)
+  const [filePickerDefaults, setFilePickerDefaults] = useState<FilePickerDefaults>(DEFAULT_FILE_PICKER_DEFAULTS)
+
+  // Load file picker defaults from storage
+  useEffect(() => {
+    chrome.storage.local.get(['filePickerDefaults'], (result) => {
+      if (result.filePickerDefaults) {
+        setFilePickerDefaults({ ...DEFAULT_FILE_PICKER_DEFAULTS, ...result.filePickerDefaults })
+      }
+    })
+  }, [])
 
   // Determine which extensions to filter
   const extensions = useMemo(() => {
@@ -376,11 +386,37 @@ export default function FilePickerModal({
           </div>
         </div>
 
-        {/* Current path */}
+        {/* Current path and quick folder buttons */}
         <div className="px-4 py-2 border-b border-border bg-muted/30">
-          <p className="text-xs font-mono text-muted-foreground truncate">
-            {currentPath}
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-mono text-muted-foreground truncate flex-1">
+              {currentPath}
+            </p>
+            {/* Quick folder navigation buttons */}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                onClick={() => fetchFileTree(filePickerDefaults.audio || '~/sfx', true)}
+                className="flex items-center gap-1 px-2 py-1 text-xs rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                title={`Music: ${filePickerDefaults.audio || '~/sfx'}`}
+              >
+                <Music className="w-3 h-3 text-pink-400" />
+              </button>
+              <button
+                onClick={() => fetchFileTree(filePickerDefaults.images || '~/Pictures', true)}
+                className="flex items-center gap-1 px-2 py-1 text-xs rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                title={`Pictures: ${filePickerDefaults.images || '~/Pictures'}`}
+              >
+                <Image className="w-3 h-3 text-yellow-400" />
+              </button>
+              <button
+                onClick={() => fetchFileTree(filePickerDefaults.videos || '~/Videos', true)}
+                className="flex items-center gap-1 px-2 py-1 text-xs rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                title={`Videos: ${filePickerDefaults.videos || '~/Videos'}`}
+              >
+                <Video className="w-3 h-3 text-purple-400" />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* File tree */}
