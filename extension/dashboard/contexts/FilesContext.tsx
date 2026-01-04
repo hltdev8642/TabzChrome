@@ -73,6 +73,7 @@ interface OutdatedPlugin {
   name: string
   marketplace: string
   scope: string
+  projectPath?: string  // Present for project-scoped plugins
   installedSha: string
   currentSha: string
   lastUpdated: string

@@ -9,6 +9,7 @@ interface OutdatedPlugin {
   name: string
   marketplace: string
   scope: string
+  projectPath?: string  // Present for project-scoped plugins
   installedSha: string
   currentSha: string
   lastUpdated: string
@@ -343,8 +344,15 @@ export function PluginList() {
     return pluginHealth?.outdated?.find(p => p.pluginId === pluginId)
   }
 
-  // Count user-scoped outdated plugins (these can be updated via Update All)
-  const userScopedOutdatedCount = pluginHealth?.outdated?.filter(p => p.scope === 'user').length ?? 0
+  // Count updatable plugins (user-scoped OR project-scoped with projectPath)
+  const updatableCount = pluginHealth?.outdated?.filter(p =>
+    p.scope === 'user' || p.projectPath
+  ).length ?? 0
+
+  // Check if a plugin can be updated
+  const canUpdatePlugin = (p: OutdatedPlugin): boolean => {
+    return p.scope === 'user' || !!p.projectPath
+  }
 
   const handleToggle = async (pluginId: string, enabled: boolean) => {
     setTogglingPlugins(prev => new Set(prev).add(pluginId))
@@ -644,10 +652,10 @@ export function PluginList() {
                     <span className="text-muted-foreground">Outdated:</span>
                     <button
                       onClick={handleUpdateAll}
-                      disabled={updatingAll || userScopedOutdatedCount === 0}
+                      disabled={updatingAll || updatableCount === 0}
                       className="flex items-center gap-1 px-2 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded disabled:opacity-50 text-xs"
-                      title={userScopedOutdatedCount < pluginHealth.outdated.length
-                        ? `Update ${userScopedOutdatedCount} user-scoped plugins (${pluginHealth.outdated.length - userScopedOutdatedCount} project-scoped skipped)`
+                      title={updatableCount < pluginHealth.outdated.length
+                        ? `Update ${updatableCount} plugins (${pluginHealth.outdated.length - updatableCount} cannot be updated remotely)`
                         : "Update all outdated plugins"}
                     >
                       {updatingAll ? (
@@ -655,7 +663,7 @@ export function PluginList() {
                       ) : (
                         <Download className="w-3 h-3" />
                       )}
-                      Update All ({userScopedOutdatedCount})
+                      Update All ({updatableCount})
                     </button>
                   </div>
                   {updateAllResult && (
@@ -686,15 +694,17 @@ export function PluginList() {
                       </div>
                       <button
                         onClick={() => handleUpdate(p.pluginId)}
-                        disabled={updatingPlugins.has(p.pluginId) || updatingAll || p.scope !== 'user'}
+                        disabled={updatingPlugins.has(p.pluginId) || updatingAll || !canUpdatePlugin(p)}
                         className={`p-1 rounded ${
-                          p.scope !== 'user'
+                          !canUpdatePlugin(p)
                             ? 'opacity-30 cursor-not-allowed'
                             : 'hover:bg-amber-500/30 disabled:opacity-50'
                         }`}
-                        title={p.scope !== 'user'
-                          ? `Cannot update ${p.scope}-scoped plugin from here`
-                          : 'Update plugin'}
+                        title={!canUpdatePlugin(p)
+                          ? `Cannot update ${p.scope}-scoped plugin (no project path)`
+                          : p.projectPath
+                            ? `Update from ${p.projectPath}`
+                            : 'Update plugin'}
                       >
                         {updatingPlugins.has(p.pluginId) ? (
                           <RefreshCwIcon size={12} className="animate-spin" />
@@ -709,10 +719,10 @@ export function PluginList() {
                       +{pluginHealth.outdated.length - 8} more
                     </div>
                   )}
-                  {/* Explanation for non-user scoped */}
-                  {pluginHealth.outdated.some(p => p.scope !== 'user') && (
+                  {/* Explanation for non-updatable plugins */}
+                  {pluginHealth.outdated.some(p => !canUpdatePlugin(p)) && (
                     <div className="text-[10px] text-muted-foreground mt-1 italic">
-                      Project/local plugins require updating from their source directory
+                      Some plugins cannot be updated (no project path recorded)
                     </div>
                   )}
                 </div>

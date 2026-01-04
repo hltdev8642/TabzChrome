@@ -2382,6 +2382,7 @@ router.get('/plugins/health', asyncHandler(async (req, res) => {
             name,
             marketplace,
             scope: install.scope || 'user',
+            projectPath: install.projectPath,  // Include for project-scoped plugins
             installedSha: installedVersion || (installedSha ? installedSha.substring(0, 12) : 'unknown'),
             currentSha: currentShaShort,
             lastUpdated: install.lastUpdated
@@ -2487,30 +2488,36 @@ router.post('/plugins/update', asyncHandler(async (req, res) => {
   }
 
   try {
-    // Look up the actual scope from installed_plugins.json if not provided
+    // Look up the plugin installation details
     let scope = requestedScope;
-    if (!scope) {
-      try {
-        const data = await fsAsync.readFile(claudeInstalledPluginsPath, 'utf-8');
-        const parsed = JSON.parse(data);
-        const installations = parsed.plugins?.[pluginId];
-        if (installations && installations.length > 0) {
-          scope = installations[0].scope;
-        }
-      } catch (err) {
-        // If we can't read the file, default to user scope
-        scope = 'user';
+    let projectPath = null;
+    try {
+      const data = await fsAsync.readFile(claudeInstalledPluginsPath, 'utf-8');
+      const parsed = JSON.parse(data);
+      const installations = parsed.plugins?.[pluginId];
+      if (installations && installations.length > 0) {
+        scope = scope || installations[0].scope;
+        projectPath = installations[0].projectPath;
       }
+    } catch (err) {
+      // If we can't read the file, default to user scope
+      scope = scope || 'user';
     }
 
     // Build command with scope flag
     const scopeFlag = scope && scope !== 'user' ? ` --scope ${scope}` : '';
     const cmd = `claude plugin update "${pluginId}"${scopeFlag}`;
 
-    const result = execSync(cmd, {
+    // For project-scoped plugins, run from the project directory
+    const execOptions = {
       encoding: 'utf8',
       timeout: 30000
-    });
+    };
+    if (projectPath && (scope === 'project' || scope === 'local')) {
+      execOptions.cwd = projectPath;
+    }
+
+    const result = execSync(cmd, execOptions);
 
     res.json({
       success: true,
@@ -2600,14 +2607,18 @@ router.post('/plugins/update-all', asyncHandler(async (req, res) => {
         const shaMatches = installedSha === currentSha;
 
         if (!versionMatches && !shaMatches) {
-          // Skip non-user scoped plugins unless explicitly requested
-          if (scopeFilter === 'user' && pluginScope !== 'user') {
-            skipped.push({ pluginId, scope: pluginScope, reason: 'project/local scoped' });
+          // Include project path for project-scoped plugins
+          const projectPath = install.projectPath;
+
+          // Skip non-user scoped plugins unless explicitly requested OR we have projectPath
+          if (scopeFilter === 'user' && pluginScope !== 'user' && !projectPath) {
+            skipped.push({ pluginId, scope: pluginScope, reason: 'project/local scoped (no projectPath)' });
             continue;
           }
           outdated.push({
             pluginId,
-            scope: pluginScope
+            scope: pluginScope,
+            projectPath
           });
         }
       }
@@ -2626,15 +2637,21 @@ router.post('/plugins/update-all', asyncHandler(async (req, res) => {
 
     // Update each outdated plugin
     const results = [];
-    for (const { pluginId, scope } of outdated) {
+    for (const { pluginId, scope, projectPath } of outdated) {
       const scopeFlag = scope && scope !== 'user' ? ` --scope ${scope}` : '';
       const cmd = `claude plugin update "${pluginId}"${scopeFlag}`;
 
+      // For project-scoped plugins, run from the project directory
+      const execOptions = {
+        encoding: 'utf8',
+        timeout: 30000
+      };
+      if (projectPath && (scope === 'project' || scope === 'local')) {
+        execOptions.cwd = projectPath;
+      }
+
       try {
-        const output = execSync(cmd, {
-          encoding: 'utf8',
-          timeout: 30000
-        });
+        const output = execSync(cmd, execOptions);
         results.push({
           pluginId,
           success: true,
