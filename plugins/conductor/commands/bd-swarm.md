@@ -67,12 +67,13 @@ Poll every ~2 minutes and decide:
 
 | Status | Action |
 |--------|--------|
-| `tool_use` / `processing` | Working, leave alone |
+| `🔧 AskUserQuestion` | **Don't nudge** - worker waiting for user answer |
+| `🔧 <other tool>` | Working, leave alone |
 | `awaiting_input` / `idle` | At prompt - check if issue closed or stuck |
 | `stale` (5+ min no activity) | May be hung, investigate pane |
 | Issue closed | Worker done, ready for cleanup |
 
-**Note:** `awaiting_input` means worker is at prompt (ready for input), not necessarily AskUserQuestion. Check the actual pane to see if they're waiting on something.
+**Detection:** Tmuxplexer shows `🔧 Using AskUserQuestion` when worker has a question pending. Never nudge these workers.
 
 ### Drill Down
 

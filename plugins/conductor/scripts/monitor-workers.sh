@@ -33,7 +33,9 @@ get_worker_status() {
     context=$(echo "$line" | grep -oP '\[\d+%\]' | tr -d '[]%')
 
     # Detect status from indicators
-    if echo "$line" | grep -q "⏸️\|awaiting"; then
+    if echo "$line" | grep -q "AskUserQuestion"; then
+      status="asking_user"  # Special: worker waiting for user answer
+    elif echo "$line" | grep -q "⏸️\|awaiting"; then
       status="awaiting_input"
     elif echo "$line" | grep -q "🔧"; then
       status="tool_use"
@@ -75,6 +77,7 @@ get_summary() {
   local idle=0
   local working=0
   local awaiting=0
+  local asking=0
   local stale=0
 
   while IFS='|' read -r session status context; do
@@ -82,12 +85,13 @@ get_summary() {
     case "$status" in
       idle) idle=$((idle + 1)) ;;
       awaiting_input) awaiting=$((awaiting + 1)) ;;
+      asking_user) asking=$((asking + 1)) ;;
       stale) stale=$((stale + 1)) ;;
       *) working=$((working + 1)) ;;
     esac
   done <<< "$workers"
 
-  echo "WORKERS:$total WORKING:$working IDLE:$idle AWAITING:$awaiting STALE:$stale"
+  echo "WORKERS:$total WORKING:$working IDLE:$idle AWAITING:$awaiting ASKING:$asking STALE:$stale"
 }
 
 # Main command handling
