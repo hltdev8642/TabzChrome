@@ -327,17 +327,11 @@ export function PluginList() {
   const [pruning, setPruning] = useState(false)
   const [pruneResult, setPruneResult] = useState<{ removed: number; freedMB: string } | null>(null)
 
-  // Load plugins on mount
+  // Load plugins and health check on mount
   useEffect(() => {
     loadPlugins()
-  }, [loadPlugins])
-
-  // Load health when health panel is shown
-  useEffect(() => {
-    if (showHealth && !pluginHealth && !pluginHealthLoading) {
-      loadPluginHealth()
-    }
-  }, [showHealth, pluginHealth, pluginHealthLoading, loadPluginHealth])
+    loadPluginHealth()
+  }, [loadPlugins, loadPluginHealth])
 
   // Check if a plugin is outdated
   const isPluginOutdated = (pluginId: string): OutdatedPlugin | undefined => {
