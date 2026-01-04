@@ -19,7 +19,7 @@ import { TerminalCustomizePopover } from '../components/TerminalCustomizePopover
 import type { Profile } from '../components/settings/types'
 import { ProfileDropdown } from '../components/ProfileDropdown'
 import { SessionContextMenu } from '../components/SessionContextMenu'
-import { GhostBadgeDropdown } from '../components/GhostBadgeDropdown'
+import { UnifiedIndicatorsDropdown } from '../components/UnifiedIndicatorsDropdown'
 import { PopoutTerminalView } from '../components/PopoutTerminalView'
 import { WorkingDirDropdown } from '../components/WorkingDirDropdown'
 import { ChatInputBar } from '../components/ChatInputBar'
@@ -123,8 +123,7 @@ function SidePanelTerminal() {
     reattachSessions,
     killSessions,
   } = useOrphanedSessions()
-  const [showGhostDropdown, setShowGhostDropdown] = useState(false)
-  const [selectedOrphans, setSelectedOrphans] = useState<Set<string>>(new Set())
+  const [showIndicatorsDropdown, setShowIndicatorsDropdown] = useState(false)
 
   // Working directory hook - manages global working dir and recent dirs
   const {
@@ -517,9 +516,8 @@ function SidePanelTerminal() {
 
   // Close dropdowns when clicking outside (using shared hook)
   useOutsideClick(showDirDropdown, useCallback(() => setShowDirDropdown(false), []))
-  useOutsideClick(showGhostDropdown, useCallback(() => {
-    setShowGhostDropdown(false)
-    setSelectedOrphans(new Set())
+  useOutsideClick(showIndicatorsDropdown, useCallback(() => {
+    setShowIndicatorsDropdown(false)
   }, []))
   useOutsideClick(showProfileDropdown, useCallback(() => setShowProfileDropdown(false), []))
   useOutsideClick(showEmptyStateDropdown, useCallback(() => setShowEmptyStateDropdown(false), []))
@@ -861,6 +859,25 @@ function SidePanelTerminal() {
     ))
   }
 
+  // Handle "Return from Popout" - bring terminal back from popup window
+  const handleReturnFromPopout = async (session: TerminalSession) => {
+    if (session.popoutWindowId) {
+      // Tell background to stop tracking this window BEFORE closing
+      sendMessage({
+        type: 'UNTRACK_POPOUT_WINDOW',
+        windowId: session.popoutWindowId,
+      })
+      try {
+        await chrome.windows.remove(session.popoutWindowId)
+      } catch (e) {
+        console.warn('[handleReturnFromPopout] Could not close popout window:', e)
+      }
+    }
+    setSessions(prev => prev.map(s =>
+      s.id === session.id ? { ...s, poppedOut: false, popoutWindowId: undefined } : s
+    ))
+  }
+
   // In popout mode, render minimal single-terminal view
   if (isPopoutMode && popoutTerminalId) {
     return <PopoutTerminalView terminalId={popoutTerminalId} />
@@ -911,19 +928,21 @@ function SidePanelTerminal() {
             </Badge>
           )}
 
-          {/* Ghost Badge - Orphaned Sessions */}
+          {/* Unified Indicators - Ghost/Popout/3D sessions */}
           {wsConnected && (
-            <GhostBadgeDropdown
+            <UnifiedIndicatorsDropdown
               orphanedSessions={orphanedSessions}
               orphanedCount={orphanedCount}
               isLoading={orphanedLoading}
-              selectedOrphans={selectedOrphans}
-              setSelectedOrphans={setSelectedOrphans}
-              showDropdown={showGhostDropdown}
-              setShowDropdown={setShowGhostDropdown}
               onRefresh={refreshOrphaned}
               onReattach={reattachSessions}
               onKill={killSessions}
+              popoutSessions={sessions.filter(s => s.poppedOut)}
+              onReturnFromPopout={handleReturnFromPopout}
+              focusedIn3DSessions={sessions.filter(s => s.focusedIn3D)}
+              onReturnFrom3D={handleReturnFrom3D}
+              showDropdown={showIndicatorsDropdown}
+              setShowDropdown={setShowIndicatorsDropdown}
             />
           )}
 
