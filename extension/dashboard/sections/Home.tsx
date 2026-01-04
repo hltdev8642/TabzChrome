@@ -102,6 +102,11 @@ export default function HomeSection() {
         .filter((s: any) => s.name.startsWith('ctt-') && registeredIds.has(s.name))
         .map((s: any) => {
           const extractedName = s.name.replace(/^ctt-/, '').replace(/-[a-f0-9]+$/, '')
+          // Get display mode from Chrome session
+          const chromeSession = chromeSessions.find((cs: any) => cs.id === s.name)
+          const displayMode = chromeSession?.focusedIn3D ? '3d'
+            : chromeSession?.isPopout ? 'popout'
+            : 'sidebar'
           return {
             id: s.name,
             name: getProfileDisplayName(extractedName, profilesRes || []),
@@ -112,6 +117,7 @@ export default function HomeSection() {
             gitBranch: s.gitBranch,
             claudeState: s.claudeState,
             aiTool: s.aiTool,
+            displayMode,
           }
         })
         // Sort to match sidebar tab order (terminals not in sidebar go to end)
