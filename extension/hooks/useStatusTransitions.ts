@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import type { Profile, AudioSettings } from '../components/settings/types'
 import type { AudioEventType, AudioEventSettings } from '../components/settings/types'
 import { DEFAULT_PHRASES } from '../components/settings/types'
@@ -9,6 +9,10 @@ import {
   STATUS_FRESHNESS_MS,
 } from '../constants/audioVoices'
 import { renderTemplate, type TemplateContext } from '../utils/audioTemplates'
+import { useDesktopNotifications } from './useDesktopNotifications'
+
+// Timeout for question waiting notification (60 seconds)
+const QUESTION_WAITING_TIMEOUT_MS = 60_000
 
 export interface TerminalSession {
   id: string
@@ -51,6 +55,9 @@ export function useStatusTransitions({
   getAudioSettingsForProfile,
   playAudio,
 }: UseStatusTransitionsParams): void {
+  // Desktop notifications hook
+  const { showNotification } = useDesktopNotifications()
+
   // Refs for tracking state transitions
   const prevClaudeStatusesRef = useRef<Map<string, string>>(new Map())
   const prevToolNamesRef = useRef<Map<string, string>>(new Map())
@@ -60,6 +67,9 @@ export function useStatusTransitions({
   const lastStatusUpdateRef = useRef<Map<string, string>>(new Map())
   const announcedQuestionsRef = useRef<Map<string, string>>(new Map())  // Track announced questions to avoid repeats
   const announcedPlanApprovalRef = useRef<Map<string, boolean>>(new Map())  // Track plan approval announcements
+  // Question waiting timeout tracking
+  const questionTimeoutRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const questionDataRef = useRef<Map<string, { displayName: string; questionText: string }>>(new Map())
 
   // Helper to get phrase template for an event type
   const getPhraseTemplate = (eventType: AudioEventType, variant?: string): string => {
@@ -74,6 +84,51 @@ export function useStatusTransitions({
     }
     return DEFAULT_PHRASES[eventType] || '{profile}'
   }
+
+  // Start question waiting timeout for a terminal
+  const startQuestionWaitingTimeout = useCallback((
+    terminalId: string,
+    displayName: string,
+    questionText: string
+  ) => {
+    // Clear any existing timeout
+    const existingTimeout = questionTimeoutRef.current.get(terminalId)
+    if (existingTimeout) {
+      clearTimeout(existingTimeout)
+    }
+
+    // Store question data for when timeout fires
+    questionDataRef.current.set(terminalId, { displayName, questionText })
+
+    // Start new timeout
+    const timeoutId = setTimeout(() => {
+      const data = questionDataRef.current.get(terminalId)
+      if (data) {
+        showNotification('questionWaiting', {
+          title: `${data.displayName} waiting for answer`,
+          message: data.questionText.substring(0, 80) + (data.questionText.length > 80 ? '...' : ''),
+          requireInteraction: true,
+          notificationId: `question-waiting-${terminalId}`,
+          priority: 1,
+        })
+      }
+      // Clean up after notification shown
+      questionTimeoutRef.current.delete(terminalId)
+      questionDataRef.current.delete(terminalId)
+    }, QUESTION_WAITING_TIMEOUT_MS)
+
+    questionTimeoutRef.current.set(terminalId, timeoutId)
+  }, [showNotification])
+
+  // Clear question waiting timeout for a terminal
+  const clearQuestionWaitingTimeout = useCallback((terminalId: string) => {
+    const timeout = questionTimeoutRef.current.get(terminalId)
+    if (timeout) {
+      clearTimeout(timeout)
+      questionTimeoutRef.current.delete(terminalId)
+      questionDataRef.current.delete(terminalId)
+    }
+  }, [])
 
   useEffect(() => {
     if (!settingsLoaded) return
@@ -244,10 +299,11 @@ export function useStatusTransitions({
           }
         }
 
-        if (audioSettings.events.contextCritical) {
-          const crossedCriticalUp = prevContextPct < CONTEXT_THRESHOLDS.CRITICAL &&
-                                    currentContextPct >= CONTEXT_THRESHOLDS.CRITICAL
-          if (crossedCriticalUp) {
+        const crossedCriticalUp = prevContextPct < CONTEXT_THRESHOLDS.CRITICAL &&
+                                  currentContextPct >= CONTEXT_THRESHOLDS.CRITICAL
+        if (crossedCriticalUp) {
+          // TTS audio alert (if enabled in audio settings)
+          if (audioSettings.events.contextCritical) {
             const template = getPhraseTemplate('contextCritical')
             const phrase = renderTemplate(template, {
               profile: displayName,
@@ -260,6 +316,15 @@ export function useStatusTransitions({
               { pitch: '+25Hz', rate: '+10%', eventType: 'contextCritical' }
             )
           }
+
+          // Persistent desktop notification (checks its own settings internally)
+          showNotification('contextCritical', {
+            title: `${displayName} Context Critical`,
+            message: `${currentContextPct}% context used - consider /compact`,
+            requireInteraction: true,
+            notificationId: `context-critical-${terminalId}`,
+            priority: 2,
+          })
         }
       }
 
@@ -346,5 +411,5 @@ export function useStatusTransitions({
         announcedPlanApprovalRef.current.delete(id)
       }
     }
-  }, [claudeStatuses, audioSettings, audioGlobalMute, settingsLoaded, sessions, getAudioSettingsForProfile, playAudio])
+  }, [claudeStatuses, audioSettings, audioGlobalMute, settingsLoaded, sessions, getAudioSettingsForProfile, playAudio, showNotification])
 }
