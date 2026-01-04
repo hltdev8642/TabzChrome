@@ -1,5 +1,9 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react'
 import { AlertTriangle, RefreshCw, Bug } from 'lucide-react'
+import {
+  NotificationSettings,
+  DEFAULT_NOTIFICATION_SETTINGS,
+} from './settings/types'
 
 /**
  * Props for the ErrorBoundary component
@@ -77,6 +81,76 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   /**
+   * Check if currently within quiet hours
+   */
+  private isQuietHours(settings: NotificationSettings): boolean {
+    if (!settings.quietHours.enabled) return false
+
+    const now = new Date()
+    const currentHour = now.getHours()
+    const { startHour, endHour } = settings.quietHours
+
+    if (startHour <= endHour) {
+      // Simple case: e.g., 9 AM to 5 PM
+      return currentHour >= startHour && currentHour < endHour
+    } else {
+      // Overnight case: e.g., 10 PM to 8 AM
+      return currentHour >= startHour || currentHour < endHour
+    }
+  }
+
+  /**
+   * Show desktop notification if enabled
+   */
+  private async showCrashNotification(error: Error): Promise<void> {
+    try {
+      // Check if Chrome notifications API is available
+      if (typeof chrome === 'undefined' || !chrome.notifications || !chrome.storage) {
+        return
+      }
+
+      // Load notification settings from Chrome storage
+      const storage = await chrome.storage.local.get('notificationSettings')
+      const stored = storage.notificationSettings as Partial<NotificationSettings> | undefined
+      const settings: NotificationSettings = {
+        ...DEFAULT_NOTIFICATION_SETTINGS,
+        ...stored,
+        quietHours: { ...DEFAULT_NOTIFICATION_SETTINGS.quietHours, ...stored?.quietHours },
+        events: { ...DEFAULT_NOTIFICATION_SETTINGS.events, ...stored?.events },
+      }
+
+      // Check master toggle
+      if (!settings.enabled) return
+
+      // Check per-event toggle
+      if (!settings.events.errorBoundary) return
+
+      // Check quiet hours
+      if (this.isQuietHours(settings)) return
+
+      // Truncate long error messages (max 200 chars)
+      const message = error.message.length > 200
+        ? error.message.slice(0, 197) + '...'
+        : error.message
+
+      // Show the notification
+      // Note: buttons not supported from sidepanel context - user can reload via ErrorBoundary UI
+      const notificationId = `tabz-errorBoundary-${Date.now()}`
+      chrome.notifications.create(notificationId, {
+        type: 'basic',
+        iconUrl: chrome.runtime.getURL('icons/icon48.png'),
+        title: 'TabzChrome Error',
+        message: `Sidebar crashed: ${message}`,
+        priority: 2,
+        requireInteraction: false,
+      })
+    } catch (err) {
+      // Ignore notification errors - not critical
+      console.error('[ErrorBoundary] Failed to show notification:', err)
+    }
+  }
+
+  /**
    * Log error details and call optional error callback
    */
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
@@ -109,6 +183,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     } catch {
       // Ignore any errors during logging
     }
+
+    // Show desktop notification (fire and forget)
+    this.showCrashNotification(error)
   }
 
   /**
