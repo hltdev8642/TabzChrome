@@ -236,6 +236,29 @@ Task(subagent_type="conductor:code-reviewer",
      prompt="Quick review /home/matt/projects/app-worktrees/beads-abc - just lint and types")
 ```
 
+## Watcher Integration
+
+When invoked by `conductor:watcher` as part of the swarm pipeline, your output determines next steps:
+
+| Your Output | Watcher Action |
+|-------------|----------------|
+| `passed: true` | Mark worker as reviewed, proceed to merge |
+| `passed: false` | Nudge worker to fix blockers, wait for re-commit |
+
+**Critical:** Always return valid JSON at the end of your response:
+
+```json
+{
+  "passed": true,
+  "summary": "2 auto-fixes, no blockers",
+  "auto_fixed": [...],
+  "flagged": [...],
+  "blockers": []
+}
+```
+
+The watcher parses this to decide whether to proceed or nudge the worker.
+
 ## What NOT To Do
 
 - ❌ Ask clarifying questions - make a decision or skip
@@ -243,3 +266,4 @@ Task(subagent_type="conductor:code-reviewer",
 - ❌ Block on style preferences - only block on real issues
 - ❌ Review unchanged files - focus on the diff
 - ❌ Add comments to code - fix or flag, don't annotate
+- ❌ Return prose without JSON - watcher needs structured output

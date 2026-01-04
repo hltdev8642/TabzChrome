@@ -743,6 +743,143 @@ The conductor can stop background watcher by:
 2. Using `TaskOutput` with `block: false` to check status
 3. Killing the background task if needed
 
+## Completion Pipeline
+
+When a worker completes, orchestrate the full quality pipeline:
+
+### Per-Worker Pipeline
+
+```
+WORKER_DONE → code-reviewer → (fix if needed) → mark reviewed
+```
+
+**1. Detect completion:**
+```bash
+# Check if beads issue was closed
+if bd show "$ISSUE_ID" 2>/dev/null | grep -q "status:.*closed"; then
+  echo "WORKER_DONE: $ISSUE_ID"
+fi
+```
+
+**2. Spawn code-reviewer:**
+```bash
+# Use Task tool to review the worker's changes
+Task(
+  subagent_type="conductor:code-reviewer",
+  prompt="Review changes in $WORKTREE for issue $ISSUE_ID. Return JSON with passed=true/false."
+)
+```
+
+**3. Handle review results:**
+```bash
+# If review failed, nudge worker to fix
+if [ "$REVIEW_PASSED" = "false" ]; then
+  tmux send-keys -t "$SESSION" -l "Code review found issues. Please fix: $BLOCKERS"
+  sleep 0.3
+  tmux send-keys -t "$SESSION" C-m
+  # Don't mark as reviewed - wait for worker to fix and re-close issue
+else
+  # Mark as reviewed in tracking file
+  echo "reviewed" > "/tmp/claude-code-state/${SESSION}-reviewed.txt"
+fi
+```
+
+### All-Done Pipeline
+
+When all workers are reviewed:
+
+```
+ALL_REVIEWED → merge branches → docs-updater → sync & push → notify
+```
+
+**1. Merge all feature branches:**
+```bash
+cd "$PROJECT_DIR"
+for ISSUE in $COMPLETED_ISSUES; do
+  git merge "feature/${ISSUE}" --no-edit
+done
+```
+
+**2. Clean up worktrees:**
+```bash
+for ISSUE in $COMPLETED_ISSUES; do
+  git worktree remove "${PROJECT_DIR}-worktrees/${ISSUE}"
+  git branch -d "feature/${ISSUE}"
+done
+```
+
+**3. Spawn docs-updater:**
+```bash
+Task(
+  subagent_type="conductor:docs-updater",
+  prompt="Review recent commits and update CHANGELOG.md, API.md as needed. Working dir: $PROJECT_DIR"
+)
+```
+
+**4. Sync and push:**
+```bash
+bd sync && git push origin main
+```
+
+**5. Notify conductor:**
+```bash
+notify_all_done "Sprint complete: $WORKER_COUNT workers, all reviewed, docs updated, pushed to origin"
+```
+
+### Pipeline Tracking
+
+Track worker states:
+
+| State | File | Meaning |
+|-------|------|---------|
+| `in_progress` | beads issue status | Worker actively working |
+| `closed` | beads issue status | Worker done, needs review |
+| `reviewed` | `/tmp/.../SESSION-reviewed.txt` | Code review passed |
+| `merged` | Branch merged to main | Ready for cleanup |
+
+```bash
+# Check if all workers reviewed
+check_all_reviewed() {
+  for SESSION in $WORKER_SESSIONS; do
+    if [ ! -f "/tmp/claude-code-state/${SESSION}-reviewed.txt" ]; then
+      return 1  # Not all reviewed
+    fi
+  done
+  return 0  # All reviewed
+}
+
+# Main pipeline check
+if check_all_reviewed; then
+  run_all_done_pipeline
+fi
+```
+
+### Pipeline Configuration
+
+Pass pipeline settings in the watcher prompt:
+
+```
+Task tool:
+  subagent_type: "conductor:watcher"
+  run_in_background: true
+  prompt: |
+    CONDUCTOR_SESSION=ctt-conductor-xxx
+    PROJECT_DIR=/home/matt/projects/TabzChrome
+    ISSUES=TabzChrome-hyo,TabzChrome-lpm,TabzChrome-6bc
+
+    Monitor workers. On WORKER_DONE:
+    1. Spawn code-reviewer for the worker's changes
+    2. If review fails, nudge worker to fix
+    3. If review passes, mark reviewed
+
+    On ALL_REVIEWED:
+    1. Merge all feature branches
+    2. Clean up worktrees
+    3. Spawn docs-updater
+    4. bd sync && git push
+    5. Notify "Sprint complete"
+```
+
 ## Usage
 
 **One-time check (foreground):**
@@ -760,11 +897,25 @@ Task tool:
   prompt: "Monitor workers every 30 seconds until all complete"
 ```
 
+**Full pipeline mode (recommended for swarms):**
+```
+Task tool:
+  subagent_type: "conductor:watcher"
+  run_in_background: true
+  prompt: |
+    CONDUCTOR_SESSION=$MY_SESSION
+    PROJECT_DIR=/home/matt/projects/TabzChrome
+    ISSUES=TabzChrome-abc,TabzChrome-def
+
+    Run full pipeline: monitor → review → docs → merge → push
+```
+
 The conductor will invoke you with prompts like:
 - "Check status of all workers"
 - "Monitor workers continuously until done"
 - "Check status and notify if any need attention"
 - "Is ctt-worker-abc done?"
 - "Which workers are ready for new tasks?"
+- "Run full pipeline for these issues: ..."
 
 Keep responses concise - you're a monitoring tool, not a conversationalist.

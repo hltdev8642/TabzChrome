@@ -142,24 +142,55 @@ tmux send-keys -t "$SESSION" C-m
 📊 Status: Invoke conductor:watcher
 ```
 
-### 8. Start Watcher (Recommended)
+### 8. Start Watcher with Full Pipeline (Required)
 
-Get your conductor session ID and start the watcher:
+**Always spawn watcher** to handle the completion pipeline automatically:
 
 ```bash
 # Get your session ID
 CONDUCTOR_SESSION=$(tmux display-message -p '#{session_name}')
+
+# Get project directory
+PROJECT_DIR=$(pwd)
+
+# Build issue list
+ISSUES="TabzChrome-abc,TabzChrome-def,TabzChrome-ghi"
 ```
 
-Invoke the watcher to monitor progress and send updates back to you:
+Spawn watcher with full pipeline configuration:
 ```
 Task tool:
   subagent_type: "conductor:watcher"
   run_in_background: true
-  prompt: "CONDUCTOR_SESSION=$CONDUCTOR_SESSION. Monitor all Claude workers. Send updates to conductor when: worker completes (WORKER_DONE), worker stuck (WORKER_STUCK), all done (ALL_DONE). Exit when all workers complete."
+  prompt: |
+    CONDUCTOR_SESSION=$CONDUCTOR_SESSION
+    PROJECT_DIR=$PROJECT_DIR
+    ISSUES=$ISSUES
+
+    Run full pipeline:
+
+    On WORKER_DONE (issue closed):
+    1. Spawn conductor:code-reviewer for the worker's worktree
+    2. If review fails → nudge worker to fix blockers
+    3. If review passes → mark worker as reviewed
+
+    On ALL_REVIEWED (all workers pass review):
+    1. Merge all feature branches to main
+    2. Clean up worktrees
+    3. Spawn conductor:docs-updater to update CHANGELOG/API.md
+    4. Run: bd sync && git push origin main
+    5. Notify: "Sprint complete: N workers, reviewed, docs updated, pushed"
+
+    Exit when all done.
 ```
 
-The watcher will send structured messages like `[WATCHER] WORKER_DONE: ctt-worker-abc completed` directly to your session via `tmux send-keys`.
+The watcher handles:
+- ✅ Code review for each completed worker
+- ✅ Nudging workers who fail review
+- ✅ Merging branches when all pass
+- ✅ Spawning docs-updater
+- ✅ Syncing beads and pushing to origin
+- ✅ Notifying you when sprint is complete
 
 ## Worker Expectations
 
