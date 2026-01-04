@@ -78,6 +78,7 @@ function SidePanelTerminal() {
   const [pasteCommand, setPasteCommand] = useState<string | null>(null)  // Command to paste from context menu
   const [showDirDropdown, setShowDirDropdown] = useState(false)
   const [customDirInput, setCustomDirInput] = useState('')
+  const [showDashboardDropdown, setShowDashboardDropdown] = useState(false)
   const [isDark, setIsDark] = useState(true)  // Global dark/light mode toggle
   const audioUnlockedRef = useRef(false)  // Track if audio has been unlocked by user interaction
   const audioGlobalMuteRef = useRef(false)  // Track mute state for use in useEffect handlers
@@ -522,6 +523,7 @@ function SidePanelTerminal() {
   }, []))
   useOutsideClick(showProfileDropdown, useCallback(() => setShowProfileDropdown(false), []))
   useOutsideClick(showEmptyStateDropdown, useCallback(() => setShowEmptyStateDropdown(false), []))
+  useOutsideClick(showDashboardDropdown, useCallback(() => setShowDashboardDropdown(false), []))
 
   const handleSpawnDefaultProfile = () => {
     // Read profiles AND globalWorkingDir together from storage to avoid race conditions
@@ -952,15 +954,53 @@ function SidePanelTerminal() {
             setShowDropdown={setShowDirDropdown}
           />
 
-          {/* Dashboard Button */}
-          <button
-            onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/index.html') })}
-            className="p-1.5 hover:bg-[#00ff88]/10 rounded-md transition-colors text-gray-400 hover:text-[#00ff88]"
-            title="Open Dashboard"
-            aria-label="Open Dashboard"
-          >
-            <HomeIcon size={16} />
-          </button>
+          {/* Dashboard Button with Dropdown */}
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowDashboardDropdown(!showDashboardDropdown)
+              }}
+              className="flex items-center gap-0.5 p-1.5 hover:bg-[#00ff88]/10 rounded-md transition-colors text-gray-400 hover:text-[#00ff88]"
+              title="Open Dashboard"
+              aria-label="Open Dashboard"
+              aria-expanded={showDashboardDropdown}
+              aria-haspopup="menu"
+            >
+              <HomeIcon size={16} />
+              <ChevronDownIcon size={12} />
+            </button>
+
+            {showDashboardDropdown && (
+              <div
+                className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-gray-700 rounded-md shadow-2xl min-w-[160px] z-50 overflow-hidden"
+                role="menu"
+                aria-label="Dashboard sections"
+              >
+                {[
+                  { id: 'files', label: 'Files' },
+                  { id: 'terminals', label: 'Terminals' },
+                  { id: 'profiles', label: 'Profiles' },
+                  { id: 'audio', label: 'Audio' },
+                  { id: 'notifications', label: 'Settings' },
+                  { id: 'mcp', label: 'MCP Playground' },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      chrome.tabs.create({ url: chrome.runtime.getURL(`dashboard/index.html#/${item.id}`) })
+                      setShowDashboardDropdown(false)
+                    }}
+                    className="w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-[#00ff88]/10 hover:text-[#00ff88] transition-colors border-b border-gray-800 last:border-b-0"
+                    role="menuitem"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Keyboard Shortcuts Button */}
           <button
