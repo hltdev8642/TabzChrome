@@ -285,8 +285,8 @@ done
 # Sync and push
 bd sync && git push origin main
 
-# Notify (use jq for any dynamic content)
-mcp-cli call tabz/tabz_speak "$(jq -n --arg text "Sprint complete" '{text: $text}')"
+# Notify (use jq for any dynamic content, suppress errors if browser disconnected)
+mcp-cli call tabz/tabz_speak "$(jq -n --arg text "Sprint complete" '{text: $text}')" 2>/dev/null || true
 ```
 
 ---
