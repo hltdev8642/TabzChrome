@@ -220,10 +220,28 @@ const mockChromeRuntime = {
   })),
 }
 
+const mockChromeWindows = {
+  remove: vi.fn(() => Promise.resolve()),
+  get: vi.fn(() => Promise.resolve({ id: 1, type: 'popup' })),
+  getAll: vi.fn(() => Promise.resolve([])),
+  create: vi.fn(() => Promise.resolve({ id: 1 })),
+  update: vi.fn(() => Promise.resolve({})),
+}
+
+const mockChromeTabs = {
+  query: vi.fn(() => Promise.resolve([])),
+  remove: vi.fn(() => Promise.resolve()),
+  get: vi.fn(() => Promise.resolve({ id: 1 })),
+  create: vi.fn(() => Promise.resolve({ id: 1 })),
+  update: vi.fn(() => Promise.resolve({})),
+}
+
 // Create global chrome object
 ;(global as any).chrome = {
   storage: mockChromeStorage,
   runtime: mockChromeRuntime,
+  windows: mockChromeWindows,
+  tabs: mockChromeTabs,
 }
 
 // Helper to reset chrome storage between tests

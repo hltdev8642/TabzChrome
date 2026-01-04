@@ -316,6 +316,25 @@ export default function FocusScene() {
     }
   }, [handleWebSocketMessage])
 
+  // Auto-close 3D focus tab when backend disconnects for too long
+  useEffect(() => {
+    if (wsConnected) return
+
+    // Give backend 5 seconds to reconnect before closing
+    const timeout = setTimeout(async () => {
+      try {
+        const currentTab = await chrome.tabs.getCurrent()
+        if (currentTab?.id) {
+          await chrome.tabs.remove(currentTab.id)
+        }
+      } catch (err) {
+        // Tab may already be closed
+      }
+    }, 5000)
+
+    return () => clearTimeout(timeout)
+  }, [wsConnected])
+
   // Load dark mode preference and listen for changes
   useEffect(() => {
     chrome.storage.local.get(['isDark'], (result) => {

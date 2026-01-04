@@ -70,6 +70,25 @@ export function PopoutTerminalView({ terminalId }: PopoutTerminalViewProps) {
     }
   }, [handleWebSocketMessage])
 
+  // Auto-close popup window when backend disconnects for too long
+  useEffect(() => {
+    if (wsConnected) return
+
+    // Give backend 5 seconds to reconnect before closing
+    const timeout = setTimeout(async () => {
+      try {
+        const currentWindow = await chrome.windows.getCurrent()
+        if (currentWindow.id) {
+          await chrome.windows.remove(currentWindow.id)
+        }
+      } catch (err) {
+        // Window may already be closed
+      }
+    }, 5000)
+
+    return () => clearTimeout(timeout)
+  }, [wsConnected])
+
   // Load dark mode preference and listen for changes
   useEffect(() => {
     chrome.storage.local.get(['isDark'], (result) => {
