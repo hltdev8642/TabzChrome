@@ -635,6 +635,19 @@ wss.on('connection', (ws, req) => {
             }
             try {
               const { spawnSync } = require('child_process');
+
+              // SAFETY: Extract session from pane target (format: session:window.pane or just session)
+              // and verify it exists before sending (prevents hangs on dead sessions)
+              const sessionMatch = tmuxPane.match(/^([^:]+)/);
+              if (sessionMatch) {
+                const session = sessionMatch[1];
+                const hasSession = spawnSync('tmux', ['has-session', '-t', session], { timeout: 1000 });
+                if (hasSession.status !== 0) {
+                  log.warn(`[targeted-pane-send] Session ${session} does not exist, skipping`);
+                  break;
+                }
+              }
+
               if (text) {
                 // Use spawnSync with array args to bypass shell interpretation
                 // This preserves $VAR, backticks, and other shell special characters
@@ -668,6 +681,14 @@ wss.on('connection', (ws, req) => {
             }
             try {
               const { spawnSync } = require('child_process');
+
+              // SAFETY: Verify session exists before sending (prevents hangs on dead sessions)
+              const hasSession = spawnSync('tmux', ['has-session', '-t', sessionName], { timeout: 1000 });
+              if (hasSession.status !== 0) {
+                log.warn(`[tmux-session-send] Session ${sessionName} does not exist, skipping`);
+                break;
+              }
+
               // Target the session directly (tmux will use current window/pane)
               const target = sessionName;
               if (sessionText) {
