@@ -100,15 +100,22 @@ Ask user: How many workers? (2, 3, 4, 5)
 ### 3. Create Worktrees
 
 ```bash
+# Validate issue ID format (alphanumeric with dash only)
+validate_issue_id() {
+  [[ "$1" =~ ^[a-zA-Z0-9_-]+$ ]] || { echo "ERROR: Invalid issue ID" >&2; return 1; }
+}
+
 for ISSUE in TabzChrome-abc TabzChrome-def; do
+  validate_issue_id "$ISSUE" || continue
+
   WORKTREE="${PROJECT_DIR}-worktrees/${ISSUE}"
-  mkdir -p "$(dirname "$WORKTREE")"
-  git worktree add "$WORKTREE" -b "feature/${ISSUE}" 2>/dev/null || \
-  git worktree add "$WORKTREE" HEAD
+  mkdir -p -- "$(dirname "$WORKTREE")"
+  git worktree add -- "$WORKTREE" -b "feature/${ISSUE}" 2>/dev/null || \
+  git worktree add -- "$WORKTREE" HEAD
 
   # Install deps
   [ -f "$WORKTREE/package.json" ] && [ ! -d "$WORKTREE/node_modules" ] && \
-    (cd "$WORKTREE" && npm ci 2>/dev/null || npm install)
+    (cd -- "$WORKTREE" && npm ci 2>/dev/null || npm install)
 done
 ```
 
@@ -163,6 +170,8 @@ while true; do
   # Check if all issues closed
   ALL_CLOSED=true
   for ISSUE in $ISSUES; do
+    # Validate issue ID before checking
+    [[ "$ISSUE" =~ ^[a-zA-Z0-9_-]+$ ]] || continue
     if ! bd show "$ISSUE" 2>/dev/null | grep -q "Status: closed"; then
       ALL_CLOSED=false
       break
@@ -184,15 +193,18 @@ When all workers done:
 
 ```bash
 # Merge branches
-cd "$PROJECT_DIR"
+cd -- "$PROJECT_DIR"
 for ISSUE in $ISSUES; do
-  git merge "feature/${ISSUE}" --no-edit
+  # Validate before git operations
+  [[ "$ISSUE" =~ ^[a-zA-Z0-9_-]+$ ]] || { echo "Skipping invalid issue: $ISSUE" >&2; continue; }
+  git merge --no-edit -- "feature/${ISSUE}"
 done
 
 # Cleanup worktrees
 for ISSUE in $ISSUES; do
-  git worktree remove "${PROJECT_DIR}-worktrees/${ISSUE}" --force
-  git branch -d "feature/${ISSUE}"
+  [[ "$ISSUE" =~ ^[a-zA-Z0-9_-]+$ ]] || continue
+  git worktree remove --force -- "${PROJECT_DIR}-worktrees/${ISSUE}"
+  git branch -d -- "feature/${ISSUE}"
 done
 
 # Sync and push
@@ -218,8 +230,10 @@ while true; do
 
   echo "=== Wave $WAVE: $(echo "$READY" | wc -l) issues ==="
 
-  # Spawn all ready issues
+  # Spawn all ready issues (with validation)
   for ISSUE in $READY; do
+    # Validate issue ID before processing
+    [[ "$ISSUE" =~ ^[a-zA-Z0-9_-]+$ ]] || { echo "Skipping invalid issue: $ISSUE" >&2; continue; }
     spawn_worker "$ISSUE"
   done
 
