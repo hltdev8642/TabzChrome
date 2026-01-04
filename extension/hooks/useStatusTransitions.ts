@@ -329,39 +329,52 @@ export function useStatusTransitions({
       }
 
       // AskUserQuestion event - announce when Claude asks a question
-      if (audioSettings.events.askUserQuestion && status.current_tool === 'AskUserQuestion') {
+      if (status.current_tool === 'AskUserQuestion') {
         const questions = status.details?.args?.questions
         if (questions && questions.length > 0) {
           const firstQuestion = questions[0]
           const questionKey = `${firstQuestion.question}:${firstQuestion.options?.map(o => o.label).join(',')}`
           const lastAnnouncedQuestion = announcedQuestionsRef.current.get(terminalId)
 
-          // Only announce if this is a new question
+          // Only announce/start timeout if this is a new question
           if (questionKey !== lastAnnouncedQuestion) {
             announcedQuestionsRef.current.set(terminalId, questionKey)
 
-            let optionsText = ''
-            if (audioSettings.events.askUserQuestionReadOptions && firstQuestion.options) {
-              const optionLabels = firstQuestion.options.map(o => o.label)
-              if (optionLabels.length === 2) {
-                optionsText = `${optionLabels[0]} or ${optionLabels[1]}`
-              } else if (optionLabels.length > 2) {
-                optionsText = optionLabels.slice(0, -1).join(', ') + ', or ' + optionLabels[optionLabels.length - 1]
-              } else if (optionLabels.length === 1) {
-                optionsText = optionLabels[0]
+            // TTS announcement (if enabled in audio settings)
+            if (audioSettings.events.askUserQuestion) {
+              let optionsText = ''
+              if (audioSettings.events.askUserQuestionReadOptions && firstQuestion.options) {
+                const optionLabels = firstQuestion.options.map(o => o.label)
+                if (optionLabels.length === 2) {
+                  optionsText = `${optionLabels[0]} or ${optionLabels[1]}`
+                } else if (optionLabels.length > 2) {
+                  optionsText = optionLabels.slice(0, -1).join(', ') + ', or ' + optionLabels[optionLabels.length - 1]
+                } else if (optionLabels.length === 1) {
+                  optionsText = optionLabels[0]
+                }
               }
+
+              const template = getPhraseTemplate('askUserQuestion')
+              const phrase = renderTemplate(template, {
+                title: audioSettings.userTitle,
+                profile: getDisplayName(),
+                question: firstQuestion.question,
+                options: optionsText,
+              })
+              playAudio(phrase, session, false, { eventType: 'askUserQuestion' })
             }
 
-            const template = getPhraseTemplate('askUserQuestion')
-            const phrase = renderTemplate(template, {
-              title: audioSettings.userTitle,
-              profile: getDisplayName(),
-              question: firstQuestion.question,
-              options: optionsText,
-            })
-            playAudio(phrase, session, false, { eventType: 'askUserQuestion' })
+            // Start question waiting timeout (checks its own notification settings internally)
+            startQuestionWaitingTimeout(
+              terminalId,
+              getDisplayName(),
+              firstQuestion.question
+            )
           }
         }
+      } else {
+        // Not in AskUserQuestion - clear any pending timeout
+        clearQuestionWaitingTimeout(terminalId)
       }
 
       // Plan approval event - announce when ExitPlanMode is called
@@ -409,7 +422,19 @@ export function useStatusTransitions({
         prevContextPctRef.current.delete(id)
         announcedQuestionsRef.current.delete(id)
         announcedPlanApprovalRef.current.delete(id)
+        clearQuestionWaitingTimeout(id)
       }
     }
-  }, [claudeStatuses, audioSettings, audioGlobalMute, settingsLoaded, sessions, getAudioSettingsForProfile, playAudio, showNotification])
+  }, [claudeStatuses, audioSettings, audioGlobalMute, settingsLoaded, sessions, getAudioSettingsForProfile, playAudio, showNotification, startQuestionWaitingTimeout, clearQuestionWaitingTimeout])
+
+  // Cleanup all timeouts on unmount
+  useEffect(() => {
+    return () => {
+      for (const timeout of questionTimeoutRef.current.values()) {
+        clearTimeout(timeout)
+      }
+      questionTimeoutRef.current.clear()
+      questionDataRef.current.clear()
+    }
+  }, [])
 }
