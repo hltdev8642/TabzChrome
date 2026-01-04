@@ -233,6 +233,69 @@ function detectGitLabRepo() {
   return null
 }
 
+// Generate a safe clone command with error handling (shared by FAB and context menu)
+function generateCloneCommand(fullName: string, repoName: string, host: 'github' | 'gitlab'): string {
+  // Escape for safe shell usage
+  const safeFullName = fullName.replace(/[^a-zA-Z0-9._/-]/g, '')
+  const safeRepoName = repoName.replace(/[^a-zA-Z0-9._-]/g, '')
+  const domain = host === 'github' ? 'github.com' : 'gitlab.com'
+
+  return `cd ~/projects && {
+  # Check network connectivity first
+  if ! curl -sf --connect-timeout 5 "https://${domain}/${safeFullName}" -o /dev/null 2>/dev/null; then
+    echo "Error: Cannot reach ${domain}/${safeFullName}"
+    echo "Check: Network connection, repository exists, or repo is private"
+    exit 1
+  fi
+
+  # Check if already cloned
+  if [ -d "${safeRepoName}" ]; then
+    echo "Directory '${safeRepoName}' already exists"
+    cd "${safeRepoName}" && git remote -v
+    exit 0
+  fi
+
+  # Clone the repository
+  git clone "https://${domain}/${safeFullName}.git" && cd "${safeRepoName}"
+}`
+}
+
+// Generate GitHub-specific smart clone (with fork support via gh CLI)
+function generateGitHubSmartClone(fullName: string, repoName: string): string {
+  // Escape for safe shell usage
+  const safeFullName = fullName.replace(/[^a-zA-Z0-9._/-]/g, '')
+  const safeRepoName = repoName.replace(/[^a-zA-Z0-9._-]/g, '')
+
+  // Smart clone: fork+clone for others' repos, regular clone for own repos
+  // gh repo fork --clone --remote handles:
+  // - Others' repo: forks, clones fork, sets origin=fork upstream=original
+  // - Already forked: clones existing fork with proper remotes
+  // - Own repo: fails, fallback to git clone
+  return `cd ~/projects && {
+  # Check network connectivity to GitHub first
+  if ! curl -sf --connect-timeout 5 "https://github.com/${safeFullName}" -o /dev/null 2>/dev/null; then
+    echo "Error: Cannot reach github.com/${safeFullName}"
+    echo "Check: Network connection, repository exists, or repo is private"
+    exit 1
+  fi
+
+  # Check if already cloned
+  if [ -d "${safeRepoName}" ]; then
+    echo "Directory '${safeRepoName}' already exists"
+    cd "${safeRepoName}" && git remote -v
+    exit 0
+  fi
+
+  # Try gh CLI fork+clone first (handles forks elegantly)
+  if command -v gh &>/dev/null; then
+    gh repo fork "${safeFullName}" --clone --remote 2>/dev/null && cd "${safeRepoName}" && exit 0
+  fi
+
+  # Fall back to git clone
+  git clone "https://github.com/${safeFullName}.git" && cd "${safeRepoName}"
+}`
+}
+
 // Add custom context menu items based on page content
 function setupContextMenus() {
   const githubRepo = detectGitHubRepo()
@@ -244,6 +307,11 @@ function setupContextMenus() {
     // Add clone action to context menu
     document.addEventListener('contextmenu', (e) => {
       if (!isExtensionValid()) return
+
+      // Validate before adding menu item
+      const validation = isValidGitHubRepo(githubRepo.fullName)
+      if (!validation.valid) return
+
       chrome.runtime.sendMessage({
         type: 'ADD_CONTEXT_MENU',
         items: [
@@ -252,9 +320,8 @@ function setupContextMenus() {
             title: `Clone ${githubRepo.fullName}`,
             action: () => {
               chrome.runtime.sendMessage({
-                type: 'SPAWN_TERMINAL',
-                command: `git clone https://github.com/${githubRepo.fullName}.git`,
-                cwd: '~/projects',
+                type: 'QUEUE_COMMAND',
+                command: generateCloneCommand(githubRepo.fullName, githubRepo.repo, 'github'),
               })
             },
           },
@@ -276,9 +343,8 @@ function setupContextMenus() {
             title: `Clone ${gitlabRepo.fullName}`,
             action: () => {
               chrome.runtime.sendMessage({
-                type: 'SPAWN_TERMINAL',
-                command: `git clone https://gitlab.com/${gitlabRepo.fullName}.git`,
-                cwd: '~/projects',
+                type: 'QUEUE_COMMAND',
+                command: generateCloneCommand(gitlabRepo.fullName, gitlabRepo.repo, 'gitlab'),
               })
             },
           },
@@ -484,6 +550,41 @@ function setupKeyboardShortcuts() {
 
 // Track dismissed repos in this session
 const dismissedRepos = new Set<string>()
+
+// Validate GitHub repository name format
+// Must be: owner/repo with valid characters (alphanumeric, dash, underscore, dot)
+function isValidGitHubRepo(fullName: string): { valid: boolean; error?: string } {
+  if (!fullName || typeof fullName !== 'string') {
+    return { valid: false, error: 'Repository name is required' }
+  }
+
+  const parts = fullName.split('/')
+  if (parts.length !== 2) {
+    return { valid: false, error: 'Invalid format: expected owner/repo' }
+  }
+
+  const [owner, repo] = parts
+
+  // GitHub username rules: alphanumeric or hyphen, cannot start/end with hyphen
+  const ownerPattern = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/
+  if (!ownerPattern.test(owner) || owner.length > 39) {
+    return { valid: false, error: `Invalid owner name: ${owner}` }
+  }
+
+  // GitHub repo rules: alphanumeric, hyphen, underscore, dot
+  const repoPattern = /^[a-zA-Z0-9._-]+$/
+  if (!repoPattern.test(repo) || repo.length > 100) {
+    return { valid: false, error: `Invalid repository name: ${repo}` }
+  }
+
+  // Reserved names that can't be used
+  const reserved = ['settings', 'pulls', 'issues', 'actions', 'projects', 'wiki', 'security', 'pulse', 'graphs']
+  if (reserved.includes(repo.toLowerCase())) {
+    return { valid: false, error: `${repo} is a reserved GitHub path` }
+  }
+
+  return { valid: true }
+}
 
 // Check if we're on a repo page where FAB should show (root or code pages only)
 function isGitHubRepoCodePage(): boolean {
@@ -741,18 +842,32 @@ function setupGitHubFAB() {
 
   cloneBtn.addEventListener('click', () => {
     if (!isExtensionValid()) return
-    // Smart clone: fork+clone for others' repos, regular clone for own repos
-    // gh repo fork --clone --remote handles:
-    // - Others' repo: forks, clones fork, sets origin=fork upstream=original
-    // - Already forked: clones existing fork with proper remotes
-    // - Own repo: fails, fallback to git clone
-    const command = `cd ~/projects && (gh repo fork ${repo.fullName} --clone --remote 2>/dev/null || git clone https://github.com/${repo.fullName}.git) && cd ${repo.repo}`
+
+    // Validate repository format before attempting clone
+    const validation = isValidGitHubRepo(repo.fullName)
+    if (!validation.valid) {
+      // Show error state on button
+      const originalText = cloneBtn.innerHTML
+      cloneBtn.innerHTML = `✗ ${validation.error}`
+      cloneBtn.style.background = '#da3633'
+      cloneBtn.style.minWidth = '120px'
+      setTimeout(() => {
+        cloneBtn.innerHTML = originalText
+        cloneBtn.style.background = ''
+        cloneBtn.style.minWidth = ''
+      }, 3000)
+      return
+    }
+
+    // Generate smart clone command (uses shared function)
+    const command = generateGitHubSmartClone(repo.fullName, repo.repo)
+
     chrome.runtime.sendMessage({
       type: 'QUEUE_COMMAND',
       command,
     })
 
-    // Visual feedback
+    // Visual feedback - success state
     const originalText = cloneBtn.innerHTML
     cloneBtn.innerHTML = '✓ Queued!'
     cloneBtn.style.background = '#238636'
