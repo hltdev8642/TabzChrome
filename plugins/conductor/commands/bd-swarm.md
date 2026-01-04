@@ -115,25 +115,20 @@ Run these commands first to load relevant patterns:
 - Follow existing code patterns
 - Add tests for new functionality
 
-## Verification (Required Before Closing)
-1. `npm test` - all tests pass
-2. `npm run build` - builds without errors
-
-## Quality Gate (Required)
-After build passes, spawn code-reviewer subagent to review your changes:
-
-Use the Task tool:
-- subagent_type: "conductor:code-reviewer"
-- prompt: "Review uncommitted changes in [your working directory] for issue [issue-id]"
-
-The subagent will return JSON with `passed: true/false`:
-- If `passed: false` → fix the blockers listed, then re-run review
-- If `passed: true` → proceed to commit
-
 ## Completion
-When build passes AND code review passes:
-1. `git add . && git commit -m "feat(<scope>): <description>"`
-2. `bd close <issue-id> --reason "Implemented: <summary>"`'
+When you have finished implementing, run:
+```
+/worker-done <issue-id>
+```
+
+This runs the full completion pipeline:
+1. Build verification (npm run build)
+2. Test verification (npm test)
+3. Code review (spawns code-reviewer subagent)
+4. Commit with proper format
+5. Close beads issue
+
+If any step fails, fix the issue and run `/worker-done` again.'
 sleep 0.3
 tmux send-keys -t "$SESSION" C-m
 ```
