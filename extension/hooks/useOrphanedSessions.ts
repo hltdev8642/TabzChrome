@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { useDesktopNotifications } from './useDesktopNotifications'
 
 interface OrphanedSessionsData {
   orphanedSessions: string[]
@@ -35,6 +36,12 @@ export function useOrphanedSessions(): UseOrphanedSessionsResult {
   // Track if component is mounted to avoid state updates after unmount
   const isMountedRef = useRef(true)
 
+  // Track previous count for first-detection notification
+  const previousCountRef = useRef(0)
+
+  // Desktop notifications
+  const { showNotification } = useDesktopNotifications()
+
   const fetchOrphanedSessions = useCallback(async () => {
     try {
       setIsLoading(true)
@@ -50,8 +57,22 @@ export function useOrphanedSessions(): UseOrphanedSessionsResult {
 
       if (isMountedRef.current) {
         if (result.success) {
+          const newCount = result.data.count
+
+          // Show notification on first detection (0 -> >0 transition)
+          if (previousCountRef.current === 0 && newCount > 0) {
+            showNotification('orphanedSessions', {
+              title: 'Orphaned Sessions Found',
+              message: `${newCount} detached terminal(s) available`,
+              priority: 0,
+            })
+          }
+
+          // Update previous count for next comparison
+          previousCountRef.current = newCount
+
           setOrphanedSessions(result.data.orphanedSessions)
-          setCount(result.data.count)
+          setCount(newCount)
         } else {
           setError(result.error || 'Failed to fetch orphaned sessions')
         }
@@ -67,7 +88,7 @@ export function useOrphanedSessions(): UseOrphanedSessionsResult {
         setIsLoading(false)
       }
     }
-  }, [])
+  }, [showNotification])
 
   const reattachSessions = useCallback(async (sessions: string[]): Promise<{ success: boolean; message: string }> => {
     try {
