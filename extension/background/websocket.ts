@@ -6,9 +6,15 @@
 import type { ExtensionMessage } from '../shared/messaging'
 import {
   ws, setWs, wsReconnectAttempts, setWsReconnectAttempts, incrementWsReconnectAttempts,
+  hadSuccessfulConnection, setHadSuccessfulConnection,
   MAX_RECONNECT_ATTEMPTS, WS_URL, ALARM_WS_RECONNECT,
   broadcastToClients
 } from './state'
+import {
+  NotificationSettings,
+  NotificationEventType,
+  DEFAULT_NOTIFICATION_SETTINGS,
+} from '../components/settings/types'
 import {
   handleBrowserEnableNetworkCapture,
   handleBrowserGetNetworkRequests,
@@ -103,6 +109,69 @@ let scheduleReconnectFn: (() => void) | null = null
 
 export function setScheduleReconnect(fn: () => void): void {
   scheduleReconnectFn = fn
+}
+
+/**
+ * Check if currently within quiet hours
+ */
+function isQuietHours(settings: NotificationSettings): boolean {
+  if (!settings.quietHours.enabled) return false
+
+  const now = new Date()
+  const currentHour = now.getHours()
+  const { startHour, endHour } = settings.quietHours
+
+  if (startHour < endHour) {
+    // Simple case: e.g., 9 AM to 5 PM
+    return currentHour >= startHour && currentHour < endHour
+  } else {
+    // Overnight case: e.g., 10 PM to 8 AM
+    return currentHour >= startHour || currentHour < endHour
+  }
+}
+
+/**
+ * Show a desktop notification if enabled and not in quiet hours.
+ * Used for connection events in the background service worker.
+ */
+async function showConnectionNotification(
+  eventType: NotificationEventType,
+  title: string,
+  message: string
+): Promise<void> {
+  try {
+    // Load notification settings from Chrome storage
+    const storage = await chrome.storage.local.get('notificationSettings')
+    const stored = storage.notificationSettings as Partial<NotificationSettings> | undefined
+    const settings: NotificationSettings = {
+      ...DEFAULT_NOTIFICATION_SETTINGS,
+      ...stored,
+      quietHours: { ...DEFAULT_NOTIFICATION_SETTINGS.quietHours, ...stored?.quietHours },
+      events: { ...DEFAULT_NOTIFICATION_SETTINGS.events, ...stored?.events },
+    }
+
+    // Check master toggle
+    if (!settings.enabled) return
+
+    // Check per-event toggle
+    if (!settings.events[eventType]) return
+
+    // Check quiet hours
+    if (isQuietHours(settings)) return
+
+    // Show the notification
+    const notificationId = `tabz-${eventType}-${Date.now()}`
+    chrome.notifications.create(notificationId, {
+      type: 'basic',
+      iconUrl: chrome.runtime.getURL('icons/icon48.png'),
+      title,
+      message,
+      priority: eventType === 'backendDisconnect' ? 2 : 0,
+      requireInteraction: false,
+    })
+  } catch (err) {
+    console.error('[Background] Failed to show notification:', err)
+  }
 }
 
 /**
@@ -221,7 +290,18 @@ export async function connectWebSocket(): Promise<void> {
 
   newWs.onopen = () => {
     console.log('Background WebSocket connected')
+
+    // Show reconnect notification if we previously had a connection and were reconnecting
+    if (hadSuccessfulConnection && wsReconnectAttempts > 0) {
+      showConnectionNotification(
+        'backendReconnect',
+        'TabzChrome Reconnected',
+        'Backend connection restored'
+      )
+    }
+
     setWsReconnectAttempts(0) // Reset reconnect counter on successful connection
+    setHadSuccessfulConnection(true) // Mark that we've had at least one successful connection
     chrome.alarms.clear(ALARM_WS_RECONNECT) // Clear any pending reconnect alarm
 
     // Identify as sidebar to backend so it counts us for "multiple browser windows" warning
@@ -277,6 +357,15 @@ export async function connectWebSocket(): Promise<void> {
       wasClean: event.wasClean,
       url: WS_URL,
     })
+
+    // Show disconnect notification for abnormal closures
+    if (!event.wasClean || event.code === 1006) {
+      showConnectionNotification(
+        'backendDisconnect',
+        'TabzChrome Disconnected',
+        'Backend connection lost. Reconnecting...'
+      )
+    }
 
     setWs(null)
     broadcastToClients({ type: 'WS_DISCONNECTED' })
