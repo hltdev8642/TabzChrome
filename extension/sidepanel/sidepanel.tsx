@@ -1123,8 +1123,9 @@ function SidePanelTerminal() {
             <div className="relative border-b bg-gradient-to-r from-[#0f0f0f]/50 to-[#1a1a1a]/50">
               <div className="flex items-center gap-1 p-2">
                 {/* Scrollable tabs area */}
+                {/* Filter out popped out and 3D focus terminals - they're accessible via unified indicators dropdown */}
                 <div className="flex gap-1 overflow-x-auto flex-1 min-w-0">
-                {sessions.map(session => {
+                {sessions.filter(s => !s.poppedOut && !s.focusedIn3D).map(session => {
                   const categoryColor = getSessionCategoryColor(session, categorySettings)
                   const isSelected = currentSession === session.id
 
