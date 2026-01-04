@@ -1337,18 +1337,8 @@ function SidePanelTerminal() {
 
                 {wsConnected ? (
                   <>
-                    {/* Pinned Profile Cards */}
-                    <div className="w-full px-4 mb-6">
-                      <SidebarProfileCards
-                        profiles={profiles}
-                        defaultProfileId={defaultProfileId}
-                        onSpawnProfile={handleSpawnProfile}
-                        getCategoryColor={getCategoryColor}
-                      />
-                    </div>
-
                     {/* All Profiles Button */}
-                    <div className="relative flex">
+                    <div className="relative flex mb-6">
                       <button
                         onClick={handleSpawnDefaultProfile}
                         className="px-4 py-2 bg-gradient-to-r from-[#00ff88] to-[#00c8ff] text-black rounded-l-md hover:opacity-90 transition-opacity font-medium flex items-center"
@@ -1393,6 +1383,16 @@ function SidePanelTerminal() {
                           }}
                         />
                       )}
+                    </div>
+
+                    {/* Pinned Profile Cards */}
+                    <div className="w-full px-4">
+                      <SidebarProfileCards
+                        profiles={profiles}
+                        defaultProfileId={defaultProfileId}
+                        onSpawnProfile={handleSpawnProfile}
+                        getCategoryColor={getCategoryColor}
+                      />
                     </div>
 
                     {/* GitHub Link */}
