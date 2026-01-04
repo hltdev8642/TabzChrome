@@ -135,11 +135,11 @@ function NavButton({
 const navItems: NavItem[] = [
   { id: 'home', label: 'Dashboard', icon: HomeIcon },
   { id: 'terminals', label: 'Active Terminals', icon: TerminalIcon },
+  { id: 'profiles', label: 'Profiles', icon: GridIcon },
   { id: 'files', label: 'Files', icon: FolderOpenIcon },
   { id: 'git', label: 'Source Control', icon: GitBranchIcon },
   { id: 'api', label: 'API Playground', icon: CodeIcon },
-  { id: 'profiles', label: 'Profiles', icon: GridIcon },
-  { id: 'mcp', label: 'Tabz MCP', icon: SettingsIcon },
+  { id: 'mcp', label: 'MCP Settings', icon: SettingsIcon },
   { id: 'audio', label: 'Audio', icon: VolumeIcon },
   { id: 'notifications', label: 'Notifications', icon: BellIcon },
 ]

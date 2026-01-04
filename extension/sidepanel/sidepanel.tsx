@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import ReactDOM from 'react-dom/client'
-import { Terminal as TerminalIcon, Volume2, VolumeX } from 'lucide-react'
+import { Terminal as LucideTerminal, Volume2, VolumeX } from 'lucide-react'
 import {
   MoonIcon,
   SunIcon,
@@ -12,6 +12,14 @@ import {
   BotIcon,
   BotMessageSquareIcon,
   HomeIcon,
+  TerminalIcon,
+  GridIcon,
+  FolderOpenIcon,
+  GitBranchIcon,
+  CodeIcon,
+  SettingsIcon,
+  VolumeIcon,
+  BellIcon,
 } from '../components/icons'
 import { Badge } from '../components/ui/badge'
 import { Terminal } from '../components/Terminal'
@@ -997,12 +1005,15 @@ function SidePanelTerminal() {
                 aria-label="Dashboard sections"
               >
                 {[
-                  { id: 'files', label: 'Files' },
-                  { id: 'terminals', label: 'Terminals' },
-                  { id: 'profiles', label: 'Profiles' },
-                  { id: 'audio', label: 'Audio' },
-                  { id: 'notifications', label: 'Settings' },
-                  { id: 'mcp', label: 'MCP Playground' },
+                  { id: 'home', label: 'Dashboard', Icon: HomeIcon },
+                  { id: 'terminals', label: 'Active Terminals', Icon: TerminalIcon },
+                  { id: 'profiles', label: 'Profiles', Icon: GridIcon },
+                  { id: 'files', label: 'Files', Icon: FolderOpenIcon },
+                  { id: 'git', label: 'Source Control', Icon: GitBranchIcon },
+                  { id: 'api', label: 'API Playground', Icon: CodeIcon },
+                  { id: 'mcp', label: 'MCP Settings', Icon: SettingsIcon },
+                  { id: 'audio', label: 'Audio', Icon: VolumeIcon },
+                  { id: 'notifications', label: 'Notifications', Icon: BellIcon },
                 ].map((item) => (
                   <button
                     key={item.id}
@@ -1011,9 +1022,10 @@ function SidePanelTerminal() {
                       chrome.tabs.create({ url: chrome.runtime.getURL(`dashboard/index.html#/${item.id}`) })
                       setShowDashboardDropdown(false)
                     }}
-                    className="w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-[#00ff88]/10 hover:text-[#00ff88] transition-colors border-b border-gray-800 last:border-b-0"
+                    className="w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-[#00ff88]/10 hover:text-[#00ff88] transition-colors border-b border-gray-800 last:border-b-0 flex items-center gap-2"
                     role="menuitem"
                   >
+                    <item.Icon size={14} />
                     {item.label}
                   </button>
                 ))}
