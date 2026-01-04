@@ -236,14 +236,14 @@ Task(subagent_type="conductor:code-reviewer",
      prompt="Quick review /home/matt/projects/app-worktrees/beads-abc - just lint and types")
 ```
 
-## Watcher Integration
+## Conductor Integration
 
-When invoked by `conductor:watcher` as part of the swarm pipeline, your output determines next steps:
+When invoked by the conductor as part of the swarm pipeline, your output determines next steps:
 
-| Your Output | Watcher Action |
-|-------------|----------------|
+| Your Output | Conductor Action |
+|-------------|------------------|
 | `passed: true` | Mark worker as reviewed, proceed to merge |
-| `passed: false` | Nudge worker to fix blockers, wait for re-commit |
+| `passed: false` | Worker needs to fix blockers before merge |
 
 **Critical:** Always return valid JSON at the end of your response:
 

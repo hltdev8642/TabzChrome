@@ -15,6 +15,31 @@ For older versions (1.2.x, 1.1.x, 1.0.x, and pre-public 2.x), see [CHANGELOG-arc
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **GitHub FAB Fork+Clone** - Clone button on GitHub repo pages now uses smart fork workflow:
+  - Others' repos: forks first, clones fork, sets origin=fork and upstream=original
+  - Already forked repos: clones existing fork with proper remotes
+  - Own repos: falls back to regular git clone
+  - Enables proper open source contribution workflow out of the box
+
+- **bd-swarm --auto Mode** - Fully autonomous backlog completion for conductor:
+  - Runs waves until `bd ready` returns empty
+  - Auto context check at 75% with /wipe recovery
+  - State persistence for resume after context recovery
+  - Skips docs/push per-wave, batches at final completion
+
+### Fixed
+
+- **Sidebar Profile Cards Display** - Fixed styling issues with quick start cards:
+  - Updated styling to match newtab ProfilesGrid
+  - Fixed text truncation with proper overflow handling
+  - Added keyboard shortcut badges (1-6) matching newtab style
+
+---
+
 ## [1.4.1] - 2026-01-04
 
 ### Added

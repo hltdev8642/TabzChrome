@@ -227,9 +227,11 @@ For orchestrating multi-session work on TabzChrome:
 
 | Agent | When to Use |
 |-------|-------------|
-| `conductor:watcher` | Monitor Claude workers, send notifications |
 | `conductor:tabz-manager` | Browser automation (spawn as visible terminal) |
 | `conductor:tui-expert` | Spawn btop, lazygit, lnav for system info |
+| `conductor:code-reviewer` | Autonomous code review for workers |
+
+**Worker Monitoring:** Use `plugins/conductor/scripts/monitor-workers.sh` to spawn tmuxplexer in a background window and poll worker status. No watcher subagent needed.
 
 **Spawn tabz-manager for browser testing:**
 ```bash

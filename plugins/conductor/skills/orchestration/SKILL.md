@@ -15,9 +15,13 @@ This skill enables you to orchestrate multiple Claude Code sessions, spawn worke
 │  ✅ Has Task tool → can spawn subagents                     │
 │                                                             │
 │  Subagents (via Task tool):                                 │
-│    → conductor:watcher (haiku) - cheap monitoring           │
 │    → conductor:skill-picker (haiku) - find/install skills   │
 │    → conductor:tui-expert (opus) - spawn TUI tools          │
+│    → conductor:code-reviewer (sonnet) - review changes      │
+│                                                             │
+│  Monitoring (via tmuxplexer):                               │
+│    → Background window shows all AI sessions                │
+│    → Conductor polls directly, no subagent needed           │
 │                                                             │
 │  Terminal Workers (via TabzChrome spawn API):               │
 │    → Each is a vanilla Claude with full Task tool           │
@@ -56,7 +60,6 @@ Since you're running as vanilla Claude (not via `--agent`), the Task tool is ava
 | Subagent | Model | Purpose | Invocation |
 |----------|-------|---------|------------|
 | `conductor:initializer` | opus | Create isolated worktrees, install deps, return assignments | `Task(subagent_type="conductor:initializer")` |
-| `conductor:watcher` | haiku | Poll worker health, send notifications | `Task(subagent_type="conductor:watcher")` |
 | `conductor:code-reviewer` | sonnet | Autonomous review, auto-fix, quality gate | `Task(subagent_type="conductor:code-reviewer")` |
 | `conductor:skill-picker` | haiku | Search/install skills from skillsmp.com | `Task(subagent_type="conductor:skill-picker")` |
 | `conductor:tui-expert` | opus | Spawn btop, lazygit, lnav, tfe | `Task(subagent_type="conductor:tui-expert")` |
@@ -69,13 +72,24 @@ Task tool:
   prompt: "Prepare 3 workers for issues beads-abc, beads-def, beads-ghi in /home/matt/projects/myapp"
 ```
 
-**Example - Start background watcher:**
+### Worker Monitoring (via tmuxplexer)
+
+Instead of a watcher subagent, monitor workers directly via tmuxplexer in a background window:
+
+```bash
+# Spawn tmuxplexer --watcher as background window
+plugins/conductor/scripts/monitor-workers.sh --spawn
+
+# Poll worker status every ~2 minutes
+plugins/conductor/scripts/monitor-workers.sh --status
+# Output: ctt-worker-abc|tool_use|45
+
+# Get summary
+plugins/conductor/scripts/monitor-workers.sh --summary
+# Output: WORKERS:3 WORKING:2 IDLE:0 AWAITING:1 STALE:0
 ```
-Task tool:
-  subagent_type: "conductor:watcher"
-  run_in_background: true
-  prompt: "Monitor all Claude workers. Check every 30s. Notify on completion/errors."
-```
+
+**Note:** `awaiting_input` means worker is at prompt, not necessarily AskUserQuestion. Check actual pane if idle too long.
 
 ### Terminal Workers
 
@@ -202,9 +216,11 @@ tabz_create_group --title "Worker-1" --color "blue"
 curl -s -X POST http://localhost:8129/api/spawn ... -d '{"name": "Claude: Frontend", ...}'
 curl -s -X POST http://localhost:8129/api/spawn ... -d '{"name": "Claude: Backend", ...}'
 
-# Start background watcher
-Task(subagent_type="conductor:watcher", run_in_background=true,
-     prompt="Monitor workers, notify on completion")
+# Start monitor in background window
+plugins/conductor/scripts/monitor-workers.sh --spawn
+
+# Poll periodically
+plugins/conductor/scripts/monitor-workers.sh --summary
 ```
 
 ### Beads Issue Swarm
