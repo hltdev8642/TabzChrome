@@ -228,18 +228,53 @@ git commit -m "chore: initial project scaffold"
 
 ## Phase 4: Setup (Configuration)
 
-### 4.1 Find Relevant Skills
+### 4.1 Find and Install Relevant Skills
 
-Use skill-picker subagent to find skills matching the stack:
+Based on the selected stack, search for and install relevant skills from skillsmp.com:
 
-```
+**Stack-to-skill mappings:**
+
+| Stack Component | Search Query | Example Skills |
+|-----------------|--------------|----------------|
+| Next.js | "nextjs app router production" | nextjs, react-patterns |
+| React | "react hooks components" | shadcn-ui, react-query |
+| Tailwind | "tailwindcss styling" | tailwindcss, ui-styling |
+| TypeScript | "typescript strict patterns" | typescript-patterns |
+| Testing | "vitest react testing" | testing-library |
+| CLI | "nodejs cli commander" | cli-builder |
+
+**Automatic skill installation:**
+
+```bash
+# Spawn skill-picker to search and install
 Task tool:
   subagent_type: "conductor:skill-picker"
-  prompt: "Find and install skills for: <stack components>
-           - Look for framework-specific skills (e.g., nextjs, react)
-           - Look for tooling skills (e.g., tailwindcss, shadcn-ui)
-           - Look for testing skills if testing was prioritized"
+  prompt: |
+    Search skillsmp.com for skills matching this project's stack:
+    - Framework: <selected framework>
+    - Styling: <selected styling>
+    - Testing: <selected testing if any>
+
+    For each relevant skill found:
+    1. Preview the SKILL.md to verify quality
+    2. If good (>100 stars, matches needs), install to .claude/skills/
+    3. Skip skills that overlap with already-installed ones
+
+    Install at least:
+    - 1 framework skill (e.g., nextjs, react)
+    - 1 UI skill (e.g., shadcn-ui, tailwindcss)
+
+    Report what was installed.
 ```
+
+**Already-installed skills check:**
+```bash
+# Check what's already available from plugins/user skills
+ls ~/.claude/skills/ 2>/dev/null
+curl -s http://localhost:8129/api/plugins/skills | jq -r '.skills[].id'
+```
+
+Skip installing skills that duplicate what's already available globally.
 
 ### 4.2 Create Project CLAUDE.md
 
