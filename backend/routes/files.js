@@ -566,6 +566,9 @@ router.get('/content', async (req, res) => {
     });
     
   } catch (error) {
+    if (error.code === 'ENOENT') {
+      return res.status(404).json({ error: 'File not found' });
+    }
     console.error('Error reading file content:', error);
     res.status(500).json({ error: error.message });
   }
