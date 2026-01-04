@@ -304,6 +304,10 @@ bd create --title="Configure testing framework" --type=task --priority=2
 bd create --title="Add authentication" --type=feature --priority=3
 bd create --title="Create initial UI components" --type=feature --priority=2
 bd create --title="Write README documentation" --type=task --priority=3
+
+# Track issues.jsonl for cross-machine sync
+git add .beads/issues.jsonl
+git commit -m "chore: track beads issues for sync"
 ```
 
 ### 4.4 Report Summary
