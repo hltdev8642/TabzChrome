@@ -121,6 +121,12 @@ curl -s -X POST http://localhost:8129/api/spawn \
 SESSION="ctt-claude-task-xxxxx"
 sleep 4  # Wait for Claude init
 
+# CRITICAL: Validate session exists before sending (prevents crashes)
+if ! tmux has-session -t "$SESSION" 2>/dev/null; then
+  echo "ERROR: Session $SESSION does not exist"
+  exit 1
+fi
+
 tmux send-keys -t "$SESSION" -l 'Your prompt here...'
 sleep 0.3
 tmux send-keys -t "$SESSION" C-m

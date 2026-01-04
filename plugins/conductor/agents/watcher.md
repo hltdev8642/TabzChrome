@@ -11,6 +11,24 @@ You are a lightweight monitoring subagent that checks the health and status of C
 
 > **Invocation:** This agent is invoked via the Task tool from vanilla Claude sessions using the orchestration skill. Example: `Task(subagent_type="conductor:watcher", prompt="Check all workers")`
 
+## CRITICAL: Session Validation
+
+**ALWAYS validate tmux sessions exist before sending keys.** Workers can exit unexpectedly, and sending to dead sessions causes hangs/crashes.
+
+```bash
+# Safe pattern - use this EVERY time you send keys:
+if tmux has-session -t "$SESSION" 2>/dev/null; then
+  tmux send-keys -t "$SESSION" -l "$MSG"
+  sleep 0.3
+  tmux send-keys -t "$SESSION" C-m
+else
+  echo "Session $SESSION no longer exists, skipping"
+fi
+
+# Or use the helper script:
+/home/matt/projects/TabzChrome/scripts/safe-send-keys.sh "$SESSION" "$MSG"
+```
+
 ## Primary Method: Tmuxplexer Capture
 
 The fastest way to check all workers at once. Use the `--watcher` flag for optimal monitoring:
@@ -197,6 +215,12 @@ mcp-cli call tabz/tabz_notification_show "{\"title\": \"💤 Worker Idle\", \"me
 nudge_worker() {
   local SESSION="$1"
   local REASON="$2"
+
+  # CRITICAL: Validate session exists before sending (prevents crashes)
+  if ! tmux has-session -t "$SESSION" 2>/dev/null; then
+    echo "Session $SESSION no longer exists, skipping nudge"
+    return 1
+  fi
 
   case "$REASON" in
     uncommitted_work)
@@ -452,6 +476,12 @@ send_to_conductor() {
   local EVENT="$2"
   local DETAILS="$3"
 
+  # CRITICAL: Validate conductor session exists before sending (prevents crashes)
+  if ! tmux has-session -t "$CONDUCTOR" 2>/dev/null; then
+    echo "Conductor session $CONDUCTOR no longer exists, skipping send"
+    return 1
+  fi
+
   # Format: [WATCHER] event: details
   local MSG="[WATCHER] $EVENT: $DETAILS"
 
@@ -562,10 +592,11 @@ notify_all_done() {
   mcp-cli call tabz/tabz_notification_show "{\"title\": \"🏁 All Workers Done\", \"message\": \"$MESSAGE\", \"type\": \"basic\"}" 2>/dev/null || true
 
   # Single send-keys to conductor (only for ALL_DONE)
-  if [ -n "$CONDUCTOR_SESSION" ]; then
-    tmux send-keys -t "$CONDUCTOR_SESSION" -l "[WATCHER] ALL_DONE: $MESSAGE" 2>/dev/null || true
+  # CRITICAL: Validate session exists before sending (prevents crashes/hangs)
+  if [ -n "$CONDUCTOR_SESSION" ] && tmux has-session -t "$CONDUCTOR_SESSION" 2>/dev/null; then
+    tmux send-keys -t "$CONDUCTOR_SESSION" -l "[WATCHER] ALL_DONE: $MESSAGE"
     sleep 0.3
-    tmux send-keys -t "$CONDUCTOR_SESSION" C-m 2>/dev/null || true
+    tmux send-keys -t "$CONDUCTOR_SESSION" C-m
   fi
 }
 
@@ -782,9 +813,14 @@ Task(
 # If review failed, reopen issue and nudge worker
 if [ "$REVIEW_PASSED" = "false" ]; then
   bd update "$ISSUE_ID" --status in_progress
-  tmux send-keys -t "$SESSION" -l "Code review found issues. Please fix: $BLOCKERS"
-  sleep 0.3
-  tmux send-keys -t "$SESSION" C-m
+  # CRITICAL: Validate session exists before sending (prevents crashes)
+  if tmux has-session -t "$SESSION" 2>/dev/null; then
+    tmux send-keys -t "$SESSION" -l "Code review found issues. Please fix: $BLOCKERS"
+    sleep 0.3
+    tmux send-keys -t "$SESSION" C-m
+  else
+    echo "Session $SESSION no longer exists, cannot nudge for review fixes"
+  fi
 fi
 ```
 
@@ -1066,6 +1102,12 @@ send_next_task() {
   local SESSION="$1"
   local ISSUE_ID="$2"
   local WORKDIR="$3"
+
+  # CRITICAL: Validate session exists before sending (prevents crashes)
+  if ! tmux has-session -t "$SESSION" 2>/dev/null; then
+    echo "Session $SESSION no longer exists, cannot send next task"
+    return 1
+  fi
 
   # Get issue details
   ISSUE_JSON=$(bd show "$ISSUE_ID" --json 2>/dev/null)

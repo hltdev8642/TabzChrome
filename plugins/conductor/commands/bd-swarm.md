@@ -88,6 +88,12 @@ Use the prompt from initializer, or craft manually with explicit skill invocatio
 SESSION="ctt-claude-<issue-id>-xxxxx"
 sleep 4
 
+# Validate session exists before sending (prevents crashes if spawn failed)
+if ! tmux has-session -t "$SESSION" 2>/dev/null; then
+  echo "ERROR: Session $SESSION does not exist - spawn may have failed"
+  exit 1
+fi
+
 tmux send-keys -t "$SESSION" -l '## Task
 <issue-id>: <title>
 
