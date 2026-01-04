@@ -308,6 +308,36 @@ Enable or disable a Claude Code plugin.
 
 ---
 
+### GET /api/plugins/skills
+
+Get skill metadata from enabled plugins for autocomplete suggestions.
+
+**Response:**
+```json
+{
+  "success": true,
+  "skills": [
+    {
+      "id": "/skill-name",
+      "name": "Skill Display Name",
+      "desc": "Brief description from SKILL.md frontmatter",
+      "pluginId": "plugin-name@marketplace",
+      "pluginName": "plugin-name",
+      "marketplace": "my-plugins",
+      "category": "Plugin"
+    }
+  ],
+  "count": 12
+}
+```
+
+**Notes:**
+- Parses YAML frontmatter from each plugin's `skills/*/SKILL.md` files
+- Only returns skills from enabled plugins
+- Used by chat bar autocomplete to suggest plugin trigger phrases
+
+---
+
 ### GET /api/plugins/health
 
 Check plugin health: identify outdated plugins and view cache statistics.

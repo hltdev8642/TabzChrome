@@ -15,6 +15,57 @@ For older versions (1.2.x, 1.1.x, 1.0.x, and pre-public 2.x), see [CHANGELOG-arc
 
 ---
 
+## [1.4.1] - 2026-01-04
+
+### Added
+
+- **Sidebar Profile Cards** - When no terminals are active, sidebar shows bookmarked profiles as clickable cards:
+  - Displays profiles with `pinnedToNewTab: true` in a 2x3 grid
+  - Falls back to default profile if none are pinned
+  - Category color accents and emoji icons on cards
+  - Click to spawn terminal with that profile
+
+- **Plugin Trigger Autocomplete** - Chat bar now suggests plugin trigger phrases:
+  - New `GET /api/plugins/skills` endpoint returns installed plugin metadata
+  - Autocomplete groups suggestions: "MCP Tools", "Plugin Commands", or "Suggestions"
+  - Plugin skills show with purple text and plugin name badge
+  - Queries starting with `/` prioritize skill results
+
+- **MCP Tool Autocomplete** - Chat bar suggests MCP tools as you type:
+  - Filters by tool id, name, or description
+  - Shows up to 8 suggestions with category and description
+  - Navigate with arrow keys, select with Tab or Enter
+
+- **Source Control Bulk Operations** - Multi-repo git actions in dashboard:
+  - Select all checkbox and per-repo checkboxes
+  - Bulk Fetch, Pull, Push with progress tracking
+  - Concurrent operations (limit 3) with success/failure counts
+  - Failed repos displayed with error details
+
+- **Filtered File View Toolbar** - Parity with FileTree in filtered views:
+  - Quick Open (Ctrl+P) button
+  - Refresh button to reload filtered files
+  - Expand all / Collapse all buttons
+
+- **Dashboard Button Split** - Sidebar header dashboard button now matches spawn button pattern:
+  - Home icon (left) opens dashboard home directly
+  - Chevron (right) opens dropdown to select specific section
+
+- **Hide External Terminals from Tab Bar** - Terminals in popout windows or 3D focus mode no longer clutter sidebar:
+  - Still in sessions array for audio notifications
+  - Accessible via unified indicators dropdown
+
+### Fixed
+
+- **Context Warning Notifications** - Removed progress bar from 50% context warning:
+  - Chrome's notification API doesn't support custom progress bar colors
+  - 50% warning now uses basic notification (no red bar)
+  - 75% critical keeps progress bar (red is appropriate for critical)
+
+- **File API 404 Response** - Missing files now return proper 404 status instead of logging errors
+
+---
+
 ## [1.4.0] - 2026-01-02
 
 ### Docs
