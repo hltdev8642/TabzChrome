@@ -127,14 +127,24 @@ tmux send-keys -t "$SESSION" C-m
 📊 Status: Invoke conductor:watcher
 ```
 
-### 8. Start Watcher (Optional)
+### 8. Start Watcher (Recommended)
 
-Invoke the watcher to monitor progress:
+Get your conductor session ID and start the watcher:
+
+```bash
+# Get your session ID
+CONDUCTOR_SESSION=$(tmux display-message -p '#{session_name}')
+```
+
+Invoke the watcher to monitor progress and send updates back to you:
 ```
 Task tool:
   subagent_type: "conductor:watcher"
-  prompt: "Check status of all Claude workers and notify if any complete or need attention"
+  run_in_background: true
+  prompt: "CONDUCTOR_SESSION=$CONDUCTOR_SESSION. Monitor all Claude workers. Send updates to conductor when: worker completes (WORKER_DONE), worker stuck (WORKER_STUCK), all done (ALL_DONE). Exit when all workers complete."
 ```
+
+The watcher will send structured messages like `[WATCHER] WORKER_DONE: ctt-worker-abc completed` directly to your session via `tmux send-keys`.
 
 ## Worker Expectations
 

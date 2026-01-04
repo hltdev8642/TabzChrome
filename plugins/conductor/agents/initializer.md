@@ -303,45 +303,103 @@ Instead of `@large-file.ts`, tell the worker:
 
 ## Phase 5: Craft Worker Prompt
 
-Generate a structured prompt with:
+Generate a **self-contained prompt** with full beads workflow and autonomous lifecycle.
+
+Workers should be able to complete their task entirely on their own, including:
+- Setting up their environment (worktree already prepared)
+- Implementing the feature/fix
+- Running code review via subagent
+- Committing and closing the beads issue
 
 ```markdown
 ## Environment
-[If init needed]: Run `.claude/init.sh` or `npm install` first.
-[If dev server needed]: Start dev server with `npm run dev`.
+Your worktree: <WORKTREE_PATH>
+Your port: <PORT> (use PORT=<PORT> npm run dev if needed)
 
 ## Task
-[Issue title and description from beads]
+<ISSUE_ID>: <ISSUE_TITLE>
+
+<ISSUE_DESCRIPTION from bd show>
+
+## Skills to Invoke
+Run these commands first to load relevant patterns:
+- `/<skill-1>` - <reason>
+- `/<skill-2>` - <reason>
 
 ## Approach
-- [Skill trigger 1 based on task analysis]
-- [Skill trigger 2 if applicable]
 - **Use subagents liberally to preserve your context:**
   - Explore agents (Haiku) for codebase search - returns summaries, not full files
   - Parallel subagents for multi-file exploration
   - Subagents for running tests/builds - returns only failures
-  - Offload any read-heavy task that doesn't need your full reasoning
 
 ## Relevant Files
 @path/to/file1.ts
 @path/to/file2.tsx
-@path/to/related.test.ts
+
+## Large Files (use subagents to explore)
+- src/large-file.ts (1200 lines) - search for "functionName"
 
 ## Constraints
 - Follow existing code patterns
 - Add tests for new functionality
-- Update CHANGELOG.md if user-facing
 
-## Verification
-Before closing the issue:
-1. Run `npm test` - all tests pass
-2. Run `npm run build` - no errors
-3. Manually verify the feature works
+## Build Coordination
+Before running build/test, acquire the lock:
+```bash
+LOCK="<PROJECT_DIR>/.claude/build.lock"
+while [ -f "$LOCK" ]; do echo "Waiting for build lock..."; sleep 5; done
+echo "<ISSUE_ID>" > "$LOCK"
+npm run build && npm test
+rm "$LOCK"
+```
 
-## Completion
-When done:
-1. `git add . && git commit -m "feat: <description>"`
-2. `bd close <issue-id> --reason "Implemented: <summary>"`
+## Completion Checklist (REQUIRED)
+
+You MUST complete ALL steps before finishing:
+
+### 1. Verify Implementation
+```bash
+npm run build  # Must pass
+npm test       # Must pass
+```
+
+### 2. Code Review (spawn subagent)
+```
+Task tool:
+  subagent_type: "conductor:code-reviewer"
+  prompt: "Review changes for <ISSUE_ID>. Check for bugs, security issues, convention violations. Auto-fix if confident, report blockers otherwise."
+```
+- If review finds blockers → fix them → re-run review
+- If review passes → continue
+
+### 3. Commit Changes
+```bash
+git add .
+git commit -m "feat(<scope>): <description>
+
+Closes <ISSUE_ID>"
+```
+
+### 4. Close Beads Issue
+```bash
+bd close <ISSUE_ID> --reason "Implemented: <one-line summary of what was done>"
+```
+
+## Beads Quick Reference
+
+| Command | Purpose |
+|---------|---------|
+| `bd show <id>` | View issue details |
+| `bd update <id> --status in_progress` | Mark as working |
+| `bd close <id> --reason "..."` | Complete issue |
+| `bd sync` | Sync with git (optional - hooks handle this) |
+
+**IMPORTANT:** Do not say "done" until you have:
+1. ✅ Build passes
+2. ✅ Tests pass
+3. ✅ Code review passed
+4. ✅ Changes committed
+5. ✅ Issue closed with `bd close`
 ```
 
 ## Output Format

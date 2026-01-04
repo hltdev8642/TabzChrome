@@ -396,9 +396,58 @@ for SESSION in $(tmux ls 2>/dev/null | grep "^ctt-" | cut -d: -f1); do
 done
 ```
 
-## Sending Notifications
+## Sending Updates to Conductor
 
-Use tabz_notification_show to alert the user about important events:
+**CRITICAL:** Browser notifications are for the user, but the **conductor session** needs direct updates via `tmux send-keys` to take action.
+
+### Conductor Session Discovery
+
+The conductor passes its session ID when spawning the watcher:
+
+```
+Task tool:
+  subagent_type: "conductor:watcher"
+  run_in_background: true
+  prompt: "CONDUCTOR_SESSION=ctt-matrixclaude-abc123. Monitor workers. Send updates to conductor when: worker completes, worker stuck, all done."
+```
+
+### Sending Updates to Conductor
+
+```bash
+# Send structured update to conductor session
+send_to_conductor() {
+  local CONDUCTOR="$1"
+  local EVENT="$2"
+  local DETAILS="$3"
+
+  # Format: [WATCHER] event: details
+  local MSG="[WATCHER] $EVENT: $DETAILS"
+
+  tmux send-keys -t "$CONDUCTOR" -l "$MSG"
+  sleep 0.3
+  tmux send-keys -t "$CONDUCTOR" C-m
+}
+
+# Examples:
+send_to_conductor "$CONDUCTOR_SESSION" "WORKER_DONE" "ctt-worker-abc completed, bd issue closed"
+send_to_conductor "$CONDUCTOR_SESSION" "WORKER_STUCK" "ctt-worker-def stale 5+ min, may need nudge"
+send_to_conductor "$CONDUCTOR_SESSION" "ALL_DONE" "All 3 workers completed successfully"
+send_to_conductor "$CONDUCTOR_SESSION" "HIGH_CONTEXT" "ctt-worker-ghi at 85%, consider fresh worker"
+```
+
+### Event Types
+
+| Event | When to Send | Conductor Action |
+|-------|--------------|------------------|
+| `WORKER_DONE` | Worker completes + closes beads issue | Check if wave complete, spawn next wave |
+| `WORKER_STUCK` | Stale 5+ min or idle with uncommitted work | Nudge worker or spawn replacement |
+| `ALL_DONE` | No active workers remaining | Clean up worktrees, sync beads, report |
+| `HIGH_CONTEXT` | Worker at 75%+ context | Consider spawning fresh worker |
+| `WORKER_ERROR` | Worker hit error state | Investigate, possibly restart |
+
+### Browser Notifications (for User)
+
+Also send browser notifications so user sees updates:
 
 ```bash
 # Worker completed
@@ -414,11 +463,9 @@ mcp-cli call tabz/tabz_notification_show '{"title": "🔴 Worker Stuck", "messag
 mcp-cli call tabz/tabz_notification_show '{"title": "❌ Backend Error", "message": "WebSocket connection failed", "type": "basic"}'
 ```
 
-**When to notify:**
-- ✅ Any worker transitions to `awaiting_input` (completed)
-- ⚠️ Any worker exceeds 75% context (critical threshold)
-- 🔴 Any worker stale for 5+ minutes
-- ❌ Backend errors detected in logs
+**Dual notification pattern:**
+1. Send to conductor via `tmux send-keys` (for automated response)
+2. Send browser notification (for user awareness)
 
 ## Background Mode (Recommended)
 
@@ -430,7 +477,14 @@ When invoked with `run_in_background: true`, watcher runs continuously without b
 Task tool:
   subagent_type: "conductor:watcher"
   run_in_background: true
-  prompt: "Monitor all Claude workers continuously. Check every 30 seconds. Send notifications for completions, high context, or stuck workers. Exit when all workers complete."
+  prompt: "CONDUCTOR_SESSION=<your-session-id>. Monitor all Claude workers continuously. Check every 30 seconds. Send updates to conductor when: worker completes, worker stuck, all done. Exit when all workers complete."
+```
+
+**CRITICAL:** Pass your session ID so watcher can send updates back to you via `tmux send-keys`.
+
+Get your session ID:
+```bash
+tmux display-message -p '#{session_name}'
 ```
 
 ### Continuous Monitoring Loop
@@ -438,47 +492,70 @@ Task tool:
 ```bash
 #!/bin/bash
 # Watcher background loop
+# CONDUCTOR_SESSION should be passed in the prompt
 
 INTERVAL=30  # seconds between checks
 MAX_STALE_MINUTES=5
 IDLE_THRESHOLD=120  # 2 minutes for idle detection
 NUDGE_COOLDOWN=300  # 5 minutes between nudges
 
+# Helper: send update to conductor AND browser notification
+notify() {
+  local EVENT="$1"
+  local TITLE="$2"
+  local MESSAGE="$3"
+
+  # Send to conductor session (for automated action)
+  if [ -n "$CONDUCTOR_SESSION" ]; then
+    tmux send-keys -t "$CONDUCTOR_SESSION" -l "[WATCHER] $EVENT: $MESSAGE"
+    sleep 0.3
+    tmux send-keys -t "$CONDUCTOR_SESSION" C-m
+  fi
+
+  # Send browser notification (for user awareness)
+  mcp-cli call tabz/tabz_notification_show "{\"title\": \"$TITLE\", \"message\": \"$MESSAGE\", \"type\": \"basic\"}"
+}
+
 while true; do
   echo "=== Checking workers at $(date) ==="
 
-  # Get all worker sessions
-  WORKERS=$(tmux ls 2>/dev/null | grep "^ctt-" | grep -i claude | cut -d: -f1)
+  # Get all worker sessions (exclude conductor and watcher)
+  WORKERS=$(tmux ls 2>/dev/null | grep "^ctt-" | grep -i claude | grep -v "$CONDUCTOR_SESSION" | cut -d: -f1)
 
   if [ -z "$WORKERS" ]; then
     echo "No active workers found. Exiting."
-    # Notify conductor
-    mcp-cli call tabz/tabz_notification_show '{"title": "🏁 All Workers Done", "message": "No active Claude workers remaining", "type": "basic"}'
+    notify "ALL_DONE" "🏁 All Workers Done" "No active Claude workers remaining"
     exit 0
   fi
 
   ACTIVE_COUNT=0
+  COMPLETED_THIS_CHECK=""
+
   for SESSION in $WORKERS; do
     # Read state file
     STATE_FILE="/tmp/claude-code-state/${SESSION}.json"
     CONTEXT_FILE="/tmp/claude-code-state/${SESSION}-context.json"
     IDLE_FILE="/tmp/claude-code-state/${SESSION}-idle.txt"
     NUDGE_FILE="/tmp/claude-code-state/${SESSION}-nudge.txt"
+    DONE_FILE="/tmp/claude-code-state/${SESSION}-done.txt"
 
     if [ -f "$STATE_FILE" ]; then
       STATUS=$(jq -r '.status // "unknown"' "$STATE_FILE" 2>/dev/null)
       WORKDIR=$(jq -r '.working_dir // empty' "$STATE_FILE" 2>/dev/null)
 
-      # Check for completion
-      if [ "$STATUS" = "awaiting_input" ]; then
-        mcp-cli call tabz/tabz_notification_show "{\"title\": \"✅ Worker Done\", \"message\": \"$SESSION completed\", \"type\": \"basic\"}"
-      else
+      # Check for completion (only notify once)
+      if [ "$STATUS" = "awaiting_input" ] && [ ! -f "$DONE_FILE" ]; then
+        notify "WORKER_DONE" "✅ Worker Done" "$SESSION completed"
+        touch "$DONE_FILE"
+        COMPLETED_THIS_CHECK="$COMPLETED_THIS_CHECK $SESSION"
+      elif [ "$STATUS" != "awaiting_input" ]; then
         ACTIVE_COUNT=$((ACTIVE_COUNT + 1))
+        rm -f "$DONE_FILE" 2>/dev/null  # Reset if worker resumes
       fi
 
       # Check for stale
       if [ "$STATUS" = "stale" ]; then
-        mcp-cli call tabz/tabz_notification_show "{\"title\": \"🔴 Worker Stuck\", \"message\": \"$SESSION stale for 5+ minutes\", \"type\": \"basic\"}"
+        notify "WORKER_STUCK" "🔴 Worker Stuck" "$SESSION stale for 5+ minutes"
       fi
     fi
 
@@ -486,7 +563,7 @@ while true; do
     if [ -f "$CONTEXT_FILE" ]; then
       CONTEXT=$(jq -r '.context_pct // 0' "$CONTEXT_FILE" 2>/dev/null)
       if [ "$CONTEXT" -ge 75 ]; then
-        mcp-cli call tabz/tabz_notification_show "{\"title\": \"⚠️ High Context\", \"message\": \"$SESSION at ${CONTEXT}%\", \"type\": \"basic\"}"
+        notify "HIGH_CONTEXT" "⚠️ High Context" "$SESSION at ${CONTEXT}%"
       fi
     fi
 
@@ -505,7 +582,7 @@ while true; do
     # Check 1: Unsubmitted prompt text (1 min threshold)
     if echo "$LAST_LINE" | grep -qE '^>\s+.+'; then
       PENDING_TEXT=$(echo "$LAST_LINE" | sed 's/^>\s*//')
-      mcp-cli call tabz/tabz_notification_show "{\"title\": \"⏳ Prompt Pending\", \"message\": \"$SESSION: $PENDING_TEXT\", \"type\": \"basic\"}"
+      notify "PROMPT_PENDING" "⏳ Prompt Pending" "$SESSION: $PENDING_TEXT"
       echo "$NOW" > "$NUDGE_FILE"
       continue
     fi
@@ -525,14 +602,14 @@ while true; do
           if [ -n "$WORKDIR" ] && [ -d "$WORKDIR" ]; then
             GIT_CHANGES=$(git -C "$WORKDIR" status --short 2>/dev/null | wc -l)
             if [ "$GIT_CHANGES" -gt 0 ]; then
-              mcp-cli call tabz/tabz_notification_show "{\"title\": \"📝 Uncommitted Work\", \"message\": \"$SESSION: $GIT_CHANGES files changed\", \"type\": \"basic\"}"
+              notify "UNCOMMITTED_WORK" "📝 Uncommitted Work" "$SESSION: $GIT_CHANGES files changed, idle $((IDLE_SECONDS / 60))+ min"
               echo "$NOW" > "$NUDGE_FILE"
               continue
             fi
           fi
 
           # Plain idle notification
-          mcp-cli call tabz/tabz_notification_show "{\"title\": \"💤 Worker Idle\", \"message\": \"$SESSION idle for $((IDLE_SECONDS / 60))+ min\", \"type\": \"basic\"}"
+          notify "WORKER_IDLE" "💤 Worker Idle" "$SESSION idle for $((IDLE_SECONDS / 60))+ min"
           echo "$NOW" > "$NUDGE_FILE"
         fi
       else
@@ -546,7 +623,7 @@ while true; do
   # Exit if all workers done
   if [ "$ACTIVE_COUNT" -eq 0 ]; then
     echo "All workers completed. Exiting."
-    mcp-cli call tabz/tabz_notification_show '{"title": "🏁 All Workers Done", "message": "All Claude workers have completed", "type": "basic"}'
+    notify "ALL_DONE" "🏁 All Workers Done" "All Claude workers have completed"
     exit 0
   fi
 

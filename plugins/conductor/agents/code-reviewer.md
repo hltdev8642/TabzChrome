@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: "Autonomous code review - finds bugs, security issues, convention violations. Auto-fixes when confident, flags blockers otherwise. No user interaction needed."
-model: sonnet
+model: opus
 tools: Bash, Read, Write, Edit, Glob, Grep
 ---
 
