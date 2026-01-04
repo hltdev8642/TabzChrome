@@ -40,13 +40,31 @@ curl -s -X GET "https://skillsmp.com/api/v1/skills/search?q=fastapi&limit=5&sort
 After finding a skill, fetch its SKILL.md from GitHub:
 
 ```bash
+# Validate GitHub URL format (prevents command injection)
+validate_github_url() {
+  local url="$1"
+  # Must be https://github.com/owner/repo format with safe characters only
+  if [[ ! "$url" =~ ^https://github\.com/[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+(/.*)?$ ]]; then
+    echo "ERROR: Invalid GitHub URL format" >&2
+    return 1
+  fi
+  return 0
+}
+
 # Extract raw GitHub URL from githubUrl
 # Example: https://github.com/author/repo/tree/main/.claude/skills/name
 # Convert to: https://raw.githubusercontent.com/author/repo/main/.claude/skills/name/SKILL.md
 
 GITHUB_URL="https://github.com/author/repo/tree/main/path/to/skill"
-RAW_URL=$(echo "$GITHUB_URL" | sed 's|github.com|raw.githubusercontent.com|' | sed 's|/tree/|/|')
-curl -s "$RAW_URL/SKILL.md" | head -100
+
+# Validate before processing
+if ! validate_github_url "$GITHUB_URL"; then
+  echo "Aborting: URL validation failed"
+  exit 1
+fi
+
+RAW_URL=$(printf '%s' "$GITHUB_URL" | sed 's|github.com|raw.githubusercontent.com|' | sed 's|/tree/|/|')
+curl -s -- "$RAW_URL/SKILL.md" | head -100
 ```
 
 ## Install Skill
@@ -55,14 +73,21 @@ Install to project's `.claude/skills/` directory:
 
 ```bash
 SKILL_NAME="skill-name"
-mkdir -p .claude/skills/$SKILL_NAME
+
+# Validate skill name (alphanumeric, dash, underscore only)
+if [[ ! "$SKILL_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+  echo "ERROR: Invalid skill name - use only alphanumeric, dash, underscore" >&2
+  exit 1
+fi
+
+mkdir -p -- ".claude/skills/$SKILL_NAME"
 
 # Fetch and save SKILL.md
-curl -s "$RAW_URL/SKILL.md" > .claude/skills/$SKILL_NAME/SKILL.md
+curl -s -- "$RAW_URL/SKILL.md" > ".claude/skills/$SKILL_NAME/SKILL.md"
 
 # Check for references directory
-curl -s "$RAW_URL/references/" | grep -q "md" && {
-  mkdir -p .claude/skills/$SKILL_NAME/references
+curl -s -- "$RAW_URL/references/" | grep -q "md" && {
+  mkdir -p -- ".claude/skills/$SKILL_NAME/references"
   # Fetch reference files...
 }
 
@@ -90,9 +115,11 @@ curl -s -X GET "https://skillsmp.com/api/v1/skills/ai-search?q=building+producti
 # Preview
 curl -s "https://raw.githubusercontent.com/wshobson/agents/main/skills/fastapi-templates/SKILL.md" | head -50
 
-# Install
-mkdir -p .claude/skills/fastapi-templates
-curl -s "https://raw.githubusercontent.com/wshobson/agents/main/skills/fastapi-templates/SKILL.md" > .claude/skills/fastapi-templates/SKILL.md
+# Install (with validation)
+SKILL_NAME="fastapi-templates"
+[[ "$SKILL_NAME" =~ ^[a-zA-Z0-9_-]+$ ]] || exit 1
+mkdir -p -- ".claude/skills/$SKILL_NAME"
+curl -s -- "https://raw.githubusercontent.com/wshobson/agents/main/skills/fastapi-templates/SKILL.md" > ".claude/skills/$SKILL_NAME/SKILL.md"
 ```
 
 ## Response Format
@@ -131,7 +158,9 @@ cat .claude/skills/.safelist 2>/dev/null || echo "(no safelist)"
 
 ### Add to Safelist
 ```bash
-echo "skill-name" >> .claude/skills/.safelist
+SKILL="skill-name"
+[[ "$SKILL" =~ ^[a-zA-Z0-9_-]+$ ]] || exit 1
+printf '%s\n' "$SKILL" >> .claude/skills/.safelist
 ```
 
 ### List Installed Skills
@@ -147,11 +176,17 @@ ls -d ~/.claude/skills/*/ 2>/dev/null | xargs -I {} basename {}
 ```bash
 SKILL="fastapi-templates"
 
+# Validate skill name format
+if [[ ! "$SKILL" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+  echo "ERROR: Invalid skill name format" >&2
+  exit 1
+fi
+
 # Check if protected
-if grep -qx "$SKILL" .claude/skills/.safelist 2>/dev/null; then
+if grep -qxF -- "$SKILL" .claude/skills/.safelist 2>/dev/null; then
   echo "ERROR: $SKILL is protected (in .safelist)"
 else
-  rm -rf ".claude/skills/$SKILL"
+  rm -rf -- ".claude/skills/$SKILL"
   echo "Removed $SKILL"
 fi
 ```
@@ -159,15 +194,19 @@ fi
 ### Disable Temporarily (Keep for Later)
 Move to a disabled folder instead of deleting:
 ```bash
-mkdir -p .claude/skills-disabled
-mv .claude/skills/fastapi-templates .claude/skills-disabled/
-echo "Disabled fastapi-templates (can re-enable later)"
+SKILL="fastapi-templates"
+[[ "$SKILL" =~ ^[a-zA-Z0-9_-]+$ ]] || exit 1
+mkdir -p -- .claude/skills-disabled
+mv -- ".claude/skills/$SKILL" ".claude/skills-disabled/"
+echo "Disabled $SKILL (can re-enable later)"
 ```
 
 ### Re-enable a Skill
 ```bash
-mv .claude/skills-disabled/fastapi-templates .claude/skills/
-echo "Re-enabled fastapi-templates"
+SKILL="fastapi-templates"
+[[ "$SKILL" =~ ^[a-zA-Z0-9_-]+$ ]] || exit 1
+mv -- ".claude/skills-disabled/$SKILL" ".claude/skills/"
+echo "Re-enabled $SKILL"
 ```
 
 ### Cleanup Workflow
