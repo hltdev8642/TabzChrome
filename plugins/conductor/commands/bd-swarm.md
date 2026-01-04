@@ -114,37 +114,70 @@ done
 
 ### 4. Spawn Workers
 
+**Security**: Use heredoc with `jq` for safe JSON construction. Never embed unsanitized variables directly in JSON strings.
+
 ```bash
 TOKEN=$(cat /tmp/tabz-auth-token)
-bd update <issue-id> --status in_progress
+ISSUE_ID="TabzChrome-abc"
+WORKTREE="/home/user/project-worktrees/${ISSUE_ID}"
+
+bd update "$ISSUE_ID" --status in_progress
+
+# Safe JSON construction using jq (handles special characters in values)
+JSON_PAYLOAD=$(jq -n \
+  --arg name "Claude: ${ISSUE_ID}" \
+  --arg dir "$WORKTREE" \
+  --arg cmd "claude --dangerously-skip-permissions" \
+  '{name: $name, workingDir: $dir, command: $cmd}')
 
 curl -s -X POST http://localhost:8129/api/spawn \
   -H "Content-Type: application/json" \
   -H "X-Auth-Token: $TOKEN" \
-  -d '{"name": "Claude: <issue-id>", "workingDir": "<worktree>", "command": "claude --dangerously-skip-permissions"}'
+  -d "$JSON_PAYLOAD"
 ```
 
 ### 5. Send Skill-Aware Prompts
 
+**Security**: Validate session names and use heredoc for prompts with dynamic content.
+
 ```bash
 SESSION="ctt-claude-xxx"
+ISSUE_ID="TabzChrome-abc"
+TITLE="Fix something"
+DESCRIPTION="Details here"
+
 sleep 4
+
+# Validate session name format (alphanumeric, dash, underscore only)
+if [[ ! "$SESSION" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+  echo "ERROR: Invalid session name format"
+  exit 1
+fi
 
 if ! tmux has-session -t "$SESSION" 2>/dev/null; then
   echo "ERROR: Session does not exist"
   exit 1
 fi
 
-tmux send-keys -t "$SESSION" -l '## Task
-<issue-id>: <title>
+# Use heredoc for safe multiline prompt with variables
+# This avoids shell escaping issues with special characters in title/description
+PROMPT=$(cat <<EOF
+## Task
+${ISSUE_ID}: ${TITLE}
 
-<description>
+${DESCRIPTION}
 
 ## Skills
-Run `/ui-styling:ui-styling` or `/xterm-js` based on task type.
+Run \`/ui-styling:ui-styling\` or \`/xterm-js\` based on task type.
 
 ## Completion
-When done: `/worker-done <issue-id>`'
+When done: \`/worker-done ${ISSUE_ID}\`
+EOF
+)
+
+# Send prompt safely using printf to handle special characters
+printf '%s' "$PROMPT" | tmux load-buffer -
+tmux paste-buffer -t "$SESSION"
 sleep 0.3
 tmux send-keys -t "$SESSION" C-m
 ```
@@ -198,8 +231,8 @@ done
 # Sync and push
 bd sync && git push origin main
 
-# Notify
-mcp-cli call tabz/tabz_speak '{"text": "Sprint complete"}'
+# Notify (use jq for any dynamic content)
+mcp-cli call tabz/tabz_speak "$(jq -n --arg text "Sprint complete" '{text: $text}')"
 ```
 
 ---
