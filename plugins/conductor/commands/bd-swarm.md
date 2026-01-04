@@ -99,21 +99,39 @@ Ask user: How many workers? (2, 3, 4, 5)
 
 ### 3. Create Worktrees
 
+**Important**: Use file-based locking to prevent race conditions when multiple workers spawn simultaneously.
+
 ```bash
 # Validate issue ID format (alphanumeric with dash only)
 validate_issue_id() {
   [[ "$1" =~ ^[a-zA-Z0-9_-]+$ ]] || { echo "ERROR: Invalid issue ID" >&2; return 1; }
 }
 
+# Lockfile for worktree creation (prevents race conditions with parallel workers)
+WORKTREE_LOCK="/tmp/git-worktree-$(basename "$PROJECT_DIR").lock"
+
 for ISSUE in TabzChrome-abc TabzChrome-def; do
   validate_issue_id "$ISSUE" || continue
 
   WORKTREE="${PROJECT_DIR}-worktrees/${ISSUE}"
   mkdir -p -- "$(dirname "$WORKTREE")"
-  git worktree add -- "$WORKTREE" -b "feature/${ISSUE}" 2>/dev/null || \
-  git worktree add -- "$WORKTREE" HEAD
 
-  # Install deps
+  # Use flock to serialize worktree creation across parallel workers
+  # Lock is automatically released when subshell exits (success or error)
+  (
+    flock -x 200 || { echo "ERROR: Failed to acquire worktree lock" >&2; exit 1; }
+
+    # Check if worktree already exists (another worker may have created it)
+    if [ -d "$WORKTREE" ]; then
+      echo "Worktree already exists: $WORKTREE"
+      exit 0
+    fi
+
+    git worktree add -- "$WORKTREE" -b "feature/${ISSUE}" 2>/dev/null || \
+    git worktree add -- "$WORKTREE" HEAD
+  ) 200>"$WORKTREE_LOCK"
+
+  # Install deps (outside lock - can run in parallel)
   [ -f "$WORKTREE/package.json" ] && [ ! -d "$WORKTREE/node_modules" ] && \
     (cd -- "$WORKTREE" && npm ci 2>/dev/null || npm install)
 done
