@@ -22,7 +22,7 @@ interface SidebarProfileCardsProps {
  * Features:
  * - Compact card layout optimized for sidebar width
  * - Shows profile name with optional emoji icon
- * - Category color accent on cards
+ * - Category color accent on cards (matches newtab ProfilesGrid styling)
  * - Click to spawn terminal
  */
 export function SidebarProfileCards({
@@ -63,60 +63,73 @@ export function SidebarProfileCards({
   }
 
   return (
-    <div className="w-full max-w-sm mx-auto">
+    <div className="w-full max-w-xs mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-center gap-2 mb-3 text-gray-400">
+      <div className="flex items-center justify-center gap-2 mb-3 text-gray-500">
         <Pin className="w-3 h-3" />
-        <span className="text-xs font-medium uppercase tracking-wider">
+        <span className="text-[10px] font-medium uppercase tracking-widest">
           {pinnedProfiles.length > 0 ? 'Pinned Profiles' : 'Quick Start'}
         </span>
       </div>
 
-      {/* Profile Cards Grid */}
+      {/* Profile Cards Grid - 2 columns for sidebar, 3px accent bar like newtab */}
       <div className="grid grid-cols-2 gap-2">
-        {displayProfiles.map((profile) => {
+        {displayProfiles.map((profile, index) => {
           const { emoji, cleanName } = getProfileIcon(profile.name)
-          const categoryColor = getCategoryColor?.(profile.category || '') || '#6b7280'
+          const categoryColor = getCategoryColor?.(profile.category || '') || '#00ffd5'
           const isDefault = profile.id === defaultProfileId
 
           return (
             <button
               key={profile.id}
               onClick={() => onSpawnProfile(profile)}
-              className="group relative flex flex-col items-center gap-2 p-3 rounded-lg bg-white/5 hover:bg-[#00ff88]/10 border border-gray-700/50 hover:border-[#00ff88]/50 transition-all duration-200"
-              title={`Spawn ${profile.name}${profile.command ? ` (${profile.command})` : ''}`}
+              className="group relative flex flex-col items-center p-3 rounded-xl bg-[#0a0a0c] border border-[#222225] hover:border-[#333338] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg overflow-hidden"
+              style={{
+                // CSS custom property for category accent color
+                '--card-accent': categoryColor,
+              } as React.CSSProperties}
+              title={`Spawn ${profile.name}${profile.command ? `\n$ ${profile.command}` : ''}`}
             >
-              {/* Category color accent */}
+              {/* Category color accent bar (3px, matches newtab) */}
               <div
-                className="absolute top-0 left-0 right-0 h-0.5 rounded-t-lg opacity-60 group-hover:opacity-100 transition-opacity"
+                className="absolute top-0 left-0 right-0 h-[3px] opacity-60 group-hover:opacity-100 transition-opacity"
                 style={{ backgroundColor: categoryColor }}
               />
 
-              {/* Icon */}
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-[#1a1a1a] border border-gray-700 group-hover:border-[#00ff88]/30 transition-colors">
+              {/* Icon wrapper (36x36, matches newtab) */}
+              <div
+                className="flex items-center justify-center w-9 h-9 rounded-lg bg-[#111114] mb-2"
+                style={{ color: categoryColor }}
+              >
                 {emoji ? (
-                  <span className="text-xl">{emoji}</span>
+                  <span className="text-lg leading-none">{emoji}</span>
                 ) : (
-                  <Terminal className="w-5 h-5 text-gray-400 group-hover:text-[#00ff88] transition-colors" />
+                  <Terminal className="w-4 h-4" />
                 )}
               </div>
 
-              {/* Name */}
-              <div className="text-xs font-medium text-gray-300 group-hover:text-[#00ff88] transition-colors text-center truncate w-full">
+              {/* Name - JetBrains Mono style, proper truncation */}
+              <div
+                className="text-[11px] font-medium text-[#f0f0f0] text-center w-full overflow-hidden text-ellipsis whitespace-nowrap"
+                style={{ fontFamily: "'JetBrains Mono', monospace" }}
+              >
                 {cleanName || profile.name}
               </div>
 
-              {/* Default badge */}
-              {isDefault && (
-                <div className="absolute top-1 right-1 text-[8px] bg-[#00ff88]/20 text-[#00ff88] px-1 py-0.5 rounded">
-                  Default
+              {/* Keyboard shortcut badge (top-right, matches newtab) */}
+              {index < 6 && (
+                <div
+                  className="absolute top-2 right-2 text-[9px] px-1.5 py-0.5 rounded bg-[#111114] border border-[#222225] text-gray-500"
+                  style={{ fontFamily: "'JetBrains Mono', monospace" }}
+                >
+                  {index + 1}
                 </div>
               )}
 
-              {/* Command hint on hover */}
-              {profile.command && (
-                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-[9px] text-[#00ff88]/70 font-mono truncate max-w-full px-1">
-                  {profile.command.length > 20 ? profile.command.slice(0, 20) + '...' : profile.command}
+              {/* Default badge (bottom-right, subtle) */}
+              {isDefault && (
+                <div className="absolute bottom-1.5 right-1.5 text-[8px] text-[#00ffd5]/70 uppercase tracking-wide">
+                  def
                 </div>
               )}
             </button>
@@ -126,7 +139,7 @@ export function SidebarProfileCards({
 
       {/* Hint to pin more profiles */}
       {pinnedProfiles.length === 0 && (
-        <p className="text-[10px] text-gray-500 text-center mt-3">
+        <p className="text-[10px] text-gray-600 text-center mt-3">
           Pin profiles in Settings to show them here
         </p>
       )}
