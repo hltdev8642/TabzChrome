@@ -311,9 +311,11 @@ export function useStatusTransitions({
 
       // Context threshold alerts (uses hysteresis)
       const currentContextPct = status.context_pct
-      const prevContextPct = prevContextPctRef.current.get(terminalId)
+      // When context_pct first appears, treat it as crossing from 0% to catch thresholds
+      // that may have already been exceeded when statusline first reports
+      const prevContextPct = prevContextPctRef.current.get(terminalId) ?? 0
 
-      if (currentContextPct != null && prevContextPct != null) {
+      if (currentContextPct != null) {
         const displayName = getDisplayName()
 
         const crossedWarningUp = prevContextPct < CONTEXT_THRESHOLDS.WARNING &&
