@@ -146,15 +146,25 @@ sleep 0.3
 tmux send-keys -t "$SESSION" C-m
 ```
 
-**List active terminals:**
+**List active sessions:**
 ```bash
-curl -s http://localhost:8129/api/agents | jq '.data[] | {id, name, state}'
+# All tmux sessions (includes TabzChrome-spawned ones)
+tmux list-sessions
+
+# Filter to workers only
+tmux list-sessions -F '#{session_name}' | grep -E "worker-|ctt-"
 ```
 
-**Kill a terminal:**
+**Kill a session:**
 ```bash
-curl -X DELETE http://localhost:8129/api/agents/{terminal-id}
+# TabzChrome spawn creates tmux sessions - kill them via tmux
+tmux kill-session -t "ctt-worker-xxx"
+
+# Or by worker naming convention
+tmux kill-session -t "worker-issue-id"
 ```
+
+**Note:** There is no REST API to kill terminals. TabzChrome's `/api/spawn` creates tmux sessions, cleanup is via `tmux kill-session`.
 
 ## Worker Prompt Structure
 
@@ -248,7 +258,32 @@ Task(subagent_type="conductor:tui-expert",
 3. **Tab groups for isolation** - Each browser worker gets own group
 4. **One goal per worker** - Keep context focused
 5. **Capability triggers** - Activate skills explicitly
-6. **Clean up when done** - Kill terminals after completion
+6. **Clean up when done** - Kill tmux sessions, remove worktrees, delete branches
+
+## Session Cleanup
+
+**Critical:** Always clean up after orchestration completes. Sessions and worktrees don't auto-cleanup.
+
+```bash
+# Kill worker sessions
+tmux list-sessions -F '#{session_name}' | grep -E "worker-|ctt-worker" | while read S; do
+  tmux kill-session -t "$S"
+done
+
+# Remove worktrees
+git worktree list | grep worktrees | awk '{print $1}' | while read W; do
+  git worktree remove --force "$W"
+done
+
+# Delete merged feature branches
+git branch | grep "feature/" | xargs -r git branch -d
+```
+
+**Checklist before ending session:**
+- [ ] All worker tmux sessions killed
+- [ ] All worktrees removed
+- [ ] Feature branches merged and deleted
+- [ ] `bd sync` run to persist issue state
 
 ## Error Handling
 

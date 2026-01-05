@@ -90,6 +90,44 @@ git commit -m "docs: update changelog and docs for recent features"
 3. **User-facing** - Write for someone using the feature, not building it
 4. **Skip if nothing changed** - No empty changelog entries
 
+## LLM-Focused Documentation (for-llms style)
+
+When updating CLAUDE.md or similar LLM context files, use this style:
+
+**DO:**
+```markdown
+## API Routes
+- `POST /api/radio/search` - Search Radio Browser stations (app/api/radio/search/route.ts)
+- `GET /api/video/metadata` - Get video duration/resolution via ffprobe (app/api/video/metadata/route.ts)
+
+## Hooks
+- `useRadioStations()` - Search and play internet radio (hooks/useRadioStations.ts)
+- `useVideoDownload()` - Download videos with yt-dlp progress (hooks/useVideoDownload.ts)
+
+## New Components
+| Component | File | Purpose |
+|-----------|------|---------|
+| RadioPlayer | components/RadioPlayer.tsx | Internet radio playback |
+| DownloadModal | components/DownloadModal.tsx | Video download format selection |
+```
+
+**DON'T:**
+```markdown
+## Radio Player Feature
+
+We implemented a comprehensive radio player feature that allows users
+to search and stream internet radio stations. The implementation uses
+the Radio Browser API which provides access to over 30,000 stations...
+```
+
+**Key rules:**
+- One-liner descriptions, not paragraphs
+- File paths are mandatory
+- Tables for lists of 3+ items
+- No "why" explanations - just "what" and "where"
+- Example usage only if non-obvious
+- Assume reader is an LLM that needs to find/modify code
+
 ## Example Run
 
 ```

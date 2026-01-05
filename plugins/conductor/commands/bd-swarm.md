@@ -22,11 +22,13 @@ Spawn multiple Claude workers to tackle beads issues in parallel, with skill-awa
 1. Get ready issues      →  bd ready
 2. Create worktrees      →  git worktree add + npm install (parallel)
 3. Wait for deps         →  All worktrees ready before workers spawn
-4. Spawn workers         →  TabzChrome spawn API
+4. Spawn workers         →  TabzChrome API or direct tmux (both create tmux sessions)
 5. Send prompts          →  tmux send-keys with skill hints
 6. Monitor via tmuxplexer →  Background window polling
-7. Complete pipeline     →  Merge → Sync → Push
+7. Complete pipeline     →  Kill sessions → Merge → Remove worktrees → Sync → Push
 ```
+
+**Key insight:** TabzChrome spawn creates tmux sessions. Cleanup is via `tmux kill-session`.
 
 ---
 
@@ -163,7 +165,13 @@ echo "All worktrees initialized with dependencies"
 
 ### 4. Spawn Workers
 
-**Security**: Use heredoc with `jq` for safe JSON construction. Never embed unsanitized variables directly in JSON strings.
+**How spawning works:**
+- TabzChrome's `/api/spawn` (POST) creates tmux sessions with `ctt-*` prefix
+- Direct tmux spawning uses `worker-*` prefix (also works fine)
+- Both appear in tmuxplexer and can be monitored the same way
+- **Sessions must be killed via tmux** - there is no REST API for cleanup
+
+**Option A: Via TabzChrome API** (appears in browser terminal UI)
 
 ```bash
 TOKEN=$(cat /tmp/tabz-auth-token)
@@ -174,15 +182,36 @@ bd update "$ISSUE_ID" --status in_progress
 
 # Safe JSON construction using jq (handles special characters in values)
 JSON_PAYLOAD=$(jq -n \
-  --arg name "Claude: ${ISSUE_ID}" \
+  --arg name "worker-${ISSUE_ID}" \
   --arg dir "$WORKTREE" \
   --arg cmd "claude --dangerously-skip-permissions" \
   '{name: $name, workingDir: $dir, command: $cmd}')
 
+# POST creates a tmux session named ctt-worker-${ISSUE_ID}-xxxx
 curl -s -X POST http://localhost:8129/api/spawn \
   -H "Content-Type: application/json" \
   -H "X-Auth-Token: $TOKEN" \
   -d "$JSON_PAYLOAD"
+
+# Store session name for later cleanup (parse from response)
+SESSION_ID=$(curl -s -X POST http://localhost:8129/api/spawn ... | jq -r '.terminal.id')
+echo "$SESSION_ID" >> /tmp/swarm-sessions.txt
+```
+
+**Option B: Direct tmux** (simpler, CLI-only)
+
+```bash
+ISSUE_ID="TabzChrome-abc"
+WORKTREE="/home/user/project-worktrees/${ISSUE_ID}"
+SESSION="worker-${ISSUE_ID}"
+
+bd update "$ISSUE_ID" --status in_progress
+
+tmux new-session -d -s "$SESSION" -c "$WORKTREE"
+tmux send-keys -t "$SESSION" "claude --dangerously-skip-permissions" C-m
+
+# Store session name for later cleanup
+echo "$SESSION" >> /tmp/swarm-sessions.txt
 ```
 
 ### 5. Send Skill-Aware Prompts
@@ -264,30 +293,63 @@ done
 
 ### 7. Completion Pipeline
 
-When all workers done:
+When all workers done, clean up in this order: **Sessions → Worktrees → Branches → Sync**
 
 ```bash
-# Merge branches
 cd -- "$PROJECT_DIR"
+
+# ============================================
+# STEP 1: Kill worker tmux sessions
+# ============================================
+# Option A: From saved session list
+if [ -f /tmp/swarm-sessions.txt ]; then
+  while read -r SESSION; do
+    [[ "$SESSION" =~ ^[a-zA-Z0-9_-]+$ ]] || continue
+    if tmux has-session -t "$SESSION" 2>/dev/null; then
+      tmux kill-session -t "$SESSION"
+      echo "Killed session: $SESSION"
+    fi
+  done < /tmp/swarm-sessions.txt
+  rm /tmp/swarm-sessions.txt
+fi
+
+# Option B: Kill by pattern (if session list not available)
 for ISSUE in $ISSUES; do
-  # Validate before git operations
+  [[ "$ISSUE" =~ ^[a-zA-Z0-9_-]+$ ]] || continue
+  # Try both naming conventions
+  tmux kill-session -t "worker-${ISSUE}" 2>/dev/null && echo "Killed: worker-${ISSUE}"
+  tmux list-sessions -F '#{session_name}' 2>/dev/null | grep "ctt-.*${ISSUE}" | while read -r S; do
+    tmux kill-session -t "$S" 2>/dev/null && echo "Killed: $S"
+  done
+done
+
+# ============================================
+# STEP 2: Merge branches
+# ============================================
+for ISSUE in $ISSUES; do
   [[ "$ISSUE" =~ ^[a-zA-Z0-9_-]+$ ]] || { echo "Skipping invalid issue: $ISSUE" >&2; continue; }
   git merge --no-edit -- "feature/${ISSUE}"
 done
 
-# Cleanup worktrees
+# ============================================
+# STEP 3: Cleanup worktrees and branches
+# ============================================
 for ISSUE in $ISSUES; do
   [[ "$ISSUE" =~ ^[a-zA-Z0-9_-]+$ ]] || continue
   git worktree remove --force -- "${PROJECT_DIR}-worktrees/${ISSUE}"
   git branch -d -- "feature/${ISSUE}"
 done
 
-# Sync and push
+# ============================================
+# STEP 4: Sync and push
+# ============================================
 bd sync && git push origin main
 
-# Notify (use jq for any dynamic content, suppress errors if browser disconnected)
+# Notify completion
 mcp-cli call tabz/tabz_speak "$(jq -n --arg text "Sprint complete" '{text: $text}')" 2>/dev/null || true
 ```
+
+**Important:** Sessions MUST be killed before removing worktrees, otherwise Claude processes may hold file locks.
 
 ---
 
@@ -385,3 +447,25 @@ Match skills to issue content:
 - Monitor via tmuxplexer background window (no watcher subagent)
 - User can switch to monitor window via status bar click
 - Check actual pane content before nudging idle workers
+
+## Session Cleanup Checklist
+
+Before ending a swarm session, verify cleanup is complete:
+
+```bash
+# Check for leftover worker sessions
+tmux list-sessions | grep -E "worker-|ctt-worker"
+
+# Check for leftover worktrees
+ls ${PROJECT_DIR}-worktrees/ 2>/dev/null
+
+# Check for orphaned feature branches
+git branch | grep "feature/"
+
+# Manual cleanup if needed
+tmux kill-session -t "worker-xxx"
+git worktree remove --force "${PROJECT_DIR}-worktrees/xxx"
+git branch -d "feature/xxx"
+```
+
+**Common issue:** If conductor session ends before completion pipeline runs, sessions/worktrees are orphaned. Always run the completion pipeline or clean up manually.
