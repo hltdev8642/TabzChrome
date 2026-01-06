@@ -2301,7 +2301,7 @@ router.get('/plugins/skills', asyncHandler(async (req, res) => {
             const frontmatter = parseSkillFrontmatter(content);
             if (frontmatter) {
               skills.push({
-                id: `/${skillName}`,
+                id: `/${name}:${skillName}`,
                 name: frontmatter.name || skillName,
                 desc: frontmatter.description || '',
                 pluginId,
