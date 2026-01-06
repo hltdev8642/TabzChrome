@@ -323,7 +323,10 @@ class TerminalRegistry extends EventEmitter {
       state: 'spawning',
       embedded: config.embedded || false, // Pass through embedded flag
       position: config.position || null, // Include position if provided
-      profile: config.profile || defaults.profile || null, // Chrome extension profile settings
+      // Only use default profile if no explicit profile AND no custom name was provided
+      // API spawns with custom names (e.g., Claude naming agents) should not inherit the default profile
+      // as the custom name IS their identity for audio announcements
+      profile: config.profile || (config.name ? null : defaults.profile) || null,
       config: terminalConfig, // Keep full config for reference
       // TUI tool specific fields
       commands: config.commands || [],

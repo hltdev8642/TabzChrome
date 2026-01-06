@@ -36,7 +36,6 @@ import { connectToBackground, sendMessage } from '../shared/messaging'
 import { setupConsoleForwarding } from '../shared/consoleForwarder'
 import { getEffectiveWorkingDir } from '../shared/utils'
 import { useClaudeStatus, getStatusEmoji, getStatusText, getFullStatusText, getRobotEmojis, getContextColor, getStatusColor } from '../hooks/useClaudeStatus'
-import { usePaneTitles, isGenericPaneTitle, cleanPaneTitle } from '../hooks/usePaneTitles'
 import { useCommandHistory } from '../hooks/useCommandHistory'
 import { useOrphanedSessions } from '../hooks/useOrphanedSessions'
 import { useWorkingDirectory } from '../hooks/useWorkingDirectory'
@@ -193,15 +192,6 @@ function SidePanelTerminal() {
       sessionName: s.sessionName,
       workingDir: s.workingDir,
       profileCommand: s.profile?.command || s.command,  // Check both profile and API command
-    }))
-  )
-
-  // Pane title tracking for non-Claude terminals (e.g., PyRadio showing current song)
-  // This polls tmux pane_title for all terminals to display dynamic info in tabs
-  const paneTitles = usePaneTitles(
-    sessions.map(s => ({
-      id: s.id,
-      sessionName: s.sessionName,
     }))
   )
 
@@ -1238,28 +1228,17 @@ function SidePanelTerminal() {
                             {(claudeStatuses.get(session.id)?.status === 'idle' || claudeStatuses.get(session.id)?.status === 'awaiting_input') ? (
                               <>
                                 <span style={{ color: '#00ff88' }}>✓</span>
-                                <span>{claudeStatuses.get(session.id)?.pane_title || session.profile?.name || session.name}</span>
+                                <span>{session.name || session.profile?.name}</span>
                               </>
                             ) : (
                               <span style={{ color: getStatusColor(claudeStatuses.get(session.id)) || undefined }}>
-                                {getStatusText(claudeStatuses.get(session.id), session.profile?.name || session.name)}
+                                {getStatusText(claudeStatuses.get(session.id), session.name || session.profile?.name)}
                               </span>
                             )}
                           </>
                         ) : (
-                          // Non-Claude terminal: show pane_title if meaningful, otherwise session name
-                          // This allows apps like PyRadio to show current song in the tab
-                          (() => {
-                            const paneTitle = paneTitles.get(session.id)
-                            if (!isGenericPaneTitle(paneTitle)) {
-                              // Extract emoji from profile name to preserve icon
-                              const profileName = session.profile?.name || session.name || ''
-                              const emojiMatch = profileName.match(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F?)\s*/u)
-                              const emoji = emojiMatch ? emojiMatch[0] : ''
-                              return `${emoji}${cleanPaneTitle(paneTitle)}`
-                            }
-                            return session.name
-                          })()
+                          // Non-Claude terminal: show session name (includes instance number) or fall back to profile name
+                          session.name || session.profile?.name
                         )}
                       </span>
                       {/* Context window percentage - far right, color-coded */}

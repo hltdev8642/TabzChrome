@@ -1279,7 +1279,7 @@ function ProfileCard({
       />
 
       {/* Layer 2: Background media */}
-      {showMedia && profile.backgroundMediaType === 'video' && (
+      {showMedia && effectiveProfile.backgroundMediaType === 'video' && (
         <video
           key={mediaUrl}
           className="absolute inset-0 w-full h-full object-cover pointer-events-none rounded-xl"
@@ -1292,7 +1292,7 @@ function ProfileCard({
           onError={() => setMediaError(true)}
         />
       )}
-      {showMedia && profile.backgroundMediaType === 'image' && (
+      {showMedia && effectiveProfile.backgroundMediaType === 'image' && (
         <img
           key={mediaUrl}
           className="absolute inset-0 w-full h-full object-cover pointer-events-none rounded-xl"
