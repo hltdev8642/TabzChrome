@@ -326,9 +326,12 @@ done
 # ============================================
 # STEP 2: Merge branches
 # ============================================
+MERGE_COUNT=0
 for ISSUE in $ISSUES; do
   [[ "$ISSUE" =~ ^[a-zA-Z0-9_-]+$ ]] || { echo "Skipping invalid issue: $ISSUE" >&2; continue; }
-  git merge --no-edit -- "feature/${ISSUE}"
+  if git merge --no-edit -- "feature/${ISSUE}"; then
+    MERGE_COUNT=$((MERGE_COUNT + 1))
+  fi
 done
 
 # ============================================
@@ -340,13 +343,27 @@ for ISSUE in $ISSUES; do
   git branch -d -- "feature/${ISSUE}"
 done
 
+echo "Worktrees cleaned up, $MERGE_COUNT branches merged"
+
 # ============================================
-# STEP 4: Sync and push
+# STEP 4: Audio summary of merge completion
+# ============================================
+AUDIO_TEXT="Wave complete. $MERGE_COUNT branches merged successfully. Worktrees cleaned up."
+curl -s -X POST http://localhost:8129/api/audio/speak \
+  -H "Content-Type: application/json" \
+  -d "$(jq -n --arg text "$AUDIO_TEXT" '{text: $text, voice: "en-GB-SoniaNeural", rate: "+15%", priority: "high"}')" \
+  > /dev/null 2>&1 &
+
+# ============================================
+# STEP 5: Sync and push
 # ============================================
 bd sync && git push origin main
 
-# Notify completion
-mcp-cli call tabz/tabz_speak "$(jq -n --arg text "Sprint complete" '{text: $text}')" 2>/dev/null || true
+# Final completion announcement
+curl -s -X POST http://localhost:8129/api/audio/speak \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Sprint complete. All changes pushed to main.", "voice": "en-GB-SoniaNeural", "rate": "+15%", "priority": "high"}' \
+  > /dev/null 2>&1 &
 ```
 
 **Important:** Sessions MUST be killed before removing worktrees, otherwise Claude processes may hold file locks.
@@ -387,11 +404,23 @@ while true; do
   # Merge wave results
   merge_wave "$READY"
 
+  # Audio announcement for wave completion
+  ISSUE_COUNT=$(echo "$READY" | wc -w)
+  curl -s -X POST http://localhost:8129/api/audio/speak \
+    -H "Content-Type: application/json" \
+    -d "$(jq -n --arg text "Wave $WAVE complete. $ISSUE_COUNT issues merged. Starting next wave." \
+      '{text: $text, voice: "en-GB-SoniaNeural", rate: "+15%", priority: "high"}')" \
+    > /dev/null 2>&1 &
+
   WAVE=$((WAVE + 1))
 done
 
-# Final completion
+# Final completion with audio
 bd sync && git push origin main
+curl -s -X POST http://localhost:8129/api/audio/speak \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Backlog complete! All waves finished and pushed to main.", "voice": "en-GB-SoniaNeural", "rate": "+15%", "priority": "high"}' \
+  > /dev/null 2>&1 &
 echo "Backlog complete!"
 ```
 
