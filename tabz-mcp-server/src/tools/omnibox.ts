@@ -248,7 +248,7 @@ function isAllowedUrl(url: string, settings?: UrlSettings): { allowed: boolean; 
 const OpenUrlSchema = z.object({
   url: z.string()
     .min(1)
-    .describe("URL to open. Must be from allowed domains: github.com, gitlab.com, localhost, or 127.0.0.1"),
+    .describe("URL to open (any URL if 'Allow All URLs' is enabled in settings)"),
   newTab: z.boolean()
     .default(true)
     .describe("Open in new tab (default: true) or current tab"),
@@ -269,29 +269,20 @@ export function registerOmniboxTools(server: McpServer): void {
   // Open URL tool
   server.tool(
     "tabz_open_url",
-    `Open a URL in the browser (supports allowed domains only).
+    `Open a URL in the browser.
 
-Opens URLs from whitelisted domains in a new or current browser tab.
-Useful for opening GitHub repositories, GitLab projects, Vercel deployments, AI tools, or localhost development servers.
+Opens URLs in a new or current browser tab. Useful for opening any website, dev servers, documentation, or web apps.
 
 **SMART TAB REUSE:** By default, if the URL is already open in a tab, this tool
 switches to that existing tab instead of opening a duplicate. This prevents
 tab accumulation over time. Use reuseExisting=false to force a new tab.
 
-**Allowed Domains:**
-- Code hosting: github.com, gitlab.com, bitbucket.org
-- Local: localhost, 127.0.0.1
-- Deployments: *.vercel.app, *.netlify.app, *.railway.app, *.onrender.com, *.pages.dev, *.fly.dev
-- Dev docs: developer.mozilla.org, devdocs.io, docs.github.com, stackoverflow.com, *.stackexchange.com
-- Packages: npmjs.com, pypi.org, crates.io, pkg.go.dev
-- Playgrounds: codepen.io, jsfiddle.net
-- AI Image: bing.com/images/create, chatgpt.com, ideogram.ai, leonardo.ai, tensor.art, playground.com, lexica.art
-- AI Chat: claude.ai, perplexity.ai, deepseek.com, phind.com, you.com, gemini.google.com, copilot.microsoft.com
-- AI/ML: huggingface.co, replicate.com, openrouter.ai, skillsmp.com
-- Design: figma.com, dribbble.com, unsplash.com, iconify.design
+**URL Policy:** Configure in TabzChrome Dashboard > Settings > MCP Tools:
+- "Allow All URLs" enabled: Any URL can be opened
+- "Allow All URLs" disabled: Only whitelisted domains (dev-focused sites)
 
 Args:
-  - url (required): URL to open (can omit https:// for allowed domains)
+  - url (required): URL to open (can omit https://)
   - newTab: Open in new tab (default: true) or replace current tab
   - background: Open in background (default: false, opens in foreground)
   - reuseExisting: If URL is already open, switch to it instead of new tab (default: true)
@@ -303,21 +294,16 @@ Returns:
   - error: Error message if failed
 
 Examples:
+  - Open any site: url="https://example.com"
   - Open GitHub repo: url="github.com/user/repo"
-  - Open PR: url="https://github.com/user/repo/pull/123"
-  - Open Vercel app: url="my-app-abc123.vercel.app"
   - Open localhost: url="localhost:3000"
   - Current tab: url="github.com/user/repo", newTab=false
-  - Background: url="my-app.vercel.app", background=true
+  - Background: url="example.com", background=true
   - Force new tab: url="github.com/user/repo", reuseExisting=false
 
 Error Handling:
-  - "URL not allowed": Domain not in whitelist
-  - "Extension not available": Backend not running or extension not connected
-
-Security:
-  Only whitelisted domains can be opened to prevent abuse.
-  Cannot open arbitrary websites, file:// URLs, or chrome:// pages.`,
+  - "URL not allowed": Domain not permitted (check Settings > MCP Tools)
+  - "Extension not available": Backend not running or extension not connected`,
     OpenUrlSchema.shape,
     async (params: OpenUrlInput) => {
       try {
