@@ -1,6 +1,5 @@
 {
   "name": "tabz-chrome",
-  "version": "2.7.5",
   "description": "Browser automation, terminal management, and Claude Code integration for TabzChrome - includes MCP tools, terminal integration commands, and specialized skills for xterm.js development",
   "author": {
     "name": "Matt",
@@ -31,7 +30,6 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "*",
         "hooks": [
           {
             "type": "command",
@@ -43,7 +41,6 @@
     ],
     "UserPromptSubmit": [
       {
-        "matcher": "*",
         "hooks": [
           {
             "type": "command",
@@ -55,7 +52,6 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "*",
         "hooks": [
           {
             "type": "command",
@@ -67,7 +63,6 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "*",
         "hooks": [
           {
             "type": "command",
@@ -79,7 +74,6 @@
     ],
     "Stop": [
       {
-        "matcher": "*",
         "hooks": [
           {
             "type": "command",

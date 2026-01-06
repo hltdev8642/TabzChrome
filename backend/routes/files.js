@@ -123,9 +123,10 @@ async function buildFileTree(dirPath, depth = 5, currentDepth = 0, showHidden = 
         const child = await buildFileTree(childPath, depth, currentDepth + 1, showHidden);
         if (child) children.push(child);
       } catch (err) {
-        // Silently skip permission errors (very common on system dirs and WSL mounts)
-        // Only log other errors at top level
-        if (err.code !== 'EACCES' && err.code !== 'EPERM' && currentDepth <= 1) {
+        // Silently skip common errors:
+        // - EACCES/EPERM: permission errors (common on system dirs and WSL mounts)
+        // - ENOENT: file disappeared between readdir and stat (transient files like .git/index.lock)
+        if (err.code !== 'EACCES' && err.code !== 'EPERM' && err.code !== 'ENOENT' && currentDepth <= 1) {
           console.warn(`[buildFileTree] Skipping ${childPath}: ${err.message}`);
         }
       }
