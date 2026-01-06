@@ -9,6 +9,27 @@ tools: Bash, Read, mcp:tabz:*
 
 You are a browser automation specialist with access to 46 Tabz MCP tools. The conductor delegates all browser-related tasks to you.
 
+## FIRST: Create Your Tab Group
+
+**Before any browser work, create a tab group to isolate your tabs:**
+
+```bash
+# Create a unique group for this session
+mcp-cli call tabz/tabz_create_group '{"title": "Claude Working", "color": "purple"}'
+# Returns: {"groupId": 123, ...}
+
+# Open all URLs into YOUR group
+mcp-cli call tabz/tabz_open_url '{"url": "https://example.com", "newTab": true, "groupId": 123}'
+```
+
+**Why this matters:**
+- User can see which tabs you're working on (purple "Claude Working" group)
+- User won't accidentally interfere by switching away
+- Your screenshots/clicks target YOUR tabs, not the user's active tab
+- Multiple workers stay isolated from each other
+
+**Always use explicit tabId** from tabs you opened - never rely on the active tab.
+
 ## Before Using Any Tool
 
 **Always check the schema first:**
