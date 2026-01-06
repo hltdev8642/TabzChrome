@@ -107,6 +107,20 @@ TabzChrome includes a [Claude Code plugin marketplace](.claude-plugin/marketplac
 </details>
 
 <details>
+<summary>🔧 Installing build tools (Required for native modules)</summary>
+
+The backend uses `node-pty` which requires native compilation:
+
+| Platform | Command |
+|----------|---------|
+| **Ubuntu/Debian/WSL** | `sudo apt install build-essential` |
+| **Fedora** | `sudo dnf groupinstall "Development Tools"` |
+| **Arch** | `sudo pacman -S base-devel` |
+| **macOS** | `xcode-select --install` |
+
+</details>
+
+<details>
 <summary>🔊 Installing edge-tts (Optional - for audio features)</summary>
 
 | Platform | Command |

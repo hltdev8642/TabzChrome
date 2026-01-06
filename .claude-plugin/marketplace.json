@@ -11,55 +11,61 @@
     {
       "name": "conductor",
       "description": "Orchestrate multi-session Claude workflows - spawn agents, kill terminals, send prompts via tmux",
-      "source": "./plugins/conductor",
+      "source": "../plugins/conductor",
       "category": "agents"
     },
     {
       "name": "tabz-mcp",
       "description": "Browser automation via Tabz MCP tools - tabs, screenshots, clicks, forms, network capture",
-      "source": "./plugins/tabz-mcp",
+      "source": "../plugins/tabz-mcp",
       "category": "skills"
     },
     {
       "name": "xterm-js",
       "description": "xterm.js terminal emulator patterns - React integration, WebSocket, state management",
-      "source": "./plugins/xterm-js",
+      "source": "../plugins/xterm-js",
       "category": "skills"
     },
     {
       "name": "ctthandoff",
       "description": "Generate a handoff summary, copy to clipboard, and speak via Tabz TTS",
-      "source": "./plugins/ctthandoff",
+      "source": "../plugins/ctthandoff",
       "category": "commands"
     },
     {
       "name": "tabz-integration",
       "description": "Integration guide for connecting projects to TabzChrome terminals",
-      "source": "./plugins/tabz-integration",
+      "source": "../plugins/tabz-integration",
       "category": "commands"
     },
     {
       "name": "state-tracker",
       "description": "Live session state tracking hooks - enables TabzChrome terminal updates and audio notifications",
-      "source": "./plugins/state-tracker",
+      "source": "../plugins/state-tracker",
       "category": "hooks"
     },
     {
       "name": "tabz-guide",
       "description": "Progressive disclosure guide to TabzChrome - profiles, MCP tools, API, debugging, integration",
-      "source": "./plugins/tabz-guide",
+      "source": "../plugins/tabz-guide",
       "category": "skills"
     },
     {
       "name": "page-reader",
       "description": "Summarize and read aloud current browser page content via TTS",
-      "source": "./plugins/page-reader",
+      "source": "../plugins/page-reader",
+      "category": "commands"
+    },
+    {
+      "name": "discover-profiles",
+      "description": "Scan system for CLI tools (claude, lazygit, htop, etc.) and create TabzChrome profiles",
+      "source": "../plugins/discover-profiles",
       "category": "commands"
     },
     {
       "name": "tabz-chrome-full",
       "description": "Everything - all skills, commands, agents, hooks, and MCP server",
-      "source": "./",
+      "source": "../",
       "category": "bundle"
     }
   ]

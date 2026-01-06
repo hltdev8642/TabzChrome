@@ -2,7 +2,7 @@
 
 Scan the user's system for installed CLI tools and help them create TabzChrome profiles.
 
-> **Note**: There is no API to edit profiles directly. Profiles are stored in Chrome storage and can only be modified via the Settings UI. This skill generates JSON files for the user to import.
+> **Note**: Profiles can be created/edited via REST API or imported as JSON. This command can use either method.
 
 ## Instructions
 
@@ -128,16 +128,43 @@ Use AskUserQuestion tool with:
    - Empty `workingDir` (inherits from header)
    - Good defaults: `fontSize: 16`, `fontFamily: "JetBrains Mono"`, `themeName: "high-contrast"`
 
-7. Output the complete JSON array and **save it to the user's Downloads folder** so they can import directly:
+7. **Create profiles via API** (preferred) or save JSON for manual import:
 
+**Option A: Direct API creation (recommended)**
+```bash
+TOKEN=$(cat /tmp/tabz-auth-token)
+# Create each profile
+curl -X POST http://localhost:8129/api/browser/profiles \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: $TOKEN" \
+  -d '{"profile": {"name": "LazyGit", "category": "TUI Tools", "command": "lazygit"}}'
+
+# Or bulk import
+curl -X POST http://localhost:8129/api/browser/profiles/import \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: $TOKEN" \
+  -d '{"profiles": [...], "mode": "merge"}'
+```
+
+**Option B: Save JSON file for manual import**
 ```bash
 # Save to Downloads folder (same location Import looks by default)
 # For WSL:
 echo '$JSON_CONTENT' > "/mnt/c/Users/$USER/Downloads/new-profiles.json"
-# Or use the path from tabz_get_downloads to find the correct Downloads folder
 ```
 
-Tell the user: "I've saved the profiles to your Downloads folder. In TabzChrome, go to Settings (⚙️) → Profiles → Import and select `new-profiles.json`"
+Tell the user the profiles were created, or if using Option B: "I've saved the profiles to your Downloads folder. In TabzChrome, go to Settings (⚙️) → Profiles → Import and select `new-profiles.json`"
+
+## Updating Existing Profiles
+
+Use PUT to update a profile by ID:
+```bash
+TOKEN=$(cat /tmp/tabz-auth-token)
+curl -X PUT http://localhost:8129/api/browser/profiles/my-profile-id \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: $TOKEN" \
+  -d '{"name": "New Name", "command": "new-command"}'
+```
 
 ## Reading Existing Profiles
 
