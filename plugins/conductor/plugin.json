@@ -1,8 +1,0 @@
-{
-  "name": "conductor",
-  "version": "2.0.0",
-  "description": "Orchestrate multi-session Claude workflows - spawn workers, use subagents for monitoring, manage beads issues. Use orchestration skill for full capabilities.",
-  "agents": "./agents/",
-  "commands": "./commands/",
-  "skills": "./skills/"
-}

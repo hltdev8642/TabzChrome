@@ -1,0 +1,4 @@
+{
+  "name": "conductor",
+  "description": "Orchestrate multi-session Claude workflows - spawn workers, use subagents for monitoring, manage beads issues"
+}
