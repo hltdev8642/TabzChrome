@@ -24,6 +24,24 @@ Generate a {{subject:robot avatar}} in {{style:photorealistic|digital art|waterc
 
 **Batch Prompts:** ChatGPT now supports submitting multiple image prompts at once. Generate several images, then download from /images page.
 
+## Download from Images Gallery
+
+The `/images` page shows all generated images with hover download buttons:
+
+```bash
+# Go to images gallery
+mcp-cli call tabz/tabz_open_url '{"url": "https://chatgpt.com/images"}'
+
+# Hover and click download button (bottom-left of each image)
+# nth-of-type(1) = first image in grid (may be 2nd most recent)
+# nth-of-type(2) = second image, etc.
+mcp-cli call tabz/tabz_click '{"selector": "div.flex.w-full > div.flex:nth-of-type(1) > span > button.flex.items-center"}'
+```
+
+This triggers Chrome's native download - files go to your Downloads folder.
+
+**Note:** Grid order may not match chronological order. Screenshot first to identify which nth-of-type corresponds to which image.
+
 ## Fillable Fields
 
 | Field | Options | Notes |
@@ -99,8 +117,8 @@ mcp-cli call tabz/tabz_get_element '{"selector": "img[alt=\"Generated image\"]:n
 |---------|----------|-------|
 | Prompt input | `#prompt-textarea` | Main text input |
 | Submit button | `#composer-submit-button` | Submits prompt (send icon) |
-| Generated image | `img[alt="Generated image"]` | **Use this for download** |
-| Generated image (alt) | `main img` | First image in main area |
+| Generated image | `img[alt="Generated image"]` | In chat response |
+| Download btn (/images) | `div.flex.w-full > div.flex:nth-of-type(1) > span > button.flex.items-center` | Hover bottom-left of image |
 
 ## Multiple Images
 
