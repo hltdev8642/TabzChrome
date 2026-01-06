@@ -148,23 +148,51 @@ for ISSUE in $READY_ISSUES; do
     # Wait for Claude to initialize
     sleep 4
 
-    # Send prompt
+    # Send prompt - emphasize heavy subagent usage for impressive parallel work
     PROMPT=$(cat <<EOF
 ## Task
 ${ISSUE}: ${TITLE}
 
 ${DESCRIPTION}
 
-## Instructions
-1. Read the issue carefully with \`bd show ${ISSUE}\`
-2. Implement the solution
-3. Build and verify: \`npm run build\`
-4. When done, run: \`/conductor:worker-done ${ISSUE}\`
+## CRITICAL: Use Subagents Aggressively
 
-## Skills (use if relevant)
-- Use the xterm-js skill for terminal/pty work
-- Use the ui-styling skill for UI components
-- Use subagents in parallel for codebase exploration
+You MUST spawn 4-5 subagents in parallel for this task. This is a demo showcasing mass parallelization.
+
+**Launch these subagents simultaneously (single message with multiple Task calls):**
+
+1. **Explore agent** - "Explore the codebase to understand the project structure, find relevant files for this task, and identify patterns to follow"
+
+2. **Explore agent** - "Search for similar implementations in the codebase that we can reference or extend"
+
+3. **Plan agent** - "Create a detailed implementation plan for: ${TITLE}"
+
+4. **Explore agent** - "Find all files that will need to be modified or created for this feature"
+
+5. **Skill-picker agent** (if UI work) - "Find relevant skills for building ${TITLE}"
+
+**Example invocation (do this FIRST before any implementation):**
+\`\`\`
+Use the Task tool to launch 4-5 agents in parallel:
+- Task(subagent_type="Explore", prompt="Explore codebase structure...")
+- Task(subagent_type="Explore", prompt="Find similar implementations...")
+- Task(subagent_type="Plan", prompt="Plan implementation for ${TITLE}...")
+- Task(subagent_type="Explore", prompt="Identify files to modify...")
+\`\`\`
+
+## After Subagents Complete
+
+1. Synthesize findings from all subagents
+2. Implement the solution using gathered context
+3. Build and verify: \`npm run build\`
+4. Run: \`/conductor:worker-done ${ISSUE}\`
+
+## Skills (invoke explicitly)
+- \`/ui-styling:ui-styling\` - For any UI components
+- \`/frontend-design:frontend-design\` - For polished, creative designs
+- \`/xterm-js\` - For terminal work
+
+Remember: The goal is to demonstrate impressive parallel AI work. More subagents = better demo!
 EOF
 )
 
