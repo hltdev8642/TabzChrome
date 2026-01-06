@@ -227,7 +227,41 @@ curl -s -X POST http://localhost:8129/api/audio/speak \
 
 ---
 
-### STEP 8: Sync and Check for Next Wave
+### STEP 8: Visual QA via tabz-manager (After UI Waves)
+
+**If this wave included UI/visual changes**, spawn tabz-manager as a subagent to validate:
+
+```
+Use the Task tool:
+  subagent_type: "conductor:tabz-manager"
+  prompt: |
+    Visual QA after wave completion.
+
+    1. Start the dev server: npm run dev (wait for it to be ready)
+    2. Open http://localhost:3000 in browser
+    3. Create a tab group "QA Wave N" for your tabs
+    4. Screenshot at three viewports:
+       - Desktop (1920x1080): save as qa/screenshots/wave-N-desktop.png
+       - Tablet (768x1024): save as qa/screenshots/wave-N-tablet.png
+       - Mobile (375x812): save as qa/screenshots/wave-N-mobile.png
+    5. Check browser console for errors (tabz_get_console_logs)
+    6. Navigate to any new pages added this wave and screenshot those too
+    7. Kill the dev server when done
+
+    If you find visual bugs or console errors:
+    - Create beads issues with: bd create --title "Bug: <description>" --type bug --priority 2
+    - These will be picked up in a future wave
+
+    Report what you found.
+```
+
+**Skip this step if the wave was only backend/config changes.**
+
+The QA screenshots go to `qa/screenshots/` in the project directory.
+
+---
+
+### STEP 9: Sync and Check for Next Wave
 
 ```bash
 bd sync
@@ -258,7 +292,8 @@ echo "=== BD SWARM AUTO COMPLETE ==="
 2. **YOU MUST POLL** - Check issue status every 2 minutes. Do not wait for user to say "done".
 3. **USE TMUXPLEXER** - Launch the monitor so you can see worker activity.
 4. **LOOP UNTIL EMPTY** - Keep running waves until `bd ready` returns nothing.
-5. **MONITOR YOUR CONTEXT** - Check your context % in the status bar or tmuxplexer. At 70%+, trigger `/wipe:wipe`.
+5. **VISUAL QA AFTER UI WAVES** - Spawn tabz-manager subagent to screenshot and check for errors.
+6. **MONITOR YOUR CONTEXT** - Check your context % in the status bar or tmuxplexer. At 70%+, trigger `/wipe:wipe`.
 
 ---
 
