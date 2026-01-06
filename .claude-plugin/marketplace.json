@@ -5,20 +5,14 @@
   "description": "TabzChrome plugins - browser automation, terminal management, multi-session orchestration",
   "owner": {
     "name": "GGPrompts",
-    "url": "https://github.com/GGPrompts"
+    "url": "https://github.com/GGPrompts/TabzChrome"
   },
   "plugins": [
     {
       "name": "conductor",
-      "description": "Orchestrate multi-session Claude workflows - spawn agents, kill terminals, send prompts via tmux",
+      "description": "Orchestrate multi-session Claude workflows with browser automation, tabz-mcp tools, and parallel workers",
       "source": "./plugins/conductor",
       "category": "agents"
-    },
-    {
-      "name": "tabz-mcp",
-      "description": "Browser automation via Tabz MCP tools - tabs, screenshots, clicks, forms, network capture",
-      "source": "./plugins/tabz-mcp",
-      "category": "skills"
     },
     {
       "name": "xterm-js",
@@ -61,12 +55,6 @@
       "description": "Scan system for CLI tools (claude, lazygit, htop, etc.) and create TabzChrome profiles",
       "source": "./plugins/discover-profiles",
       "category": "commands"
-    },
-    {
-      "name": "tabz-chrome-full",
-      "description": "Everything - all skills, commands, agents, hooks, and MCP server",
-      "source": "./",
-      "category": "bundle"
     }
   ]
 }
