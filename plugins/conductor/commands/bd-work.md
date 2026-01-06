@@ -1,35 +1,179 @@
 ---
-description: "Pick the top ready beads issue, prepare environment, and start working with skill-aware prompting"
+description: "Pick the top ready beads issue, explore codebase, and start working with skill-aware prompting. Adapts behavior for autonomous vs interactive mode."
 ---
 
-# Beads Work - Start on Top Ready Issue
+# Beads Work - Smart Issue Workflow
 
-Pick the highest priority ready issue, prepare the environment, and begin working with optimized skill-aware prompting.
+Pick the highest priority ready issue, explore relevant codebase (for features), and begin working with optimized skill-aware prompting.
 
-## Workflow
+## Mode Detection
 
-### 1. Get Ready Issues
+**Check if running autonomously (spawned by bd-swarm-auto):**
+
+```
+AUTONOMOUS MODE is active if:
+- Prompt contains "MODE: AUTONOMOUS" marker
+- Or environment has BD_AUTONOMOUS=1
+- Or spawned by bd-swarm-auto (check tmux session pattern)
+```
+
+| Mode | Behavior |
+|------|----------|
+| **Interactive** | Can ask clarifying questions, propose approaches |
+| **Autonomous** | Make reasonable defaults, no questions, proceed |
+
+---
+
+## Phase 1: Select Issue
+
+### 1.1 Get Ready Issues
+
 ```bash
 bd ready --json | jq -r '.[] | "\(.id): [\(.priority)] [\(.type)] \(.title)"' | head -5
 ```
 
-### 2. Select Issue
+### 1.2 Select Issue
+
 - If user provided an issue ID as argument, use that
 - Otherwise, pick the top priority (lowest P number)
 
-### 3. Get Issue Details
+### 1.3 Get Issue Details
+
 ```bash
-bd show <issue-id>
+ISSUE_ID="<selected-id>"
+bd show $ISSUE_ID
 ```
 
-### 4. Claim the Issue
+### 1.4 Claim the Issue
+
 ```bash
-bd update <issue-id> --status in_progress
+bd update $ISSUE_ID --status in_progress
 ```
 
-### 5. Prepare Environment (Initializer Pattern)
+---
 
-**Check for init script:**
+## Phase 2: Determine Complexity
+
+Analyze the issue to determine workflow depth:
+
+| Issue Type | Complexity | Workflow |
+|------------|------------|----------|
+| `bug` (small fix) | Simple | Fast path → implement |
+| `task` (chore) | Simple | Fast path → implement |
+| `bug` (complex) | Medium | Explore → implement |
+| `feature` | Medium/Complex | Explore → (questions) → implement |
+| `epic` | Complex | Explore → architecture → implement |
+
+**Complexity indicators:**
+- Description mentions "refactor", "redesign", "new system" → Complex
+- Touches multiple components/files → Complex
+- Clear single-file fix → Simple
+- Documentation/config only → Simple
+
+**For simple issues:** Skip to Phase 5 (Environment) then Phase 7 (Implement)
+
+**For medium/complex issues:** Continue to Phase 3 (Explore)
+
+---
+
+## Phase 3: Codebase Exploration (Features/Complex Issues)
+
+**Goal:** Understand relevant code before implementing.
+
+### 3.1 Launch Code Explorer
+
+Spawn an explorer agent to analyze the relevant codebase:
+
+```markdown
+Task(
+  subagent_type="Explore",
+  model="haiku",
+  prompt="Analyze the codebase for implementing: '<issue-title>'
+
+  Find:
+  1. Similar existing features to use as patterns
+  2. Files that will need modification
+  3. Key abstractions and interfaces involved
+  4. Any gotchas or constraints from CLAUDE.md
+
+  Return:
+  - List of 5-10 most relevant files (with line counts)
+  - Existing patterns to follow
+  - Suggested approach (1-2 sentences)
+  "
+)
+```
+
+### 3.2 Read Key Files
+
+After explorer returns, read the identified key files (if <500 lines each).
+
+### 3.3 Document Findings
+
+```markdown
+## Exploration Summary
+
+**Similar features:** <list>
+**Key files:** <list with line counts>
+**Patterns to follow:** <brief>
+**Suggested approach:** <brief>
+```
+
+---
+
+## Phase 4: Clarifying Questions (Interactive Mode Only)
+
+**SKIP THIS PHASE IF AUTONOMOUS MODE**
+
+### 4.1 Identify Ambiguities
+
+Based on exploration, identify any unclear aspects:
+- Scope boundaries
+- Edge cases
+- Integration points
+- Design choices
+
+### 4.2 Ask Questions (Interactive Only)
+
+```markdown
+## Interactive Mode
+
+Use AskUserQuestion for critical ambiguities:
+
+Question: "How should <ambiguous aspect> be handled?"
+Options:
+- Option A (explain)
+- Option B (explain)
+- Your recommendation (Recommended)
+```
+
+### 4.3 Autonomous Mode Behavior
+
+```markdown
+## Autonomous Mode
+
+Do NOT ask questions. Instead:
+
+1. Pick the simpler/safer option for ambiguities
+2. Document assumptions in a comment block at top of PR:
+   ```
+   ## Assumptions Made (autonomous mode)
+   - Assumed X because Y
+   - Chose approach A over B because simpler
+   ```
+3. If truly blocked (cannot proceed without human input):
+   - Add comment: `bd comments $ISSUE_ID add "BLOCKED: Need clarification on <topic>"`
+   - Close issue: `bd close $ISSUE_ID --reason "needs-clarification"`
+   - Create follow-up: `bd create --title "Clarify: <topic>" --type task --priority 1`
+   - Move to next issue
+```
+
+---
+
+## Phase 5: Prepare Environment
+
+### 5.1 Check for Init Script
+
 ```bash
 if [ -f ".claude/init.sh" ]; then
   echo "Found .claude/init.sh - running..."
@@ -37,7 +181,8 @@ if [ -f ".claude/init.sh" ]; then
 fi
 ```
 
-**Check dependencies:**
+### 5.2 Check Dependencies
+
 ```bash
 if [ -f "package.json" ] && [ ! -d "node_modules" ]; then
   echo "Installing dependencies..."
@@ -45,7 +190,9 @@ if [ -f "package.json" ] && [ ! -d "node_modules" ]; then
 fi
 ```
 
-### 6. Match Skills from Context
+---
+
+## Phase 6: Match Skills
 
 You already have visibility into all installed skills (check `<available_skills>` in your context).
 
@@ -58,21 +205,24 @@ You already have visibility into all installed skills (check `<available_skills>
 | style, CSS, tailwind | `/tailwindcss` or `/ui-styling:ui-styling` |
 | MCP, tools, server | `/mcp-builder:mcp-builder` |
 | docs, documentation | `/docs-seeker:docs-seeker` |
-
-**Include in worker prompt:**
-```markdown
-## Skills to Invoke
-- `/xterm-js` - for terminal patterns
-- `/shadcn-ui` - for UI components
-```
+| code review, quality | `/conductor:code-review` |
 
 **Invocation formats:**
 - User/project skills: `/skill-name`
 - Plugin skills: `/plugin-name:skill-name`
 
-### 7. Find Relevant Files (Size-Aware)
+---
 
-**CRITICAL: Don't @ reference large files - they consume too much context!**
+## Phase 7: Implement
+
+### 7.1 Build Context
+
+From exploration (Phase 3), you now have:
+- Key files to reference
+- Patterns to follow
+- Suggested approach
+
+### 7.2 Find Relevant Files (Size-Aware)
 
 ```bash
 # Find files by keyword, filter by size
@@ -87,50 +237,32 @@ done | head -10
 ```
 
 **Size Guidelines:**
-- < 200 lines: ✅ Safe to @ reference
-- 200-500 lines: ⚠️ Only if highly relevant
-- 500+ lines: ❌ Don't @ reference - tell worker to explore specific sections
+- < 200 lines: Safe to @ reference
+- 200-500 lines: Only if highly relevant
+- 500+ lines: Don't @ reference - use subagents to explore sections
 
-### 8. Craft Skill-Aware Prompt
-
-Build a structured prompt:
+### 7.3 Implementation Approach
 
 ```markdown
-## Task
-<issue-id>: <title>
-
-<full description from bd show>
-
-## Skills to Invoke
-Run these commands first to load relevant patterns:
-- `/shadcn-ui` - for UI component patterns
-- `/ui-styling:ui-styling` - for styling patterns
-
 ## Approach
-- **Use subagents liberally to preserve your context:**
-  - Explore agents (Haiku) for codebase search - they return summaries, not full files
+- **Use subagents liberally to preserve context:**
+  - Explore agents (Haiku) for codebase search
   - Parallel subagents for multi-file exploration
-  - Subagents for running tests and builds (returns only failures)
-- Follow existing patterns in the codebase
-
-## Relevant Files
-@path/to/file1.ts
-@path/to/file2.tsx
-
-## Large Files (use subagents to explore)
-- src/large-file.ts (1200 lines) - search for "functionName"
-
-## Constraints
-- Follow existing code patterns
-- Add tests for new functionality
-
-## Completion
-When you have finished implementing, run:
-```
-/conductor:worker-done <issue-id>
+  - Subagents for running tests and builds
+- Follow patterns identified in exploration
+- Match existing code style from CLAUDE.md
 ```
 
-This runs the full completion pipeline:
+### 7.4 Begin Implementation
+
+Start working on the issue with the prepared context.
+
+---
+
+## Phase 8: Completion
+
+Run `/conductor:worker-done <issue-id>` which handles:
+
 1. Build verification (npm run build)
 2. Test verification (npm test)
 3. Code review (spawns code-reviewer subagent)
@@ -138,25 +270,46 @@ This runs the full completion pipeline:
 5. Close beads issue
 
 If any step fails, fix the issue and run `/conductor:worker-done` again.
+
+---
+
+## Quick Reference
+
+### Simple Issue (bug/task)
+```
+1. bd show <id>
+2. bd update <id> --status in_progress
+3. Implement fix
+4. /conductor:worker-done <id>
 ```
 
-### 9. Begin Work
+### Feature Issue (interactive)
+```
+1. bd show <id>
+2. bd update <id> --status in_progress
+3. Explore codebase (Phase 3)
+4. Ask questions if unclear (Phase 4)
+5. Implement
+6. /conductor:worker-done <id>
+```
 
-Start working on the issue with the prepared context.
+### Feature Issue (autonomous)
+```
+1. bd show <id>
+2. bd update <id> --status in_progress
+3. Explore codebase (Phase 3)
+4. Make reasonable defaults (no questions)
+5. Implement
+6. /conductor:worker-done <id>
+```
 
-### 10. On Completion
-
-Run `/conductor:worker-done <issue-id>` which handles:
-- Build verification
-- Test verification
-- Code review (spawns subagent)
-- Commit with proper format
-- Close beads issue
+---
 
 ## Notes
 
 - `/conductor:worker-done` is idempotent - safe to re-run after fixing issues
 - If context gets high (>75%), use `/wipe` to handoff to fresh session
 - Update beads with progress: `bd comments <id> add "Progress: ..."`
+- In autonomous mode, document assumptions in commit message
 
 Execute this workflow now.

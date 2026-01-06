@@ -118,6 +118,11 @@ sleep 5
 
 tmux send-keys -t "$SESSION" -l "## Multi-Issue Worker Task
 
+**MODE: AUTONOMOUS**
+
+Do NOT use AskUserQuestion. Make reasonable defaults for any ambiguity.
+If truly blocked, close issue with reason 'needs-clarification' and create follow-up.
+
 You are responsible for completing these issues IN PARALLEL using subagents:
 
 <ISSUE_LIST>

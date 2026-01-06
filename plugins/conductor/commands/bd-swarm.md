@@ -239,11 +239,24 @@ fi
 
 # Use heredoc for safe multiline prompt with variables
 # This avoids shell escaping issues with special characters in title/description
+
+# Set autonomous mode marker if --auto flag was used
+if [ "$AUTO_MODE" = "true" ]; then
+  MODE_HEADER="**MODE: AUTONOMOUS**
+
+Do NOT use AskUserQuestion. Make reasonable defaults for any ambiguity.
+If truly blocked, close issue with reason 'needs-clarification' and create follow-up.
+
+"
+else
+  MODE_HEADER=""
+fi
+
 PROMPT=$(cat <<EOF
 ## Task
 ${ISSUE_ID}: ${TITLE}
 
-${DESCRIPTION}
+${MODE_HEADER}${DESCRIPTION}
 
 ## Skills
 Run \`/ui-styling:ui-styling\` or \`/xterm-js\` based on task type.
@@ -373,6 +386,8 @@ curl -s -X POST http://localhost:8129/api/audio/speak \
 ## Auto Mode (`--auto`)
 
 Fully autonomous backlog completion. Runs until `bd ready` returns empty.
+
+**Sets `AUTO_MODE=true`** - Workers receive `MODE: AUTONOMOUS` marker and will not ask questions.
 
 ### Wave Loop
 
