@@ -16,7 +16,7 @@ const log = createModuleLogger('FileTree');
  */
 function shouldAlwaysShow(name) {
   // Core Claude ecosystem
-  if (name === '.claude' || name === '.prompts') return true;
+  if (name === '.claude' || name === '.prompts' || name === '.claude-plugin') return true;
 
   // Obsidian vault indicator
   if (name === '.obsidian') return true;
@@ -751,7 +751,7 @@ async function findFilesRecursive(dir, matcher, maxDepth = 5, currentDepth = 0) 
 }
 
 // Helper to build a filtered tree (only including matching files, but preserving folder structure)
-async function buildFilteredTree(dirPath, matcher, maxDepth = 5, currentDepth = 0) {
+async function buildFilteredTree(dirPath, matcher, maxDepth = 5, currentDepth = 0, showHidden = false) {
   try {
     const stats = await fs.stat(dirPath)
     const name = path.basename(dirPath)
@@ -779,7 +779,15 @@ async function buildFilteredTree(dirPath, matcher, maxDepth = 5, currentDepth = 
 
     // Sort: directories first, then alphabetically
     const sortedEntries = entries
-      .filter(entry => entry.name !== 'node_modules' && entry.name !== '.git')
+      .filter(entry => {
+        // Always exclude node_modules and .git
+        if (entry.name === 'node_modules' || entry.name === '.git') return false
+        // Handle hidden files
+        if (!showHidden && entry.name.startsWith('.')) {
+          return shouldAlwaysShow(entry.name)
+        }
+        return true
+      })
       .sort((a, b) => {
         if (a.isDirectory() !== b.isDirectory()) {
           return a.isDirectory() ? -1 : 1
@@ -799,7 +807,7 @@ async function buildFilteredTree(dirPath, matcher, maxDepth = 5, currentDepth = 
         }
       }
 
-      const child = await buildFilteredTree(childPath, matcher, maxDepth, currentDepth + 1)
+      const child = await buildFilteredTree(childPath, matcher, maxDepth, currentDepth + 1, showHidden)
       if (child) {
         children.push(child)
       }
@@ -828,6 +836,7 @@ router.get('/list', async (req, res) => {
     const filter = req.query.filter || 'all'
     let workingDir = req.query.workingDir || process.cwd()
     workingDir = expandTilde(workingDir)
+    const showHidden = req.query.showHidden === 'true'
 
     const homeDir = process.env.HOME || process.env.USERPROFILE
     const trees = [] // Now returning trees instead of flat groups
@@ -842,7 +851,7 @@ router.get('/list', async (req, res) => {
       const globalClaudeDir = path.join(homeDir, '.claude')
       try {
         await fs.access(globalClaudeDir)
-        const tree = await buildFilteredTree(globalClaudeDir, claudeMatcher, 4)
+        const tree = await buildFilteredTree(globalClaudeDir, claudeMatcher, 4, 0, showHidden)
         if (tree) {
           trees.push({
             name: 'Global (~/.claude/)',
@@ -857,7 +866,7 @@ router.get('/list', async (req, res) => {
       const projectClaudeDir = path.join(workingDir, '.claude')
       try {
         await fs.access(projectClaudeDir)
-        const tree = await buildFilteredTree(projectClaudeDir, claudeMatcher, 4)
+        const tree = await buildFilteredTree(projectClaudeDir, claudeMatcher, 4, 0, showHidden)
         if (tree) {
           trees.push({
             name: 'Project (.claude/)',
@@ -901,7 +910,7 @@ router.get('/list', async (req, res) => {
       const pluginsDir = path.join(workingDir, 'plugins')
       try {
         await fs.access(pluginsDir)
-        const tree = await buildFilteredTree(pluginsDir, () => true, 3)
+        const tree = await buildFilteredTree(pluginsDir, () => true, 3, 0, showHidden)
         if (tree) {
           trees.push({
             name: 'Plugins',
@@ -922,7 +931,7 @@ router.get('/list', async (req, res) => {
       const globalPromptsDir = path.join(homeDir, '.prompts')
       try {
         await fs.access(globalPromptsDir)
-        const tree = await buildFilteredTree(globalPromptsDir, promptMatcher, 5)
+        const tree = await buildFilteredTree(globalPromptsDir, promptMatcher, 5, 0, showHidden)
         if (tree) {
           trees.push({
             name: 'Global (~/.prompts/)',
@@ -937,7 +946,7 @@ router.get('/list', async (req, res) => {
       const globalCommandsDir = path.join(homeDir, '.claude', 'commands')
       try {
         await fs.access(globalCommandsDir)
-        const tree = await buildFilteredTree(globalCommandsDir, (name) => /\.md$/i.test(name), 3)
+        const tree = await buildFilteredTree(globalCommandsDir, (name) => /\.md$/i.test(name), 3, 0, showHidden)
         if (tree) {
           trees.push({
             name: 'Global Commands (~/.claude/commands/)',
@@ -952,7 +961,7 @@ router.get('/list', async (req, res) => {
       const projectPromptsDir = path.join(workingDir, '.prompts')
       try {
         await fs.access(projectPromptsDir)
-        const tree = await buildFilteredTree(projectPromptsDir, promptMatcher, 5)
+        const tree = await buildFilteredTree(projectPromptsDir, promptMatcher, 5, 0, showHidden)
         if (tree) {
           trees.push({
             name: 'Project (.prompts/)',
@@ -967,7 +976,7 @@ router.get('/list', async (req, res) => {
       const projectCommandsDir = path.join(workingDir, '.claude', 'commands')
       try {
         await fs.access(projectCommandsDir)
-        const tree = await buildFilteredTree(projectCommandsDir, (name) => /\.md$/i.test(name), 3)
+        const tree = await buildFilteredTree(projectCommandsDir, (name) => /\.md$/i.test(name), 3, 0, showHidden)
         if (tree) {
           trees.push({
             name: 'Project Commands (.claude/commands/)',

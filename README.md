@@ -2,7 +2,7 @@
 
 **Full Linux terminals in your Chrome sidebar**
 
-![Version](https://img.shields.io/badge/version-1.2.22-blue)
+![Version](https://img.shields.io/badge/version-1.4.2-blue)
 ![Chrome](https://img.shields.io/badge/chrome-manifest%20v3-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -61,14 +61,16 @@ TabzChrome includes a [Claude Code plugin marketplace](.claude-plugin/marketplac
 
 | Plugin | Type | Description |
 |--------|------|-------------|
-| [**conductor**](plugins/conductor/) | agents | Multi-session orchestration with 5 specialized agents (conductor, tabz-manager, tui-expert, watcher, skill-picker) |
+| [**conductor**](plugins/conductor/) | agents + skills | Multi-session orchestration - spawn parallel workers, manage beads issues, autonomous backlog processing (**requires [beads MCP](https://github.com/steveyegge/beads)**) |
 | [**tabz-mcp**](plugins/tabz-mcp/skills/tabz-mcp/SKILL.md) | skill | Guided browser automation with dynamic tool discovery |
 | [**xterm-js**](plugins/xterm-js/skills/xterm-js/SKILL.md) | skill | Terminal development patterns (resize, WebSocket, React hooks, tmux) |
 | [**tabz-guide**](plugins/tabz-guide/skills/tabz-guide/SKILL.md) | skill | Progressive help for TabzChrome (profiles, API, debugging) |
 | [**state-tracker**](plugins/state-tracker/) | hooks | Live Claude status tracking for terminal tab updates |
 | [**ctthandoff**](plugins/ctthandoff/) | command | Generate handoff summary, copy to clipboard, speak via TTS |
 | [**tabz-integration**](plugins/tabz-integration/) | command | Integration guide for connecting projects to TabzChrome |
-| [**Tabz MCP Server**](tabz-mcp-server/MCP_TOOLS.md) | MCP | 44 browser control tools (screenshots, clicks, bookmarks, network, tab groups, windows) |
+| [**Tabz MCP Server**](tabz-mcp-server/MCP_TOOLS.md) | MCP | 70+ browser control tools (screenshots, clicks, bookmarks, network, tab groups, windows, history, cookies, emulation) |
+
+> **Conductor Plugin Requirement:** The conductor plugin uses [beads](https://github.com/steveyegge/beads) for issue tracking. Install the beads MCP server to use `/bd-swarm`, `/bd-work`, `/plan-backlog`, and other orchestration commands.
 
 **Quick setup:** Plugins auto-load when you run Claude Code in the TabzChrome directory.
 

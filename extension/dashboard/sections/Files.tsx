@@ -71,6 +71,7 @@ export default function FilesSection({ onQuickOpen }: FilesSectionProps = {}) {
     setActiveFilter,
     filteredFiles,
     filteredFilesLoading,
+    filterShowHidden,
     loadFilteredFiles,
     toggleFavorite,
     isFavorite,
@@ -110,9 +111,9 @@ export default function FilesSection({ onQuickOpen }: FilesSectionProps = {}) {
   // Load filtered files when filter changes
   useEffect(() => {
     if (activeFilter !== 'all' && globalWorkingDir) {
-      loadFilteredFiles(activeFilter, globalWorkingDir)
+      loadFilteredFiles(activeFilter, globalWorkingDir, filterShowHidden)
     }
-  }, [activeFilter, globalWorkingDir, loadFilteredFiles])
+  }, [activeFilter, globalWorkingDir, filterShowHidden, loadFilteredFiles])
 
   // Load file picker defaults from storage
   useEffect(() => {
@@ -462,7 +463,7 @@ export default function FilesSection({ onQuickOpen }: FilesSectionProps = {}) {
               loading={filteredFilesLoading}
               onFileSelect={openFile}
               onQuickOpen={onQuickOpen}
-              onRefresh={() => loadFilteredFiles(activeFilter, globalWorkingDir)}
+              onRefresh={() => loadFilteredFiles(activeFilter, globalWorkingDir, filterShowHidden)}
             />
           )}
         </div>

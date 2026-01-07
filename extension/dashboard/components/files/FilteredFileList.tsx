@@ -15,6 +15,8 @@ import {
   Star,
   Search,
   Minimize2,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 // Animated icons
 import { RefreshCwIcon, ExpandIcon } from '../../../components/icons'
@@ -346,7 +348,7 @@ function TreeSection({
 export function FilteredFileList({ filter, filteredFiles, loading, onFileSelect, onQuickOpen, onRefresh }: FilteredFileListProps) {
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const { toggleFavorite, isFavorite, openFile, pinFile } = useFilesContext()
+  const { toggleFavorite, isFavorite, openFile, pinFile, filterShowHidden, setFilterShowHidden } = useFilesContext()
 
   // Expand/collapse all triggers (increment to trigger effect in children)
   const [expandAllTrigger, setExpandAllTrigger] = useState(0)
@@ -624,6 +626,17 @@ export function FilteredFileList({ filter, filteredFiles, loading, onFileSelect,
               <RefreshCwIcon size={16} />
             </button>
           )}
+          <button
+            onClick={() => {
+              setFilterShowHidden(!filterShowHidden)
+              // Trigger refresh after state update
+              if (onRefresh) setTimeout(onRefresh, 0)
+            }}
+            className={`p-1.5 hover:bg-muted rounded ${filterShowHidden ? 'text-yellow-400' : ''}`}
+            title={filterShowHidden ? 'Hide hidden files' : 'Show hidden files'}
+          >
+            {filterShowHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+          </button>
           <button onClick={handleExpandAll} className="p-1.5 hover:bg-muted rounded" title="Expand all">
             <ExpandIcon size={16} />
           </button>

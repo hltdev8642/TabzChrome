@@ -127,7 +127,9 @@ interface FilesContextType {
   setActiveFilter: (filter: FileFilter) => void
   filteredFiles: FilteredFilesResponse | null
   filteredFilesLoading: boolean
-  loadFilteredFiles: (filter: FileFilter, workingDir: string) => Promise<void>
+  filterShowHidden: boolean
+  setFilterShowHidden: (show: boolean) => void
+  loadFilteredFiles: (filter: FileFilter, workingDir: string, showHidden?: boolean) => Promise<void>
 
   // Favorites
   favorites: Set<string>
@@ -202,6 +204,7 @@ export function FilesProvider({ children }: { children: ReactNode }) {
   })
   const [filteredFiles, setFilteredFiles] = useState<FilteredFilesResponse | null>(null)
   const [filteredFilesLoading, setFilteredFilesLoading] = useState(false)
+  const [filterShowHidden, setFilterShowHidden] = useState(false)
 
   // Plugins state
   const [pluginsData, setPluginsData] = useState<PluginsData | null>(null)
@@ -246,7 +249,7 @@ export function FilesProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('tabz-files-filter', filter)
   }
 
-  const loadFilteredFiles = useCallback(async (filter: FileFilter, workingDir: string) => {
+  const loadFilteredFiles = useCallback(async (filter: FileFilter, workingDir: string, showHidden: boolean = false) => {
     if (filter === 'all') {
       setFilteredFiles(null)
       return
@@ -273,7 +276,7 @@ export function FilesProvider({ children }: { children: ReactNode }) {
               `${API_BASE}/api/files/tree?${new URLSearchParams({
                 path,
                 depth: '3', // Show 3 levels deep for favorited folders
-                showHidden: 'false',
+                showHidden: showHidden.toString(),
               })}`
             )
 
@@ -349,6 +352,7 @@ export function FilesProvider({ children }: { children: ReactNode }) {
         `${API_BASE}/api/files/list?${new URLSearchParams({
           filter,
           workingDir,
+          showHidden: showHidden.toString(),
         })}`
       )
       if (!response.ok) {
@@ -659,6 +663,8 @@ export function FilesProvider({ children }: { children: ReactNode }) {
       setActiveFilter,
       filteredFiles,
       filteredFilesLoading,
+      filterShowHidden,
+      setFilterShowHidden,
       loadFilteredFiles,
       favorites,
       toggleFavorite,

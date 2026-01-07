@@ -17,26 +17,77 @@ For older versions (1.2.x, 1.1.x, 1.0.x, and pre-public 2.x), see [CHANGELOG-arc
 
 ## [Unreleased]
 
-### Added
+---
 
-- **GitHub FAB Fork+Clone** - Clone button on GitHub repo pages now uses smart fork workflow:
-  - Others' repos: forks first, clones fork, sets origin=fork and upstream=original
-  - Already forked repos: clones existing fork with proper remotes
-  - Own repos: falls back to regular git clone
-  - Enables proper open source contribution workflow out of the box
+## [1.4.2] - 2026-01-07
+
+### Added
 
 - **bd-swarm --auto Mode** - Fully autonomous backlog completion for conductor:
   - Runs waves until `bd ready` returns empty
   - Auto context check at 75% with /wipe recovery
+  - Visual QA step via tabz-manager subagent
   - State persistence for resume after context recovery
-  - Skips docs/push per-wave, batches at final completion
+
+- **TabzArtist Skill** - AI asset generation via browser automation:
+  - DALL-E 3 image generation and download
+  - Sora video generation workflows
+  - Spawnable as conductor agent during bd-swarm
+
+- **Codex MCP Integration** - OpenAI Codex for code analysis:
+  - Read-only code review mode (cheaper alternative to Claude)
+  - Planning and summarization support
+  - `/codex-review` command for cost-effective reviews
+
+- **GitHub FAB Fork+Clone** - Smart fork workflow on clone:
+  - Others' repos: forks first, clones fork, sets proper remotes
+  - Already forked repos: clones existing fork
+  - Own repos: falls back to regular git clone
+
+- **Files Section Improvements**:
+  - `.claude-plugin` directories now visible by default (like `.claude`, `.prompts`)
+  - `marketplace.json` files get amber plugin color/icon
+  - Show hidden toggle on Claude/Plugins/Favorites filtered views
+
+### Changed
+
+- **Conductor Plugin Refactored** - Skills now follow skill-creator best practices:
+  - Progressive disclosure with reference files
+  - Reusable bash scripts extracted to `scripts/` directory
+  - SKILL.md files under 200 lines with cross-references
+
+- **worker-done Decomposed** - Into atomic commands for better composability:
+  - `/verify-build` - Build verification only
+  - `/run-tests` - Test execution only
+  - `/code-review` - Code review only
+  - `/commit-changes` - Git commit only
+  - `/close-issue` - Issue closure only
+
+- **Code Review Enhanced** - Official Anthropic patterns:
+  - Confidence-based filtering (auto-fix ≥95%)
+  - Quality over quantity approach
+  - Silent failure hunting mode
+
+- **bd-work Autonomous Mode** - Code exploration before implementation:
+  - Uses Explore agent to understand codebase
+  - Adapts behavior for interactive vs autonomous modes
+
+- **Conductor Uses Subagents** - Fewer terminals, better parallelization:
+  - Code review via subagent instead of separate terminal
+  - Monitor workers via background agents
 
 ### Fixed
 
-- **Sidebar Profile Cards Display** - Fixed styling issues with quick start cards:
-  - Updated styling to match newtab ProfilesGrid
-  - Fixed text truncation with proper overflow handling
-  - Added keyboard shortcut badges (1-6) matching newtab style
+- **TTS Reliability** - Improved with retry logic and empty text handling
+- **WebSocket Notification Spam** - Prevented backend offline notification flooding
+- **Plugin Prefix Naming** - Skill hints in chat bar now use plugin prefixes
+- **Default Profile Fallback** - Use configured default profile in terminal chains
+- **Context Alerts** - Bypass debounce for critical alerts, configurable debounce for others
+
+### Docs
+
+- **README Updated** - Added beads MCP requirement for conductor plugin
+- **MCP Tools Count** - Updated to 70+ (was 44)
 
 ---
 

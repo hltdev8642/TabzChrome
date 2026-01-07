@@ -146,6 +146,11 @@ export function getClaudeFileType(name: string, path: string): ClaudeFileType {
     return 'plugin'
   }
 
+  // marketplace.json in .claude-plugin directories
+  if (name === 'marketplace.json') {
+    return 'plugin'
+  }
+
   // === AI-relevant file types (always visible) ===
 
   // Note: Obsidian vault detection is handled by backend via isObsidianVault flag
