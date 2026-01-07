@@ -5,18 +5,42 @@
 
 # 🚨 SESSION CLOSE PROTOCOL 🚨
 
-**CRITICAL**: Before saying "done" or "complete", you MUST run this checklist:
+**CRITICAL**: Before saying "done" or "complete", run the conductor completion pipeline:
 
-```
-[ ] 1. git status              (check what changed)
-[ ] 2. git add <files>         (stage code changes)
-[ ] 3. bd sync                 (commit beads changes)
-[ ] 4. git commit -m "..."     (commit code)
-[ ] 5. bd sync                 (commit any new beads changes)
-[ ] 6. git push                (push to remote)
+## Standard Completion (with code review)
+```bash
+/conductor:verify-build      # Build and check for errors
+/conductor:run-tests         # Run tests if available
+/conductor:code-review       # Opus review with auto-fix (high confidence)
+/conductor:commit-changes    # Stage + commit with conventional format
+/conductor:close-issue <id>  # Close the beads issue
+bd sync && git push          # Push everything
 ```
 
-**NEVER skip this.** Work is not done until pushed.
+## Quick Completion (skip review, for trivial changes)
+```bash
+/conductor:verify-build
+/conductor:commit-changes
+/conductor:close-issue <id>
+bd sync && git push
+```
+
+## Cost-Effective Review (use Codex instead of Opus)
+```bash
+/conductor:verify-build
+/conductor:codex-review      # Cheaper read-only review via OpenAI Codex
+/conductor:commit-changes
+/conductor:close-issue <id>
+bd sync && git push
+```
+
+## Full Pipeline (for significant features)
+```bash
+/conductor:worker-done <id>  # Runs: verify → test → review → commit → close
+bd sync && git push
+```
+
+**NEVER skip verification.** Work is not done until pushed.
 
 ## Core Rules
 - Track strategic work in beads (multi-session, dependencies, discovered work)
@@ -67,8 +91,13 @@ bd update <id> --status=in_progress  # Claim it
 
 **Completing work:**
 ```bash
-bd close <id1> <id2> ...    # Close all completed issues at once
-bd sync                     # Push to remote
+# Use conductor pipeline (recommended)
+/conductor:worker-done <id>  # Full pipeline: build → test → review → commit → close
+
+# Or run steps individually for more control
+/conductor:verify-build && /conductor:code-review && /conductor:commit-changes
+/conductor:close-issue <id>
+bd sync && git push
 ```
 
 **Creating dependent work:**
