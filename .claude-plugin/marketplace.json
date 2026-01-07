@@ -39,12 +39,6 @@
       "category": "hooks"
     },
     {
-      "name": "tabz-guide",
-      "description": "Progressive disclosure guide to TabzChrome - profiles, MCP tools, API, debugging, integration",
-      "source": "./plugins/tabz-guide",
-      "category": "skills"
-    },
-    {
       "name": "page-reader",
       "description": "Summarize and read aloud current browser page content via TTS",
       "source": "./plugins/page-reader",
