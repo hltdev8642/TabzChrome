@@ -121,6 +121,25 @@ Structure worker prompts in clear sections:
 Run `/conductor:worker-done ISSUE-ID`
 ```
 
+### Skill Hints: Weave, Don't List
+
+Skill hints should be woven into task instructions naturally, not listed in a separate "available tools" section:
+
+```markdown
+# Bad - sidebar listing (workers may ignore)
+## Skills Available
+Use `/plugin-dev:skill-reviewer` to analyze quality.
+
+# Good - woven into task flow (workers will invoke)
+Use the plugin-dev:skill-reviewer skill to analyze each plugin's
+structure before making changes.
+```
+
+This matters because:
+- Sidebar lists read as optional reference, not actions
+- Skills use progressive disclosure - listing may trigger auto-loading
+- Natural phrasing makes it part of the work, not metadata
+
 ### Anti-Patterns
 
 | Anti-Pattern | Why It Fails | Better Approach |
@@ -129,6 +148,7 @@ Run `/conductor:worker-done ISSUE-ID`
 | "Don't do X" | Negative framing is harder to follow | "Do Y instead" (positive framing) |
 | Vague adjectives ("good", "proper") | Undefined, varies by interpretation | Specific criteria or examples |
 | Including full file contents | Bloats prompt, may be stale | File paths as text, read on-demand |
+| Listing skills in sidebar section | Reads as optional, may auto-load | Weave into task instructions |
 
 ## Related Files
 
