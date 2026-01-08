@@ -186,3 +186,9 @@ All assets downloaded and ready for use.
 For detailed prompt guidance, see:
 - `.prompts/images/dalle3.prompty` - DALL-E prompt structure and examples
 - `.prompts/video/sora.prompty` - Sora prompt structure and examples
+
+## Related Skills
+
+For non-AI-generated visuals, consider:
+- `/canvas-design` - Programmatic poster/document design (canvas-based PDFs, posters)
+- `/mermaidjs-v11` - Diagrams, flowcharts, architecture visualizations
