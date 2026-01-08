@@ -54,6 +54,82 @@ The conductor matches issue keywords to skill hints for worker prompts:
 5. Cleanup    → Session killed, worktree merged/removed
 ```
 
+## Worker Prompt Guidelines
+
+These guidelines ensure workers receive clear, effective prompts that Claude 4.x models follow precisely.
+
+### Be Explicit
+
+Claude 4.x models follow instructions **precisely**. If you say "suggest changes," Claude will suggest—not implement.
+
+| Less Effective | More Effective |
+|----------------|----------------|
+| Fix the bug | Fix the null reference error on line 45 of Terminal.tsx when resize callback fires before terminal is initialized |
+| Improve the UI | Add loading state to the button with disabled styling and spinner icon |
+| Can you suggest improvements? | Make these improvements to the code |
+
+### Add Context (Explain WHY)
+
+Claude generalizes from explanations. Provide motivation:
+
+```text
+# Less effective
+Add error handling
+
+# More effective
+Add try-catch around the WebSocket connection to gracefully handle
+backend disconnections. Currently users see a cryptic error.
+```
+
+### Reference Existing Patterns
+
+Point workers to existing code for consistency:
+
+```text
+Follow the same error handling pattern used in useTerminalSessions.ts
+(lines 45-60) for consistency.
+```
+
+### Soften Aggressive Language
+
+Avoid ALL CAPS and aggressive phrasing—Claude 4.x may overtrigger:
+
+| Avoid | Use Instead |
+|-------|-------------|
+| CRITICAL: You MUST use this tool | Use this tool when... |
+| NEVER do X | Prefer Y over X because... |
+| ALWAYS do Y | Default to Y for... |
+
+### Prompt Structure
+
+Structure worker prompts in clear sections:
+
+```markdown
+## Task: ISSUE-ID - Title
+[What to do - explicit, actionable]
+
+## Context
+[Background, WHY this matters]
+
+## Key Files
+[File paths as text, not @file - workers read on-demand]
+
+## Guidance
+[Skill hints and pattern references]
+
+## When Done
+Run `/conductor:worker-done ISSUE-ID`
+```
+
+### Anti-Patterns
+
+| Anti-Pattern | Why It Fails | Better Approach |
+|--------------|--------------|-----------------|
+| ALL CAPS INSTRUCTIONS | Reads as shouting, may overtrigger | Normal case with clear structure |
+| "Don't do X" | Negative framing is harder to follow | "Do Y instead" (positive framing) |
+| Vague adjectives ("good", "proper") | Undefined, varies by interpretation | Specific criteria or examples |
+| Including full file contents | Bloats prompt, may be stale | File paths as text, read on-demand |
+
 ## Related Files
 
 | File | Purpose |

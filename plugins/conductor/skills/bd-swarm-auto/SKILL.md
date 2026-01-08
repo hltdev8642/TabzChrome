@@ -83,20 +83,31 @@ NEXT=$(bd ready --json | jq 'length')
 ```markdown
 ## Task: ISSUE-ID - Title
 
-Description from beads...
+[Explicit, actionable description - what exactly to do, not just "fix the bug"]
+
+## Context
+[WHY this matters - helps Claude generalize and make good decisions]
 
 ## Key Files
-- path/to/file.ts
+- path/to/file.ts (focus on lines X-Y)
 - path/to/other.ts
 
 ## Guidance
 Use the `/skill-name` skill for [specific aspect].
+Follow the pattern in [existing-file.ts] for consistency.
 
 ## When Done
 Run `/conductor:worker-done ISSUE-ID`
 ```
 
-**Note:** List file paths as text, not `@file` references. Workers will read files as needed - avoids loading large files into context upfront.
+**Prompt Guidelines:**
+- **Be explicit** - "Fix null reference on line 45" not "fix the bug"
+- **Add context** - Explain WHY to help Claude make good decisions
+- **Reference patterns** - Point to existing code for consistency
+- **Avoid ALL CAPS** - Claude 4.x overtriggers on aggressive language
+- **File paths as text** - Workers read files on-demand, avoids bloat
+
+**Full guidelines:** `references/worker-architecture.md`
 
 ---
 

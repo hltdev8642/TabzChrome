@@ -94,8 +94,7 @@ Workers receive skill hints in prompts based on issue keywords:
 | yyy | bug | P2 | /xterm-js |
 
 **Next steps:**
-1. Draft prompts: `/conductor:draft-prompts xxx yyy`
-2. Spawn workers: `/conductor:bd-swarm xxx yyy`
+Spawn workers: `/conductor:bd-swarm xxx yyy`
 ```
 
 ---
