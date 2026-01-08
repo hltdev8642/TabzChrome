@@ -129,24 +129,41 @@ done
 rmdir "$WORKTREE_DIR" 2>/dev/null || true
 
 echo ""
-echo "=== Step 4: Audio Notification ==="
+echo "=== Step 4: Summary ==="
+
+# Get script directory for wave-summary.sh
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [ "$MERGE_FAILED" -gt 0 ]; then
-  AUDIO_TEXT="Wave complete. $MERGE_COUNT branches merged. $MERGE_FAILED had conflicts."
+  echo ""
+  echo "⚠️  $MERGE_FAILED branches had conflicts (resolve manually before summary)"
+  echo ""
+  AUDIO_TEXT="Wave cleanup complete. $MERGE_COUNT branches merged. $MERGE_FAILED had conflicts."
+  curl -s -X POST http://localhost:8129/api/audio/speak \
+    -H "Content-Type: application/json" \
+    -d "$(jq -n --arg text "$AUDIO_TEXT" '{text: $text, voice: "en-GB-SoniaNeural", rate: "+15%", priority: "high"}')" \
+    > /dev/null 2>&1 &
+  echo "Next steps:"
+  echo "  1. Resolve merge conflicts"
+  echo "  2. Re-run: completion-pipeline.sh \"$ISSUES\""
 else
-  AUDIO_TEXT="Wave complete. $MERGE_COUNT branches merged successfully."
+  # Use comprehensive summary script if available
+  if [ -x "$SCRIPT_DIR/wave-summary.sh" ]; then
+    "$SCRIPT_DIR/wave-summary.sh" "$ISSUES" --audio
+  else
+    # Fallback to basic summary
+    AUDIO_TEXT="Wave complete. $MERGE_COUNT branches merged successfully."
+    curl -s -X POST http://localhost:8129/api/audio/speak \
+      -H "Content-Type: application/json" \
+      -d "$(jq -n --arg text "$AUDIO_TEXT" '{text: $text, voice: "en-GB-SoniaNeural", rate: "+15%", priority: "high"}')" \
+      > /dev/null 2>&1 &
+    echo ""
+    echo "=== Pipeline Complete ==="
+    echo "Merged: $MERGE_COUNT branches"
+  fi
 fi
-curl -s -X POST http://localhost:8129/api/audio/speak \
-  -H "Content-Type: application/json" \
-  -d "$(jq -n --arg text "$AUDIO_TEXT" '{text: $text, voice: "en-GB-SoniaNeural", rate: "+15%", priority: "high"}')" \
-  > /dev/null 2>&1 &
 
-echo ""
-echo "=== Pipeline Complete ==="
-echo "Merged: $MERGE_COUNT branches"
-if [ "$MERGE_FAILED" -gt 0 ]; then
-  echo "Failed: $MERGE_FAILED branches (resolve conflicts manually)"
-fi
 echo ""
 echo "Next steps:"
 echo "  bd sync && git push origin main"
+echo "  # Or run full closeout: /conductor:wave-done $ISSUES"

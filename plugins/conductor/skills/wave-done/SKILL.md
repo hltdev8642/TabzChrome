@@ -243,26 +243,20 @@ echo "Pushed to main"
 
 ---
 
-### Step 9: Audio Summary
+### Step 9: Comprehensive Summary
 
 ```bash
 echo "=== Step 9: Summary ==="
 
-AUDIO_TEXT="Wave complete. $MERGE_COUNT branches merged and pushed to main."
-curl -s -X POST http://localhost:8129/api/audio/speak \
-  -H "Content-Type: application/json" \
-  -d "$(jq -n --arg text "$AUDIO_TEXT" '{text: $text, voice: "en-GB-SoniaNeural", rate: "+15%", priority: "high"}')" \
-  > /dev/null 2>&1 &
-
-echo ""
-echo "=== Wave Complete ==="
-echo "Merged: $MERGE_COUNT branches"
-echo "Issues closed: $(echo $ISSUES | wc -w)"
-echo ""
-echo "Next steps:"
-echo "  bd ready          # Check for next wave"
-echo "  bd stats          # View project health"
+# Run the comprehensive summary script
+${CLAUDE_PLUGIN_ROOT}/scripts/wave-summary.sh "$ISSUES" --audio
 ```
+
+This generates a detailed summary including:
+- All issues completed with titles and status
+- Wave statistics (branches merged, files changed, lines added/removed)
+- Next steps (remaining ready issues or backlog status)
+- Audio notification of completion
 
 ---
 
