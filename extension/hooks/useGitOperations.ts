@@ -17,9 +17,10 @@ async function getAuthToken(): Promise<string> {
   throw new Error('Failed to get auth token')
 }
 
-async function gitOperation(repo: string, operation: string, body?: object): Promise<OperationResult> {
+async function gitOperation(repo: string, operation: string, body?: object, projectsDir?: string): Promise<OperationResult> {
   const token = await getAuthToken()
-  const res = await fetch(`http://localhost:8129/api/git/repos/${encodeURIComponent(repo)}/${operation}`, {
+  const dirParam = projectsDir ? `?dir=${encodeURIComponent(projectsDir)}` : ''
+  const res = await fetch(`http://localhost:8129/api/git/repos/${encodeURIComponent(repo)}/${operation}${dirParam}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -30,7 +31,7 @@ async function gitOperation(repo: string, operation: string, body?: object): Pro
   return res.json()
 }
 
-export function useGitOperations(repoName: string) {
+export function useGitOperations(repoName: string, projectsDir?: string) {
   const [loading, setLoading] = useState<string | null>(null) // which operation is loading
   const [error, setError] = useState<string | null>(null)
 
@@ -38,7 +39,7 @@ export function useGitOperations(repoName: string) {
     setLoading('stage')
     setError(null)
     try {
-      const result = await gitOperation(repoName, 'stage', { files })
+      const result = await gitOperation(repoName, 'stage', { files }, projectsDir)
       if (!result.success) throw new Error(result.error)
       return result
     } catch (err) {
@@ -47,13 +48,13 @@ export function useGitOperations(repoName: string) {
     } finally {
       setLoading(null)
     }
-  }, [repoName])
+  }, [repoName, projectsDir])
 
   const unstageFiles = useCallback(async (files: string[]) => {
     setLoading('unstage')
     setError(null)
     try {
-      const result = await gitOperation(repoName, 'unstage', { files })
+      const result = await gitOperation(repoName, 'unstage', { files }, projectsDir)
       if (!result.success) throw new Error(result.error)
       return result
     } catch (err) {
@@ -62,13 +63,13 @@ export function useGitOperations(repoName: string) {
     } finally {
       setLoading(null)
     }
-  }, [repoName])
+  }, [repoName, projectsDir])
 
   const commit = useCallback(async (message: string) => {
     setLoading('commit')
     setError(null)
     try {
-      const result = await gitOperation(repoName, 'commit', { message })
+      const result = await gitOperation(repoName, 'commit', { message }, projectsDir)
       if (!result.success) throw new Error(result.error)
       return result
     } catch (err) {
@@ -77,13 +78,13 @@ export function useGitOperations(repoName: string) {
     } finally {
       setLoading(null)
     }
-  }, [repoName])
+  }, [repoName, projectsDir])
 
   const push = useCallback(async () => {
     setLoading('push')
     setError(null)
     try {
-      const result = await gitOperation(repoName, 'push', {})
+      const result = await gitOperation(repoName, 'push', {}, projectsDir)
       if (!result.success) throw new Error(result.error)
       return result
     } catch (err) {
@@ -92,13 +93,13 @@ export function useGitOperations(repoName: string) {
     } finally {
       setLoading(null)
     }
-  }, [repoName])
+  }, [repoName, projectsDir])
 
   const pull = useCallback(async () => {
     setLoading('pull')
     setError(null)
     try {
-      const result = await gitOperation(repoName, 'pull', {})
+      const result = await gitOperation(repoName, 'pull', {}, projectsDir)
       if (!result.success) throw new Error(result.error)
       return result
     } catch (err) {
@@ -107,13 +108,13 @@ export function useGitOperations(repoName: string) {
     } finally {
       setLoading(null)
     }
-  }, [repoName])
+  }, [repoName, projectsDir])
 
   const fetch = useCallback(async () => {
     setLoading('fetch')
     setError(null)
     try {
-      const result = await gitOperation(repoName, 'fetch', {})
+      const result = await gitOperation(repoName, 'fetch', {}, projectsDir)
       if (!result.success) throw new Error(result.error)
       return result
     } catch (err) {
@@ -122,7 +123,7 @@ export function useGitOperations(repoName: string) {
     } finally {
       setLoading(null)
     }
-  }, [repoName])
+  }, [repoName, projectsDir])
 
   // Spawn terminal with lazygit
   const openLazygit = useCallback(async (repoPath: string) => {
@@ -189,8 +190,9 @@ export function useGitOperations(repoName: string) {
     setError(null)
     try {
       const token = await getAuthToken()
+      const dirParam = projectsDir ? `?dir=${encodeURIComponent(projectsDir)}` : ''
       const res = await window.fetch(
-        `http://localhost:8129/api/git/repos/${encodeURIComponent(repoName)}/generate-message`,
+        `http://localhost:8129/api/git/repos/${encodeURIComponent(repoName)}/generate-message${dirParam}`,
         {
           method: 'POST',
           headers: {
@@ -210,14 +212,14 @@ export function useGitOperations(repoName: string) {
     } finally {
       setLoading(null)
     }
-  }, [repoName])
+  }, [repoName, projectsDir])
 
   // Discard changes to files
   const discardFiles = useCallback(async (files: string[]) => {
     setLoading('discard')
     setError(null)
     try {
-      const result = await gitOperation(repoName, 'discard', { files })
+      const result = await gitOperation(repoName, 'discard', { files }, projectsDir)
       if (!result.success) throw new Error(result.error)
       return result
     } catch (err) {
@@ -226,14 +228,14 @@ export function useGitOperations(repoName: string) {
     } finally {
       setLoading(null)
     }
-  }, [repoName])
+  }, [repoName, projectsDir])
 
   // Discard all unstaged changes
   const discardAll = useCallback(async () => {
     setLoading('discard')
     setError(null)
     try {
-      const result = await gitOperation(repoName, 'discard', { all: true })
+      const result = await gitOperation(repoName, 'discard', { all: true }, projectsDir)
       if (!result.success) throw new Error(result.error)
       return result
     } catch (err) {
@@ -242,14 +244,14 @@ export function useGitOperations(repoName: string) {
     } finally {
       setLoading(null)
     }
-  }, [repoName])
+  }, [repoName, projectsDir])
 
   // Stash changes
   const stash = useCallback(async (message?: string, includeUntracked?: boolean) => {
     setLoading('stash')
     setError(null)
     try {
-      const result = await gitOperation(repoName, 'stash', { message, includeUntracked })
+      const result = await gitOperation(repoName, 'stash', { message, includeUntracked }, projectsDir)
       if (!result.success) throw new Error(result.error)
       return result
     } catch (err) {
@@ -258,14 +260,14 @@ export function useGitOperations(repoName: string) {
     } finally {
       setLoading(null)
     }
-  }, [repoName])
+  }, [repoName, projectsDir])
 
   // Pop stash
   const stashPop = useCallback(async (ref?: string) => {
     setLoading('stash-pop')
     setError(null)
     try {
-      const result = await gitOperation(repoName, 'stash-pop', { ref })
+      const result = await gitOperation(repoName, 'stash-pop', { ref }, projectsDir)
       if (!result.success) throw new Error(result.error)
       return result
     } catch (err) {
@@ -274,14 +276,14 @@ export function useGitOperations(repoName: string) {
     } finally {
       setLoading(null)
     }
-  }, [repoName])
+  }, [repoName, projectsDir])
 
   // Apply stash (without removing)
   const stashApply = useCallback(async (ref?: string) => {
     setLoading('stash-apply')
     setError(null)
     try {
-      const result = await gitOperation(repoName, 'stash-apply', { ref })
+      const result = await gitOperation(repoName, 'stash-apply', { ref }, projectsDir)
       if (!result.success) throw new Error(result.error)
       return result
     } catch (err) {
@@ -290,14 +292,14 @@ export function useGitOperations(repoName: string) {
     } finally {
       setLoading(null)
     }
-  }, [repoName])
+  }, [repoName, projectsDir])
 
   // Drop stash
   const stashDrop = useCallback(async (ref?: string) => {
     setLoading('stash-drop')
     setError(null)
     try {
-      const result = await gitOperation(repoName, 'stash-drop', { ref })
+      const result = await gitOperation(repoName, 'stash-drop', { ref }, projectsDir)
       if (!result.success) throw new Error(result.error)
       return result
     } catch (err) {
@@ -306,7 +308,7 @@ export function useGitOperations(repoName: string) {
     } finally {
       setLoading(null)
     }
-  }, [repoName])
+  }, [repoName, projectsDir])
 
   return {
     loading,

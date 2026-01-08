@@ -24,9 +24,10 @@ async function getAuthToken(): Promise<string> {
   throw new Error('Failed to get auth token')
 }
 
-async function gitOperation(repo: string, operation: string): Promise<{ success: boolean; error?: string }> {
+async function gitOperation(repo: string, operation: string, projectsDir?: string): Promise<{ success: boolean; error?: string }> {
   const token = await getAuthToken()
-  const res = await fetch(`http://localhost:8129/api/git/repos/${encodeURIComponent(repo)}/${operation}`, {
+  const dirParam = projectsDir ? `?dir=${encodeURIComponent(projectsDir)}` : ''
+  const res = await fetch(`http://localhost:8129/api/git/repos/${encodeURIComponent(repo)}/${operation}${dirParam}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -44,7 +45,8 @@ export function useBulkGitOperations() {
   const runBulkOperation = useCallback(async (
     repoNames: string[],
     operation: BulkOperationType,
-    onComplete?: () => void
+    onComplete?: () => void,
+    projectsDir?: string
   ) => {
     if (repoNames.length === 0) return
 
@@ -69,7 +71,7 @@ export function useBulkGitOperations() {
       const chunkResults = await Promise.all(
         chunk.map(async (repoName) => {
           try {
-            const result = await gitOperation(repoName, operation)
+            const result = await gitOperation(repoName, operation, projectsDir)
             return {
               repoName,
               success: result.success,

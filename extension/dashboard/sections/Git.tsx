@@ -138,16 +138,16 @@ export default function GitSection() {
 
   // Bulk operation handlers
   const handleBulkFetch = useCallback(() => {
-    runBulkOperation(Array.from(selectedRepos), 'fetch', refetch)
-  }, [selectedRepos, runBulkOperation, refetch])
+    runBulkOperation(Array.from(selectedRepos), 'fetch', refetch, data?.projectsDir)
+  }, [selectedRepos, runBulkOperation, refetch, data?.projectsDir])
 
   const handleBulkPull = useCallback(() => {
-    runBulkOperation(Array.from(selectedRepos), 'pull', refetch)
-  }, [selectedRepos, runBulkOperation, refetch])
+    runBulkOperation(Array.from(selectedRepos), 'pull', refetch, data?.projectsDir)
+  }, [selectedRepos, runBulkOperation, refetch, data?.projectsDir])
 
   const handleBulkPush = useCallback(() => {
-    runBulkOperation(Array.from(selectedRepos), 'push', refetch)
-  }, [selectedRepos, runBulkOperation, refetch])
+    runBulkOperation(Array.from(selectedRepos), 'push', refetch, data?.projectsDir)
+  }, [selectedRepos, runBulkOperation, refetch, data?.projectsDir])
 
   // Auto-expand if only one repo is showing (on initial load)
   const hasAutoExpanded = useRef(false)

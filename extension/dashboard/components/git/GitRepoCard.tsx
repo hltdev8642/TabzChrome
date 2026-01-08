@@ -71,7 +71,7 @@ export function GitRepoCard({ repo, projectsDir, isActive, onToggleActive, isExp
     stash,
     stashPop,
     clearError
-  } = useGitOperations(repo.name)
+  } = useGitOperations(repo.name, projectsDir)
 
   // Handlers that refresh after operation
   const handleStage = async (files: string[]) => {
