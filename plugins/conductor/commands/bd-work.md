@@ -58,17 +58,18 @@ Task(
 
 ## Phase 3: Match Skills
 
-Based on issue keywords, identify skill hints to weave into prompt:
+Based on issue keywords, use **natural trigger language** (like pmux does) to activate skills:
 
-| Keywords | Skill Trigger Words |
-|----------|---------------------|
-| UI, component, modal | "following UI styling best practices" |
-| terminal, xterm, pty | "following xterm.js patterns" |
-| backend, API, server | "following backend development patterns" |
-| plugin, skill, agent | "following plugin development best practices" |
-| MCP, tools, browser | "using MCP browser automation" |
+| Keywords | Natural Trigger Language |
+|----------|-------------------------|
+| UI, component, modal, dashboard | "Use the ui-styling skill for shadcn/ui components and Tailwind." |
+| terminal, xterm, pty, resize | "Use the xterm-js skill for terminal rendering and resize handling." |
+| backend, API, server, websocket | "Use the backend-development skill for API and server patterns." |
+| plugin, skill, agent, hook | "Use the plugin-dev skills for plugin/skill structure." |
+| MCP, tools, browser, screenshot | "Use MCP browser automation tools via tabz_* for testing." |
+| auth, login, oauth | "Use the better-auth skill for authentication patterns." |
 
-**Remember:** Weave skill hints naturally into task instructions, don't list them.
+**Key insight from pmux**: "Use the X skill for Y" triggers skill activation better than "follow X patterns".
 
 ---
 
@@ -77,8 +78,7 @@ Based on issue keywords, identify skill hints to weave into prompt:
 Follow the template from `references/worker-architecture.md`:
 
 ```markdown
-## Task: ISSUE-ID - Title
-[Explicit, actionable description of what to do]
+Fix beads issue ISSUE-ID: "Title"
 
 ## Context
 [WHY this matters, background from issue description]
@@ -89,13 +89,19 @@ Follow the template from `references/worker-architecture.md`:
 - path/to/pattern/to/follow.ts
 
 ## Approach
-[How to tackle this, with skill hints woven in naturally]
-Example: "Update the component following UI styling best practices,
-ensuring accessibility and responsive design."
+[Skill triggers woven naturally using "Use the X skill for Y" pattern]
+Example: "Use the ui-styling skill for shadcn/ui components. Reference
+existing patterns in extension/components/ for consistency."
+
+After implementation, verify the build passes and test the changes work as expected.
 
 ## When Done
-Run `/conductor:worker-done ISSUE-ID`
+Run: /conductor:worker-done ISSUE-ID
+
+This command will: build, run code review, commit changes, and close the issue.
 ```
+
+**The `/conductor:worker-done` instruction is mandatory** - without it, workers don't know how to signal completion.
 
 ---
 

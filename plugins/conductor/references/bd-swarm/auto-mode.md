@@ -89,13 +89,90 @@ select_plugin_dir() {
 }
 ```
 
-## Prompt Header for Autonomous Workers
+## Enhanced Prompt for Autonomous Workers
 
-```markdown
-**MODE: AUTONOMOUS**
+Auto mode workers receive enhanced prompts with skill hints and context automatically applied.
 
-Do NOT use AskUserQuestion. Make reasonable defaults for any ambiguity.
-If truly blocked, close issue with reason 'needs-clarification' and create follow-up.
+### Skill Matching Function
+
+```bash
+# Returns natural trigger language that activates skills (like pmux does)
+match_skills() {
+  local TITLE_DESC=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+  local SKILLS=""
+
+  # Natural trigger language - "use the X skill for Y"
+  [[ "$TITLE_DESC" =~ (terminal|xterm|pty|resize) ]] && SKILLS+="Use the xterm-js skill for terminal rendering and resize handling. "
+  [[ "$TITLE_DESC" =~ (ui|component|modal|dashboard|styling) ]] && SKILLS+="Use the ui-styling skill for shadcn/ui components and Tailwind CSS. "
+  [[ "$TITLE_DESC" =~ (backend|api|server|database|websocket) ]] && SKILLS+="Use the backend-development skill for API and server patterns. "
+  [[ "$TITLE_DESC" =~ (browser|screenshot|click|mcp|tabz) ]] && SKILLS+="Use MCP browser automation tools via tabz_* for testing. "
+  [[ "$TITLE_DESC" =~ (auth|login|oauth) ]] && SKILLS+="Use the better-auth skill for authentication patterns. "
+  [[ "$TITLE_DESC" =~ (plugin|skill|agent|hook|command) ]] && SKILLS+="Use the plugin-dev skills for plugin/skill structure. "
+
+  echo "${SKILLS}"
+}
+```
+
+### Auto-Enhanced Prompt Template
+
+```bash
+build_auto_prompt() {
+  local ISSUE_ID="$1"
+  local TITLE="$2"
+  local DESCRIPTION="$3"
+  local SKILL_HINTS=$(match_skills "$TITLE $DESCRIPTION")
+
+  cat <<EOF
+**MODE: AUTONOMOUS** - Do not ask questions. Make reasonable defaults.
+
+Fix beads issue ${ISSUE_ID}: "${TITLE}"
+
+## Context
+${DESCRIPTION}
+
+## Approach
+${SKILL_HINTS}Reference existing patterns in the codebase for consistency.
+
+After implementation, verify the build passes and test the changes work as expected.
+
+## Autonomous Requirements
+- Do not use AskUserQuestion - make reasonable decisions
+- If truly blocked, close issue with reason 'needs-clarification'
+
+## When Done
+Run: /conductor:worker-done ${ISSUE_ID}
+
+This command will: build, run code review, commit changes, and close the issue.
+EOF
+}
+```
+
+### Spawn with Auto-Enhanced Prompt
+
+```bash
+spawn_auto_worker() {
+  local ISSUE_ID="$1"
+  local WORKTREE="$2"
+  local SESSION="worker-${ISSUE_ID}"
+
+  # Get issue details
+  local ISSUE_JSON=$(bd show "$ISSUE_ID" --json 2>/dev/null)
+  local TITLE=$(echo "$ISSUE_JSON" | jq -r '.title')
+  local DESCRIPTION=$(echo "$ISSUE_JSON" | jq -r '.description // ""')
+
+  # Build enhanced prompt
+  local PROMPT=$(build_auto_prompt "$ISSUE_ID" "$TITLE" "$DESCRIPTION")
+
+  # Spawn and send
+  tmux new-session -d -s "$SESSION" -c "$WORKTREE"
+  tmux send-keys -t "$SESSION" "claude --dangerously-skip-permissions" C-m
+  sleep 6
+
+  printf '%s' "$PROMPT" | tmux load-buffer -
+  tmux paste-buffer -t "$SESSION"
+  sleep 0.3
+  tmux send-keys -t "$SESSION" C-m
+}
 ```
 
 ## Context Recovery

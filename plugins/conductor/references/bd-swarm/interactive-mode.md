@@ -92,19 +92,58 @@ tmux send-keys -t "$SESSION" "claude --plugin-dir $PLUGIN_DIR --dangerously-skip
 echo "$SESSION" >> /tmp/swarm-sessions.txt
 ```
 
-## 5. Send Skill-Aware Prompts
+## 5. Craft Enhanced Prompts
 
-**Security**: Validate session names and use heredoc for prompts with dynamic content.
+Before sending, craft a detailed prompt following the structure in `references/worker-architecture.md`.
+
+### Step 5a: Match Skills to Issue
+
+Match issue keywords to skill triggers (weave into guidance, don't list):
+
+```bash
+# Returns natural trigger language that activates skills (like pmux does)
+match_skills() {
+  local TITLE_DESC=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+  local SKILLS=""
+
+  # Natural trigger language - "use the X skill for Y"
+  [[ "$TITLE_DESC" =~ (terminal|xterm|pty|resize) ]] && SKILLS+="Use the xterm-js skill for terminal rendering and resize handling. "
+  [[ "$TITLE_DESC" =~ (ui|component|modal|dashboard|styling) ]] && SKILLS+="Use the ui-styling skill for shadcn/ui components and Tailwind CSS. "
+  [[ "$TITLE_DESC" =~ (backend|api|server|database|websocket) ]] && SKILLS+="Use the backend-development skill for API and server patterns. "
+  [[ "$TITLE_DESC" =~ (browser|screenshot|click|mcp|tabz) ]] && SKILLS+="Use MCP browser automation tools via tabz_* for testing. "
+  [[ "$TITLE_DESC" =~ (auth|login|oauth) ]] && SKILLS+="Use the better-auth skill for authentication patterns. "
+  [[ "$TITLE_DESC" =~ (plugin|skill|agent|hook|command) ]] && SKILLS+="Use the plugin-dev skills for plugin/skill structure. "
+  [[ "$TITLE_DESC" =~ (prompt|worker|swarm|conductor) ]] && SKILLS+="Follow conductor orchestration patterns. "
+
+  echo "${SKILLS}"
+}
+
+SKILL_HINTS=$(match_skills "$TITLE $DESCRIPTION")
+```
+
+### Step 5b: Get Key Files (Optional)
+
+For complex issues, identify starting points:
+
+```bash
+# Quick grep for relevant files (optional, workers can explore)
+KEY_FILES=$(grep -rl "$KEYWORD" --include="*.ts" --include="*.tsx" . 2>/dev/null | head -5)
+```
+
+### Step 5c: Build Enhanced Prompt
 
 ```bash
 SESSION="ctt-claude-xxx"
 ISSUE_ID="TabzChrome-abc"
 TITLE="Fix something"
-DESCRIPTION="Details here"
+DESCRIPTION="Details from bd show"
+SKILL_HINTS="UI styling best practices, xterm-js patterns"
+KEY_FILES="extension/components/Terminal.tsx
+extension/hooks/useTerminalSessions.ts"
 
 sleep 4
 
-# Validate session name format (alphanumeric, dash, underscore only)
+# Validate session name
 if [[ ! "$SESSION" =~ ^[a-zA-Z0-9_-]+$ ]]; then
   echo "ERROR: Invalid session name format"
   exit 1
@@ -115,25 +154,44 @@ if ! tmux has-session -t "$SESSION" 2>/dev/null; then
   exit 1
 fi
 
-# Use heredoc for safe multiline prompt with variables
-# Note: Skills are pre-loaded via --plugin-dir, no need to invoke them
+# Build enhanced prompt with all context
 PROMPT=$(cat <<EOF
-## Task
-${ISSUE_ID}: ${TITLE}
+Fix beads issue ${ISSUE_ID}: "${TITLE}"
 
+## Context
 ${DESCRIPTION}
 
-## Completion
-When done: \`/conductor:worker-done ${ISSUE_ID}\`
+## Key Files
+${KEY_FILES:-"Explore as needed based on the issue description."}
+
+## Approach
+${SKILL_HINTS}Reference existing patterns in the codebase for consistency.
+
+After implementation, verify the build passes and test the changes work as expected.
+
+## When Done
+Run: /conductor:worker-done ${ISSUE_ID}
+
+This command will: build, run code review, commit changes, and close the issue.
 EOF
 )
 
-# Send prompt safely using printf to handle special characters
+# Send prompt safely
 printf '%s' "$PROMPT" | tmux load-buffer -
 tmux paste-buffer -t "$SESSION"
 sleep 0.3
 tmux send-keys -t "$SESSION" C-m
 ```
+
+### Prompt Template Summary
+
+| Section | Purpose |
+|---------|---------|
+| Title line | Issue ID + title for clarity |
+| Context | Description + WHY this matters |
+| Key Files | Starting points (optional) |
+| Guidance | Skill hints woven naturally |
+| When Done | **Mandatory** `/conductor:worker-done` instruction |
 
 ## 6. Start Monitor & Poll
 

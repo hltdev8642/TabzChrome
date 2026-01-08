@@ -192,17 +192,50 @@ Workers share the same plugin context as the conductor, so all skills are availa
 
 ---
 
-## Skill Matching
+## Skill Matching & Prompt Enhancement
 
-Match issue keywords to skill hints for worker prompts:
+**Key insight:** Workers need detailed prompts with skill hints woven naturally into guidance, not listed as sidebars.
 
-| Keywords | Skill Hint | Purpose |
-|----------|-----------|---------|
-| terminal, xterm, pty, resize | `/xterm-js:xterm-js` | Terminal rendering, resize, WebSocket |
-| UI, component, modal, dashboard | `/ui-styling:ui-styling` | shadcn/ui, Tailwind patterns |
-| backend, api, server, websocket | `/backend-development:backend-development` | Node.js, APIs, databases |
-| browser, screenshot, click, mcp | `/conductor:tabz-mcp` | Browser automation tools |
-| auth, login, oauth | `/better-auth:better-auth` | Authentication patterns |
+Match issue keywords to skill triggers. Use **natural trigger language** (like pmux does) to activate skills:
+
+| Keywords | Natural Trigger Language | Purpose |
+|----------|-------------------------|---------|
+| terminal, xterm, pty, resize | "Use the xterm-js skill for terminal rendering..." | Terminal, resize, WebSocket |
+| UI, component, modal, dashboard | "Use the ui-styling skill for shadcn/ui..." | UI components, Tailwind |
+| backend, api, server, websocket | "Use the backend-development skill for..." | APIs, servers, databases |
+| browser, screenshot, click, mcp | "Use MCP browser automation tools via tabz_*..." | Browser automation |
+| auth, login, oauth | "Use the better-auth skill for..." | Authentication patterns |
+| plugin, skill, agent, hook | "Use the plugin-dev skills for..." | Plugin/skill development |
+
+**Key insight from pmux**: "Use the X skill for Y" triggers skill activation better than "follow X patterns".
+
+### Enhanced Prompt Structure
+
+All worker prompts must follow this structure (see `references/worker-architecture.md`):
+
+```markdown
+Fix beads issue ISSUE-ID: "Title"
+
+## Context
+[Description from bd show - explains WHY]
+
+## Key Files
+[Relevant file paths, or "Explore as needed"]
+
+## Approach
+[Skill triggers woven naturally: "Use the ui-styling skill for shadcn/ui..."]
+
+After implementation, verify the build passes and test the changes work as expected.
+
+## When Done
+Run: /conductor:worker-done ISSUE-ID
+
+This command will: build, run code review, commit changes, and close the issue.
+```
+
+**The `/conductor:worker-done` instruction is mandatory** - without it, workers don't know how to signal completion and the conductor can't clean up.
+
+See `references/bd-swarm/interactive-mode.md` for the `match_skills()` function that auto-generates skill hints.
 
 ---
 
