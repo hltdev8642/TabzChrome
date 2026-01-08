@@ -28,10 +28,13 @@ Vanilla Claude Session (you)
 ### Spawn Worker
 ```bash
 TOKEN=$(cat /tmp/tabz-auth-token)
-curl -s -X POST http://localhost:8129/api/spawn \
+RESPONSE=$(curl -s -X POST http://localhost:8129/api/spawn \
   -H "Content-Type: application/json" \
   -H "X-Auth-Token: $TOKEN" \
-  -d '{"name": "Claude: Task", "workingDir": "/path", "command": "claude --dangerously-skip-permissions"}'
+  -d '{"name": "worker-ISSUE", "workingDir": "/path", "command": "claude --dangerously-skip-permissions"}')
+
+# Response: {"success":true,"terminal":{"id":"ctt-worker-ISSUE-xxx","ptyInfo":{"tmuxSession":"ctt-worker-ISSUE-xxx"}}}
+SESSION=$(echo "$RESPONSE" | jq -r '.terminal.ptyInfo.tmuxSession')
 ```
 
 ### Send Prompt

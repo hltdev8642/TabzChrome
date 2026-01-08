@@ -12,15 +12,20 @@ cat /tmp/tabz-auth-token
 
 ```bash
 TOKEN=$(cat /tmp/tabz-auth-token)
-curl -s -X POST http://localhost:8129/api/spawn \
+RESPONSE=$(curl -s -X POST http://localhost:8129/api/spawn \
   -H "Content-Type: application/json" \
   -H "X-Auth-Token: $TOKEN" \
-  -d '{"name": "Claude: Task Name", "workingDir": "/path/to/project", "command": "claude --dangerously-skip-permissions"}'
+  -d '{"name": "worker-ISSUE", "workingDir": "/path/to/project", "command": "claude --dangerously-skip-permissions"}')
+
+# Response format:
+# {"success":true,"terminal":{"id":"ctt-worker-ISSUE-xxx","ptyInfo":{"tmuxSession":"ctt-worker-ISSUE-xxx"}}}
+SESSION=$(echo "$RESPONSE" | jq -r '.terminal.ptyInfo.tmuxSession')
+echo "Spawned session: $SESSION"
 ```
 
-- Always include "Claude:" in name (enables status tracking)
-- Always use `--dangerously-skip-permissions`
-- Response includes `terminal.sessionName` - save for sending prompts
+- Terminals get `ctt-{name}-{uuid}` prefix automatically
+- Always use `--dangerously-skip-permissions` for workers
+- Save the session name for sending prompts and cleanup
 
 ## Send Prompt to Worker
 

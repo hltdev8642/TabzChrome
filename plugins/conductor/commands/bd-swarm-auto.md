@@ -27,7 +27,18 @@ description: "Fully autonomous backlog completion. Runs waves until `bd ready` i
    ```
 
 3. **Spawn workers (max 4):**
-   Use TabzChrome API or direct tmux. See `/conductor:bd-swarm` for spawn details.
+   ```bash
+   TOKEN=$(cat /tmp/tabz-auth-token)
+   for ISSUE_ID in $(bd ready --json | jq -r '.[].id' | head -4); do
+     WORKTREE="${WORKTREE_DIR}/${ISSUE_ID}"
+     RESPONSE=$(curl -s -X POST http://localhost:8129/api/spawn \
+       -H "Content-Type: application/json" \
+       -H "X-Auth-Token: $TOKEN" \
+       -d "{\"name\": \"worker-$ISSUE_ID\", \"workingDir\": \"$WORKTREE\", \"command\": \"claude --dangerously-skip-permissions\"}")
+     SESSION=$(echo "$RESPONSE" | jq -r '.terminal.ptyInfo.tmuxSession')
+     echo "Spawned $ISSUE_ID -> $SESSION"
+   done
+   ```
 
 4. **Send skill-aware prompts:**
    For each worker, send a prompt with:

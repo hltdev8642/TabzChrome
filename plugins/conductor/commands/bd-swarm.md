@@ -22,13 +22,51 @@ Spawn multiple Claude workers to tackle beads issues in parallel, with skill-awa
 1. Get ready issues      ->  bd ready
 2. Create worktrees      ->  scripts/setup-worktree.sh (parallel)
 3. Wait for deps         ->  All worktrees ready before workers spawn
-4. Spawn workers         ->  TabzChrome API or direct tmux
+4. Spawn workers         ->  TabzChrome /api/spawn (see below)
 5. Send prompts          ->  tmux send-keys with skill hints
 6. Monitor               ->  scripts/monitor-workers.sh
 7. Complete              ->  scripts/completion-pipeline.sh
 ```
 
-**Key insight:** TabzChrome spawn creates tmux sessions. Cleanup is via `tmux kill-session`.
+**Key insight:** TabzChrome spawn creates tmux sessions with `ctt-*` prefix. Cleanup is via `tmux kill-session`.
+
+---
+
+## Spawn Workers - Copy-Paste Example
+
+**IMPORTANT**: Use this exact pattern to spawn workers via TabzChrome:
+
+```bash
+# 1. Get auth token
+TOKEN=$(cat /tmp/tabz-auth-token)
+
+# 2. Spawn worker (creates ctt-worker-ISSUE-xxxx tmux session)
+RESPONSE=$(curl -s -X POST http://localhost:8129/api/spawn \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: $TOKEN" \
+  -d "{\"name\": \"worker-$ISSUE_ID\", \"workingDir\": \"$WORKTREE_PATH\", \"command\": \"claude --dangerously-skip-permissions\"}")
+
+# 3. Extract session name from response
+SESSION_NAME=$(echo "$RESPONSE" | jq -r '.terminal.ptyInfo.tmuxSession // .terminal.id')
+echo "Spawned: $SESSION_NAME"
+
+# 4. Wait for Claude to initialize, then send prompt
+sleep 4
+tmux send-keys -t "$SESSION_NAME" -l 'Your prompt here...'
+sleep 0.3
+tmux send-keys -t "$SESSION_NAME" C-m
+```
+
+**Alternative - Direct tmux** (simpler, no TabzChrome UI):
+```bash
+SESSION="worker-$ISSUE_ID"
+tmux new-session -d -s "$SESSION" -c "$WORKTREE_PATH"
+tmux send-keys -t "$SESSION" "claude --dangerously-skip-permissions" C-m
+sleep 4
+tmux send-keys -t "$SESSION" -l 'Your prompt here...'
+sleep 0.3
+tmux send-keys -t "$SESSION" C-m
+```
 
 ---
 
