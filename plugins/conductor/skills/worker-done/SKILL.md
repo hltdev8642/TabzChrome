@@ -28,6 +28,9 @@ Orchestrates the full task completion pipeline by composing atomic commands.
 | 5 | `/conductor:create-followups` | No - log and continue | No |
 | 6 | `/conductor:update-docs` | No - log and continue | No |
 | 7 | `/conductor:close-issue` | Yes - report result | No |
+| 8 | Notify conductor | No - best effort | No |
+
+**CRITICAL: You MUST execute Step 8 after Step 7.** Workers that skip Step 8 force the conductor to poll, wasting resources.
 
 **DOCS_ONLY mode:** When all changes are markdown files (`.md`, `.markdown`), steps 1-3 are skipped. This saves time and API calls for documentation-only changes.
 
@@ -106,6 +109,31 @@ echo "=== Step 7: Close Issue ==="
 ```
 Run `/conductor:close-issue <issue-id>`. Reports final status.
 
+### Step 8: Notify Conductor (REQUIRED)
+
+**DO NOT SKIP THIS STEP.** After closing the issue, notify the conductor:
+
+```bash
+echo "=== Step 8: Notify Conductor ==="
+
+# Get conductor session from environment (set when worker was spawned)
+CONDUCTOR_SESSION="${CONDUCTOR_SESSION:-}"
+
+if [ -n "$CONDUCTOR_SESSION" ]; then
+  # Build completion summary
+  SUMMARY="WORKER COMPLETE: $ISSUE_ID - $(git log -1 --format='%s' 2>/dev/null || echo 'committed')"
+
+  # Send notification to conductor via tmux
+  tmux send-keys -t "$CONDUCTOR_SESSION" -l "$SUMMARY"
+  sleep 0.3
+  tmux send-keys -t "$CONDUCTOR_SESSION" C-m
+
+  echo "Notified conductor: $CONDUCTOR_SESSION"
+else
+  echo "No CONDUCTOR_SESSION set - conductor will detect completion via polling"
+fi
+```
+
 ---
 
 ## Atomic Commands Reference
@@ -154,6 +182,7 @@ Compose commands for custom workflows:
 | Follow-ups | Non-blocking - log and continue |
 | Docs | Non-blocking - log and continue |
 | Close | Show beads errors |
+| Notify | Non-blocking - log and continue |
 
 ---
 
@@ -164,39 +193,6 @@ If the pipeline stopped:
 2. Run `/conductor:worker-done` again
 
 The pipeline is idempotent - safe to re-run.
-
----
-
-## Step 8: Notify Conductor
-
-After closing the issue, notify the conductor so it can cleanup immediately (no polling needed):
-
-```bash
-echo "=== Step 8: Notify Conductor ==="
-
-# Get conductor session from environment (set when worker was spawned)
-CONDUCTOR_SESSION="${CONDUCTOR_SESSION:-}"
-
-if [ -n "$CONDUCTOR_SESSION" ]; then
-  # Build completion summary
-  SUMMARY="WORKER COMPLETE: $ISSUE_ID - $(git log -1 --format='%s' 2>/dev/null || echo 'committed')"
-
-  # Send notification to conductor via tmux
-  tmux send-keys -t "$CONDUCTOR_SESSION" -l "$SUMMARY"
-  sleep 0.3
-  tmux send-keys -t "$CONDUCTOR_SESSION" C-m
-
-  echo "Notified conductor: $CONDUCTOR_SESSION"
-else
-  echo "No CONDUCTOR_SESSION set - conductor will detect completion via polling"
-fi
-```
-
-**How it works:**
-1. When bd-swarm/bd-work spawns workers, it sets `CONDUCTOR_SESSION` env var
-2. Worker completes and sends summary to conductor
-3. Conductor receives message and can immediately cleanup that worker
-4. No polling needed - push-based notification
 
 ---
 

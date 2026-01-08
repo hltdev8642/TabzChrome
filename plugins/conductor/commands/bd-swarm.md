@@ -37,14 +37,15 @@ Spawn multiple Claude workers to tackle beads issues in parallel, with skill-awa
 **IMPORTANT**: Use this exact pattern to spawn workers via TabzChrome:
 
 ```bash
-# 1. Get auth token
+# 1. Get auth token and conductor session
 TOKEN=$(cat /tmp/tabz-auth-token)
+CONDUCTOR_SESSION=$(tmux display-message -p '#{session_name}')
 
-# 2. Spawn worker (creates ctt-worker-ISSUE-xxxx tmux session)
+# 2. Spawn worker with CONDUCTOR_SESSION env var (creates ctt-worker-ISSUE-xxxx tmux session)
 RESPONSE=$(curl -s -X POST http://localhost:8129/api/spawn \
   -H "Content-Type: application/json" \
   -H "X-Auth-Token: $TOKEN" \
-  -d "{\"name\": \"worker-$ISSUE_ID\", \"workingDir\": \"$WORKTREE_PATH\", \"command\": \"claude --dangerously-skip-permissions\"}")
+  -d "{\"name\": \"worker-$ISSUE_ID\", \"workingDir\": \"$WORKTREE_PATH\", \"command\": \"CONDUCTOR_SESSION='$CONDUCTOR_SESSION' claude --dangerously-skip-permissions\"}")
 
 # 3. Extract session name from response
 SESSION_NAME=$(echo "$RESPONSE" | jq -r '.terminal.ptyInfo.tmuxSession // .terminal.id')
@@ -60,8 +61,9 @@ tmux send-keys -t "$SESSION_NAME" C-m
 **Alternative - Direct tmux** (simpler, no TabzChrome UI):
 ```bash
 SESSION="worker-$ISSUE_ID"
+CONDUCTOR_SESSION=$(tmux display-message -p '#{session_name}')
 tmux new-session -d -s "$SESSION" -c "$WORKTREE_PATH"
-tmux send-keys -t "$SESSION" "claude --dangerously-skip-permissions" C-m
+tmux send-keys -t "$SESSION" "CONDUCTOR_SESSION='$CONDUCTOR_SESSION' claude --dangerously-skip-permissions" C-m
 sleep 4
 tmux send-keys -t "$SESSION" -l 'Your prompt here...'
 sleep 0.3

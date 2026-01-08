@@ -26,6 +26,7 @@ Runs these commands in sequence:
 5. `/conductor:create-followups` - Create follow-up issues
 6. `/conductor:update-docs` - Update documentation
 7. `/conductor:close-issue` - Close beads issue
+8. **Notify conductor** - Send completion message to conductor session (REQUIRED)
 
 ## Atomic Commands
 
