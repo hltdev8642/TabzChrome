@@ -6,7 +6,7 @@ Monitor workers directly via tmuxplexer in a background window.
 
 ```bash
 # Spawn tmuxplexer --watcher as background window (window 2)
-plugins/conductor/scripts/monitor-workers.sh --spawn
+${CLAUDE_PLUGIN_ROOT}/scripts/monitor-workers.sh --spawn
 ```
 
 The monitor shows all AI sessions with:
@@ -18,15 +18,15 @@ The monitor shows all AI sessions with:
 
 ```bash
 # Get parsed worker statuses
-plugins/conductor/scripts/monitor-workers.sh --status
+${CLAUDE_PLUGIN_ROOT}/scripts/monitor-workers.sh --status
 # Output: ctt-worker-abc|tool_use|45
 
 # Get summary
-plugins/conductor/scripts/monitor-workers.sh --summary
+${CLAUDE_PLUGIN_ROOT}/scripts/monitor-workers.sh --summary
 # Output: WORKERS:3 WORKING:2 IDLE:0 AWAITING:1 STALE:0
 
 # Check specific issue
-plugins/conductor/scripts/monitor-workers.sh --check-issue TabzChrome-abc
+${CLAUDE_PLUGIN_ROOT}/scripts/monitor-workers.sh --check-issue TabzChrome-abc
 # Output: CLOSED or OPEN
 ```
 

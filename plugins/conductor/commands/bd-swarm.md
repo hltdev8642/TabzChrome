@@ -38,10 +38,10 @@ See: `references/bd-swarm/monitoring.md`
 
 ```bash
 # Spawn tmuxplexer as background monitor
-plugins/conductor/scripts/monitor-workers.sh --spawn
+${CLAUDE_PLUGIN_ROOT}/scripts/monitor-workers.sh --spawn
 
 # Poll status
-plugins/conductor/scripts/monitor-workers.sh --summary
+${CLAUDE_PLUGIN_ROOT}/scripts/monitor-workers.sh --summary
 # Output: WORKERS:3 WORKING:2 IDLE:0 AWAITING:1 STALE:0
 ```
 
@@ -63,7 +63,7 @@ plugins/conductor/scripts/monitor-workers.sh --summary
 3. Create worktrees in parallel:
    ```bash
    for ISSUE in $ISSUES; do
-     plugins/conductor/scripts/setup-worktree.sh "$ISSUE" &
+     ${CLAUDE_PLUGIN_ROOT}/scripts/setup-worktree.sh "$ISSUE" &
    done
    wait
    ```
@@ -97,7 +97,7 @@ Fully autonomous backlog completion. Runs waves until `bd ready` is empty.
 
 ```bash
 # Run after all workers done
-plugins/conductor/scripts/completion-pipeline.sh "$ISSUES"
+${CLAUDE_PLUGIN_ROOT}/scripts/completion-pipeline.sh "$ISSUES"
 ```
 
 Order: **Kill sessions -> Merge branches -> Remove worktrees -> Sync**

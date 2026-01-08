@@ -19,7 +19,7 @@ while true; do
   # PHASE 1: Initialize ALL worktrees in parallel (deps included)
   for ISSUE in $READY; do
     [[ "$ISSUE" =~ ^[a-zA-Z0-9_-]+$ ]] || { echo "Skipping invalid: $ISSUE" >&2; continue; }
-    plugins/conductor/scripts/setup-worktree.sh "$ISSUE" &
+    ${CLAUDE_PLUGIN_ROOT}/scripts/setup-worktree.sh "$ISSUE" &
   done
   wait  # Block until all worktrees ready with deps
   echo "All worktrees initialized for wave $WAVE"
@@ -36,7 +36,7 @@ while true; do
   monitor_wave "$READY"
 
   # Merge wave results
-  plugins/conductor/scripts/completion-pipeline.sh "$READY"
+  ${CLAUDE_PLUGIN_ROOT}/scripts/completion-pipeline.sh "$READY"
 
   # Audio announcement for wave completion
   ISSUE_COUNT=$(echo "$READY" | wc -w)

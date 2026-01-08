@@ -6,7 +6,7 @@ Clean up in this order: **Sessions -> Worktrees -> Branches -> Sync**
 
 ```bash
 # Run the script with issue IDs
-plugins/conductor/scripts/completion-pipeline.sh "TabzChrome-abc TabzChrome-def"
+${CLAUDE_PLUGIN_ROOT}/scripts/completion-pipeline.sh "TabzChrome-abc TabzChrome-def"
 ```
 
 ## Manual Steps

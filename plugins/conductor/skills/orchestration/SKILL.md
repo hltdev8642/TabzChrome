@@ -45,8 +45,8 @@ tmux send-keys -t "$SESSION" C-m
 
 ### Monitor Workers
 ```bash
-plugins/conductor/scripts/monitor-workers.sh --spawn   # Start monitor
-plugins/conductor/scripts/monitor-workers.sh --summary # Poll status
+${CLAUDE_PLUGIN_ROOT}/scripts/monitor-workers.sh --spawn   # Start monitor
+${CLAUDE_PLUGIN_ROOT}/scripts/monitor-workers.sh --summary # Poll status
 ```
 
 ### Kill Session
@@ -127,8 +127,8 @@ curl -s -X POST ... -d '{"name": "Claude: Frontend"}'
 curl -s -X POST ... -d '{"name": "Claude: Backend"}'
 
 # Monitor
-plugins/conductor/scripts/monitor-workers.sh --spawn
-plugins/conductor/scripts/monitor-workers.sh --summary
+${CLAUDE_PLUGIN_ROOT}/scripts/monitor-workers.sh --spawn
+${CLAUDE_PLUGIN_ROOT}/scripts/monitor-workers.sh --summary
 ```
 
 ### Beads Issue Swarm

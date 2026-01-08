@@ -20,11 +20,11 @@ Create all worktrees and install dependencies in parallel, then wait for complet
 
 ```bash
 # Run the worktree setup script
-plugins/conductor/scripts/setup-worktree.sh "$ISSUE_ID"
+${CLAUDE_PLUGIN_ROOT}/scripts/setup-worktree.sh "$ISSUE_ID"
 
 # Or run all in parallel:
 for ISSUE in TabzChrome-abc TabzChrome-def TabzChrome-ghi; do
-  plugins/conductor/scripts/setup-worktree.sh "$ISSUE" &
+  ${CLAUDE_PLUGIN_ROOT}/scripts/setup-worktree.sh "$ISSUE" &
 done
 wait
 echo "All worktrees initialized with dependencies"
@@ -139,11 +139,11 @@ tmux send-keys -t "$SESSION" C-m
 
 ```bash
 # Spawn background monitor
-plugins/conductor/scripts/monitor-workers.sh --spawn
+${CLAUDE_PLUGIN_ROOT}/scripts/monitor-workers.sh --spawn
 
 # Poll every 2 minutes
 while true; do
-  SUMMARY=$(plugins/conductor/scripts/monitor-workers.sh --summary)
+  SUMMARY=$(${CLAUDE_PLUGIN_ROOT}/scripts/monitor-workers.sh --summary)
   echo "[$(date)] $SUMMARY"
 
   # Check if all issues closed
@@ -171,7 +171,7 @@ done
 When all workers done, run the completion pipeline:
 
 ```bash
-plugins/conductor/scripts/completion-pipeline.sh "$ISSUES"
+${CLAUDE_PLUGIN_ROOT}/scripts/completion-pipeline.sh "$ISSUES"
 ```
 
 Or see `references/bd-swarm/completion-pipeline.md` for manual steps.

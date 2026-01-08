@@ -49,7 +49,7 @@ ISSUES_COUNT=$(echo "$READY" | wc -l)
 
 # Create worktrees (parallel)
 for ISSUE_ID in $READY; do
-  plugins/conductor/scripts/setup-worktree.sh "$ISSUE_ID" &
+  ${CLAUDE_PLUGIN_ROOT}/scripts/setup-worktree.sh "$ISSUE_ID" &
 done
 wait
 
@@ -57,7 +57,7 @@ wait
 # ... see references/wave-execution.md
 
 # Merge and cleanup
-plugins/conductor/scripts/completion-pipeline.sh "$READY"
+${CLAUDE_PLUGIN_ROOT}/scripts/completion-pipeline.sh "$READY"
 
 # Check for next wave
 NEXT=$(bd ready --json | jq 'length')
