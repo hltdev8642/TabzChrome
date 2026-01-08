@@ -105,6 +105,30 @@ Only flag if significantly impacts maintainability:
 - Deep nesting (>5 levels)
 - Unused exports
 
+#### E. Test Coverage Assessment (Always Perform)
+
+Evaluate whether changes warrant test coverage. Score each factor:
+
+| Factor | Check | Triggers `needs_tests` |
+|--------|-------|------------------------|
+| **Complexity** | Cyclomatic complexity >3, >50 lines changed, multiple branches | Yes |
+| **Risk Area** | Auth, payments, data mutations, API endpoints | Yes - required |
+| **Missing Coverage** | New functions/classes without tests in same commit | Yes |
+| **Regression Risk** | Bug fix without regression test | Yes - required |
+
+**Test Recommendation Levels:**
+
+| Level | Criteria |
+|-------|----------|
+| `required` | Risk area, bug fix, complex logic - BLOCKS without tests |
+| `recommended` | New functions, moderate complexity - flag but don't block |
+| `optional` | Simple changes, low risk - note only |
+| `skip` | Docs, config, formatting, test files - no assessment needed |
+
+**Determine `auto_writable`:**
+- `true` if: Pure functions, clear inputs/outputs, single responsibility
+- `false` if: Complex dependencies, mocks needed, integration required
+
 ## FALSE POSITIVES - Do NOT Flag
 
 These are common false positives. Skip them even if they look like issues:
@@ -149,7 +173,7 @@ Return structured JSON at the end of your response:
   "worktree": "/path/to/worktree",
   "issue": "beads-abc",
   "claude_md_checked": ["CLAUDE.md", "src/CLAUDE.md"],
-  "summary": "Reviewed 5 files. Auto-fixed 2 issues. No blockers.",
+  "summary": "Reviewed 5 files. Auto-fixed 2 issues. No blockers. Tests recommended.",
   "auto_fixed": [
     {
       "file": "src/utils/api.ts",
@@ -171,9 +195,34 @@ Return structured JSON at the end of your response:
     }
   ],
   "blockers": [],
-  "passed": true
+  "passed": true,
+  "needs_tests": true,
+  "test_assessment": {
+    "recommendation": "recommended",
+    "rationale": "New API utility with validation logic",
+    "suggested_tests": [
+      {
+        "type": "unit",
+        "target": "validateApiResponse()",
+        "cases": ["valid response", "error response", "null response"]
+      }
+    ],
+    "priority": "medium",
+    "auto_writable": true
+  }
 }
 ```
+
+### Test Assessment Fields
+
+| Field | Values | Description |
+|-------|--------|-------------|
+| `needs_tests` | true/false | Whether tests are warranted |
+| `recommendation` | required/recommended/optional/skip | How strongly tests are needed |
+| `rationale` | string | Brief explanation of why tests are/aren't needed |
+| `suggested_tests` | array | Specific test cases to write |
+| `priority` | high/medium/low | Urgency of adding tests |
+| `auto_writable` | true/false | Can tests be auto-generated |
 
 ### Severity Levels
 
@@ -190,6 +239,7 @@ Set `"passed": false` and add to `blockers` array if:
 - Data loss risk
 - Certain crash/exception path
 - Critical CLAUDE.md violation (if CLAUDE.md marks it critical)
+- Tests required (`recommendation: "required"`) but not present - add to blockers with type "missing_tests"
 
 ## Thorough Mode
 

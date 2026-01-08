@@ -141,7 +141,7 @@ All modes return JSON:
 {
   "passed": true,
   "mode": "standard",
-  "summary": "Reviewed 5 files. Auto-fixed 2 issues. No blockers.",
+  "summary": "Reviewed 5 files. Auto-fixed 2 issues. No blockers. Tests recommended.",
   "claude_md_checked": ["CLAUDE.md"],
   "auto_fixed": [
     {"file": "src/utils.ts", "line": 45, "issue": "Unused import", "confidence": 98}
@@ -149,9 +149,38 @@ All modes return JSON:
   "flagged": [
     {"severity": "important", "file": "src/api.ts", "line": 23, "issue": "Missing error handling", "confidence": 85, "rule": "CLAUDE.md requires try-catch"}
   ],
-  "blockers": []
+  "blockers": [],
+  "needs_tests": true,
+  "test_assessment": {
+    "recommendation": "recommended",
+    "rationale": "New utility function with multiple code paths",
+    "suggested_tests": [
+      {"type": "unit", "target": "formatDate()", "cases": ["valid date", "null", "invalid"]}
+    ],
+    "priority": "medium",
+    "auto_writable": true
+  }
 }
 ```
+
+### Test Assessment
+
+Every review includes a `needs_tests` assessment:
+
+| Field | Description |
+|-------|-------------|
+| `needs_tests` | true/false - whether tests are warranted |
+| `recommendation` | `required` (blocks), `recommended` (flag), `optional`, `skip` |
+| `rationale` | Why tests are/aren't needed |
+| `suggested_tests` | Specific test cases to write |
+| `priority` | high/medium/low urgency |
+| `auto_writable` | Can tests be auto-generated (pure functions, clear I/O) |
+
+**Recommendation levels:**
+- `required` - Risk area, bug fix, complex logic - **blocks pipeline**
+- `recommended` - New functions, moderate changes - flag only
+- `optional` - Simple changes - note for consideration
+- `skip` - Docs, config, formatting - no tests needed
 
 ### Blocker Conditions
 
@@ -160,6 +189,7 @@ All modes return JSON:
 - Data loss risk
 - Certain crash path
 - Critical CLAUDE.md violation
+- Tests required (`recommendation: "required"`) but not present
 
 ## Composable With
 
