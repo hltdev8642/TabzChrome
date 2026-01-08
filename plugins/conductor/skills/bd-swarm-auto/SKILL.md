@@ -54,8 +54,12 @@ wait
 # Spawn workers, send prompts, monitor
 # ... see references/wave-execution.md
 
-# Merge and cleanup
-${CLAUDE_PLUGIN_ROOT}/scripts/completion-pipeline.sh "$READY"
+# FULL CLOSEOUT: Use wave-done skill (recommended)
+/conductor:wave-done $READY
+# Runs: verify workers → kill sessions → merge → build → review → cleanup → push → summary
+
+# QUICK CLEANUP (alternative, skip review):
+# ${CLAUDE_PLUGIN_ROOT}/scripts/completion-pipeline.sh "$READY"
 
 # Check for next wave
 NEXT=$(bd ready --json | jq 'length')

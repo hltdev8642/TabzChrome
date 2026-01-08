@@ -176,14 +176,35 @@ Fully autonomous backlog completion. Runs waves until `bd ready` is empty.
 
 **See full details:** `references/bd-swarm/completion-pipeline.md`
 
+### Full Closeout (Recommended)
+
+Use the wave-done skill for comprehensive closeout with code review:
+
 ```bash
-# Run after all workers done
+# Full pipeline: verify -> merge -> build -> review -> cleanup -> push -> summary
+/conductor:wave-done $ISSUES
+```
+
+This runs all 9 steps: verify workers closed, kill sessions, merge branches, build verification, unified code review, cleanup worktrees, visual QA (if UI changes), sync & push, comprehensive summary.
+
+### Quick Cleanup (Skip Review)
+
+For trivial changes or when you want to review manually:
+
+```bash
+# Quick: kill sessions -> merge -> cleanup -> audio notification
 ${CLAUDE_PLUGIN_ROOT}/scripts/completion-pipeline.sh "$ISSUES"
 ```
 
-Order: **Kill sessions -> Merge branches -> Visual review -> Remove worktrees -> Sync**
+**When to use which:**
 
-**Visual review happens here** (at conductor level, after merge):
+| Scenario | Use |
+|----------|-----|
+| Production work, multiple workers | `/conductor:wave-done` (full) |
+| Trivial changes, single worker | `completion-pipeline.sh` (quick) |
+| Need to review manually | `completion-pipeline.sh` then manual review |
+
+**Visual review happens at conductor level** (after merge):
 - Conductor opens browser tabs for UI verification
 - No tab conflicts since workers are done
 - Full context of all merged changes
@@ -293,7 +314,8 @@ See `references/bd-swarm/interactive-mode.md` for the `match_skills()` function 
 |--------|---------|
 | `scripts/setup-worktree.sh` | Create worktree + install deps |
 | `scripts/monitor-workers.sh` | Spawn/poll tmuxplexer watcher |
-| `scripts/completion-pipeline.sh` | Kill sessions, merge, cleanup |
+| `scripts/completion-pipeline.sh` | Quick cleanup: kill sessions, merge, cleanup |
+| `scripts/wave-summary.sh` | Comprehensive wave summary with stats |
 
 ---
 

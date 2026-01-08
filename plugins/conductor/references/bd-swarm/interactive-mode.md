@@ -247,12 +247,34 @@ while true; do
 done
 ```
 
-## 7. Completion
+## 7. Completion (Closeout Workflow)
 
-When all workers done, run the completion pipeline:
+When all workers done, run the full closeout workflow:
+
+### Full Closeout (Recommended)
+
+```bash
+# Full pipeline with code review and summary
+/conductor:wave-done $ISSUES
+```
+
+This runs all 9 steps:
+1. Verify all workers completed (issues closed)
+2. Kill worker sessions
+3. Merge branches to main
+4. Build verification
+5. Unified code review
+6. Cleanup worktrees and branches
+7. Visual QA (if UI changes)
+8. Sync and push
+9. Comprehensive summary with audio notification
+
+### Quick Cleanup (Skip Review)
+
+For trivial changes:
 
 ```bash
 ${CLAUDE_PLUGIN_ROOT}/scripts/completion-pipeline.sh "$ISSUES"
 ```
 
-Or see `references/bd-swarm/completion-pipeline.md` for manual steps.
+See `references/bd-swarm/completion-pipeline.md` for script details.
