@@ -69,45 +69,37 @@ curl -s -X POST http://localhost:8129/api/spawn \
 
 Repeat for each worker (max 4). Save session names.
 
-## Step 5: Send Multi-Issue Prompts
+## Step 5: Send Skill-Aware Prompts
 
-Wait 5 seconds for Claude to initialize, then send each worker its batch:
+Wait 5 seconds for Claude to initialize, then send each worker its prompt:
 
 ```bash
 SESSION="<session-name>"
+ISSUE_ID="<issue-id>"
+TITLE="<issue-title>"
+SKILL_HINT="<matched-skill>"  # e.g., /xterm-js, /ui-styling
+
 sleep 5
 
-tmux send-keys -t "$SESSION" -l "## Multi-Issue Worker Task
+tmux send-keys -t "$SESSION" -l "## Task: ${ISSUE_ID} - ${TITLE}
 
-**MODE: AUTONOMOUS**
+$(bd show $ISSUE_ID --json | jq -r '.[0].description // "No description"')
 
-Do NOT use AskUserQuestion. Make reasonable defaults for any ambiguity.
-If truly blocked, close issue with reason 'needs-clarification' and create follow-up.
+## Key Files
+- path/to/relevant/file.ts
+- path/to/other/file.ts
 
-You are responsible for completing these issues IN PARALLEL using subagents:
+## Guidance
+Use the \`${SKILL_HINT}\` skill for guidance.
 
-<ISSUE_LIST>
-- SAAS-001: Title 1
-- SAAS-002: Title 2
-- SAAS-003: Title 3
-</ISSUE_LIST>
-
-## CRITICAL: Use Task Subagents for Parallelization
-
-For EACH issue, spawn a dedicated subagent in a SINGLE message with multiple Task tool calls.
-
-## After All Subagents Complete
-
-1. Verify all assigned issues are closed
-2. Report completion to conductor
-
-## Skills Available
-- /ui-styling:ui-styling - For UI components
-- /frontend-design:frontend-design - For polished designs"
+## When Done
+Run \`/conductor:worker-done ${ISSUE_ID}\`"
 
 sleep 0.3
 tmux send-keys -t "$SESSION" C-m
 ```
+
+**Note:** List file paths as text, not @file references. Workers read files on-demand.
 
 ## Step 6: Poll Until All Issues Closed
 

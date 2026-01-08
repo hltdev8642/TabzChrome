@@ -7,13 +7,13 @@ description: "Fully autonomous backlog completion. Runs waves until `bd ready` i
 
 **YOU are the conductor. Execute this workflow autonomously. Do NOT ask the user for input.**
 
-## Architecture: Fewer Terminals, More Subagents
+## Architecture: Parallel Terminal Workers
 
-Spawn **3-4 terminal workers max**, each handling multiple issues via internal Task subagents.
+Spawn **3-4 terminal workers max**, each handling 1-2 issues with skill-aware prompts.
 
 ```
 BAD:  10 terminals x 1 issue each    -> statusline chaos
-GOOD: 3 terminals x 3-4 subagents each -> smooth execution
+GOOD: 3-4 terminals with focused prompts -> smooth execution
 ```
 
 ---
@@ -26,7 +26,7 @@ GOOD: 3 terminals x 3-4 subagents each -> smooth execution
 | 2 | Calculate workers | Max 4, distribute issues |
 | 3 | Create worktrees | Parallel, wait for all |
 | 4 | Spawn workers | TabzChrome API |
-| 5 | Send prompts | Multi-issue with subagent instructions |
+| 5 | Send prompts | Skill-aware prompts with issue context |
 | 6 | Poll status | Every 2 min, check context |
 | 7 | Merge & cleanup | Kill sessions first |
 | 8 | Visual QA | tabz-manager for UI waves |
@@ -70,7 +70,7 @@ NEXT=$(bd ready --json | jq 'length')
 
 1. **NO USER INPUT** - Fully autonomous, no AskUserQuestion
 2. **MAX 4 TERMINALS** - Never spawn more than 4 workers
-3. **USE SUBAGENTS** - Workers use Task subagents for parallelization
+3. **SKILL-AWARE PROMPTS** - Include skill hints in worker prompts
 4. **YOU MUST POLL** - Check issue status every 2 minutes
 5. **LOOP UNTIL EMPTY** - Keep running waves until `bd ready` is empty
 6. **VISUAL QA** - Spawn tabz-manager after UI waves
@@ -81,24 +81,22 @@ NEXT=$(bd ready --json | jq 'length')
 ## Worker Prompt Template
 
 ```markdown
-## Multi-Issue Worker Task
+## Task: ISSUE-ID - Title
 
-**MODE: AUTONOMOUS**
+Description from beads...
 
-Do NOT use AskUserQuestion. Make reasonable defaults.
-If blocked, close with 'needs-clarification' and create follow-up.
+## Key Files
+- path/to/file.ts
+- path/to/other.ts
 
-Issues to complete IN PARALLEL using subagents:
-- ISSUE-001: Title
-- ISSUE-002: Title
+## Guidance
+Use the `/skill-name` skill for [specific aspect].
 
-For EACH issue, invoke the appropriate subagent:
-- UI/component work → Task(subagent_type="frontend-builder", ...)
-- Backend/API work → Task(subagent_type="backend-builder", ...)
-- Terminal/xterm work → Task(subagent_type="terminal-builder", ...)
-
-Spawn all Task subagents in ONE message for maximum parallelism.
+## When Done
+Run `/conductor:worker-done ISSUE-ID`
 ```
+
+**Note:** List file paths as text, not `@file` references. Workers will read files as needed - avoids loading large files into context upfront.
 
 ---
 
@@ -149,7 +147,7 @@ At 70% context, run `/wipe:wipe` with handoff:
 | Worker not responding | `tmux capture-pane -t SESSION -p -S -50` |
 | Merge conflicts | Resolve manually, continue |
 | Worker stuck | Nudge via tmux send-keys |
-| Subagent failed | Worker retries or marks for review |
+| Worker failed | Check logs, re-spawn or close with 'needs-review' |
 
 ---
 

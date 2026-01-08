@@ -80,7 +80,7 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/monitor-workers.sh --summary
 
 Fully autonomous backlog completion. Runs waves until `bd ready` is empty.
 
-**Workers receive:** `MODE: AUTONOMOUS` marker - no questions, reasonable defaults.
+**Conductor behavior:** No user questions, make reasonable defaults, loop until backlog empty.
 
 | Aspect | Interactive | Auto |
 |--------|-------------|------|
@@ -116,33 +116,31 @@ Each worker will:
 
 ## Worker Architecture
 
-Workers are vanilla Claude sessions that invoke subagents for specialized tasks:
+Workers are vanilla Claude sessions that receive skill-aware prompts:
 
 ```
 Worker (vanilla Claude via tmux/TabzChrome)
   ├─> Gets context from `bd show <issue-id>`
-  ├─> For specialized tasks, invokes subagents:
-  │     Task(subagent_type="frontend-builder", ...)
-  │     Task(subagent_type="backend-builder", ...)
-  │     Task(subagent_type="terminal-builder", ...)
-  └─> Each subagent has skills in frontmatter
+  ├─> Receives skill hint in prompt (e.g., "use /xterm-js skill")
+  ├─> Invokes skill directly when needed
+  └─> Completes with /conductor:worker-done
 ```
 
-**Why not `--plugin-dir`?** Workers share the same plugin context as the main session. Subagent invocation is cleaner - skills load on-demand via agent frontmatter.
+Workers share the same plugin context as the conductor, so all skills are available.
 
 ---
 
 ## Skill Matching
 
-Match issue keywords to subagents workers should invoke:
+Match issue keywords to skill hints for worker prompts:
 
-| Keywords | Subagent to Invoke | Skills Loaded |
-|----------|-------------------|---------------|
-| terminal, xterm, pty | `terminal-builder` | xterm-js |
-| UI, component, modal | `frontend-builder` | aesthetic, ui-styling, web-frameworks, frontend-design |
-| backend, api, server | `backend-builder` | backend-development, databases, better-auth |
-| browser, screenshot, click | `conductor:tabz-manager` | tabz-mcp |
-| review, audit, quality | `conductor:code-reviewer` | code-review |
+| Keywords | Skill Hint | Purpose |
+|----------|-----------|---------|
+| terminal, xterm, pty, resize | `/xterm-js` | Terminal rendering, resize, WebSocket |
+| UI, component, modal, dashboard | `/ui-styling` | shadcn/ui, Tailwind patterns |
+| backend, api, server, websocket | `/backend-development` | Node.js, APIs, databases |
+| browser, screenshot, click, mcp | `/tabz-mcp` | Browser automation tools |
+| auth, login, oauth | `/better-auth` | Authentication patterns |
 
 ---
 

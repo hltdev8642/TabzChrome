@@ -67,16 +67,16 @@ bd ready --json | jq -r '.[] | "\(.id): [\(.priority)] \(.title)"'
 
 Ask: How many parallel workers? (2-5, recommend 3)
 
-### 2. Match Issues to Subagents
+### 2. Match Issues to Skills
 
-Workers are vanilla Claude sessions that invoke subagents for specialized tasks:
+Workers receive skill hints in prompts based on issue keywords:
 
-| Area Keywords | Subagent to Invoke | Skills Loaded |
-|---------------|-------------------|---------------|
-| terminal, xterm, pty, resize | `terminal-builder` | xterm-js |
-| UI, component, modal, dashboard | `frontend-builder` | aesthetic, ui-styling, web-frameworks, frontend-design |
-| backend, api, server, endpoint | `backend-builder` | backend-development, databases, better-auth |
-| mcp, browser, screenshot | `conductor:tabz-manager` | tabz-mcp |
+| Area Keywords | Skill Hint | Purpose |
+|---------------|-----------|---------|
+| terminal, xterm, pty, resize | `/xterm-js` | Terminal rendering, WebSocket |
+| UI, component, modal, dashboard | `/ui-styling` | shadcn/ui, Tailwind patterns |
+| backend, api, server, endpoint | `/backend-development` | APIs, databases |
+| mcp, browser, screenshot | `/tabz-mcp` | Browser automation |
 
 ### 3. Build Waves
 
@@ -88,10 +88,10 @@ Workers are vanilla Claude sessions that invoke subagents for specialized tasks:
 
 ```markdown
 ## Wave 1 (Start Now)
-| Issue | Type | Priority | Subagent |
-|-------|------|----------|----------|
-| xxx | feature | P1 | frontend-builder |
-| yyy | bug | P2 | terminal-builder |
+| Issue | Type | Priority | Skill Hint |
+|-------|------|----------|------------|
+| xxx | feature | P1 | /ui-styling |
+| yyy | bug | P2 | /xterm-js |
 
 **Next steps:**
 1. Draft prompts: `/conductor:draft-prompts xxx yyy`
