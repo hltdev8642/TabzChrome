@@ -2,7 +2,6 @@
 name: prompt-drafter
 description: "Draft pmux-style prompts for beads issues. Analyzes issue context, explores codebase, and generates comprehensive prompts ready for worker sessions. Use before spawning workers."
 model: haiku
-skills: [sequential-thinking]
 tools: Bash, Read
 ---
 
@@ -196,6 +195,13 @@ Check the lessons-learned doc for known resize pitfalls.
 
 ## Completion
 When done, run: `/conductor:worker-done TabzChrome-xyz`
+```
+
+## Skills to Invoke
+
+For complex multi-step reasoning about prompt structure:
+```
+Invoke /sequential-thinking when analyzing complex issues that need step-by-step breakdown
 ```
 
 ## What NOT To Do

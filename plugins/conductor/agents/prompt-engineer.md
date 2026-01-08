@@ -2,7 +2,6 @@
 name: prompt-engineer
 description: "Write optimal prompts for Claude 4.x models using Anthropic best practices. Helps craft system prompts, XML blocks, and agentic instructions."
 model: opus
-skills: [sequential-thinking]
 ---
 
 # Prompt Engineer - Claude 4.x Prompt Optimization
@@ -283,6 +282,13 @@ When you've written or improved a prompt, present it clearly:
 
 - [Any model-specific considerations]
 - [Suggested testing approach]
+```
+
+## Skills to Invoke
+
+For complex prompt analysis requiring step-by-step reasoning:
+```
+Invoke /sequential-thinking when deeply analyzing prompt structures or debugging overtriggering issues
 ```
 
 ## References
