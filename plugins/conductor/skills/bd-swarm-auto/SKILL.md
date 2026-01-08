@@ -32,8 +32,6 @@ GOOD: 3-4 terminals with focused prompts -> smooth execution
 | 8 | Visual QA | tabz-manager for UI waves |
 | 9 | Next wave | Loop until empty |
 
-**Full details:** `references/wave-execution.md`
-
 ---
 
 ## EXECUTE NOW - Wave Loop
@@ -128,8 +126,6 @@ tabz-manager can take screenshots, click elements, and verify UI changes work co
 
 ## Context Recovery
 
-**See:** `references/context-recovery.md`
-
 At 70% context, run `/wipe:wipe` with handoff:
 
 ```
@@ -159,15 +155,6 @@ At 70% context, run `/wipe:wipe` with handoff:
 | Merge conflicts | Resolve manually, continue |
 | Worker stuck | Nudge via tmux send-keys |
 | Worker failed | Check logs, re-spawn or close with 'needs-review' |
-
----
-
-## Reference Files
-
-| File | Content |
-|------|---------|
-| `references/wave-execution.md` | Full 9-step execution details |
-| `references/context-recovery.md` | /wipe handoff procedure |
 
 ---
 
