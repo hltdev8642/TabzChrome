@@ -60,6 +60,54 @@ Discover tools by running `mcp-cli tools tabz`. Common categories include:
 | Emulation | `tabz_emulate_device`, `tabz_emulate_geolocation`, `tabz_emulate_network`, `tabz_emulate_media`, `tabz_emulate_vision` | Responsive testing, accessibility |
 | Notifications | `tabz_notification_show`, `tabz_notification_update`, `tabz_notification_clear`, `tabz_notification_list` | Desktop alerts |
 
+## Tab Organization (Required)
+
+**ALWAYS group related tabs when opening multiple tabs for a task.** This keeps the user's browser organized and makes it clear which tabs are part of your workflow.
+
+### Best Practice: Create Your Own Named Group
+
+**IMPORTANT:** When multiple Claude workers run in parallel, they MUST each create their own named group to avoid conflicts. Never rely on a shared group that other workers might also be using.
+
+```bash
+# Create a group unique to your task (use issue ID or descriptive name)
+mcp-cli call tabz/tabz_create_group '{"tabIds": [123, 456], "title": "TabzChrome-abc: Research", "color": "blue"}'
+
+# Store the groupId from the response, then add more tabs as needed
+mcp-cli call tabz/tabz_add_to_group '{"groupId": 12345, "tabIds": [789]}'
+
+# When done, ungroup to clean up
+mcp-cli call tabz/tabz_ungroup_tabs '{"tabIds": [123, 456, 789]}'
+```
+
+### Naming Convention for Worker Groups
+
+Use unique, descriptive names to avoid conflicts:
+- `"TabzChrome-abc: API Docs"` - Include issue ID
+- `"Worker-1: Research"` - Include worker identifier
+- `"Feature-X: Testing"` - Include feature name
+
+### Claude Active Group (Single Worker Only)
+
+The Claude Active group (`tabz_claude_group_add`) is a shared purple group. **Only use it when you're the ONLY Claude session running.** For parallel work, create named groups instead.
+
+```bash
+# Only for single-worker scenarios
+mcp-cli call tabz/tabz_claude_group_add '{"tabId": 1762556601}'
+```
+
+### When to Group Tabs
+
+| Scenario | Action |
+|----------|--------|
+| Parallel workers | Create named group with issue ID |
+| Single worker | Can use Claude Active group |
+| Opening 2+ related tabs | Create a named group |
+| Research task | Use "[IssueID]: Research" group |
+| Comparing pages | Use "[IssueID]: Compare" group |
+| Done with a task | Ungroup tabs |
+
+**Group colors:** grey, blue, red, yellow, green, pink, purple, cyan
+
 ## Quick Patterns
 
 **Take a screenshot:**

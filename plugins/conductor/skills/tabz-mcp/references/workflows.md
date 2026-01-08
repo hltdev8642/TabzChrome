@@ -199,6 +199,86 @@ mcp-cli call tabz/tabz_rename_tab '{"tabId": 1762556601, "name": "Staging Dashbo
 mcp-cli call tabz/tabz_list_tabs '{}'
 ```
 
+## Organize Tabs into Groups
+
+**Always group related tabs** when working with multiple pages. This keeps the browser organized.
+
+### Claim Your Own Group (Parallel Workers)
+
+**CRITICAL:** When multiple Claude workers run in parallel, each must create their own unique named group. The shared Claude Active group will cause conflicts.
+
+```bash
+# 1. List tabs to get IDs
+mcp-cli call tabz/tabz_list_tabs '{}'
+
+# 2. Create a group with YOUR unique identifier (issue ID, worker name, etc.)
+mcp-cli call tabz/tabz_create_group '{"tabIds": [1762556600, 1762556601], "title": "TabzChrome-abc: Docs", "color": "blue"}'
+
+# 3. Note the groupId from response (e.g., 67890) for adding more tabs later
+mcp-cli call tabz/tabz_add_to_group '{"groupId": 67890, "tabIds": [1762556602]}'
+
+# 4. When done, ungroup to clean up
+mcp-cli call tabz/tabz_ungroup_tabs '{"tabIds": [1762556600, 1762556601, 1762556602]}'
+```
+
+### Claude Active Group (Single Worker Only)
+
+Only use this when you're the ONLY Claude session running:
+
+```bash
+# Single worker can use shared Claude group
+mcp-cli call tabz/tabz_claude_group_add '{"tabId": 1762556600}'
+mcp-cli call tabz/tabz_claude_group_status '{}'
+mcp-cli call tabz/tabz_claude_group_remove '{"tabId": 1762556600}'
+```
+
+### Create Named Groups for Research
+
+For research tasks or comparing multiple pages:
+
+```bash
+# 1. List tabs to get IDs
+mcp-cli call tabz/tabz_list_tabs '{}'
+
+# 2. Group related tabs with descriptive name
+mcp-cli call tabz/tabz_create_group '{"tabIds": [1762556600, 1762556601, 1762556602], "title": "API Docs Research", "color": "blue"}'
+
+# 3. Add more tabs later as you find them
+mcp-cli call tabz/tabz_add_to_group '{"groupId": 12345, "tabIds": [1762556603]}'
+
+# 4. Collapse group to save space when not actively using
+mcp-cli call tabz/tabz_update_group '{"groupId": 12345, "collapsed": true}'
+
+# 5. Expand when you need it again
+mcp-cli call tabz/tabz_update_group '{"groupId": 12345, "collapsed": false}'
+```
+
+### Compare Two Implementations
+
+When comparing similar pages side by side:
+
+```bash
+# Group the comparison tabs
+mcp-cli call tabz/tabz_create_group '{"tabIds": [1762556600, 1762556601], "title": "Compare: v1 vs v2", "color": "green"}'
+
+# Screenshot both for side-by-side analysis
+mcp-cli call tabz/tabz_screenshot '{"tabId": 1762556600}'
+mcp-cli call tabz/tabz_screenshot '{"tabId": 1762556601}'
+```
+
+### Clean Up After Task
+
+When finishing a task:
+
+```bash
+# Option 1: Ungroup tabs (leaves them open)
+mcp-cli call tabz/tabz_ungroup_tabs '{"tabIds": [1762556600, 1762556601]}'
+
+# Option 2: Just remove from Claude group if using that
+mcp-cli call tabz/tabz_claude_group_status '{}'
+# Then remove each tab ID returned
+```
+
 ## Selector Tips
 
 Common CSS selector patterns:
