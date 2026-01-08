@@ -19,15 +19,35 @@ API_KEY="sk_live_skillsmp_mM56unNCsc6BaVF5w9RT0VL9Y3gvhhG6qaPc0axbTaU"
 
 ## Search Skills
 
+### Star-Based Quality Filter
+
+```
+Default filter:     stars > 10 (quality guarantee)
+Niche tech filter:  stars > 0  (include emerging skills)
+Manual override:    user picks specific skill regardless of stars
+```
+
+**When to relax the filter:**
+- Uncommon tech stacks (Bubbletea TUI, Svelte 5, etc.)
+- Very specific tooling
+- User explicitly requests niche skill
+
 ### AI Semantic Search (Recommended)
-Best for natural language queries like "skills for building REST APIs with FastAPI":
+
+Best for natural language queries. Default: filter to 10+ stars:
 
 ```bash
+# Default: Popular skills (>10 stars)
 curl -s -X GET "https://skillsmp.com/api/v1/skills/ai-search?q=YOUR+QUERY+HERE" \
+  -H "Authorization: Bearer $API_KEY" | jq '.data.data | map(select(.skill.stars > 10)) | .[:5] | .[] | {name: .skill.name, author: .skill.author, description: .skill.description, githubUrl: .skill.githubUrl, stars: .skill.stars}'
+
+# Niche tech: Include all results (no star filter)
+curl -s -X GET "https://skillsmp.com/api/v1/skills/ai-search?q=bubbletea+TUI" \
   -H "Authorization: Bearer $API_KEY" | jq '.data.data[:5] | .[] | {name: .skill.name, author: .skill.author, description: .skill.description, githubUrl: .skill.githubUrl, stars: .skill.stars}'
 ```
 
 ### Keyword Search
+
 For specific terms:
 
 ```bash

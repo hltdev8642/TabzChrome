@@ -67,22 +67,33 @@ bd ready --json | jq -r '.[] | "\(.id): [\(.priority)] \(.title)"'
 
 Ask: How many parallel workers? (2-5, recommend 3)
 
-### 2. Build Waves
+### 2. Match Issues to Worker Types
+
+| Area Keywords | Worker Agent | Skills |
+|---------------|--------------|--------|
+| terminal, xterm, pty, resize | `worker-terminal` | xterm-js |
+| UI, component, modal, dashboard | `worker-frontend` | ui-styling, web-frameworks, frontend-design |
+| backend, api, server, endpoint | `worker-backend` | backend-development, databases |
+| mcp, browser, screenshot | (use tabz-mcp skill) | tabz-mcp |
+
+### 3. Build Waves
 
 - **Wave 1:** All `bd ready` issues (no blockers)
 - **Wave 2:** Issues unblocked after Wave 1
 - **Wave 3:** Issues unblocked after Wave 2
 
-### 3. Output Format
+### 4. Output Format
 
 ```markdown
 ## Wave 1 (Start Now)
-| Issue | Type | Priority |
-|-------|------|----------|
-| xxx | feature | P1 |
-| yyy | bug | P2 |
+| Issue | Type | Priority | Worker |
+|-------|------|----------|--------|
+| xxx | feature | P1 | worker-frontend |
+| yyy | bug | P2 | worker-terminal |
 
-**Command:** `/conductor:bd-swarm xxx yyy`
+**Next steps:**
+1. Draft prompts: `/conductor:draft-prompts xxx yyy`
+2. Spawn workers: `/conductor:bd-swarm xxx yyy`
 ```
 
 ---
