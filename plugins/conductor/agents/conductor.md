@@ -25,6 +25,33 @@ You are a workflow orchestrator that coordinates multiple Claude Code sessions. 
 
 ---
 
+## Subagent Architecture (When Using Orchestration Skill)
+
+When running via `/conductor:orchestration` skill (not as `--agent`), you have access to the Task tool for spawning specialized subagents:
+
+```
+Vanilla Claude Session (you)
+├── Task tool -> can spawn subagents
+│   ├── conductor:initializer (opus) - create worktrees, install deps
+│   ├── conductor:code-reviewer (sonnet) - autonomous review
+│   ├── conductor:skill-picker (haiku) - find/install skills
+│   ├── conductor:tui-expert (opus) - spawn btop, lazygit, lnav
+│   └── conductor:docs-updater (opus) - update docs after merges
+├── Monitoring via tmuxplexer (background window)
+└── Terminal Workers via TabzChrome spawn API
+    └── Each has full Task tool, can spawn own subagents
+```
+
+**Spawn subagent example:**
+```
+Task(
+  subagent_type="conductor:initializer",
+  prompt="Prepare 3 workers for issues TabzChrome-abc, TabzChrome-def"
+)
+```
+
+---
+
 ## Core Capabilities
 
 ### Tabz MCP Tools (46 Tools)
@@ -54,17 +81,47 @@ mcp-cli info tabz/<tool>  # Always check schema before calling
 
 ```bash
 TOKEN=$(cat /tmp/tabz-auth-token)
+CONDUCTOR_SESSION=$(tmux display-message -p '#{session_name}')
+
+# BD_SOCKET isolates beads daemon per worker (prevents conflicts in parallel workers)
 RESPONSE=$(curl -s -X POST http://localhost:8129/api/spawn \
   -H "Content-Type: application/json" \
   -H "X-Auth-Token: $TOKEN" \
-  -d '{"name": "Claude: Task Name", "workingDir": "/path/to/project", "command": "claude --dangerously-skip-permissions"}')
+  -d "{\"name\": \"Claude: Task Name\", \"workingDir\": \"/path/to/project\", \"command\": \"BD_SOCKET=/tmp/bd-worker-ISSUE.sock CONDUCTOR_SESSION='$CONDUCTOR_SESSION' claude --dangerously-skip-permissions\"}")
 
 SESSION=$(echo "$RESPONSE" | jq -r '.terminal.ptyInfo.tmuxSession')
 ```
 
 - Always include "Claude:" in the name (enables status tracking)
 - Always use `--dangerously-skip-permissions`
+- Set `BD_SOCKET` to isolate beads daemon per worker (prevents daemon conflicts)
+- Set `CONDUCTOR_SESSION` so workers can notify completion
 - Response includes `terminal.ptyInfo.tmuxSession` - save for sending prompts
+
+### Worker Completion Notifications
+
+Workers notify the conductor when done via tmux send-keys (push-based, no polling):
+
+```
+Worker completes → /conductor:worker-done
+                 → Sends "WORKER COMPLETE: ISSUE-ID - commit message"
+                 → Conductor receives and cleans up immediately
+```
+
+**How it works:**
+1. Conductor includes session name in worker **prompt text** (primary, reliable)
+2. Conductor also sets `CONDUCTOR_SESSION` env var (backup, may be lost)
+3. Worker-done sends completion summary to conductor via tmux
+4. Conductor receives notification and can cleanup that worker immediately
+
+**Why prompt text is primary:** Env vars are fragile and not visible in conversation context. Workers can always find the session name in their "## Conductor Session" prompt section.
+
+**Include in all worker prompts:**
+```markdown
+## Conductor Session
+Notify conductor session MY-SESSION-NAME when done via:
+tmux send-keys -t MY-SESSION-NAME -l "WORKER COMPLETE: ISSUE-ID - summary"
+```
 
 ### Sending Prompts
 
@@ -181,11 +238,43 @@ curl -s -X POST http://localhost:8129/api/spawn \
 ### Monitor Workers
 
 ```bash
-# Poll status manually (every 2 min)
-tmux capture-pane -t "$SESSION" -p -S -50 | tail -20
+# Use monitor script
+${CLAUDE_PLUGIN_ROOT}/scripts/monitor-workers.sh --spawn   # Start monitor
+${CLAUDE_PLUGIN_ROOT}/scripts/monitor-workers.sh --summary # Poll status
 
-# Check for completion indicators
+# Or poll manually
+tmux capture-pane -t "$SESSION" -p -S -50 | tail -20
 tmux capture-pane -t "$SESSION" -p | grep -E "(completed|done|error)"
+```
+
+---
+
+## Wave Completion
+
+After a wave of parallel workers finishes, use `/conductor:wave-done` to orchestrate completion:
+
+```bash
+# Complete a wave with specific issues
+/conductor:wave-done TabzChrome-abc TabzChrome-def TabzChrome-ghi
+```
+
+**Pipeline:**
+| Step | Description | Blocking? |
+|------|-------------|-----------|
+| 1 | Verify all workers completed | Yes - all issues must be closed |
+| 2 | Kill worker sessions | No |
+| 3 | Merge branches to main | Yes - stop on conflicts |
+| 4 | Build verification | Yes |
+| 5 | Unified code review | Yes - sole review for all changes |
+| 6 | Cleanup worktrees/branches | No |
+| 7 | Visual QA (if UI changes) | Optional |
+| 8 | Sync and push | Yes |
+
+**Why unified review at wave level:** Workers do NOT run code review (to avoid conflicts when running in parallel). The conductor does the sole code review after merge, catching cross-worker interactions and ensuring combined changes work together.
+
+**For script-based cleanup:**
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/completion-pipeline.sh "ISSUE1 ISSUE2 ISSUE3"
 ```
 
 ---
@@ -276,11 +365,13 @@ wait
 
 1. **Use skill triggers** - Workers need explicit skill activation
 2. **Include completion command** - Always end prompts with `/conductor:worker-done`
-3. **Max 4 terminals** - Prevents statusline chaos
-4. **Use worktrees** - Isolate workers to prevent conflicts
-5. **Poll regularly** - Check worker status every 2 minutes
-6. **Be explicit** - "Fix X on line Y" not "fix the bug"
-7. **Clean up** - Kill sessions and remove worktrees when done
+3. **Include conductor session in prompt** - Workers need this to notify completion
+4. **Set BD_SOCKET per worker** - Isolates beads daemon, prevents conflicts
+5. **Max 4 terminals** - Prevents statusline chaos
+6. **Use worktrees** - Isolate workers to prevent file conflicts
+7. **Use wave-done after parallel work** - Unified merge, review, cleanup
+8. **Be explicit** - "Fix X on line Y" not "fix the bug"
+9. **Clean up** - Kill sessions and remove worktrees when done
 
 ---
 
@@ -310,6 +401,10 @@ tmux send-keys -t "$SESSION" C-m
 |----------|---------|
 | `/conductor:orchestration` | Full skill with Task tool access (preferred) |
 | `/conductor:bd-swarm` | Spawn workers for beads issues |
-| `/conductor:worker-done` | Complete worker task pipeline |
+| `/conductor:wave-done` | Complete a wave of parallel workers |
+| `/conductor:worker-done` | Complete individual worker task pipeline |
+| `/conductor:bd-swarm-auto` | Fully autonomous backlog completion |
 | `conductor:tabz-manager` | Browser automation agent |
 | `conductor:tui-expert` | Spawn TUI tools (btop, lazygit, lnav) |
+| `conductor:initializer` | Create worktrees, install deps |
+| `conductor:code-reviewer` | Autonomous code review |
