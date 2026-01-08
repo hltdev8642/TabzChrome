@@ -167,20 +167,54 @@ The pipeline is idempotent - safe to re-run.
 
 ---
 
-## After Completion
+## Step 8: Notify Conductor
+
+After closing the issue, notify the conductor so it can cleanup immediately (no polling needed):
+
+```bash
+echo "=== Step 8: Notify Conductor ==="
+
+# Get conductor session from environment (set when worker was spawned)
+CONDUCTOR_SESSION="${CONDUCTOR_SESSION:-}"
+
+if [ -n "$CONDUCTOR_SESSION" ]; then
+  # Build completion summary
+  SUMMARY="WORKER COMPLETE: $ISSUE_ID - $(git log -1 --format='%s' 2>/dev/null || echo 'committed')"
+
+  # Send notification to conductor via tmux
+  tmux send-keys -t "$CONDUCTOR_SESSION" -l "$SUMMARY"
+  sleep 0.3
+  tmux send-keys -t "$CONDUCTOR_SESSION" C-m
+
+  echo "Notified conductor: $CONDUCTOR_SESSION"
+else
+  echo "No CONDUCTOR_SESSION set - conductor will detect completion via polling"
+fi
+```
+
+**How it works:**
+1. When bd-swarm/bd-work spawns workers, it sets `CONDUCTOR_SESSION` env var
+2. Worker completes and sends summary to conductor
+3. Conductor receives message and can immediately cleanup that worker
+4. No polling needed - push-based notification
+
+---
+
+## After Notification
 
 When `/conductor:worker-done` succeeds:
 - Issue is closed in beads
 - Commit is on the feature branch
+- Conductor notified (if CONDUCTOR_SESSION set)
 - Worker's job is done
 
-**The conductor is responsible for:**
-- Merging the feature branch to main
-- Killing this worker's tmux session
-- Removing the worktree
-- Deleting the feature branch
+**The conductor then:**
+- Merges the feature branch to main
+- Kills this worker's tmux session
+- Removes the worktree (if bd-swarm)
+- Deletes the feature branch
 
-Workers do NOT kill their own session - the conductor monitors for closed issues and handles cleanup.
+Workers do NOT kill their own session - the conductor handles cleanup after receiving the notification.
 
 ---
 

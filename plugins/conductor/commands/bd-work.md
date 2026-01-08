@@ -101,6 +101,12 @@ Run `/conductor:worker-done ISSUE-ID`
 
 ## Phase 5: Spawn Worker
 
+First, get the conductor's tmux session name:
+```bash
+CONDUCTOR_SESSION=$(tmux display-message -p '#{session_name}')
+```
+
+Then spawn the worker with `CONDUCTOR_SESSION` env var:
 ```bash
 TOKEN=$(cat /tmp/tabz-auth-token)
 curl -s -X POST http://localhost:8129/api/spawn \
@@ -109,9 +115,11 @@ curl -s -X POST http://localhost:8129/api/spawn \
   -d '{
     "name": "<issue-id>-worker",
     "workingDir": "/home/marci/projects/TabzChrome",
-    "command": "claude --dangerously-skip-permissions"
+    "command": "CONDUCTOR_SESSION='$CONDUCTOR_SESSION' claude --dangerously-skip-permissions"
   }'
 ```
+
+**Why CONDUCTOR_SESSION?** When worker runs `/conductor:worker-done`, it sends a completion notification back to the conductor via tmux. No polling needed - push-based.
 
 **No worktree needed** - single worker, no conflict risk.
 

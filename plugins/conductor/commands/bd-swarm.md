@@ -32,14 +32,36 @@ Spawn multiple Claude workers to tackle beads issues in parallel, with skill-awa
 
 ---
 
-## Monitoring Workers
+## Worker Completion Notifications
+
+Workers notify the conductor when done via tmux send-keys (push-based, no polling):
+
+```
+Worker completes → /conductor:worker-done
+                 → Sends "WORKER COMPLETE: ISSUE-ID - commit message"
+                 → Conductor receives and cleans up immediately
+```
+
+**How it works:**
+1. Conductor sets `CONDUCTOR_SESSION` env var when spawning workers
+2. Worker-done sends completion summary to conductor via tmux
+3. Conductor receives notification and can cleanup that worker immediately
+4. No polling needed - workers push completion status
+
+**Spawn with CONDUCTOR_SESSION:**
+```bash
+CONDUCTOR_SESSION=$(tmux display-message -p '#{session_name}')
+# Include in spawn command:
+"command": "CONDUCTOR_SESSION='$CONDUCTOR_SESSION' claude --dangerously-skip-permissions"
+```
+
+---
+
+## Fallback: Polling (if notifications fail)
 
 See: `references/bd-swarm/monitoring.md`
 
 ```bash
-# Spawn tmuxplexer as background monitor
-${CLAUDE_PLUGIN_ROOT}/scripts/monitor-workers.sh --spawn
-
 # Poll status
 ${CLAUDE_PLUGIN_ROOT}/scripts/monitor-workers.sh --summary
 # Output: WORKERS:3 WORKING:2 IDLE:0 AWAITING:1 STALE:0
