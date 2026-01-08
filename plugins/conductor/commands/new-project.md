@@ -17,6 +17,43 @@ A comprehensive workflow for starting new projects with interactive brainstormin
 
 ---
 
+## Quick Start: TabzTemplates Starters
+
+For common project types, use pre-configured starters from `~/projects/TabzTemplates`:
+
+| Starter | Use Case | Command |
+|---------|----------|---------|
+| `threejs-landing` | 3D landing page with R3F + scroll animations | See below |
+| `saas-landing` | SaaS marketing page with dashboards | See below |
+
+**Using a starter:**
+```bash
+# 1. Copy starter templates to new project
+PROJECT_NAME="my-project"
+STARTER="threejs-landing"  # or "saas-landing"
+mkdir -p ~/projects/$PROJECT_NAME/.beads
+cp ~/projects/TabzTemplates/starters/$STARTER/templates/* ~/projects/$PROJECT_NAME/
+cp ~/projects/TabzTemplates/starters/$STARTER/templates/PRIME.md.tmpl ~/projects/$PROJECT_NAME/.beads/PRIME.md
+
+# 2. Initialize beads and git
+cd ~/projects/$PROJECT_NAME
+bd init
+git init && git add . && git commit -m "chore: initialize from $STARTER starter"
+
+# 3. Replace template variables ({{business_name}}, etc.)
+# Then run /conductor:bd-swarm-auto to execute the pre-planned backlog
+```
+
+Starters include pre-configured:
+- CLAUDE.md with project-specific guidelines
+- PRIME.md with beads workflow context
+- issues.jsonl with wave-organized backlog
+- Skill references for the tech stack
+
+**Skip to Phase 4** if using a starter - scaffolding is handled by the backlog issues.
+
+---
+
 ## Phase 1: Brainstorm (Interactive)
 
 ### 1.1 Project Vision
@@ -310,6 +347,24 @@ src/
 └── app/          # Routes (if using app router)
 \`\`\`
 
+## Orchestration Instructions
+
+### Completion Protocol
+
+**Before marking work complete**, run the conductor pipeline:
+
+\`\`\`bash
+/conductor:verify-build      # Build and check for errors
+/conductor:code-review       # Opus review with auto-fix
+/conductor:commit-changes    # Stage + commit
+/conductor:close-issue <id>  # Close beads issue
+bd sync && git push          # Push everything
+\`\`\`
+
+Or use the full pipeline: `/conductor:worker-done <id>`
+
+See `.beads/PRIME.md` for detailed workflow documentation.
+
 ## Key Files
 
 | File | Purpose |
@@ -325,13 +380,45 @@ src/
 
 ### 4.3 Create Initial Beads Backlog
 
-Initialize beads and create setup tasks:
+Initialize beads, create PRIME.md, and add setup tasks:
 
 ```bash
 # Initialize beads if not present
 if [ ! -d ".beads" ]; then
   bd init
 fi
+
+# Create PRIME.md for worker context (bd prime uses this file)
+cat > .beads/PRIME.md << 'EOF'
+# Beads Workflow Context
+
+> **Context Recovery**: Run `bd prime` after compaction, clear, or new session
+
+# SESSION CLOSE PROTOCOL
+
+**CRITICAL**: Before saying "done" or "complete", run the conductor completion pipeline:
+
+## Standard Completion
+```bash
+/conductor:verify-build      # Build and check for errors
+/conductor:code-review       # Opus review with auto-fix
+/conductor:commit-changes    # Stage + commit
+/conductor:close-issue <id>  # Close beads issue
+bd sync && git push          # Push everything
+```
+
+Or use: `/conductor:worker-done <id>` for full pipeline.
+
+## Essential Commands
+
+- `bd ready` - Show issues ready to work
+- `bd show <id>` - View issue details
+- `bd update <id> --status=in_progress` - Claim work
+- `bd close <id>` - Mark complete
+- `bd sync` - Sync with git remote
+
+**NEVER skip verification.** Work is not done until pushed.
+EOF
 
 # Create initial setup tasks
 bd create --title="Set up CI/CD pipeline" --type=task --priority=2
@@ -340,9 +427,9 @@ bd create --title="Add authentication" --type=feature --priority=3
 bd create --title="Create initial UI components" --type=feature --priority=2
 bd create --title="Write README documentation" --type=task --priority=3
 
-# Track issues.jsonl for cross-machine sync
-git add .beads/issues.jsonl
-git commit -m "chore: track beads issues for sync"
+# Track beads files for cross-machine sync
+git add .beads/issues.jsonl .beads/PRIME.md
+git commit -m "chore: initialize beads with workflow context"
 ```
 
 ### 4.4 Report Summary
