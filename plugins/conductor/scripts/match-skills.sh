@@ -127,6 +127,51 @@ get_available_skills() {
   echo "$AVAILABLE" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' '
 }
 
+# Get available skills WITH descriptions (for prompt crafting)
+# Output format: id|description (one per line)
+get_available_skills_with_desc() {
+  local OUTPUT=""
+
+  # 1. Plugin skills (from TabzChrome API if running) - already has descriptions
+  if curl -s --max-time 2 http://localhost:8129/api/plugins/skills >/dev/null 2>&1; then
+    local API_SKILLS=$(curl -s http://localhost:8129/api/plugins/skills 2>/dev/null | jq -r '.skills[] | "\(.id)|\(.desc)"' 2>/dev/null)
+    OUTPUT="$OUTPUT
+$API_SKILLS"
+  fi
+
+  # 2. Project skills (.claude/skills/) - extract description from SKILL.md
+  if [ -d ".claude/skills" ]; then
+    for skill_dir in .claude/skills/*/; do
+      [ -d "$skill_dir" ] || continue
+      local SKILL_FILE="$skill_dir/SKILL.md"
+      if [ -f "$SKILL_FILE" ]; then
+        local NAME=$(basename "$skill_dir")
+        local DESC=$(grep -E "^description:" "$SKILL_FILE" 2>/dev/null | head -1 | sed 's/description:\s*//' | tr -d '"' | cut -c1-100)
+        [ -z "$DESC" ] && DESC="Project skill"
+        OUTPUT="$OUTPUT
+$NAME|$DESC"
+      fi
+    done
+  fi
+
+  # 3. User skills (~/.claude/skills/)
+  if [ -d "$HOME/.claude/skills" ]; then
+    for skill_dir in "$HOME/.claude/skills"/*/; do
+      [ -d "$skill_dir" ] || continue
+      local SKILL_FILE="$skill_dir/SKILL.md"
+      if [ -f "$SKILL_FILE" ]; then
+        local NAME=$(basename "$skill_dir")
+        local DESC=$(grep -E "^description:" "$SKILL_FILE" 2>/dev/null | head -1 | sed 's/description:\s*//' | tr -d '"' | cut -c1-100)
+        [ -z "$DESC" ] && DESC="User skill"
+        OUTPUT="$OUTPUT
+$NAME|$DESC"
+      fi
+    done
+  fi
+
+  echo "$OUTPUT" | grep -v '^$' | sort -u
+}
+
 # Check if a skill name is available
 is_skill_available() {
   local SKILL_NAME="$1"
@@ -332,18 +377,20 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
       echo "Usage: match-skills.sh [OPTIONS] 'text to match'"
       echo ""
       echo "Options:"
-      echo "  --json       Output as JSON array"
-      echo "  --issue      Match from beads issue ID"
-      echo "  --verify     Match AND verify skills are available (runtime check)"
-      echo "  --available  List all currently available skills"
-      echo "  --persist    Persist skills to issue: --persist ISSUE-ID 'skill1, skill2'"
+      echo "  --json            Output as JSON array"
+      echo "  --issue ID        Match from beads issue ID"
+      echo "  --verify          Match AND verify skills are available (runtime check)"
+      echo "  --available       List all currently available skill IDs"
+      echo "  --available-full  List skills with descriptions (for prompt crafting)"
+      echo "  --available-json  List skills as JSON array with descriptions"
+      echo "  --persist ID SK   Persist skills to issue: --persist ISSUE-ID 'skill1, skill2'"
       echo ""
       echo "Examples:"
       echo "  match-skills.sh 'fix terminal resize bug'"
       echo "  match-skills.sh --verify 'add dashboard component'"
       echo "  match-skills.sh --issue TabzChrome-abc"
-      echo "  match-skills.sh --available"
-      echo "  match-skills.sh --persist TabzChrome-abc 'xterm-js, ui-styling'"
+      echo "  match-skills.sh --available-full"
+      echo "  match-skills.sh --persist TabzChrome-abc 'ui-styling, backend-development'"
       ;;
     --json)
       shift
@@ -354,8 +401,19 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
       match_skills_verified "$*"
       ;;
     --available)
-      echo "Available skills:"
+      echo "Available skills (use --available-full for descriptions):"
       get_available_skills | tr ' ' '\n' | grep -v '^$' | sort | sed 's/^/  - /'
+      ;;
+    --available-full)
+      echo "Available skills with descriptions:"
+      echo ""
+      get_available_skills_with_desc | while IFS='|' read -r id desc; do
+        [ -z "$id" ] && continue
+        printf "  %-40s %s\n" "$id" "$desc"
+      done
+      ;;
+    --available-json)
+      get_available_skills_with_desc | jq -R 'split("|") | {id: .[0], description: .[1]}' | jq -s '.'
       ;;
     --issue)
       shift
