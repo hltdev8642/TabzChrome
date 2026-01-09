@@ -22,6 +22,7 @@ Orchestrates the completion of a wave of parallel workers spawned by bd-swarm. H
 | Step | Description | Blocking? | Notes |
 |------|-------------|-----------|-------|
 | 1 | Verify all workers completed | Yes | All issues must be closed |
+| 1.5 | Review worker discoveries | No | Check for untracked TODOs, list discovered-from issues |
 | 2 | Kill worker sessions | No | Clean termination |
 | 3 | Merge branches to main | Yes | Stop on conflicts |
 | 4 | Build verification | Yes | Verify merged code builds |
@@ -63,6 +64,53 @@ fi
 ```
 
 If any issue is not closed -> **STOP**. Wait for workers to complete or investigate why they're stuck.
+
+---
+
+### Step 1.5: Review Worker Discoveries (Before Killing Sessions)
+
+**IMPORTANT:** Before killing sessions, check if workers tracked their discoveries.
+
+```bash
+echo "=== Step 1.5: Review Worker Discoveries ==="
+
+# Check for issues with discovered-from links to wave issues
+for ISSUE in $ISSUES; do
+  # Find issues that were discovered from this issue
+  DISCOVERIES=$(bd list --all --json 2>/dev/null | jq -r --arg parent "$ISSUE" '.[] | select(.depends_on[]? | contains("discovered-from") and contains($parent)) | .id' 2>/dev/null)
+
+  if [ -n "$DISCOVERIES" ]; then
+    echo "Discoveries from $ISSUE:"
+    echo "$DISCOVERIES" | while read -r DISC; do
+      [ -z "$DISC" ] && continue
+      TITLE=$(bd show "$DISC" --json 2>/dev/null | jq -r '.[0].title // "?"')
+      echo "  - $DISC: $TITLE"
+    done
+  fi
+done
+
+# Check for TODOs in worker branches that should have been tracked
+echo ""
+echo "Checking for untracked TODOs in worker changes..."
+for ISSUE in $ISSUES; do
+  BRANCH="feature/${ISSUE}"
+  if git rev-parse --verify "$BRANCH" >/dev/null 2>&1; then
+    TODOS=$(git diff main.."$BRANCH" 2>/dev/null | grep -E "^\+.*TODO|^\+.*FIXME|^\+.*HACK" | head -5)
+    if [ -n "$TODOS" ]; then
+      echo "WARNING: Untracked TODOs in $BRANCH:"
+      echo "$TODOS"
+      echo "Consider creating follow-up issues with: bd create --title 'TODO: ...' && bd dep add <new-id> discovered-from $ISSUE"
+    fi
+  fi
+done
+```
+
+This step:
+- Lists issues discovered-from wave issues (shows workers tracked discoveries)
+- Warns about TODOs in worker changes that may need issues
+- Gives conductor a chance to create missing follow-ups before session context is lost
+
+**If critical discoveries are missing:** Pause here, review worker session output via `tmux capture-pane`, then create issues manually with `discovered-from` links.
 
 ---
 

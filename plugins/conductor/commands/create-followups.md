@@ -56,37 +56,47 @@ git diff HEAD~1 --name-only 2>/dev/null | xargs grep -n "TODO\|FIXME\|HACK" 2>/d
 echo ""
 ```
 
-### 4. Create Follow-up Issues
+### 4. Create Follow-up Issues with `discovered-from` Links
+
+**IMPORTANT:** Always link new issues with `discovered-from` dependency to maintain context chain.
 
 **For research tasks:**
 ```bash
 # Example: Research completed, create implementation issues
-bd create --title "Implement <finding from research>" \
+NEW_ISSUE=$(bd create --title "Implement <finding from research>" \
   --type feature \
   --priority 2 \
-  --description "Based on research in $PARENT_ISSUE. See docs/research/..."
+  --description "Based on research in $PARENT_ISSUE. See docs/research/..." \
+  --json | jq -r '.id')
 
-bd create --title "Phase 2: <next step>" \
-  --type feature \
-  --priority 3 \
-  --description "Follow-up from $PARENT_ISSUE research"
+# Link with discovered-from dependency
+bd dep add "$NEW_ISSUE" discovered-from "$PARENT_ISSUE"
+echo "Created: $NEW_ISSUE (discovered from $PARENT_ISSUE)"
 ```
 
 **For discovered edge cases:**
 ```bash
-bd create --title "Handle edge case: <description>" \
+NEW_ISSUE=$(bd create --title "Handle edge case: <description>" \
   --type bug \
   --priority 3 \
-  --description "Discovered during $PARENT_ISSUE implementation"
+  --description "Discovered during $PARENT_ISSUE implementation" \
+  --json | jq -r '.id')
+
+bd dep add "$NEW_ISSUE" discovered-from "$PARENT_ISSUE"
 ```
 
 **For TODOs:**
 ```bash
-bd create --title "Address TODO: <description>" \
+NEW_ISSUE=$(bd create --title "Address TODO: <description>" \
   --type chore \
   --priority 4 \
-  --description "TODO found in <file>:<line> during $PARENT_ISSUE"
+  --description "TODO found in <file>:<line> during $PARENT_ISSUE" \
+  --json | jq -r '.id')
+
+bd dep add "$NEW_ISSUE" discovered-from "$PARENT_ISSUE"
 ```
+
+**Why `discovered-from`:** This creates a traceable chain showing where work originated. When reviewing the backlog later, you can see which issues spawned other issues.
 
 ### 5. Report Results
 
