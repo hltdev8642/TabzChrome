@@ -13,6 +13,54 @@
 # Based on TabzChrome-dhz: consolidating skill mappings from 6 locations.
 
 # ============================================================================
+# SELF-LOCATING: Find conductor plugin regardless of where we're running
+# ============================================================================
+find_conductor_root() {
+  # 1. If CLAUDE_PLUGIN_ROOT is set (running as plugin), use it
+  if [ -n "$CLAUDE_PLUGIN_ROOT" ]; then
+    echo "$CLAUDE_PLUGIN_ROOT"
+    return 0
+  fi
+
+  # 2. If this script is being sourced/run, find relative to script location
+  local SCRIPT_DIR
+  if [ -n "${BASH_SOURCE[0]}" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [ -f "$SCRIPT_DIR/match-skills.sh" ]; then
+      echo "$(dirname "$SCRIPT_DIR")"  # Parent of scripts/
+      return 0
+    fi
+  fi
+
+  # 3. Check if we're in TabzChrome project
+  if [ -d "./plugins/conductor/scripts" ]; then
+    echo "./plugins/conductor"
+    return 0
+  fi
+
+  # 4. Find latest conductor in plugin cache
+  local CACHE_DIR="$HOME/.claude/plugins/cache"
+  if [ -d "$CACHE_DIR" ]; then
+    # Find most recently modified conductor plugin
+    local LATEST=$(find "$CACHE_DIR" -type d -name "conductor" -path "*/tabz-chrome/*" 2>/dev/null | head -1)
+    if [ -n "$LATEST" ]; then
+      # Get the versioned subdirectory
+      local VERSIONED=$(ls -t "$LATEST" 2>/dev/null | head -1)
+      if [ -n "$VERSIONED" ] && [ -d "$LATEST/$VERSIONED" ]; then
+        echo "$LATEST/$VERSIONED"
+        return 0
+      fi
+    fi
+  fi
+
+  # 5. Last resort - return empty (caller should handle)
+  echo ""
+  return 1
+}
+
+CONDUCTOR_ROOT=$(find_conductor_root)
+
+# ============================================================================
 # SKILL MAPPINGS - Single Source of Truth
 # ============================================================================
 # Format: keyword_pattern|skill_trigger_text

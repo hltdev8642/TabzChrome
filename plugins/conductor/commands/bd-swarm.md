@@ -275,15 +275,14 @@ Workers share the same plugin context as the conductor, so all skills are availa
 Skills are persisted by `plan-backlog` in issue notes. Read them using the central script:
 
 ```bash
-# Find the script (works from project root or with CLAUDE_PLUGIN_ROOT)
+# The script self-locates (checks CLAUDE_PLUGIN_ROOT, script dir, project, plugin cache)
 MATCH_SCRIPT="${CLAUDE_PLUGIN_ROOT:-./plugins/conductor}/scripts/match-skills.sh"
 
 # Get skill trigger text for an issue (reads from notes first, falls back to matching)
 SKILL_HINTS=$($MATCH_SCRIPT --issue "$ISSUE_ID")
 
-# Or source the script and call the function directly
-source $MATCH_SCRIPT
-SKILL_HINTS=$(get_issue_skills "$ISSUE_ID")
+# Or for runtime-verified matching (only available skills):
+SKILL_HINTS=$($MATCH_SCRIPT --verify --issue "$ISSUE_ID")
 ```
 
 **The workflow:**
