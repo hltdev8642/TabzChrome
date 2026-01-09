@@ -154,34 +154,29 @@ Run `/conductor:close-issue <issue-id>`. Reports final status.
 ```bash
 echo "=== Step 7: Notify Conductor ==="
 
-# Get auth token and build summary
-TOKEN=$(cat /tmp/tabz-auth-token 2>/dev/null)
 SUMMARY=$(git log -1 --format='%s' 2>/dev/null || echo 'committed')
 WORKER_SESSION=$(tmux display-message -p '#{session_name}' 2>/dev/null || echo 'unknown')
 
-# Primary method: API-based notification (preferred - no session corruption)
-if [ -n "$TOKEN" ]; then
-  curl -s -X POST http://localhost:8129/api/notify \
-    -H "Content-Type: application/json" \
-    -H "X-Auth-Token: $TOKEN" \
-    -d "{\"type\": \"worker-complete\", \"issueId\": \"$ISSUE_ID\", \"summary\": \"$SUMMARY\", \"session\": \"$WORKER_SESSION\"}"
-  echo "Notified conductor via API"
-else
-  echo "Warning: No auth token found at /tmp/tabz-auth-token"
-fi
-```
-
-**Why API over tmux send-keys:** The old tmux-based notification could corrupt the conductor's Claude session if it was mid-output or mid-prompt. The API broadcasts via WebSocket, which the conductor receives cleanly.
-
-**Fallback (if API unreachable):** If the TabzChrome backend is down, fall back to tmux:
-```bash
+# Primary method: tmux send-keys (Claude Code queues messages, safe even mid-output)
 CONDUCTOR_SESSION="${CONDUCTOR_SESSION:-}"
 if [ -n "$CONDUCTOR_SESSION" ]; then
   tmux send-keys -t "$CONDUCTOR_SESSION" -l "WORKER COMPLETE: $ISSUE_ID - $SUMMARY"
   sleep 0.3
   tmux send-keys -t "$CONDUCTOR_SESSION" C-m
+  echo "Notified conductor via tmux"
+fi
+
+# Secondary: API broadcast for browser UIs (WebSocket - conductor can't receive this)
+TOKEN=$(cat /tmp/tabz-auth-token 2>/dev/null)
+if [ -n "$TOKEN" ]; then
+  curl -s -X POST http://localhost:8129/api/notify \
+    -H "Content-Type: application/json" \
+    -H "X-Auth-Token: $TOKEN" \
+    -d "{\"type\": \"worker-complete\", \"issueId\": \"$ISSUE_ID\", \"summary\": \"$SUMMARY\", \"session\": \"$WORKER_SESSION\"}" >/dev/null
 fi
 ```
+
+**Why tmux is primary:** Claude Code queues incoming messages even during output, so tmux send-keys is safe. The API broadcasts via WebSocket which browser UIs can receive, but tmux-based Claude sessions cannot.
 
 ---
 

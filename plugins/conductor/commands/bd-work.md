@@ -116,6 +116,10 @@ These load patterns and context you'll need.
 
 After implementation, verify the build passes and test the changes work as expected.
 
+## Conductor Session
+CONDUCTOR_SESSION=<conductor-tmux-session>
+(Worker needs this to notify conductor on completion)
+
 ## When Done
 Run: /conductor:worker-done ISSUE-ID
 
