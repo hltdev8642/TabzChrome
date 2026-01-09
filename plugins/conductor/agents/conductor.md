@@ -100,32 +100,31 @@ SESSION=$(echo "$RESPONSE" | jq -r '.terminal.ptyInfo.tmuxSession')
 
 ### Worker Completion Notifications
 
-Workers notify the conductor when done via tmux send-keys (push-based, no polling):
+Workers notify the conductor when done via API (push-based, no polling, no session corruption):
 
 ```
 Worker completes → /conductor:worker-done
-                 → Sends "WORKER COMPLETE: ISSUE-ID - commit message"
+                 → POST /api/notify with worker-complete type
+                 → WebSocket broadcasts to conductor
                  → Conductor receives and cleans up immediately
 ```
 
 **How it works:**
-1. Conductor includes session name in worker **prompt text** (primary, reliable)
-2. Conductor also sets `CONDUCTOR_SESSION` env var (backup, may be lost)
-3. Worker-done sends completion summary to conductor via tmux
-4. Conductor receives notification and can cleanup that worker immediately
+1. Worker completes task and runs `/conductor:worker-done`
+2. Worker calls `POST /api/notify` with completion details
+3. Backend broadcasts via WebSocket to all connected clients
+4. Conductor receives notification and can cleanup immediately
 
-**Why prompt text is primary:** Env vars are fragile and not visible in conversation context. Workers can always find the session name in their "## Conductor Session" prompt section.
+**Why API over tmux send-keys:** The old tmux-based notification could corrupt the conductor's Claude session if it was mid-output or mid-prompt. The API broadcasts via WebSocket, which the conductor receives cleanly.
 
-**Include in all worker prompts:**
-```markdown
-## Conductor Session
-Notify conductor session MY-SESSION-NAME when done via:
-tmux send-keys -t MY-SESSION-NAME -l "WORKER COMPLETE: ISSUE-ID - summary"
-sleep 0.3
-tmux send-keys -t MY-SESSION-NAME C-m
+**API notification (used by /conductor:worker-done):**
+```bash
+TOKEN=$(cat /tmp/tabz-auth-token)
+curl -s -X POST http://localhost:8129/api/notify \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: $TOKEN" \
+  -d "{\"type\": \"worker-complete\", \"issueId\": \"ISSUE-ID\", \"summary\": \"commit message\", \"session\": \"$WORKER_SESSION\"}"
 ```
-
-**CRITICAL:** The `sleep 0.3` before `C-m` prevents corrupting the conductor session.
 
 ### Sending Prompts
 

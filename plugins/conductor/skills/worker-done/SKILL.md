@@ -151,35 +151,37 @@ Run `/conductor:close-issue <issue-id>`. Reports final status.
 
 **DO NOT SKIP THIS STEP.** After closing the issue, notify the conductor:
 
-**Finding the conductor session:**
-1. **Primary: Check your prompt** - Look for the "## Conductor Session" section in your task prompt. It contains the session name (e.g., `ctt-claude-abc123`).
-2. **Backup: Check env var** - `CONDUCTOR_SESSION` environment variable (may be lost in some contexts).
-
-**Why prompt text is primary:** Env vars are fragile and not visible in conversation context. The session name in your prompt is always accessible.
-
 ```bash
 echo "=== Step 7: Notify Conductor ==="
 
-# Get conductor session from prompt text (primary) or environment (backup)
-# Workers: Look in your "## Conductor Session" prompt section for the session name
-CONDUCTOR_SESSION="${CONDUCTOR_SESSION:-}"
+# Get auth token and build summary
+TOKEN=$(cat /tmp/tabz-auth-token 2>/dev/null)
+SUMMARY=$(git log -1 --format='%s' 2>/dev/null || echo 'committed')
+WORKER_SESSION=$(tmux display-message -p '#{session_name}' 2>/dev/null || echo 'unknown')
 
-if [ -n "$CONDUCTOR_SESSION" ]; then
-  # Build completion summary
-  SUMMARY="WORKER COMPLETE: $ISSUE_ID - $(git log -1 --format='%s' 2>/dev/null || echo 'committed')"
-
-  # Send notification to conductor via tmux
-  tmux send-keys -t "$CONDUCTOR_SESSION" -l "$SUMMARY"
-  sleep 0.3
-  tmux send-keys -t "$CONDUCTOR_SESSION" C-m
-
-  echo "Notified conductor: $CONDUCTOR_SESSION"
+# Primary method: API-based notification (preferred - no session corruption)
+if [ -n "$TOKEN" ]; then
+  curl -s -X POST http://localhost:8129/api/notify \
+    -H "Content-Type: application/json" \
+    -H "X-Auth-Token: $TOKEN" \
+    -d "{\"type\": \"worker-complete\", \"issueId\": \"$ISSUE_ID\", \"summary\": \"$SUMMARY\", \"session\": \"$WORKER_SESSION\"}"
+  echo "Notified conductor via API"
 else
-  echo "No CONDUCTOR_SESSION found - conductor will detect completion via polling"
+  echo "Warning: No auth token found at /tmp/tabz-auth-token"
 fi
 ```
 
-**Note for workers:** If the env var is empty, extract the session name from your prompt's "## Conductor Session" section and use it directly in the tmux command.
+**Why API over tmux send-keys:** The old tmux-based notification could corrupt the conductor's Claude session if it was mid-output or mid-prompt. The API broadcasts via WebSocket, which the conductor receives cleanly.
+
+**Fallback (if API unreachable):** If the TabzChrome backend is down, fall back to tmux:
+```bash
+CONDUCTOR_SESSION="${CONDUCTOR_SESSION:-}"
+if [ -n "$CONDUCTOR_SESSION" ]; then
+  tmux send-keys -t "$CONDUCTOR_SESSION" -l "WORKER COMPLETE: $ISSUE_ID - $SUMMARY"
+  sleep 0.3
+  tmux send-keys -t "$CONDUCTOR_SESSION" C-m
+fi
+```
 
 ---
 

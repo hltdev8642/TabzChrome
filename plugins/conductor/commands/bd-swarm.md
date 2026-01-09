@@ -90,29 +90,36 @@ tmux send-keys -t "$SESSION" C-m
 
 ## Worker Completion Notifications
 
-Workers notify the conductor when done via tmux send-keys (push-based, no polling):
+Workers notify the conductor when done via API (push-based, no polling, no session corruption):
 
 ```
 Worker completes → /conductor:worker-done
-                 → Sends "WORKER COMPLETE: ISSUE-ID - commit message"
+                 → POST /api/notify with worker-complete type
+                 → WebSocket broadcasts to conductor
                  → Conductor receives and cleans up immediately
 ```
 
 **How it works:**
-1. Conductor includes session name in worker **prompt text** (primary, reliable)
-2. Conductor also sets `CONDUCTOR_SESSION` env var (backup, may be lost)
-3. Worker-done sends completion summary to conductor via tmux
-4. Conductor receives notification and can cleanup that worker immediately
-5. No polling needed - workers push completion status
+1. Worker completes task and runs `/conductor:worker-done`
+2. Worker calls `POST /api/notify` with completion details
+3. Backend broadcasts via WebSocket to all connected clients
+4. Conductor receives notification and can cleanup immediately
+5. No polling needed - workers push completion status via API
 
-**Why prompt text is primary:** Env vars are fragile and not visible in conversation context. Workers can always find the session name in their "## Conductor Session" prompt section.
+**Why API over tmux send-keys:** The old tmux-based notification could corrupt the conductor's Claude session if it was mid-output or mid-prompt. The API broadcasts via WebSocket, which the conductor receives cleanly without interrupting its session.
 
-**Spawn with session in prompt + env var backup:**
+**API notification pattern:**
 ```bash
-CONDUCTOR_SESSION=$(tmux display-message -p '#{session_name}')
-# Include in spawn command (BD_SOCKET prevents daemon conflicts in parallel workers):
-"command": "BD_SOCKET=/tmp/bd-worker-$ISSUE_ID.sock CONDUCTOR_SESSION='$CONDUCTOR_SESSION' claude --dangerously-skip-permissions"
-# IMPORTANT: Also include session in the prompt text (see Enhanced Prompt Structure)
+TOKEN=$(cat /tmp/tabz-auth-token)
+curl -s -X POST http://localhost:8129/api/notify \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: $TOKEN" \
+  -d "{\"type\": \"worker-complete\", \"issueId\": \"$ISSUE_ID\", \"summary\": \"commit message\", \"session\": \"$WORKER_SESSION\"}"
+```
+
+**Spawn command (BD_SOCKET isolates beads daemon per worker):**
+```bash
+"command": "BD_SOCKET=/tmp/bd-worker-$ISSUE_ID.sock claude --dangerously-skip-permissions"
 ```
 
 ---

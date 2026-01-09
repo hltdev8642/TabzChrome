@@ -402,6 +402,40 @@ app.post('/api/spawn', async (req, res) => {
   res.json({ success: true, terminal: result.terminal });
 });
 
+// Worker notification endpoint for conductor orchestration
+// POST /api/notify { type, issueId, summary, session }
+// Used by workers to notify conductor of completion without corrupting tmux sessions
+// Requires auth token (header X-Auth-Token or query param ?token=)
+app.post('/api/notify', (req, res) => {
+  // Require auth token to prevent unauthorized notifications
+  const token = req.headers['x-auth-token'] || req.query.token;
+  if (token !== WS_AUTH_TOKEN) {
+    return res.status(401).json({ error: 'Unauthorized - valid token required' });
+  }
+
+  const { type, issueId, summary, session } = req.body;
+
+  if (!type) {
+    return res.status(400).json({ success: false, error: 'Missing type parameter' });
+  }
+
+  // Broadcast notification to all WebSocket clients (conductor will receive this)
+  broadcast({
+    type: 'worker-notification',
+    data: {
+      notificationType: type,
+      issueId: issueId || null,
+      summary: summary || null,
+      session: session || null,
+      timestamp: new Date().toISOString()
+    }
+  });
+
+  log.info(`[Notify] Worker notification: ${type}${issueId ? ` for ${issueId}` : ''}`);
+
+  res.json({ success: true, message: 'Notification broadcast' });
+});
+
 // Handle different startup modes based on environment variables
 // FORCE_CLEANUP=true: Kill all PTY processes immediately (clean start)
 // CLEANUP_ON_START defaults to false to preserve terminals across restarts

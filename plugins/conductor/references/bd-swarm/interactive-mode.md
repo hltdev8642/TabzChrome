@@ -165,8 +165,6 @@ if ! tmux has-session -t "$SESSION" 2>/dev/null; then
 fi
 
 # Skills are already loaded in worker context at session start
-# Get conductor session name for prompt
-CONDUCTOR_SESSION=$(tmux display-message -p '#{session_name}')
 
 # Build enhanced prompt with all context
 PROMPT=$(cat <<EOF
@@ -187,12 +185,7 @@ After implementation, verify the build passes and test the changes work as expec
 Run: /conductor:worker-done ${ISSUE_ID}
 
 This command will: build, run code review, commit changes, and close the issue.
-
-## Conductor Session
-Notify conductor session ${CONDUCTOR_SESSION} when done via:
-tmux send-keys -t ${CONDUCTOR_SESSION} -l "WORKER COMPLETE: ${ISSUE_ID} - summary"
-sleep 0.3
-tmux send-keys -t ${CONDUCTOR_SESSION} C-m
+The worker-done command notifies the conductor via API automatically.
 EOF
 )
 
@@ -212,9 +205,8 @@ tmux send-keys -t "$SESSION" C-m
 | Key Files | Starting points (optional) |
 | Guidance | Skill hints woven naturally |
 | When Done | **Mandatory** `/conductor:worker-done` instruction |
-| Conductor Session | **Mandatory** - session name in prompt text for reliable notification |
 
-**Note:** Skills are loaded in worker context at session start, so no `/context` command needed.
+**Note:** Skills are loaded in worker context at session start. The `/conductor:worker-done` command automatically notifies the conductor via API.
 
 ## 6. Start Monitor & Poll
 
