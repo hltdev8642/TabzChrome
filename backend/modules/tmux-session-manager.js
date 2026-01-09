@@ -222,9 +222,17 @@ class TmuxSessionManager {
       }
 
       const files = fs.readdirSync(this.claudeStateDir);
-      const jsonFiles = files.filter(f => f.endsWith('.json')).slice(0, 50); // Safety limit
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
 
-      for (const file of jsonFiles) {
+      // Prioritize status files (start with _) over context files (UUIDs with -context suffix)
+      // Status files have tmux_pane for matching, context files have context_pct
+      const statusFiles = jsonFiles.filter(f => f.startsWith('_'));
+      const contextFiles = jsonFiles.filter(f => f.includes('-context'));
+
+      // Load all status files (usually just a few) + limited context files
+      const filesToLoad = [...statusFiles, ...contextFiles.slice(0, 50)];
+
+      for (const file of filesToLoad) {
         try {
           const filePath = path.join(this.claudeStateDir, file);
           const content = fs.readFileSync(filePath, 'utf8');
