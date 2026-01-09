@@ -117,15 +117,16 @@ Before sending, craft a detailed prompt following the structure in `references/w
 Match issue keywords to skill triggers (weave into guidance, don't list):
 
 ```bash
-# Use the central skill matching script (single source of truth)
-# Reads from beads notes first (persisted by plan-backlog), falls back to matching
+# Find the script (works from project root or with CLAUDE_PLUGIN_ROOT)
+MATCH_SCRIPT="${CLAUDE_PLUGIN_ROOT:-./plugins/conductor}/scripts/match-skills.sh"
 
-SKILL_HINTS=$(${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh --issue "$ISSUE_ID")
+# Reads from beads notes first (persisted by plan-backlog), falls back to matching
+SKILL_HINTS=$($MATCH_SCRIPT --issue "$ISSUE_ID")
 
 # Or if you have title/description directly:
-SKILL_HINTS=$(${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh "$TITLE $DESCRIPTION $LABELS")
+SKILL_HINTS=$($MATCH_SCRIPT "$TITLE $DESCRIPTION $LABELS")
 
-# For the full mappings, see: ${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh
+# For the full mappings, see the script directly
 ```
 
 **Note:** Skills are persisted by `plan-backlog` in issue notes. If persisted, `--issue` reads from notes. Otherwise, it matches on-the-fly from title/description/labels.

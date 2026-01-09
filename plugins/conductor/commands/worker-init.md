@@ -42,11 +42,14 @@ Extract key fields:
 Use the central skill matching script (single source of truth):
 
 ```bash
+# Find the script (works from project root or with CLAUDE_PLUGIN_ROOT)
+MATCH_SCRIPT="${CLAUDE_PLUGIN_ROOT:-./plugins/conductor}/scripts/match-skills.sh"
+
 # Get skill hints for an issue (reads from notes if persisted, or matches on-the-fly)
-SKILL_HINTS=$(${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh --issue "$ISSUE_ID")
+SKILL_HINTS=$($MATCH_SCRIPT --issue "$ISSUE_ID")
 
 # Or match directly from text:
-SKILL_HINTS=$(${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh "$TITLE $DESCRIPTION $LABELS")
+SKILL_HINTS=$($MATCH_SCRIPT "$TITLE $DESCRIPTION $LABELS")
 ```
 
 **Key mappings** (see `scripts/match-skills.sh` for complete list):

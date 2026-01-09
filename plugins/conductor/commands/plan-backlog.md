@@ -77,22 +77,25 @@ Ask: How many parallel workers? (2-5, recommend 3)
 **Use the central skill matcher** (`scripts/match-skills.sh`) to analyze issues and persist skill hints:
 
 ```bash
+# Find the script (works from project root or with CLAUDE_PLUGIN_ROOT)
+MATCH_SCRIPT="${CLAUDE_PLUGIN_ROOT:-./plugins/conductor}/scripts/match-skills.sh"
+
 # For each ready issue, match and persist skills
 for ISSUE_ID in $(bd ready --json | jq -r '.[].id'); do
   ISSUE_JSON=$(bd show "$ISSUE_ID" --json)
-  TITLE=$(echo "$ISSUE_JSON" | jq -r '.title // ""')
-  DESC=$(echo "$ISSUE_JSON" | jq -r '.description // ""')
-  LABELS=$(echo "$ISSUE_JSON" | jq -r '.labels[]?' | tr '\n' ' ')
+  TITLE=$(echo "$ISSUE_JSON" | jq -r '.[0].title // ""')
+  DESC=$(echo "$ISSUE_JSON" | jq -r '.[0].description // ""')
+  LABELS=$(echo "$ISSUE_JSON" | jq -r '.[0].labels[]?' | tr '\n' ' ')
 
-  # Match skills using central script
-  SKILLS=$(${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh "$TITLE $DESC $LABELS")
+  # Match skills using central script (use --verify to filter to available skills)
+  SKILLS=$($MATCH_SCRIPT --verify "$TITLE $DESC $LABELS")
 
   # Extract skill names for storage
   SKILL_NAMES=$(echo "$SKILLS" | grep -oE '[a-z]+-[a-z]+' | sort -u | tr '\n' ',' | sed 's/,$//')
 
   # Persist to beads notes (so bd-swarm can read them later)
   if [ -n "$SKILL_NAMES" ]; then
-    ${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh --persist "$ISSUE_ID" "$SKILL_NAMES"
+    $MATCH_SCRIPT --persist "$ISSUE_ID" "$SKILL_NAMES"
     echo "$ISSUE_ID: $SKILL_NAMES"
   fi
 done

@@ -46,7 +46,8 @@ description: "Fully autonomous backlog completion. Runs waves until `bd ready` i
    - Skill hints from beads notes (persisted by plan-backlog) or match on-the-fly:
      ```bash
      # Read skill hints (from notes or match)
-     SKILL_HINTS=$(${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh --issue "$ISSUE_ID")
+     MATCH_SCRIPT="${CLAUDE_PLUGIN_ROOT:-./plugins/conductor}/scripts/match-skills.sh"
+     SKILL_HINTS=$($MATCH_SCRIPT --issue "$ISSUE_ID")
      ```
    - Completion command: `/conductor:worker-done <issue-id>`
 
