@@ -1,5 +1,5 @@
 {
   "name": "codex",
   "version": "1.0.0",
-  "description": "Codex skills for Claude Code configuration and plugin development best practices"
+  "description": "Codex CLI integration and Claude Code configuration best practices"
 }
