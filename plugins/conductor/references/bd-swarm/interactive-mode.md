@@ -164,13 +164,8 @@ if ! tmux has-session -t "$SESSION" 2>/dev/null; then
   exit 1
 fi
 
-# Send /context first so worker sees available skills in conversation
-tmux send-keys -t "$SESSION" -l '/context'
-sleep 0.3
-tmux send-keys -t "$SESSION" C-m
-sleep 2  # Wait for /context output
-
-# Get conductor session name for prompt (not just env var)
+# Skills are already loaded in worker context at session start
+# Get conductor session name for prompt
 CONDUCTOR_SESSION=$(tmux display-message -p '#{session_name}')
 
 # Build enhanced prompt with all context
@@ -210,7 +205,6 @@ tmux send-keys -t "$SESSION" C-m
 
 | Section | Purpose |
 |---------|---------|
-| `/context` first | **Run before prompt** - shows worker its available skills |
 | Title line | Issue ID + title for clarity |
 | Context | Description + WHY this matters |
 | Key Files | Starting points (optional) |
@@ -218,7 +212,7 @@ tmux send-keys -t "$SESSION" C-m
 | When Done | **Mandatory** `/conductor:worker-done` instruction |
 | Conductor Session | **Mandatory** - session name in prompt text for reliable notification |
 
-**Why `/context` first?** Workers sometimes forget to use available skills. By running `/context` before the work prompt, workers see their full capability list in conversation context, making them more likely to invoke relevant skills.
+**Note:** Skills are loaded in worker context at session start, so no `/context` command needed.
 
 ## 6. Start Monitor & Poll
 

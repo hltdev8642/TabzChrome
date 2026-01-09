@@ -58,14 +58,9 @@ bd update "$ISSUE_ID" --notes "conductor_session: $CONDUCTOR_SESSION
 worker_session: $SESSION_NAME
 started_at: $(date -Iseconds)"
 
-# 5. Wait for Claude to initialize, then send /context and prompt
+# 5. Wait for Claude to initialize, then send prompt
 sleep 4
-# Send /context first so worker sees available skills
-tmux send-keys -t "$SESSION_NAME" -l '/context'
-sleep 0.3
-tmux send-keys -t "$SESSION_NAME" C-m
-sleep 2  # Wait for /context output
-# Now send the work prompt
+# Skills are already loaded in worker context - send prompt directly
 tmux send-keys -t "$SESSION_NAME" -l 'Your prompt here...'
 sleep 0.3
 tmux send-keys -t "$SESSION_NAME" C-m
@@ -85,12 +80,7 @@ worker_session: $SESSION
 started_at: $(date -Iseconds)"
 
 sleep 4
-# Send /context first so worker sees available skills
-tmux send-keys -t "$SESSION" -l '/context'
-sleep 0.3
-tmux send-keys -t "$SESSION" C-m
-sleep 2  # Wait for /context output
-# Now send the work prompt
+# Skills are already loaded in worker context - send prompt directly
 tmux send-keys -t "$SESSION" -l 'Your prompt here...'
 sleep 0.3
 tmux send-keys -t "$SESSION" C-m
