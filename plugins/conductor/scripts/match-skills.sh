@@ -72,53 +72,53 @@ CONDUCTOR_ROOT=$(find_conductor_root)
 # "Use the X skill" is interpreted as guidance, not invocation.
 
 SKILL_MAPPINGS=(
-  # Terminal / TabzChrome (project-specific skill)
+  # Terminal / TabzChrome (project-level skill - shorthand ok)
   "terminal|xterm|pty|resize|buffer|fitaddon|websocket.*terminal|/tabz-guide"
 
-  # UI / Frontend
-  "ui|component|modal|dashboard|styling|tailwind|shadcn|form|button|/ui-styling"
+  # UI / Frontend (user-level plugin)
+  "ui|component|modal|dashboard|styling|tailwind|shadcn|form|button|/ui-styling:ui-styling"
 
-  # Frontend frameworks
-  "react|next|vue|svelte|frontend|/frontend-development"
+  # Frontend frameworks (user-level plugin)
+  "react|next|vue|svelte|frontend|/frontend-development:frontend-development"
 
-  # Backend / API
-  "backend|api|server|database|endpoint|express|websocket.*server|/backend-development"
+  # Backend / API (user-level plugin)
+  "backend|api|server|database|endpoint|express|websocket.*server|/backend-development:backend-development"
 
-  # Browser automation / MCP (direct tool use, not a skill)
-  "browser|screenshot|click|mcp|tabz_|automation|# Use tabz_* MCP tools directly"
+  # Browser automation / MCP (conductor skill)
+  "browser|screenshot|click|mcp|tabz_|automation|/conductor:tabz-mcp"
 
-  # Authentication
-  "auth|login|oauth|session|token|jwt|/better-auth"
+  # Authentication (user-level plugin)
+  "auth|login|oauth|session|token|jwt|/better-auth:better-auth"
 
-  # Plugin development
-  "plugin|skill|agent|hook|command|frontmatter|/plugin-dev"
+  # Plugin development (user-level plugin)
+  "plugin|skill|agent|hook|command|frontmatter|/plugin-dev:plugin-dev"
 
-  # Conductor / orchestration
+  # Conductor / orchestration (conductor skill)
   "prompt|worker|swarm|conductor|orchestrat|/conductor:orchestration"
 
-  # Audio / TTS / Multimodal
-  "audio|tts|speech|sound|voice|speak|gemini|/ai-multimodal"
+  # Audio / TTS / Multimodal (user-level plugin)
+  "audio|tts|speech|sound|voice|speak|gemini|/ai-multimodal:ai-multimodal"
 
-  # Media processing
-  "image|video|media|ffmpeg|imagemagick|/media-processing"
+  # Media processing (user-level plugin - verify exists)
+  "image|video|media|ffmpeg|imagemagick|/media-processing:media-processing"
 
   # 3D / Three.js (project-specific reference - not a skill)
   "3d|three|scene|focus.*mode|webgl|# Reference extension/3d/ for Three.js patterns"
 
-  # Chrome extension (project-specific reference)
+  # Chrome extension (project-level skill - shorthand ok)
   "chrome|extension|manifest|sidepanel|background|service.*worker|/tabz-guide"
 
-  # Databases
-  "postgres|mongodb|redis|sql|database|query|/databases"
+  # Databases (user-level plugin - verify exists)
+  "postgres|mongodb|redis|sql|database|query|/databases:databases"
 
-  # Documentation discovery
-  "docs|documentation|llms.txt|repomix|/docs-seeker"
+  # Documentation discovery (user-level plugin - verify exists)
+  "docs|documentation|llms.txt|repomix|/docs-seeker:docs-seeker"
 
-  # Code review
-  "review|pr|pull.*request|lint|/code-review"
+  # Code review (conductor skill)
+  "review|pr|pull.*request|lint|/conductor:code-review"
 
-  # Web frameworks
-  "nextjs|express|fastapi|django|nest|/web-frameworks"
+  # Web frameworks (user-level plugin - verify exists)
+  "nextjs|express|fastapi|django|nest|/web-frameworks:web-frameworks"
 
   # Testing (general guidance, not a specific skill)
   "test|jest|vitest|spec|coverage|# Check existing test files for testing conventions"
@@ -313,24 +313,29 @@ get_issue_skills() {
 
   if [ -n "$PERSISTED_SKILLS" ]; then
     # Convert comma-separated skill names to explicit invocation commands
+    # Use full plugin:skill format for user-level plugins
     for skill in $(echo "$PERSISTED_SKILLS" | tr ',' ' '); do
       skill=$(echo "$skill" | tr -d ' ')
       case "$skill" in
+        # Project-level skills (shorthand ok)
         xterm-js|xterm|tabz-guide) echo "/tabz-guide" ;;
-        ui-styling|ui) echo "/ui-styling" ;;
-        backend*) echo "/backend-development" ;;
-        tabz-mcp|mcp|browser) echo "# Use tabz_* MCP tools directly" ;;
-        better-auth|auth) echo "/better-auth" ;;
-        plugin-dev|plugin) echo "/plugin-dev" ;;
+        # Conductor skills
+        tabz-mcp|mcp|browser) echo "/conductor:tabz-mcp" ;;
         conductor*|orchestration) echo "/conductor:orchestration" ;;
-        ai-multimodal|audio) echo "/ai-multimodal" ;;
-        media-processing|media) echo "/media-processing" ;;
-        docs-seeker|docs) echo "/docs-seeker" ;;
-        code-review|review) echo "/code-review" ;;
+        code-review|review) echo "/conductor:code-review" ;;
+        # User-level plugins (need full plugin:skill format)
+        ui-styling|ui) echo "/ui-styling:ui-styling" ;;
+        backend*) echo "/backend-development:backend-development" ;;
+        better-auth|auth) echo "/better-auth:better-auth" ;;
+        plugin-dev|plugin) echo "/plugin-dev:plugin-dev" ;;
+        ai-multimodal|audio) echo "/ai-multimodal:ai-multimodal" ;;
+        media-processing|media) echo "/media-processing:media-processing" ;;
+        docs-seeker|docs) echo "/docs-seeker:docs-seeker" ;;
+        frontend*) echo "/frontend-development:frontend-development" ;;
         *)
-          # For unknown skills, output as invocation if it looks like a skill name
+          # For unknown skills, try full format if looks like a skill name
           if [[ "$skill" =~ ^[a-z]+(-[a-z]+)*$ ]]; then
-            echo "/$skill"
+            echo "/$skill:$skill"
           fi
           ;;
       esac

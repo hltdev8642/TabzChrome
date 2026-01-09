@@ -18,9 +18,9 @@ fi
 # Collect all skills: id|description|invocation
 ALL_SKILLS=""
 
-# 1. Plugin skills (from API)
+# 1. Plugin skills (from API) - API returns id with leading slash already
 if curl -s --max-time 2 http://localhost:8129/api/plugins/skills >/dev/null 2>&1; then
-  PLUGIN_SKILLS=$(curl -s http://localhost:8129/api/plugins/skills | jq -r '.skills[] | "\(.id)|\(.desc)|/\(.id)"' 2>/dev/null)
+  PLUGIN_SKILLS=$(curl -s http://localhost:8129/api/plugins/skills | jq -r '.skills[] | "\(.id)|\(.desc)|\(.id)"' 2>/dev/null)
   ALL_SKILLS="$ALL_SKILLS
 $PLUGIN_SKILLS"
 fi

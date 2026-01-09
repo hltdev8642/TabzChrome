@@ -310,8 +310,8 @@ Fix beads issue ISSUE-ID: "Title"
 
 ## Skills to Load
 **FIRST**, invoke these skills before starting work:
-- /backend-development
-- /plugin-dev
+- /backend-development:backend-development
+- /conductor:orchestration
 
 These load patterns and context you'll need.
 
@@ -332,14 +332,22 @@ Run: /conductor:worker-done ISSUE-ID
 This command will: build, run code review, commit changes, and close the issue.
 ```
 
-**CRITICAL: Skills must be INVOKED, not just mentioned.**
+**CRITICAL: Use full `plugin:skill` format for skill invocation.**
 
-| ❌ Doesn't trigger invocation | ✅ Triggers invocation |
-|------------------------------|------------------------|
-| "Use the backend-development skill for..." | "First, run `/backend-development`" |
-| "Follow patterns from xterm-js skill" | "Invoke `/xterm-js` to load terminal patterns" |
+To find actual available skills, run:
+```bash
+./plugins/conductor/scripts/discover-skills.sh "backend api terminal"
+```
 
-Workers interpret "use the X skill" as guidance to apply knowledge they already have. They need explicit `/skill-name` commands to actually load the skill content.
+This discovers real skills from the API and filesystem - don't use shorthand names.
+
+| ❌ Wrong format | ✅ Correct format |
+|-----------------|-------------------|
+| `/backend-development` | `/backend-development:backend-development` |
+| `/xterm-js` | `/xterm-js:xterm-js` |
+| `/plugin-dev` | `/conductor:orchestration` (or actual skill name) |
+
+**Exception:** Project-level skills (in `.claude/skills/`) can use shorthand: `/tabz-guide`
 
 **The `/conductor:worker-done` instruction is mandatory** - without it, workers don't know how to signal completion and the conductor can't clean up.
 
