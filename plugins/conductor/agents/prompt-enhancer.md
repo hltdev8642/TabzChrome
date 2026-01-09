@@ -30,17 +30,21 @@ Extract:
 
 ### 2. Match Skills
 
-Map keywords to skill trigger language:
+Use the central skill matching script (single source of truth):
 
-| Keywords | Skill Trigger |
-|----------|---------------|
-| terminal, xterm, pty, resize | "Use the xterm-js skill for terminal rendering." |
-| ui, component, modal, dashboard | "Use the ui-styling skill for shadcn/ui and Tailwind." |
-| backend, api, server, websocket | "Use the backend-development skill." |
-| browser, screenshot, click, mcp | "Use MCP browser tools (tabz_*) for testing." |
-| auth, login, oauth | "Use the better-auth skill." |
-| plugin, skill, agent, hook | "Use the plugin-dev skills." |
-| conductor, worker, swarm | "Follow conductor orchestration patterns." |
+```bash
+# Get skill hints for an issue (reads from notes if persisted, or matches)
+SKILL_HINTS=$(${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh --issue "$ISSUE_ID")
+
+# Or match directly from text:
+SKILL_HINTS=$(${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh "$TITLE $DESCRIPTION $LABELS")
+```
+
+**Key mappings** (see `scripts/match-skills.sh` for complete list):
+- terminal/xterm/pty → xterm-js skill
+- ui/component/modal → ui-styling skill
+- backend/api/server → backend-development skill
+- browser/mcp/tabz → MCP tabz_* tools
 
 Combine multiple if issue spans domains.
 

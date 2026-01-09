@@ -72,16 +72,33 @@ bd ready --json | jq -r '.[] | "\(.id): [\(.priority)] \(.title)"'
 
 Ask: How many parallel workers? (2-5, recommend 3)
 
-### 2. Match Issues to Skills
+### 2. Match Issues to Skills & Persist
 
-Workers receive skill hints in prompts based on issue keywords:
+**Use the central skill matcher** (`scripts/match-skills.sh`) to analyze issues and persist skill hints:
 
-| Area Keywords | Skill Hint | Purpose |
-|---------------|-----------|---------|
-| terminal, xterm, pty, resize | `/xterm-js:xterm-js` | Terminal rendering, WebSocket |
-| UI, component, modal, dashboard | `/ui-styling:ui-styling` | shadcn/ui, Tailwind patterns |
-| backend, api, server, endpoint | `/backend-development:backend-development` | APIs, databases |
-| mcp, browser, screenshot | `/conductor:tabz-mcp` | Browser automation |
+```bash
+# For each ready issue, match and persist skills
+for ISSUE_ID in $(bd ready --json | jq -r '.[].id'); do
+  ISSUE_JSON=$(bd show "$ISSUE_ID" --json)
+  TITLE=$(echo "$ISSUE_JSON" | jq -r '.title // ""')
+  DESC=$(echo "$ISSUE_JSON" | jq -r '.description // ""')
+  LABELS=$(echo "$ISSUE_JSON" | jq -r '.labels[]?' | tr '\n' ' ')
+
+  # Match skills using central script
+  SKILLS=$(${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh "$TITLE $DESC $LABELS")
+
+  # Extract skill names for storage
+  SKILL_NAMES=$(echo "$SKILLS" | grep -oE '[a-z]+-[a-z]+' | sort -u | tr '\n' ',' | sed 's/,$//')
+
+  # Persist to beads notes (so bd-swarm can read them later)
+  if [ -n "$SKILL_NAMES" ]; then
+    ${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh --persist "$ISSUE_ID" "$SKILL_NAMES"
+    echo "$ISSUE_ID: $SKILL_NAMES"
+  fi
+done
+```
+
+**Why persist?** Skills are matched once during planning and stored in issue notes. When bd-swarm spawns workers, it reads from notes instead of re-matching - ensuring consistency across the workflow.
 
 ### 3. Build Waves
 
@@ -103,10 +120,12 @@ bd ready --filter-parent TabzChrome-xyz --json | jq -r '.[].id' | xargs /conduct
 
 ```markdown
 ## Wave 1 (Start Now)
-| Issue | Type | Priority | Skill Hint |
-|-------|------|----------|------------|
-| xxx | feature | P1 | /ui-styling:ui-styling |
-| yyy | bug | P2 | /xterm-js:xterm-js |
+| Issue | Type | Priority | Skills (persisted) |
+|-------|------|----------|--------------------|
+| xxx | feature | P1 | ui-styling, backend-development |
+| yyy | bug | P2 | xterm-js |
+
+Skills have been persisted to issue notes. bd-swarm will read them automatically.
 
 **Next steps:**
 Spawn workers: `/conductor:bd-swarm xxx yyy`

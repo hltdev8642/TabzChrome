@@ -43,7 +43,11 @@ description: "Fully autonomous backlog completion. Runs waves until `bd ready` i
 4. **Send skill-aware prompts:**
    For each worker, send a prompt with:
    - Issue context from `bd show`
-   - Skill hint based on issue keywords (terminal→`/xterm-js:xterm-js`, UI→`/ui-styling:ui-styling`, etc.)
+   - Skill hints from beads notes (persisted by plan-backlog) or match on-the-fly:
+     ```bash
+     # Read skill hints (from notes or match)
+     SKILL_HINTS=$(${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh --issue "$ISSUE_ID")
+     ```
    - Completion command: `/conductor:worker-done <issue-id>`
 
 5. **Monitor and loop:**

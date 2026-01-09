@@ -270,16 +270,34 @@ Workers share the same plugin context as the conductor, so all skills are availa
 
 **Key insight:** Workers need detailed prompts with skill hints woven naturally into guidance, not listed as sidebars.
 
-Match issue keywords to skill triggers. Use **natural trigger language** (like pmux does) to activate skills:
+### Reading Skills from Beads
 
-| Keywords | Natural Trigger Language | Purpose |
-|----------|-------------------------|---------|
-| terminal, xterm, pty, resize | "Use the xterm-js skill for terminal rendering..." | Terminal, resize, WebSocket |
-| UI, component, modal, dashboard | "Use the ui-styling skill for shadcn/ui..." | UI components, Tailwind |
-| backend, api, server, websocket | "Use the backend-development skill for..." | APIs, servers, databases |
-| browser, screenshot, click, mcp | "Use MCP browser automation tools via tabz_*..." | Browser automation |
-| auth, login, oauth | "Use the better-auth skill for..." | Authentication patterns |
-| plugin, skill, agent, hook | "Use the plugin-dev skills for..." | Plugin/skill development |
+Skills are persisted by `plan-backlog` in issue notes. Read them using the central script:
+
+```bash
+# Get skill trigger text for an issue (reads from notes first, falls back to matching)
+SKILL_HINTS=$(${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh --issue "$ISSUE_ID")
+
+# Or source the script and call the function directly
+source ${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh
+SKILL_HINTS=$(get_issue_skills "$ISSUE_ID")
+```
+
+**The workflow:**
+1. `plan-backlog` analyzes issues and persists skills to notes
+2. `bd-swarm` reads skills from notes (or matches on-the-fly if not persisted)
+3. Workers receive natural skill trigger language in their prompts
+
+### Skill Mappings
+
+See `scripts/match-skills.sh` for the complete, authoritative list of skill mappings. Key patterns:
+
+| Keywords | Skill Trigger |
+|----------|---------------|
+| terminal, xterm, pty, resize | "Use the xterm-js skill..." |
+| UI, component, modal, dashboard | "Use the ui-styling skill..." |
+| backend, api, server, websocket | "Use the backend-development skill..." |
+| browser, screenshot, click, mcp | "Use MCP browser automation tools (tabz_*)..." |
 
 **Key insight from pmux**: "Use the X skill for Y" triggers skill activation better than "follow X patterns".
 

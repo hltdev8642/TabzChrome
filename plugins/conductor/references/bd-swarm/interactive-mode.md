@@ -117,25 +117,18 @@ Before sending, craft a detailed prompt following the structure in `references/w
 Match issue keywords to skill triggers (weave into guidance, don't list):
 
 ```bash
-# Returns natural trigger language that activates skills (like pmux does)
-match_skills() {
-  local TITLE_DESC=$(echo "$1" | tr '[:upper:]' '[:lower:]')
-  local SKILLS=""
+# Use the central skill matching script (single source of truth)
+# Reads from beads notes first (persisted by plan-backlog), falls back to matching
 
-  # Natural trigger language - "use the X skill for Y"
-  [[ "$TITLE_DESC" =~ (terminal|xterm|pty|resize) ]] && SKILLS+="Use the xterm-js skill for terminal rendering and resize handling. "
-  [[ "$TITLE_DESC" =~ (ui|component|modal|dashboard|styling) ]] && SKILLS+="Use the ui-styling skill for shadcn/ui components and Tailwind CSS. "
-  [[ "$TITLE_DESC" =~ (backend|api|server|database|websocket) ]] && SKILLS+="Use the backend-development skill for API and server patterns. "
-  [[ "$TITLE_DESC" =~ (browser|screenshot|click|mcp|tabz) ]] && SKILLS+="Use MCP browser automation tools via tabz_* for testing. "
-  [[ "$TITLE_DESC" =~ (auth|login|oauth) ]] && SKILLS+="Use the better-auth skill for authentication patterns. "
-  [[ "$TITLE_DESC" =~ (plugin|skill|agent|hook|command) ]] && SKILLS+="Use the plugin-dev skills for plugin/skill structure. "
-  [[ "$TITLE_DESC" =~ (prompt|worker|swarm|conductor) ]] && SKILLS+="Follow conductor orchestration patterns. "
+SKILL_HINTS=$(${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh --issue "$ISSUE_ID")
 
-  echo "${SKILLS}"
-}
+# Or if you have title/description directly:
+SKILL_HINTS=$(${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh "$TITLE $DESCRIPTION $LABELS")
 
-SKILL_HINTS=$(match_skills "$TITLE $DESCRIPTION")
+# For the full mappings, see: ${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh
 ```
+
+**Note:** Skills are persisted by `plan-backlog` in issue notes. If persisted, `--issue` reads from notes. Otherwise, it matches on-the-fly from title/description/labels.
 
 ### Step 5b: Get Key Files (Optional)
 

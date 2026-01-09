@@ -39,20 +39,23 @@ Extract key fields:
 
 ## Step 2: Match Skills
 
-Match issue keywords to skill trigger language. Use these mappings:
+Use the central skill matching script (single source of truth):
 
-| Keywords in Title/Description | Skill Trigger |
-|------------------------------|---------------|
-| terminal, xterm, pty, resize, buffer | "Use the xterm-js skill for terminal rendering and resize handling." |
-| ui, component, modal, dashboard, styling | "Use the ui-styling skill for shadcn/ui components and Tailwind CSS." |
-| backend, api, server, database, websocket | "Use the backend-development skill for API and server patterns." |
-| browser, screenshot, click, mcp, tabz | "Use MCP browser automation tools (tabz_*) for testing." |
-| auth, login, oauth, session | "Use the better-auth skill for authentication patterns." |
-| plugin, skill, agent, hook, command | "Use the plugin-dev skills for plugin/skill/agent structure." |
-| prompt, worker, swarm, conductor | "Follow conductor orchestration patterns." |
-| audio, tts, speech, sound | "Use the ai-multimodal skill for audio processing." |
-| image, video, media | "Use the media-processing skill for multimedia handling." |
-| 3d, three, scene, focus | "Reference extension/3d/ for Three.js patterns." |
+```bash
+# Get skill hints for an issue (reads from notes if persisted, or matches on-the-fly)
+SKILL_HINTS=$(${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh --issue "$ISSUE_ID")
+
+# Or match directly from text:
+SKILL_HINTS=$(${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh "$TITLE $DESCRIPTION $LABELS")
+```
+
+**Key mappings** (see `scripts/match-skills.sh` for complete list):
+- terminal/xterm/pty → xterm-js skill
+- ui/component/modal → ui-styling skill
+- backend/api/server → backend-development skill
+- browser/mcp/tabz → MCP tabz_* tools
+- auth/login/oauth → better-auth skill
+- plugin/skill/agent → plugin-dev skills
 
 **Combine multiple matches** if the issue spans domains.
 
