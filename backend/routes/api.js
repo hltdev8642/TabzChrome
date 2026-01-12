@@ -13,8 +13,10 @@ const Joi = require('joi');
 const rateLimit = require('express-rate-limit');
 const terminalRegistry = require('../modules/terminal-registry');
 const unifiedSpawn = require('../modules/unified-spawn');
+const { createModuleLogger } = require('../modules/logger');
 
 const router = express.Router();
+const log = createModuleLogger('API');
 
 // =============================================================================
 // RATE LIMITING CONFIGURATION
@@ -113,7 +115,7 @@ function asyncHandler(fn) {
 }
 
 function errorHandler(err, req, res, next) {
-  console.error('API Error:', err);
+  log.error('Error:', err);
   
   // Known error types
   if (err.message.includes('not found')) {
@@ -880,7 +882,7 @@ router.post('/tmux/detach/:name', asyncHandler(async (req, res) => {
     // This doesn't kill the session, just detaches clients
     execSync(`tmux detach-client -s "${name}" 2>/dev/null || true`);
 
-    console.log(`[API] Detached from tmux session: ${name}`);
+    log.info(` Detached from tmux session: ${name}`);
 
     res.json({
       success: true,
@@ -888,7 +890,7 @@ router.post('/tmux/detach/:name', asyncHandler(async (req, res) => {
       session: name
     });
   } catch (err) {
-    console.error(`[API] Failed to detach from tmux session ${name}:`, err.message);
+    log.error(` Failed to detach from tmux session ${name}:`, err.message);
     res.status(500).json({
       success: false,
       error: err.message
@@ -934,7 +936,7 @@ router.get('/tmux/info/:name', asyncHandler(async (req, res) => {
     const displayPath = currentPath ? currentPath.replace(homeDir, '~') : null;
 
     // Debug: Log raw tmux values (disabled - too verbose with polling)
-    // console.log(`[API] Tmux info for ${name}:`, { windowName, paneTitle, windowCount, paneCount, currentPath: displayPath });
+    // log.info(` Tmux info for ${name}:`, { windowName, paneTitle, windowCount, paneCount, currentPath: displayPath });
 
     // Prefer window_name when it differs from pane_title and is not generic
     // This makes tab names update dynamically for bash terminals running TUI apps
@@ -981,7 +983,7 @@ router.get('/tmux/info/:name', asyncHandler(async (req, res) => {
     }
 
     // Debug: Log final display name (disabled - too verbose with polling)
-    // console.log(`[API] Display name for ${name}: "${displayName}" (baseName="${baseName}", cmd=${windowNameIsDirectory ? windowName : 'none'}, path=${displayPath})`);
+    // log.info(` Display name for ${name}: "${displayName}" (baseName="${baseName}", cmd=${windowNameIsDirectory ? windowName : 'none'}, path=${displayPath})`);
 
     res.json({
       success: true,
@@ -994,7 +996,7 @@ router.get('/tmux/info/:name', asyncHandler(async (req, res) => {
       sessionName: name
     });
   } catch (err) {
-    console.error(`[API] Failed to get tmux info for ${name}:`, err.message);
+    log.error(` Failed to get tmux info for ${name}:`, err.message);
     res.status(500).json({
       success: false,
       error: err.message
@@ -1162,7 +1164,7 @@ router.get('/claude-status', asyncHandler(async (req, res) => {
       });
     }
   } catch (err) {
-    console.error(`[API] Failed to get Claude status for ${workingDir}:`, err.message);
+    log.error(` Failed to get Claude status for ${workingDir}:`, err.message);
     res.json({
       success: true,
       status: 'unknown'
@@ -1200,7 +1202,7 @@ router.post('/claude-status/cleanup', asyncHandler(async (req, res) => {
       const panes = execSync('tmux list-panes -a -F "#{pane_id}" 2>/dev/null', { encoding: 'utf-8' });
       activePanes = new Set(panes.trim().split('\n').filter(p => p));
     } catch (err) {
-      console.warn('[API] Could not list tmux panes:', err.message);
+      log.warn(' Could not list tmux panes:', err.message);
     }
 
     const files = fs.readdirSync(stateDir);
@@ -1256,10 +1258,10 @@ router.post('/claude-status/cleanup', asyncHandler(async (req, res) => {
         if (shouldDelete) {
           fs.unlinkSync(filePath);
           removed++;
-          console.log(`[API] Deleted state file ${file} (${reason})`);
+          log.info(` Deleted state file ${file} (${reason})`);
         }
       } catch (err) {
-        console.warn(`[API] Error processing ${file}:`, err.message);
+        log.warn(` Error processing ${file}:`, err.message);
       }
     }
 
@@ -1286,12 +1288,12 @@ router.post('/claude-status/cleanup', asyncHandler(async (req, res) => {
               debugRemoved++;
             }
           } catch (err) {
-            console.warn(`[API] Error processing debug file ${file}:`, err.message);
+            log.warn(` Error processing debug file ${file}:`, err.message);
           }
         }
-        console.log(`[API] Deleted ${debugRemoved} debug files`);
+        log.info(` Deleted ${debugRemoved} debug files`);
       } catch (err) {
-        console.warn('[API] Error cleaning debug directory:', err.message);
+        log.warn(' Error cleaning debug directory:', err.message);
       }
     }
 
@@ -1315,10 +1317,10 @@ router.post('/claude-status/cleanup', asyncHandler(async (req, res) => {
         if (!fs.existsSync(parentStateFile) || fileAge > oneHourMs) {
           fs.unlinkSync(filePath);
           contextRemoved++;
-          console.log(`[API] Deleted context file ${file} (${!fs.existsSync(parentStateFile) ? 'orphaned' : 'stale'})`);
+          log.info(` Deleted context file ${file} (${!fs.existsSync(parentStateFile) ? 'orphaned' : 'stale'})`);
         }
       } catch (err) {
-        console.warn(`[API] Error processing context file ${file}:`, err.message);
+        log.warn(` Error processing context file ${file}:`, err.message);
       }
     }
 
@@ -1334,7 +1336,7 @@ router.post('/claude-status/cleanup', asyncHandler(async (req, res) => {
       message
     });
   } catch (err) {
-    console.error('[API] Failed to clean up state files:', err.message);
+    log.error(' Failed to clean up state files:', err.message);
     res.status(500).json({
       success: false,
       error: err.message
@@ -1387,7 +1389,7 @@ router.get('/tmux/orphaned-sessions', asyncHandler(async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('[API] Failed to get orphaned sessions:', error);
+    log.error(' Failed to get orphaned sessions:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -1527,7 +1529,7 @@ router.post('/tmux/cleanup', asyncHandler(async (req, res) => {
         execSync(`tmux kill-session -t "${session}" 2>/dev/null`);
         killed++;
       } catch (err) {
-        console.warn(`[API] Failed to kill session ${session}:`, err.message);
+        log.warn(` Failed to kill session ${session}:`, err.message);
       }
     }
 
@@ -1598,7 +1600,7 @@ router.get('/mcp-config', asyncHandler(async (req, res) => {
       config.enabledTools = savedConfig.enabledTools;
     } else if (savedConfig.enabledGroups) {
       // Legacy format - return defaults for migration
-      console.log('[API] Legacy MCP config format detected, using defaults');
+      log.info(' Legacy MCP config format detected, using defaults');
     }
 
     // URL settings
@@ -1618,7 +1620,7 @@ router.get('/mcp-config', asyncHandler(async (req, res) => {
   } catch (err) {
     // File doesn't exist, use defaults
     if (err.code !== 'ENOENT') {
-      console.error('[API] Error reading MCP config:', err.message);
+      log.error(' Error reading MCP config:', err.message);
     }
   }
 
@@ -1697,7 +1699,7 @@ function loadSettings() {
       return JSON.parse(fsSync.readFileSync(settingsPath, 'utf8'));
     }
   } catch (e) {
-    console.error('[Settings] Failed to load:', e.message);
+    log.error('Settings failed to load:', e.message);
   }
   return { globalWorkingDir: '~', recentDirs: ['~', '~/projects'] };
 }
@@ -1708,7 +1710,7 @@ function saveSettings(settings) {
     fsSync.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
     return true;
   } catch (e) {
-    console.error('[Settings] Failed to save:', e.message);
+    log.error('Settings failed to save:', e.message);
     return false;
   }
 }
@@ -2064,7 +2066,7 @@ router.get('/plugins', asyncHandler(async (req, res) => {
       installedPlugins = parsed.plugins || {};
     } catch (err) {
       if (err.code !== 'ENOENT') {
-        console.error('[API] Error reading installed plugins:', err.message);
+        log.error(' Error reading installed plugins:', err.message);
       }
     }
 
@@ -2076,7 +2078,7 @@ router.get('/plugins', asyncHandler(async (req, res) => {
       enabledPlugins = parsed.enabledPlugins || {};
     } catch (err) {
       if (err.code !== 'ENOENT') {
-        console.error('[API] Error reading claude settings:', err.message);
+        log.error(' Error reading claude settings:', err.message);
       }
     }
 
@@ -2151,7 +2153,7 @@ router.get('/plugins', asyncHandler(async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('[API] Failed to get plugins:', err.message);
+    log.error(' Failed to get plugins:', err.message);
     res.status(500).json({
       success: false,
       error: err.message
@@ -2212,7 +2214,7 @@ router.post('/plugins/toggle', asyncHandler(async (req, res) => {
       message: `Plugin ${pluginId} ${enabled ? 'enabled' : 'disabled'}. Run /restart to apply changes.`
     });
   } catch (err) {
-    console.error('[API] Failed to toggle plugin:', err.message);
+    log.error(' Failed to toggle plugin:', err.message);
     res.status(500).json({
       success: false,
       error: err.message
@@ -2262,7 +2264,7 @@ router.get('/plugins/skills', asyncHandler(async (req, res) => {
       installedPlugins = parsed.plugins || {};
     } catch (err) {
       if (err.code !== 'ENOENT') {
-        console.error('[API] Error reading installed plugins:', err.message);
+        log.error(' Error reading installed plugins:', err.message);
       }
     }
 
@@ -2321,7 +2323,7 @@ router.get('/plugins/skills', asyncHandler(async (req, res) => {
       count: skills.length
     });
   } catch (err) {
-    console.error('[API] Failed to get plugin skills:', err.message);
+    log.error(' Failed to get plugin skills:', err.message);
     res.status(500).json({
       success: false,
       error: err.message
@@ -2435,7 +2437,7 @@ async function discoverLocalMarketplaces() {
       }
     }
   } catch (err) {
-    console.error('[API] Error discovering local marketplaces:', err.message);
+    log.error(' Error discovering local marketplaces:', err.message);
   }
 
   return discovered;
@@ -2457,7 +2459,7 @@ router.get('/plugins/health', asyncHandler(async (req, res) => {
       marketplaces = JSON.parse(data);
     } catch (err) {
       if (err.code !== 'ENOENT') {
-        console.error('[API] Error reading marketplaces:', err.message);
+        log.error(' Error reading marketplaces:', err.message);
       }
     }
 
@@ -2478,7 +2480,7 @@ router.get('/plugins/health', asyncHandler(async (req, res) => {
       installedPlugins = parsed.plugins || {};
     } catch (err) {
       if (err.code !== 'ENOENT') {
-        console.error('[API] Error reading installed plugins:', err.message);
+        log.error(' Error reading installed plugins:', err.message);
       }
     }
 
@@ -2616,7 +2618,7 @@ router.get('/plugins/health', asyncHandler(async (req, res) => {
         cacheStats.totalVersions += mpVersions;
       }
     } catch (err) {
-      console.error('[API] Error calculating cache stats:', err.message);
+      log.error(' Error calculating cache stats:', err.message);
     }
 
     res.json({
@@ -2630,7 +2632,7 @@ router.get('/plugins/health', asyncHandler(async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('[API] Failed to check plugin health:', err.message);
+    log.error(' Failed to check plugin health:', err.message);
     res.status(500).json({
       success: false,
       error: err.message
@@ -2694,7 +2696,7 @@ router.post('/plugins/update', asyncHandler(async (req, res) => {
       message: `Plugin ${pluginId} updated. Run /restart to apply changes.`
     });
   } catch (err) {
-    console.error('[API] Failed to update plugin:', err.message);
+    log.error(' Failed to update plugin:', err.message);
     res.status(500).json({
       success: false,
       error: err.stderr || err.message
@@ -2843,7 +2845,7 @@ router.post('/plugins/update-all', asyncHandler(async (req, res) => {
       skipped
     });
   } catch (err) {
-    console.error('[API] Failed to update all plugins:', err.message);
+    log.error(' Failed to update all plugins:', err.message);
     res.status(500).json({
       success: false,
       error: err.message
@@ -2910,7 +2912,7 @@ router.post('/plugins/cache/prune', asyncHandler(async (req, res) => {
             await fsAsync.rm(versions[i].path, { recursive: true, force: true });
             removed++;
           } catch (err) {
-            console.error(`[API] Failed to remove ${versions[i].path}:`, err.message);
+            log.error(` Failed to remove ${versions[i].path}:`, err.message);
           }
         }
       }
@@ -2923,7 +2925,7 @@ router.post('/plugins/cache/prune', asyncHandler(async (req, res) => {
       freedMB: (freedBytes / (1024 * 1024)).toFixed(2)
     });
   } catch (err) {
-    console.error('[API] Failed to prune cache:', err.message);
+    log.error(' Failed to prune cache:', err.message);
     res.status(500).json({
       success: false,
       error: err.message

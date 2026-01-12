@@ -633,7 +633,7 @@ wss.on('connection', (ws, req) => {
               data: result.terminal,
               requestId: data.requestId
             };
-            console.log('[Server] 📤 Broadcasting terminal-spawned:', JSON.stringify(spawnMessage).slice(0, 200));
+            log.debug('Broadcasting terminal-spawned:', JSON.stringify(spawnMessage).slice(0, 200));
             broadcast(spawnMessage);
           } else {
             // Include requestId in error response for tracking
@@ -841,7 +841,7 @@ wss.on('connection', (ws, req) => {
               }
             }));
           } catch (error) {
-            console.error('[WS] Error querying tmux sessions:', error);
+            log.error('Error querying tmux sessions:', error);
             ws.send(JSON.stringify({
               type: 'tmux-sessions-list',
               data: {
@@ -854,7 +854,7 @@ wss.on('connection', (ws, req) => {
         case 'reconnect':
           // Attempt to reconnect to existing terminal
           const terminalId = data.data?.terminalId || data.terminalId;
-          console.log(`[WS] Received reconnect request for terminal: ${terminalId}`);
+          log.debug(`Received reconnect request for terminal: ${terminalId}`);
 
           // First, cancel any pending disconnect for this terminal
           // This is critical - we need to stop the grace period timer immediately
@@ -872,10 +872,10 @@ wss.on('connection', (ws, req) => {
             }
             terminalOwners.get(terminalId).add(ws);
 
-            console.log(`[WS] Successfully reconnected to terminal ${terminalId}`);
+            log.debug(`Successfully reconnected to terminal ${terminalId}`);
             ws.send(JSON.stringify({ type: 'terminal-reconnected', data: reconnected }));
           } else {
-            console.log(`[WS] Failed to reconnect to terminal ${terminalId} - terminal not found in registry`);
+            log.debug(`Failed to reconnect to terminal ${terminalId} - terminal not found in registry`);
             ws.send(JSON.stringify({ type: 'reconnect-failed', terminalId: terminalId }));
           }
           break;
@@ -1520,7 +1520,7 @@ wss.on('connection', (ws, req) => {
 
       }
     } catch (error) {
-      console.error('WebSocket message error:', error);
+      log.error('WebSocket message error:', error);
 
       // Rate limit check for malformed messages
       const now = Date.now();
@@ -1532,14 +1532,14 @@ wss.on('connection', (ws, req) => {
 
       // Terminate connection if too many malformed messages
       if (malformedMessageCount.count > MAX_MALFORMED_PER_MINUTE) {
-        console.error('Too many malformed messages from client, terminating connection');
+        log.error('Too many malformed messages from client, terminating connection');
         ws.terminate();
         return;
       }
 
       // For JSON parse errors, terminate the connection immediately
       if (error instanceof SyntaxError) {
-        console.error('Invalid JSON received, terminating connection');
+        log.error('Invalid JSON received, terminating connection');
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: 'error', message: 'Invalid JSON format' }));
         }
@@ -1556,7 +1556,7 @@ wss.on('connection', (ws, req) => {
 
   // Create close handler
   const closeHandler = () => {
-    console.log('WebSocket client disconnected');
+    log.debug('WebSocket client disconnected');
     // Disconnect terminals belonging to this connection (with grace period)
     for (const terminalId of connectionTerminals) {
       terminalRegistry.disconnectTerminal(terminalId);
@@ -1584,7 +1584,7 @@ wss.on('connection', (ws, req) => {
 
   // Create error handler
   const errorHandler = (error) => {
-    console.error('WebSocket error:', error);
+    log.error('WebSocket error:', error);
     // Ensure cleanup happens and terminate the connection
     ws.terminate();
   };

@@ -8,6 +8,9 @@ const path = require('path');
 const fs = require('fs').promises;
 const util = require('util');
 const execAsync = util.promisify(exec);
+const { createModuleLogger } = require('./logger');
+
+const log = createModuleLogger('Git');
 
 // Configuration
 const DEFAULT_PROJECTS_DIR = path.join(process.env.HOME, 'projects');
@@ -75,7 +78,7 @@ async function discoverRepos(dir = DEFAULT_PROJECTS_DIR) {
       }
     }
   } catch (err) {
-    console.error(`[Git] Error scanning directory ${dir}:`, err.message);
+    log.error(`Error scanning directory ${dir}:`, err.message);
   }
 
   return repos;
@@ -571,7 +574,7 @@ async function getWorktrees(repoPath, githubUrl = null) {
     return worktrees;
   } catch (err) {
     // Worktrees not supported or error - return empty
-    console.warn(`[Git] Error getting worktrees for ${repoPath}:`, err.message);
+    log.warn(`Error getting worktrees for ${repoPath}:`, err.message);
     return [];
   }
 }

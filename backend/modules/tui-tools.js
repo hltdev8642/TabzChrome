@@ -1,5 +1,8 @@
 const pty = require('node-pty');
 const os = require('os');
+const { createModuleLogger } = require('./logger');
+
+const log = createModuleLogger('TUI');
 
 class TUIToolsManager {
   constructor(terminalRegistry) {
@@ -167,7 +170,7 @@ class TUIToolsManager {
 
       return terminalData;
     } catch (error) {
-      console.error(`Failed to spawn TUI tool ${toolName}:`, error);
+      log.error(`Failed to spawn TUI tool ${toolName}:`, error);
       throw error;
     }
   }

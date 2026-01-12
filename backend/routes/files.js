@@ -209,7 +209,7 @@ async function buildFileTree(dirPath, depth = 5, currentDepth = 0, showHidden = 
         // - EACCES/EPERM: permission errors (common on system dirs and WSL mounts)
         // - ENOENT: file disappeared between readdir and stat (transient files like .git/index.lock)
         if (err.code !== 'EACCES' && err.code !== 'EPERM' && err.code !== 'ENOENT' && currentDepth <= 1) {
-          console.warn(`[buildFileTree] Skipping ${childPath}: ${err.message}`);
+          log.warn(`Skipping ${childPath}: ${err.message}`);
         }
       }
     }
@@ -227,11 +227,13 @@ async function buildFileTree(dirPath, depth = 5, currentDepth = 0, showHidden = 
       ...(isObsidianVault && { isObsidianVault: true })
     };
   } catch (err) {
-    // Silently skip permission denied errors (common on system dirs and WSL mounts)
-    if (err.code === 'EACCES' || err.code === 'EPERM') {
+    // Silently skip common errors:
+    // - EACCES/EPERM: permission denied (common on system dirs and WSL mounts)
+    // - ENOENT: file disappeared between readdir and stat (transient files like .git/index.lock)
+    if (err.code === 'EACCES' || err.code === 'EPERM' || err.code === 'ENOENT') {
       return null;
     }
-    console.error(`Error building tree for ${dirPath}:`, err);
+    log.error(`Error building tree for ${dirPath}:`, err);
     return null;
   }
 }
@@ -276,7 +278,7 @@ router.get('/read', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error reading file:', error);
+    log.error('Error reading file:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -323,7 +325,7 @@ router.get('/list-markdown', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error listing markdown files:', error);
+    log.error('Error listing markdown files:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -365,7 +367,7 @@ router.get('/project-files', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error getting project files:', error);
+    log.error('Error getting project files:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -420,7 +422,7 @@ router.get('/tree', async (req, res) => {
     res.json(tree);
     
   } catch (error) {
-    console.error('Error getting file tree:', error);
+    log.error('Error getting file tree:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -481,7 +483,7 @@ router.get('/image', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error serving image:', error);
+    log.error('Error serving image:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -548,7 +550,7 @@ router.get('/video', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error serving video:', error);
+    log.error('Error serving video:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -588,7 +590,7 @@ router.get('/widget-docs/:widgetName', async (req, res) => {
             type: isYaml ? 'yaml' : 'markdown'
           });
         } catch (err) {
-          console.error(`Error reading ${filePath}:`, err);
+          log.error(`Error reading ${filePath}:`, err);
         }
       }
     }
@@ -600,7 +602,7 @@ router.get('/widget-docs/:widgetName', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting widget docs:', error);
+    log.error('Error getting widget docs:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -652,7 +654,7 @@ router.get('/content', async (req, res) => {
     if (error.code === 'ENOENT') {
       return res.status(404).json({ error: 'File not found' });
     }
-    console.error('Error reading file content:', error);
+    log.error('Error reading file content:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -696,7 +698,7 @@ router.post('/save-excalidraw', async (req, res) => {
       filename: filename
     });
   } catch (error) {
-    console.error('Error saving Excalidraw drawing:', error);
+    log.error('Error saving Excalidraw drawing:', error);
     res.status(500).json({ error: 'Failed to save drawing' });
   }
 });
@@ -734,7 +736,7 @@ router.post('/write', async (req, res) => {
     const stats = await fs.stat(resolvedPath)
     return res.json({ ok: true, size: stats.size, modified: stats.mtime })
   } catch (error) {
-    console.error('Error writing file:', error)
+    log.error('Error writing file:', error)
     return res.status(500).json({ error: error.message })
   }
 })
@@ -1077,7 +1079,7 @@ router.get('/list', async (req, res) => {
     res.json({ trees })
 
   } catch (error) {
-    console.error('Error listing filtered files:', error)
+    log.error('Error listing filtered files:', error)
     res.status(500).json({ error: error.message })
   }
 })
@@ -1155,7 +1157,7 @@ router.get('/git-status', async (req, res) => {
     })
 
   } catch (error) {
-    console.error('Error getting git status:', error)
+    log.error('Error getting git status:', error)
     res.status(500).json({ error: error.message })
   }
 })

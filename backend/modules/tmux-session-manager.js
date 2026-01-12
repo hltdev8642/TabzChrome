@@ -16,6 +16,9 @@
 const { execSync, exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const { createModuleLogger } = require('./logger');
+
+const log = createModuleLogger('Tmux');
 
 class TmuxSessionManager {
   constructor() {
@@ -114,7 +117,7 @@ class TmuxSessionManager {
 
       return sessions;
     } catch (error) {
-      console.error('[TmuxSessionManager] Error listing sessions:', error.message);
+      log.error(' Error listing sessions:', error.message);
       return [];
     }
   }
@@ -167,7 +170,7 @@ class TmuxSessionManager {
       }
     } catch (error) {
       // Session might have closed or no panes
-      console.error(`[TmuxSessionManager] Error enriching session ${session.name}:`, error.message);
+      log.error(`Error enriching session ${session.name}:`, error.message);
     }
   }
 
@@ -245,10 +248,10 @@ class TmuxSessionManager {
 
       const duration = Date.now() - startTime;
       if (duration > 10) {
-        console.log(`[TmuxSessionManager] Loaded ${states.length} Claude state files in ${duration}ms`);
+        log.debug(` Loaded ${states.length} Claude state files in ${duration}ms`);
       }
     } catch (error) {
-      console.error('[TmuxSessionManager] Error loading Claude states:', error.message);
+      log.error(' Error loading Claude states:', error.message);
     }
 
     return states;
@@ -334,7 +337,7 @@ class TmuxSessionManager {
 
       return this.parseClaudeStatusline(content);
     } catch (error) {
-      console.error(`[TmuxSessionManager] Error getting Claude state for ${session.name}:`, error.message);
+      log.error(`Error getting Claude state for ${session.name}:`, error.message);
       return null;
     }
   }

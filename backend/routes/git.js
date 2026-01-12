@@ -9,6 +9,9 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const gitUtils = require('../modules/git-utils');
+const { createModuleLogger } = require('../modules/logger');
+
+const log = createModuleLogger('Git');
 
 // Read auth token for secure endpoints
 const fs = require('fs');
@@ -17,7 +20,7 @@ let authToken = null;
 try {
   authToken = fs.readFileSync(WS_AUTH_TOKEN_FILE, 'utf-8').trim();
 } catch {
-  console.warn('[Git API] Could not read auth token - write operations will fail');
+  log.warn(' Could not read auth token - write operations will fail');
 }
 
 /**
@@ -76,11 +79,11 @@ router.get('/repos', async (req, res) => {
     let projectsDir = req.query.dir || gitUtils.DEFAULT_PROJECTS_DIR;
     projectsDir = expandTilde(projectsDir);
 
-    console.log(`[Git API] Scanning for repos in: ${projectsDir}`);
+    log.info(` Scanning for repos in: ${projectsDir}`);
 
     const repoPaths = await gitUtils.discoverRepos(projectsDir);
 
-    console.log(`[Git API] Found ${repoPaths.length} repositories`);
+    log.info(` Found ${repoPaths.length} repositories`);
 
     // Get status for each repo (in parallel for speed)
     const repos = await Promise.all(repoPaths.map(async (repoPath) => {
@@ -104,7 +107,7 @@ router.get('/repos', async (req, res) => {
         };
       } catch (err) {
         // Return basic info even if status fails
-        console.warn(`[Git API] Error getting status for ${repoPath}:`, err.message);
+        log.warn(`Error getting status for ${repoPath}:`, err.message);
         return {
           name: path.basename(repoPath),
           path: repoPath,
@@ -121,7 +124,7 @@ router.get('/repos', async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('[Git API] Error listing repos:', err);
+    log.error(' Error listing repos:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -146,7 +149,7 @@ router.get('/repos/:repo/status', async (req, res) => {
       data: status
     });
   } catch (err) {
-    console.error('[Git API] Error getting repo status:', err);
+    log.error(' Error getting repo status:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -176,7 +179,7 @@ router.get('/repos/:repo/log', async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('[Git API] Error getting repo log:', err);
+    log.error(' Error getting repo log:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -207,7 +210,7 @@ router.post('/repos/:repo/stage', requireAuth, async (req, res) => {
       message: `Staged ${files.length === 1 && files[0] === '.' ? 'all' : files.length} file(s)`
     });
   } catch (err) {
-    console.error('[Git API] Error staging files:', err);
+    log.error(' Error staging files:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -238,7 +241,7 @@ router.post('/repos/:repo/unstage', requireAuth, async (req, res) => {
       message: `Unstaged ${files.length} file(s)`
     });
   } catch (err) {
-    console.error('[Git API] Error unstaging files:', err);
+    log.error(' Error unstaging files:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -270,7 +273,7 @@ router.post('/repos/:repo/commit', requireAuth, async (req, res) => {
       output: result.stdout
     });
   } catch (err) {
-    console.error('[Git API] Error creating commit:', err);
+    log.error(' Error creating commit:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -300,7 +303,7 @@ router.post('/repos/:repo/push', requireAuth, async (req, res) => {
       output: result.stdout || result.stderr
     });
   } catch (err) {
-    console.error('[Git API] Error pushing:', err);
+    log.error(' Error pushing:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -330,7 +333,7 @@ router.post('/repos/:repo/pull', requireAuth, async (req, res) => {
       output: result.stdout || result.stderr
     });
   } catch (err) {
-    console.error('[Git API] Error pulling:', err);
+    log.error(' Error pulling:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -359,7 +362,7 @@ router.post('/repos/:repo/fetch', requireAuth, async (req, res) => {
       output: result.stdout || result.stderr || 'Up to date'
     });
   } catch (err) {
-    console.error('[Git API] Error fetching:', err);
+    log.error(' Error fetching:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -397,7 +400,7 @@ router.post('/repos/:repo/discard', requireAuth, async (req, res) => {
       });
     }
   } catch (err) {
-    console.error('[Git API] Error discarding changes:', err);
+    log.error(' Error discarding changes:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -422,7 +425,7 @@ router.get('/repos/:repo/stashes', async (req, res) => {
       data: { stashes }
     });
   } catch (err) {
-    console.error('[Git API] Error listing stashes:', err);
+    log.error(' Error listing stashes:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -451,7 +454,7 @@ router.post('/repos/:repo/stash', requireAuth, async (req, res) => {
       message: 'Changes stashed successfully'
     });
   } catch (err) {
-    console.error('[Git API] Error stashing changes:', err);
+    log.error(' Error stashing changes:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -479,7 +482,7 @@ router.post('/repos/:repo/stash-pop', requireAuth, async (req, res) => {
       message: 'Stash popped successfully'
     });
   } catch (err) {
-    console.error('[Git API] Error popping stash:', err);
+    log.error(' Error popping stash:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -507,7 +510,7 @@ router.post('/repos/:repo/stash-apply', requireAuth, async (req, res) => {
       message: 'Stash applied successfully'
     });
   } catch (err) {
-    console.error('[Git API] Error applying stash:', err);
+    log.error(' Error applying stash:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -535,7 +538,7 @@ router.post('/repos/:repo/stash-drop', requireAuth, async (req, res) => {
       message: 'Stash dropped successfully'
     });
   } catch (err) {
-    console.error('[Git API] Error dropping stash:', err);
+    log.error(' Error dropping stash:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -599,7 +602,7 @@ ${truncatedDiff}`;
 
     // Run claude CLI with haiku model, passing prompt via stdin to avoid shell escaping issues
     const model = req.body.model || 'haiku';
-    console.log(`[Git API] Generating commit message with ${model} for ${req.params.repo}`);
+    log.info(` Generating commit message with ${model} for ${req.params.repo}`);
 
     const message = await new Promise((resolve, reject) => {
       const child = spawn('claude', ['--model', model, '--print', '-p', '-'], {
@@ -637,14 +640,14 @@ ${truncatedDiff}`;
       throw new Error('Claude returned empty response');
     }
 
-    console.log(`[Git API] Generated message: ${cleanMessage.split('\n')[0]}...`);
+    log.info(` Generated message: ${cleanMessage.split('\n')[0]}...`);
 
     res.json({
       success: true,
       message: cleanMessage
     });
   } catch (err) {
-    console.error('[Git API] Error generating commit message:', err);
+    log.error(' Error generating commit message:', err);
 
     // Check if claude CLI is not available
     if (err.message && (err.message.includes('ENOENT') || err.message.includes('not found'))) {

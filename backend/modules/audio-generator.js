@@ -8,8 +8,10 @@ const { promisify } = require('util');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { createModuleLogger } = require('./logger');
 
 const execFileAsync = promisify(execFile);
+const log = createModuleLogger('Audio');
 
 // Audio cache directory
 const AUDIO_CACHE_DIR = '/tmp/claude-audio-cache';
@@ -167,7 +169,7 @@ async function generateAudio({
   if (cleanText.length > MAX_TEXT_LENGTH) {
     const truncateAt = cleanText.lastIndexOf('.', MAX_TEXT_LENGTH);
     cleanText = cleanText.slice(0, truncateAt > MAX_TEXT_LENGTH / 2 ? truncateAt + 1 : MAX_TEXT_LENGTH);
-    console.log(`[Audio] Text truncated to ${cleanText.length} chars`);
+    log.info(`Text truncated to ${cleanText.length} chars`);
   }
 
   // Resolve random voice
@@ -254,9 +256,9 @@ async function generateAudio({
 
     // All retries failed
     if (lastError && !lastError.message?.includes('ETIMEDOUT') && !lastError.message?.includes('ENETUNREACH')) {
-      console.error(`[Audio] edge-tts error after ${MAX_RETRIES} attempts:`, lastError.message);
+      log.error(`edge-tts error after ${MAX_RETRIES} attempts:`, lastError.message);
       if (lastError.stderr) {
-        console.error('[Audio] edge-tts stderr:', lastError.stderr);
+        log.error('edge-tts stderr:', lastError.stderr);
       }
     }
     return { success: false, error: 'TTS generation failed' };
