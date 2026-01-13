@@ -6,6 +6,30 @@ description: "Code review with confidence-based filtering. Modes: quick (lint+ty
 
 Review uncommitted changes with confidence-based filtering. Only reports issues with ≥80% confidence. Auto-fixes issues with ≥95% confidence.
 
+## Mode Selection Gate
+
+**Pick the right mode FIRST:**
+
+```
+What changed?
+├─ Docs, README, config, comments only?
+│   └─> --quick (lint + types + secrets)
+├─ Normal feature or bug fix?
+│   └─> (default) Standard Opus review
+└─ Security-sensitive, large PR, or critical path?
+    └─> --thorough (parallel agents)
+```
+
+| Changed | Lines | Risk | Mode |
+|---------|-------|------|------|
+| Markdown, README | Any | Low | `--quick` |
+| Config files | Any | Low | `--quick` |
+| Adding tests | Any | Low | `--quick` |
+| Normal code | <500 | Medium | (default) |
+| Auth, payments, data | Any | High | `--thorough` |
+| Large refactor | >500 | High | `--thorough` |
+| Security-related | Any | High | `--thorough` |
+
 ## Usage
 
 ```bash
@@ -197,15 +221,3 @@ Every review includes a `needs_tests` assessment:
 - `/conductor:run-tests` - Run tests before review
 - `/conductor:commit-changes` - Run after review passes
 - `/conductor:worker-done` - Full pipeline (includes this)
-
-## Choosing a Mode
-
-| Situation | Mode |
-|-----------|------|
-| Docs, README, comments | `--quick` |
-| Normal feature/fix | (default) |
-| Security-sensitive code | `--thorough` |
-| Large refactor (>500 lines) | `--thorough` |
-| Auth, payments, data handling | `--thorough` |
-| Config changes only | `--quick` |
-| Adding tests | `--quick` |

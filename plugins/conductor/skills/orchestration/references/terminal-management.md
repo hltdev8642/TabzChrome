@@ -68,27 +68,29 @@ tmux kill-session -t "worker-issue-id"
 
 ## Worker Prompt Structure
 
-When sending tasks to workers, include relevant capabilities:
+Use `/conductor:prompt-engineer` (forked context) to craft prompts. It generates:
 
 ```markdown
-## Task
-[Clear description of what needs to be done]
+## Task: ISSUE-ID - Title
+[Explicit, actionable description]
+
+## Context
+[Background and WHY - gathered via haiku exploration]
+
+## Key Files
+- /path/to/file.ts:45-60 - [what's relevant]
+- /path/to/pattern.ts:120 - [pattern to follow]
 
 ## Approach
-- Use the xterm-js skill for terminal patterns
-- Use subagents in parallel to explore the codebase
-- Use tabz MCP tools for browser automation (if worker has tab group)
+[Implementation guidance based on codebase patterns]
 
-## Files
-@path/to/relevant/file.ts
-@path/to/another/file.ts
+Use subagents in parallel for exploration, testing, and multi-file analysis.
 
-## Constraints
-[What NOT to change, requirements to follow]
-
-## Success Criteria
-[How to verify the task is complete]
+## When Done
+Run `/conductor:worker-done ISSUE-ID`
 ```
+
+**Skills auto-activate** via UserPromptSubmit hook - no manual skill invocation needed in prompts.
 
 ## Tab Group Isolation
 

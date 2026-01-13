@@ -4,6 +4,16 @@ description: "Fully autonomous backlog completion. Runs waves until `bd ready` i
 
 # BD Swarm Auto - Autonomous Backlog Completion
 
+## Prerequisites
+
+**First, load orchestration context** (spawn patterns, tmux commands):
+```
+/conductor:orchestration
+```
+Skip if already loaded or running as `--agent conductor:conductor`.
+
+---
+
 **YOU are the conductor. Execute this workflow autonomously. Do NOT ask the user for input.**
 
 ## Execute Now
@@ -48,17 +58,13 @@ description: "Fully autonomous backlog completion. Runs waves until `bd ready` i
    done
    ```
 
-6. **Send skill-aware prompts (ONLY verified skills):**
-   For each worker, send a prompt with:
-   - Issue context from `bd show`
-   - Skill hints: ONLY skills from step 2's `--available-full` output
-     ```bash
-     # Read skill hints AND verify availability
-     MATCH_SCRIPT="${CLAUDE_PLUGIN_ROOT:-./plugins/conductor}/scripts/match-skills.sh"
-     SKILL_HINTS=$($MATCH_SCRIPT --verify --issue "$ISSUE_ID")
-     ```
-   - If no skills match, omit the "Skills to Load" section entirely
-   - Completion command: `/conductor:worker-done <issue-id>`
+6. **Send prompts (crafted via prompt-engineer):**
+   Use `/conductor:prompt-engineer` to craft context-rich prompts:
+   - Runs in forked context (won't bloat conductor)
+   - Spawns haiku Explore agents per issue
+   - Returns ready-to-use prompts with file paths and patterns
+   - Skills auto-activate via hook - no manual matching needed
+   - Each prompt ends with `/conductor:worker-done <issue-id>`
 
 7. **Monitor and loop:**
    - Poll `${CLAUDE_PLUGIN_ROOT}/scripts/monitor-workers.sh --summary` every 2 min

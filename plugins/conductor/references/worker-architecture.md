@@ -115,47 +115,31 @@ Avoid ALL CAPS and aggressive phrasing—Claude 4.x may overtrigger:
 
 ### Prompt Structure
 
-Structure worker prompts in clear sections:
+Use `/conductor:prompt-engineer` (forked context) to craft prompts. It generates:
 
 ```markdown
 ## Task: ISSUE-ID - Title
-[What to do - explicit, actionable]
-
-## Skills to Load
-**FIRST**, invoke these skills before starting work:
-- /backend-development:backend-development
-- /ui-styling:ui-styling
+[Explicit, actionable description]
 
 ## Context
-[Background, WHY this matters]
+[Background and WHY - gathered via haiku exploration]
 
 ## Key Files
-[File paths as text - workers read on-demand]
+- /path/to/file.ts:45-60 - [what's relevant]
+- /path/to/pattern.ts:120 - [pattern to follow]
 
 ## Approach
-[Implementation guidance]
+[Implementation guidance based on codebase patterns]
 
 Use subagents in parallel for exploration, testing, and multi-file analysis.
-Analyze deeply before implementing. Break complex work into phases.
 
 ## When Done
 Run `/conductor:worker-done ISSUE-ID`
 ```
 
-### Skill Invocation: Explicit Commands
+### Skill Activation
 
-**CRITICAL:** Skills must be invoked with explicit `/plugin:skill` commands in a dedicated section.
-
-| ❌ Doesn't work | ✅ Works |
-|-----------------|----------|
-| "Use the X skill for Y" | `/backend-development:backend-development` |
-| "Follow patterns from X skill" | `/ui-styling:ui-styling` |
-| Weaving into prose | Explicit invocation in "Skills to Load" section |
-
-To find available skills:
-```bash
-./plugins/conductor/scripts/discover-skills.sh "backend api terminal"
-```
+**Skills auto-activate** via the UserPromptSubmit hook based on prompt content. No manual `/skill:name` invocation needed in prompts.
 
 ### Anti-Patterns
 
@@ -165,8 +149,6 @@ To find available skills:
 | "Don't do X" | Negative framing is harder to follow | "Do Y instead" (positive framing) |
 | Vague adjectives ("good", "proper") | Undefined, varies by interpretation | Specific criteria or examples |
 | Including full file contents | Bloats prompt, may be stale | File paths as text, read on-demand |
-| "Use the X skill for..." | Interpreted as guidance, not invocation | Explicit `/plugin:skill` commands |
-| Shorthand skill names | May not resolve (e.g., `/backend-development`) | Full format `/plugin:skill` |
 
 ## Related Files
 

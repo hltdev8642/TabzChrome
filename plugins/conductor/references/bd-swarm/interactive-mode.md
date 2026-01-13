@@ -112,106 +112,49 @@ started_at: $(date -Iseconds)"
 
 Before sending, craft a detailed prompt following the structure in `references/worker-architecture.md`.
 
-### Step 5a: Discover Skills to Invoke
+### Step 5a: Craft Prompts
 
-Find real available skills using the discovery script:
-
-```bash
-# Discover actual skills (queries API + filesystem)
-./plugins/conductor/scripts/discover-skills.sh "backend api terminal"
-
-# Or use match-skills.sh for keyword-based matching:
-MATCH_SCRIPT="${CLAUDE_PLUGIN_ROOT:-./plugins/conductor}/scripts/match-skills.sh"
-SKILL_INVOCATIONS=$($MATCH_SCRIPT --issue "$ISSUE_ID")
-# Output: /backend-development:backend-development /conductor:orchestration
-```
-
-**CRITICAL:** Use full `plugin:skill` format. "Use the X skill" does NOT trigger invocation.
-
-| ❌ Wrong | ✅ Correct |
-|----------|-----------|
-| `/backend-development` | `/backend-development:backend-development` |
-| "Use the X skill for..." | Explicit `/plugin:skill` in "Skills to Load" section |
-
-### Step 5b: Get Key Files (Optional)
-
-For complex issues, identify starting points:
+Use `/conductor:prompt-engineer` (forked context) to craft prompts:
 
 ```bash
-# Quick grep for relevant files (optional, workers can explore)
-KEY_FILES=$(grep -rl "$KEYWORD" --include="*.ts" --include="*.tsx" . 2>/dev/null | head -5)
+/conductor:prompt-engineer
 ```
 
-### Step 5c: Build Enhanced Prompt
+This skill:
+1. Spawns parallel haiku Explore agents per issue
+2. Gathers file paths, patterns, dependencies
+3. Returns ready-to-use prompts
+
+**Skills auto-activate** via UserPromptSubmit hook - no manual skill matching needed.
+
+### Step 5b: Send Prompt
 
 ```bash
 SESSION="ctt-claude-xxx"
-ISSUE_ID="TabzChrome-abc"
-TITLE="Fix something"
-DESCRIPTION="Details from bd show"
-# Skill invocations from discover-skills.sh or match-skills.sh:
-SKILL_INVOCATIONS="/backend-development:backend-development
-/ui-styling:ui-styling"
-KEY_FILES="extension/components/Terminal.tsx
-extension/hooks/useTerminalSessions.ts"
 
-sleep 4
-
-# Validate session name
-if [[ ! "$SESSION" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-  echo "ERROR: Invalid session name format"
-  exit 1
-fi
-
+# Validate session exists
 if ! tmux has-session -t "$SESSION" 2>/dev/null; then
   echo "ERROR: Session does not exist"
   exit 1
 fi
 
-# Build enhanced prompt with skill invocations
-PROMPT=$(cat <<EOF
-Fix beads issue ${ISSUE_ID}: "${TITLE}"
-
-## Skills to Load
-**FIRST**, invoke these skills before starting work:
-${SKILL_INVOCATIONS}
-
-These load patterns and context you'll need.
-
-## Context
-${DESCRIPTION}
-
-## Key Files
-${KEY_FILES:-"Explore as needed based on the issue description."}
-
-## Approach
-Reference existing patterns in the codebase for consistency.
-
-After implementation, verify the build passes and test the changes work as expected.
-
-## When Done
-Run: /conductor:worker-done ${ISSUE_ID}
-
-This command will: build, run code review, commit changes, and close the issue.
-The worker-done command notifies the conductor via API automatically.
-EOF
-)
-
-# Send prompt safely
+# Send the prompt crafted by prompt-engineer
+sleep 4
 printf '%s' "$PROMPT" | tmux load-buffer -
 tmux paste-buffer -t "$SESSION"
 sleep 0.3
 tmux send-keys -t "$SESSION" C-m
 ```
 
-### Prompt Template Summary
+### Prompt Structure
+
+The prompt-engineer generates prompts like:
 
 | Section | Purpose |
 |---------|---------|
-| Title line | Issue ID + title for clarity |
-| Skills to Load | **Explicit** `/plugin:skill` invocations |
-| Context | Description + WHY this matters |
-| Key Files | Starting points (optional) |
+| Task | Issue ID + explicit description |
+| Context | Background and WHY (from exploration) |
+| Key Files | Specific file paths with line numbers |
 | Approach | Implementation guidance |
 | When Done | **Mandatory** `/conductor:worker-done` instruction |
 

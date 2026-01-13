@@ -178,25 +178,21 @@ Follow the pattern in [existing-file.ts] for consistency.
 Run `/conductor:worker-done ISSUE-ID`
 ```
 
-### Skill Triggers
+### Prompt Crafting
 
-| Need | Trigger Phrase |
-|------|---------------|
-| Terminal UI | "use the xterm-js skill" |
-| UI components | "use the shadcn-ui skill" |
-| Complex reasoning | "use the sequential-thinking skill" |
-| Exploration | "use subagents in parallel to explore" |
-| Deep thinking | Prepend `ultrathink` |
-| Code review | Run `/conductor:code-review` |
-| Build verification | Run `/conductor:verify-build` |
+Use `/conductor:prompt-engineer` (forked context) to craft worker prompts:
+- Spawns haiku Explore agents per issue
+- Gathers file paths, patterns, dependencies
+- Returns ready-to-use prompts
 
-### Prompt Guidelines (Lessons Learned)
+**Skills auto-activate** via UserPromptSubmit hook - no manual triggers needed.
+
+### Prompt Guidelines
 
 - **Be explicit** - "Fix null reference on line 45" not "fix the bug"
 - **Add context** - Explain WHY to help Claude make good decisions
 - **Reference patterns** - Point to existing code for consistency
 - **Avoid ALL CAPS** - Claude 4.x overtriggers on aggressive language
-- **File paths as text** - Workers read files on-demand, avoids bloat
 - **Include completion** - Always end with "Run `/conductor:worker-done ISSUE-ID`"
 
 ---

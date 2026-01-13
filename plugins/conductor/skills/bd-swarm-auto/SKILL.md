@@ -5,6 +5,16 @@ description: "Fully autonomous backlog completion. Runs waves until `bd ready` i
 
 # BD Swarm Auto - Autonomous Backlog Completion
 
+## Prerequisites
+
+**First, load orchestration context** (spawn patterns, tmux commands):
+```
+/conductor:orchestration
+```
+Skip if already loaded or running as `--agent conductor:conductor`.
+
+---
+
 **YOU are the conductor. Execute this workflow autonomously. Do NOT ask the user for input.**
 
 ## Architecture: Parallel Terminal Workers
@@ -23,12 +33,12 @@ GOOD: 3-4 terminals with focused prompts -> smooth execution
 | Step | Action | Reference |
 |------|--------|-----------|
 | 1 | Get ready issues | `bd ready --json` |
-| 2 | Calculate workers | Max 4, distribute issues |
+| 2 | Craft prompts | `/conductor:prompt-engineer` (forked context) |
 | 3 | Create worktrees | Parallel, wait for all |
-| 4 | Spawn workers | TabzChrome API |
-| 5 | Send prompts | Skill-aware prompts with issue context |
+| 4 | Spawn workers | TabzChrome API (max 4) |
+| 5 | Send prompts | tmux send-keys with crafted prompts |
 | 6 | Poll status | Every 2 min, check context |
-| 7 | Merge & cleanup | Kill sessions first |
+| 7 | Merge & cleanup | `/conductor:wave-done` |
 | 8 | Visual QA | tabz-manager for UI waves |
 | 9 | Next wave | Loop until empty |
 
@@ -72,7 +82,7 @@ NEXT=$(bd ready --json | jq 'length')
 
 1. **NO USER INPUT** - Fully autonomous, no AskUserQuestion
 2. **MAX 4 TERMINALS** - Never spawn more than 4 workers
-3. **SKILL-AWARE PROMPTS** - Include skill hints in worker prompts
+3. **USE PROMPT-ENGINEER** - Craft prompts via `/conductor:prompt-engineer` (forked)
 4. **YOU MUST POLL** - Check issue status every 2 minutes
 5. **LOOP UNTIL EMPTY** - Keep running waves until `bd ready` is empty
 6. **VISUAL QA** - Spawn tabz-manager after UI waves
@@ -80,24 +90,36 @@ NEXT=$(bd ready --json | jq 'length')
 
 ---
 
-## Worker Prompt Template
+## Prompt Crafting
+
+**Before each wave**, use the prompt-engineer skill to craft prompts:
+
+```bash
+/conductor:prompt-engineer
+```
+
+This runs in **forked context** and:
+1. Spawns haiku Explore agents per issue
+2. Gathers file paths, patterns, dependencies
+3. Returns ready-to-use prompts
+
+Skills auto-activate via UserPromptSubmit hook - no manual skill hints needed.
+
+---
+
+## Worker Prompt Structure
+
+The prompt-engineer generates prompts like:
 
 ```markdown
 ## Task: ISSUE-ID - Title
-
-## Skills to Load
-**FIRST**, invoke these skills before starting work:
-- /backend-development:backend-development
-- /conductor:orchestration
-
-These load patterns and context you'll need.
+[Explicit, actionable description]
 
 ## Context
-[WHY this matters - helps Claude generalize and make good decisions]
+[Background and WHY - gathered via exploration]
 
 ## Key Files
-- path/to/file.ts (focus on lines X-Y)
-- path/to/other.ts
+- /path/to/file.ts:45-60 - [what's relevant]
 
 ## Approach
 [Implementation guidance - what to do]

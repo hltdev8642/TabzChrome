@@ -6,6 +6,14 @@ description: "Pick the top ready beads issue and spawn a visible worker to compl
 
 Spawn a visible worker to tackle one beads issue. Unlike bd-swarm, no worktree is created since there's only one worker.
 
+## Prerequisites
+
+**First, load orchestration context** (spawn patterns, tmux commands):
+```
+/conductor:orchestration
+```
+Skip if already loaded or running as `--agent conductor:conductor`.
+
 ## Quick Start
 
 ```bash
@@ -20,12 +28,10 @@ Spawn a visible worker to tackle one beads issue. Unlike bd-swarm, no worktree i
 ```
 1. Select issue       →  bd ready (pick top) or use provided ID
 2. Get issue details  →  bd show <id>
-3. VERIFY SKILLS      →  scripts/match-skills.sh --available-full (MANDATORY)
-4. Explore context    →  Task(Explore) for relevant files
-5. Craft prompt       →  Follow worker-architecture.md template (VERIFIED skills only)
-6. Spawn worker       →  TabzChrome API (no worktree)
-7. Send prompt        →  tmux send-keys
-8. User watches       →  Worker visible in sidebar
+3. Craft prompt       →  /conductor:prompt-engineer (forked context)
+4. Spawn worker       →  TabzChrome API (no worktree)
+5. Send prompt        →  tmux send-keys
+6. User watches       →  Worker visible in sidebar
 ```
 
 ---
@@ -42,88 +48,41 @@ bd show <id>
 
 ---
 
-## Phase 2: VERIFY Skills (MANDATORY)
+## Phase 2: Craft Prompt
 
-**CRITICAL: Run this BEFORE crafting prompts.** Only include skills that appear in output:
+Use the prompt-engineer skill to craft a context-rich prompt:
 
 ```bash
-# List ALL available skills - ONLY use these in prompts
-${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh --available-full
-
-# Or verify and match for specific keywords
-${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh --verify "backend api terminal"
+/conductor:prompt-engineer
 ```
 
-**Rules:**
-- If a skill doesn't appear in `--available-full`, DO NOT include it in prompts
-- MCP tools (shadcn/*, tabz/*) are NOT skills - call them via `mcp-cli call`
-- If no skills match, omit the "Skills to Load" section entirely
+This runs in **forked context** and:
+1. Spawns parallel haiku Explore agents
+2. Gathers file paths, patterns, dependencies
+3. Returns a ready-to-use prompt
 
-Common verified skill patterns (if installed):
+**Skills auto-activate** via UserPromptSubmit hook - no manual skill matching needed.
 
-| Keywords | Skill to Invoke |
-|----------|-----------------|
-| UI, component, modal, dashboard | `/ui-styling:ui-styling` |
-| terminal, xterm, pty, resize | `/xterm-js:xterm-js` |
-| backend, API, server, websocket | `/backend-development:backend-development` |
-| plugin, skill, agent, hook | `/plugin-dev:plugin-dev` |
-| MCP, browser, screenshot | `/conductor:tabz-mcp` |
-| auth, login, oauth | `/better-auth:better-auth` |
-
-**CRITICAL:** Use full `plugin:skill` format. "Use the X skill" does NOT trigger invocation.
-
----
-
-## Phase 3: Explore Context
-
-Before crafting the prompt, understand what files are relevant:
+The generated prompt follows this structure:
 
 ```markdown
-Task(
-  subagent_type="Explore",
-  model="haiku",
-  prompt="Find files relevant to: '<issue-title>'
-         Return: key files, patterns to follow"
-)
-```
-
----
-
-## Phase 4: Craft Prompt
-
-Follow the template from `references/worker-architecture.md`:
-
-```markdown
-Fix beads issue ISSUE-ID: "Title"
-
-## Skills to Load
-**FIRST**, invoke these skills before starting work:
-- /backend-development:backend-development
-- /ui-styling:ui-styling
-
-These load patterns and context you'll need.
+## Task: ISSUE-ID - Title
+[Explicit, actionable description]
 
 ## Context
-[WHY this matters, background from issue description]
+[Background and WHY - gathered via exploration]
 
 ## Key Files
-[File paths as text - worker reads on-demand]
-- path/to/relevant/file.ts
-- path/to/pattern/to/follow.ts
+- /path/to/file.ts:45-60 - [what's relevant]
+- /path/to/pattern.ts:120 - [pattern to follow]
 
 ## Approach
-[Implementation guidance - what to do, not which skills to use]
+[Implementation guidance based on codebase patterns]
 
-After implementation, verify the build passes and test the changes work as expected.
-
-## Conductor Session
-CONDUCTOR_SESSION=<conductor-tmux-session>
-(Worker needs this to notify conductor on completion)
+Use subagents in parallel for exploration, testing, and multi-file analysis.
 
 ## When Done
-Run: /conductor:worker-done ISSUE-ID
-
-This command will: build, run code review, commit changes, and close the issue.
+Run `/conductor:worker-done ISSUE-ID`
 ```
 
 **The `/conductor:worker-done` instruction is mandatory** - without it, workers don't know how to signal completion.

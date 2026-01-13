@@ -4,7 +4,15 @@ description: "Spawn multiple Claude workers with skill-aware prompts to tackle b
 
 # Beads Swarm - Parallel Issue Processing
 
-Spawn multiple Claude workers to tackle beads issues in parallel, with skill-aware prompting and environment preparation.
+Spawn multiple Claude workers to tackle beads issues in parallel.
+
+## Prerequisites
+
+**First, load orchestration context** (spawn patterns, tmux commands):
+```
+/conductor:orchestration
+```
+Skip if already loaded or running as `--agent conductor:conductor`.
 
 ## Quick Start
 
@@ -19,38 +27,34 @@ Spawn multiple Claude workers to tackle beads issues in parallel, with skill-awa
 ## Workflow Overview
 
 ```
-1. Get ready issues      ->  bd ready
-2. VERIFY SKILLS         ->  scripts/match-skills.sh --available-full (MANDATORY)
-3. Create worktrees      ->  scripts/setup-worktree.sh (parallel)
-4. Wait for deps         ->  All worktrees ready before workers spawn
-5. Spawn workers         ->  TabzChrome /api/spawn (see below)
-6. Send prompts          ->  tmux send-keys with VERIFIED skill hints only
-7. Monitor               ->  scripts/monitor-workers.sh
-8. Merge & review        ->  Merge branches, visual review (conductor only)
-9. Cleanup               ->  scripts/completion-pipeline.sh
+1. Get ready issues      →  bd ready
+2. Craft prompts         →  /conductor:prompt-engineer (forked context)
+3. Create worktrees      →  scripts/setup-worktree.sh (parallel)
+4. Spawn workers         →  TabzChrome /api/spawn
+5. Send prompts          →  tmux send-keys with crafted prompts
+6. Monitor               →  scripts/monitor-workers.sh
+7. Merge & review        →  /conductor:wave-done
 ```
 
 **Key insight:** TabzChrome spawn creates tmux sessions with `ctt-*` prefix. Cleanup is via `tmux kill-session`.
 
 ---
 
-## MANDATORY: Verify Skills Before Spawning
+## Prompt Crafting with prompt-engineer
 
-**CRITICAL:** Before crafting prompts, verify which skills are actually available:
+**Use the prompt-engineer skill** to craft context-rich prompts for workers:
 
 ```bash
-# List all available skills with descriptions
-${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh --available-full
-
-# Or match and verify for specific keywords
-${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh --verify "terminal ui api"
+/conductor:prompt-engineer
 ```
 
-**Only include skills in prompts that appear in `--available-full` output.**
+This skill runs in a **forked context** (won't bloat conductor) and:
+1. Spawns parallel **haiku Explore agents** per issue
+2. Gathers: key files, patterns, dependencies, tests
+3. Synthesizes into detailed prompts with file paths and line numbers
+4. Returns ready-to-use prompts
 
-- If a skill doesn't exist, workers will fail trying to invoke it
-- The `--verify` flag filters to only available skills
-- MCP tools (like shadcn/*) are NOT skills - they're called directly via `mcp-cli`
+**The skill handles skill-matching automatically** via the UserPromptSubmit hook - no manual skill verification needed.
 
 ---
 
@@ -301,101 +305,33 @@ Workers share the same plugin context as the conductor, so all skills are availa
 
 ---
 
-## Skill Matching & Prompt Enhancement
+## Prompt Structure
 
-**Key insight:** Workers need detailed prompts with skill hints woven naturally into guidance, not listed as sidebars.
-
-### Reading Skills from Beads
-
-Skills are persisted by `plan-backlog` in issue notes. Read them using the central script:
-
-```bash
-# The script self-locates (checks CLAUDE_PLUGIN_ROOT, script dir, project, plugin cache)
-MATCH_SCRIPT="${CLAUDE_PLUGIN_ROOT:-./plugins/conductor}/scripts/match-skills.sh"
-
-# Get skill trigger text for an issue (reads from notes first, falls back to matching)
-SKILL_HINTS=$($MATCH_SCRIPT --issue "$ISSUE_ID")
-
-# Or for runtime-verified matching (only available skills):
-SKILL_HINTS=$($MATCH_SCRIPT --verify --issue "$ISSUE_ID")
-```
-
-**The workflow:**
-1. `plan-backlog` analyzes issues and persists skills to notes
-2. `bd-swarm` reads skills from notes (or matches on-the-fly if not persisted)
-3. Workers receive natural skill trigger language in their prompts
-
-### Skill Mappings
-
-See `scripts/match-skills.sh` for the complete, authoritative list of skill mappings. Key patterns:
-
-| Keywords | Skill to Invoke |
-|----------|-----------------|
-| terminal, xterm, pty, resize | `/xterm-js` |
-| UI, component, modal, dashboard | `/ui-styling` |
-| backend, api, server, websocket | `/backend-development` |
-| plugin, skill, agent, conductor | `/plugin-dev` |
-| browser, screenshot, click, mcp | (use tabz_* MCP tools directly) |
-
-**Key insight**: Neither "Use the X skill" nor "follow X patterns" triggers invocation. Workers need explicit `/skill-name` commands in a "Skills to Load" section.
-
-### Enhanced Prompt Structure
-
-All worker prompts must follow this structure (see `references/worker-architecture.md`):
+The prompt-engineer skill generates prompts following this structure:
 
 ```markdown
-Fix beads issue ISSUE-ID: "Title"
-
-## Skills to Load
-**FIRST**, invoke these skills before starting work:
-- /backend-development:backend-development
-- /conductor:orchestration
-
-These load patterns and context you'll need.
+## Task: ISSUE-ID - Title
+[Explicit, actionable description]
 
 ## Context
-[Description from bd show - explains WHY]
+[Background and WHY - gathered via exploration]
 
 ## Key Files
-[Relevant file paths, or "Explore as needed"]
+- /path/to/file.ts:45-60 - [what's relevant]
+- /path/to/pattern.ts:120 - [pattern to follow]
 
 ## Approach
-[Implementation guidance - what to do, not which skills to use]
+[Implementation guidance based on codebase patterns]
 
-After implementation, verify the build passes and test the changes work as expected.
-
-## Conductor Session
-CONDUCTOR_SESSION=<conductor-tmux-session>
-(Worker needs this to notify conductor on completion)
+Use subagents in parallel for exploration, testing, and multi-file analysis.
 
 ## When Done
-Run: /conductor:worker-done ISSUE-ID
-
-This command will: build, run code review, commit changes, and close the issue.
+Run `/conductor:worker-done ISSUE-ID`
 ```
 
-**CRITICAL: Use full `plugin:skill` format for skill invocation.**
+**Skills auto-activate** via the UserPromptSubmit hook based on prompt content - no manual `/skill:name` invocation needed in prompts.
 
-To find actual available skills, run:
-```bash
-./plugins/conductor/scripts/discover-skills.sh "backend api terminal"
-```
-
-This discovers real skills from the API and filesystem - don't use shorthand names.
-
-| ❌ Wrong format | ✅ Correct format |
-|-----------------|-------------------|
-| `/backend-development` | `/backend-development:backend-development` |
-| `/xterm-js` | `/xterm-js:xterm-js` |
-| `/plugin-dev` | `/conductor:orchestration` (or actual skill name) |
-
-**Exception:** Project-level skills (in `.claude/skills/`) can use shorthand: `/tabz-guide`
-
-**The `/conductor:worker-done` instruction is mandatory** - without it, workers don't know how to signal completion and the conductor can't clean up.
-
-**The conductor session is in the prompt text** (not just env var) so workers can reliably notify completion even if CONDUCTOR_SESSION env var is lost.
-
-See `references/bd-swarm/interactive-mode.md` for the `match_skills()` function that auto-generates skill hints.
+**The `/conductor:worker-done` instruction is mandatory** - without it, workers don't know how to signal completion.
 
 ---
 
