@@ -30,11 +30,11 @@
       "keywords": ["handoff", "summary", "clipboard", "tts", "speak", "audio", "transfer", "session"]
     },
     {
-      "name": "tabz-integration",
-      "description": "Integration guide for connecting projects to TabzChrome terminals",
-      "source": "./plugins/tabz-integration",
-      "category": "commands",
-      "keywords": ["tabz", "integration", "connect", "terminal", "api", "spawn", "project"]
+      "name": "tabz",
+      "description": "Browser automation via 70 MCP tools - screenshots, clicks, forms, tabs, TTS, history, cookies, emulation",
+      "source": "./plugins/tabz",
+      "category": "agents",
+      "keywords": ["tabz", "browser", "automation", "mcp", "screenshot", "click", "fill", "tts", "history", "cookies", "emulation", "terminal", "spawn"]
     },
     {
       "name": "state-tracker",
