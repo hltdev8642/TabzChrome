@@ -1,3 +1,8 @@
+---
+name: terminal-tools
+description: "Reference knowledge for tmux mastery and TUI tool control. Use when working with tmux sessions, sending keys, capturing output, or spawning TUI tools."
+---
+
 # Terminal Tools Skill
 
 Reference knowledge for tmux mastery and TUI tool control.

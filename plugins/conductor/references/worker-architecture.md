@@ -23,7 +23,20 @@ Worker (vanilla Claude via tmux/TabzChrome)
 
 - **NOT specialized agents** - no worker-frontend.md, worker-backend.md, etc.
 - **NOT plugin-isolated** - no `--plugin-dir ./plugins/worker-minimal`
-- **NOT subagent invokers** - workers invoke skills directly, not via Task subagents
+
+## Worker Capabilities
+
+Workers are full-powered Claude sessions with all natural capabilities:
+
+- **Subagents** - parallel exploration, testing, multi-file analysis
+- **Skills** - invoke directly when needed
+- **MCP tools** - browser automation, beads, etc.
+- **Full reasoning** - analyze deeply, break down complex problems
+
+Trust Claude to use these appropriately. The conductor's job is:
+1. Craft rich, context-loaded prompts
+2. Manage worktrees and parallel execution
+3. Handle merge/verification/cleanup at the end
 
 ## Skill Matching
 
@@ -113,16 +126,17 @@ Structure worker prompts in clear sections:
 - /backend-development:backend-development
 - /ui-styling:ui-styling
 
-These load patterns and context you'll need.
-
 ## Context
 [Background, WHY this matters]
 
 ## Key Files
-[File paths as text, not @file - workers read on-demand]
+[File paths as text - workers read on-demand]
 
 ## Approach
-[Implementation guidance - what to do, not which skills to use]
+[Implementation guidance]
+
+Use subagents in parallel for exploration, testing, and multi-file analysis.
+Analyze deeply before implementing. Break complex work into phases.
 
 ## When Done
 Run `/conductor:worker-done ISSUE-ID`
