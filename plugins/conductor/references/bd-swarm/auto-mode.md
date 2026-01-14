@@ -26,9 +26,11 @@ while true; do
 
   # PHASE 2: Spawn workers (worktrees already have deps)
   # Workers get skill hints via enhanced prompts (see match_skills below)
+  PROJECT_DIR=$(pwd)
+  WORKTREE_DIR="${PROJECT_DIR}-worktrees"
   for ISSUE in $READY; do
     [[ "$ISSUE" =~ ^[a-zA-Z0-9_-]+$ ]] || continue
-    spawn_auto_worker "$ISSUE" "../TabzChrome-$ISSUE"
+    spawn_auto_worker "$ISSUE" "${WORKTREE_DIR}/${ISSUE}"
   done
 
   # Monitor until wave complete

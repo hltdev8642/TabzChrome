@@ -224,14 +224,18 @@ GOOD: 3-4 terminals with focused prompts -> smooth execution
 ### Use Worktrees for Isolation
 
 ```bash
-# Create worktree for each worker
-git worktree add ../project-feature branch-name
+# Create worktree with dependencies for each worker
+${CLAUDE_PLUGIN_ROOT}/scripts/setup-worktree.sh "$ISSUE_ID"
+# Creates: ${PROJECT_DIR}-worktrees/${ISSUE_ID} with deps installed
+
+PROJECT_DIR=$(pwd)
+WORKTREE="${PROJECT_DIR}-worktrees/${ISSUE_ID}"
 
 # Spawn worker in worktree
 curl -s -X POST http://localhost:8129/api/spawn \
   -H "Content-Type: application/json" \
   -H "X-Auth-Token: $TOKEN" \
-  -d '{"name": "Claude: Feature", "workingDir": "../project-feature", "command": "claude --dangerously-skip-permissions"}'
+  -d "{\"name\": \"Claude: ${ISSUE_ID}\", \"workingDir\": \"$WORKTREE\", \"command\": \"claude --dangerously-skip-permissions\"}"
 ```
 
 ### Monitor Workers
@@ -339,18 +343,20 @@ tmux send-keys -t "$SESSION" C-m
 # Get ready issues
 bd ready
 
-# Create worktrees (parallel)
+# Create worktrees with deps (parallel)
 for ID in beads-abc beads-def; do
-  git worktree add ../$ID feature/$ID &
+  ${CLAUDE_PLUGIN_ROOT}/scripts/setup-worktree.sh "$ID" &
 done
-wait
+wait  # Wait for all worktrees + deps before spawning
 
-# Spawn workers (parallel)
+# Spawn workers in worktrees (parallel)
+PROJECT_DIR=$(pwd)
+WORKTREE_DIR="${PROJECT_DIR}-worktrees"
 for ID in beads-abc beads-def; do
   curl -s -X POST http://localhost:8129/api/spawn \
     -H "Content-Type: application/json" \
     -H "X-Auth-Token: $TOKEN" \
-    -d "{\"name\": \"Claude: $ID\", \"workingDir\": \"../$ID\", \"command\": \"claude --dangerously-skip-permissions\"}" &
+    -d "{\"name\": \"Claude: $ID\", \"workingDir\": \"${WORKTREE_DIR}/$ID\", \"command\": \"claude --dangerously-skip-permissions\"}" &
 done
 wait
 
