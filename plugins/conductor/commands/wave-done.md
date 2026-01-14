@@ -67,22 +67,46 @@ If any issue is not closed -> **STOP**. Wait for workers to complete.
 
 ---
 
-### Step 2: Kill Sessions
+### Step 2: Capture Transcripts and Kill Sessions
+
+**IMPORTANT:** Capture transcripts BEFORE killing sessions to preserve worker output for analysis.
 
 ```bash
-echo "=== Step 2: Kill Sessions ==="
+echo "=== Step 2: Capture Transcripts and Kill Sessions ==="
+
+CAPTURE_SCRIPT="${CLAUDE_PLUGIN_ROOT:-./plugins/conductor}/scripts/capture-session.sh"
+
+# Helper function to capture then kill
+capture_and_kill() {
+  local SESSION="$1"
+  local ISSUE="$2"
+
+  # Capture transcript BEFORE killing (preserves token usage, tool calls, etc.)
+  if [ -x "$CAPTURE_SCRIPT" ]; then
+    "$CAPTURE_SCRIPT" "$SESSION" "$ISSUE" 2>/dev/null || echo "Warning: Could not capture $SESSION"
+  fi
+
+  # Now kill session
+  tmux kill-session -t "$SESSION" 2>/dev/null && echo "Killed: $SESSION"
+}
 
 for ISSUE in $ISSUES; do
   # Try worker-ISSUE format
-  tmux kill-session -t "worker-${ISSUE}" 2>/dev/null && echo "Killed: worker-${ISSUE}"
+  if tmux has-session -t "worker-${ISSUE}" 2>/dev/null; then
+    capture_and_kill "worker-${ISSUE}" "$ISSUE"
+  fi
 
-  # Try ctt-worker-* format
+  # Try ctt-worker-* format (TabzChrome spawned terminals)
   SHORT_ID="${ISSUE##*-}"
   tmux list-sessions -F '#{session_name}' 2>/dev/null | grep -E "ctt-worker.*${SHORT_ID}" | while read -r S; do
-    tmux kill-session -t "$S" 2>/dev/null && echo "Killed: $S"
+    capture_and_kill "$S" "$ISSUE"
   done || true
 done
+
+echo "Transcripts saved to .beads/transcripts/"
 ```
+
+Use `/conductor:analyze-transcripts` after wave-done to review worker performance.
 
 ---
 

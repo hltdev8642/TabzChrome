@@ -11,7 +11,7 @@ Spawn multiple Claude workers to tackle beads issues in parallel.
 **Invoke orchestration skill** to load spawn patterns and tmux commands:
 
 ```
-Skill(skill: "conductor:orchestration")
+Run `/conductor:orchestration` to load spawn patterns.
 ```
 
 Skip only if already loaded this session or running as `--agent conductor:conductor`.
@@ -33,7 +33,7 @@ Skip only if already loaded this session or running as `--agent conductor:conduc
 2. Create worktrees      →  scripts/setup-worktree.sh (BEFORE spawning)
 3. Set CONDUCTOR_SESSION →  tmux display-message (REQUIRED for notifications)
 4. Spawn workers         →  TabzChrome /api/spawn
-5. Craft & send prompts  →  /conductor:prompt-engineer + tmux send-keys
+5. Craft & send prompts  →  prompt-engineer skill + tmux send-keys
 6. Monitor               →  scripts/monitor-workers.sh
 7. Merge & review        →  /conductor:wave-done
 ```
@@ -49,11 +49,13 @@ Skip only if already loaded this session or running as `--agent conductor:conduc
 
 ## Prompt Crafting with prompt-engineer
 
-Run `/conductor:prompt-engineer` to craft context-rich prompts:
+Invoke the prompt-engineer skill to craft context-rich prompts:
 
-```bash
-/conductor:prompt-engineer TabzChrome-abc TabzChrome-def
 ```
+Skill(skill: "conductor:prompt-engineer")
+```
+
+Then follow its workflow for the issues you're processing.
 
 The prompt-engineer workflow:
 

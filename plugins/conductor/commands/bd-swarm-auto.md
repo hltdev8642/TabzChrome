@@ -9,7 +9,7 @@ description: "Fully autonomous backlog completion. Runs waves until `bd ready` i
 **Invoke orchestration skill** to load spawn patterns and tmux commands:
 
 ```
-Skill(skill: "conductor:orchestration")
+Run `/conductor:orchestration` to load spawn patterns.
 ```
 
 Skip only if already loaded this session or running as `--agent conductor:conductor`.
