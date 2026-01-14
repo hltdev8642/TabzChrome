@@ -2,5 +2,12 @@
   "name": "tabz",
   "version": "1.0.0",
   "description": "Browser automation via 70 MCP tools - screenshots, clicks, forms, tabs, TTS, history, cookies, emulation, notifications",
-  "agents": ["./agents/tabz-expert.md"]
+  "agents": ["./agents/tabz-expert.md"],
+  "mcpServers": {
+    "tabz": {
+      "command": "/home/marci/projects/TabzChrome/tabz-mcp-server/run-auto.sh",
+      "args": [],
+      "env": { "BACKEND_URL": "http://localhost:8129" }
+    }
+  }
 }
