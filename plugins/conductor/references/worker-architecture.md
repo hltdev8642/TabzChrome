@@ -38,34 +38,40 @@ Trust Claude to use these appropriately. The conductor's job is:
 2. Manage worktrees and parallel execution
 3. Handle merge/verification/cleanup at the end
 
-## Skill Matching
+## Skill Activation
 
-The conductor matches issue keywords to skill hints for worker prompts:
+**Skills auto-activate via the UserPromptSubmit hook** when workers receive prompts. The hook evaluates the prompt content against available skill descriptions and loads relevant ones automatically.
 
-| Issue Keywords | Skill Hint | Purpose |
-|----------------|-----------|---------|
-| terminal, xterm, PTY, resize | `/xterm-js:xterm-js` | Terminal rendering, resize, WebSocket |
-| UI, component, modal, dashboard | `/ui-styling:ui-styling` | shadcn/ui, Tailwind patterns |
-| backend, API, server, database | `/backend-development:backend-development` | Node.js, APIs, databases |
-| browser, screenshot, click | `/conductor:tabz-mcp` | Browser automation tools |
-| auth, login, oauth | `/better-auth:better-auth` | Authentication patterns |
+Each skill has a `description` in its frontmatter that Claude matches against:
+- Task matches "terminal rendering, resize handling" → loads xterm-js skill
+- Task matches "UI components, styling" → loads ui-styling skill
+- Task matches "API development, backend" → loads backend-development skill
+
+> **DO NOT put `/skill:name` in worker prompts.** Skills activate automatically based on task description.
+> The only slash command workers need is `/conductor:worker-done` at the end.
+
+**Write good task descriptions** - the more clearly the prompt describes what needs to be done, the better the hook can match relevant skills.
 
 ## Why This Architecture?
 
 1. **Simplicity** - Workers are just Claude sessions, no special configuration
-2. **Direct skills** - Workers invoke skills directly, avoiding subagent context overhead
-3. **Flexible** - Same worker can handle any issue type with appropriate skill hints
-4. **Lean prompts** - File paths as text (not @file), skills invoked on-demand
+2. **Auto-activation** - Skills load from prompt keywords via UserPromptSubmit hook
+3. **Flexible** - Same worker can handle any issue type based on prompt content
+4. **Lean prompts** - File paths as text (not @file), keywords trigger skill loading
 
 ## Worker Lifecycle
 
 ```
-1. Spawn      → TabzChrome API or tmux creates session
-2. Prompt     → Worker receives issue context + skill hint via tmux send-keys
-3. Work       → Worker invokes skill when needed, reads files on-demand
-4. Complete   → Worker runs /conductor:worker-done
-5. Cleanup    → Session killed, worktree merged/removed
+1. Worktree   → setup-worktree.sh creates isolated directory (BEFORE spawn)
+2. Spawn      → TabzChrome API or tmux creates session WITH CONDUCTOR_SESSION env var
+3. Prompt     → Worker receives issue context + skill hint via tmux send-keys
+4. Work       → Worker invokes skill when needed, reads files on-demand
+5. Complete   → Worker runs /conductor:worker-done (notifies via CONDUCTOR_SESSION)
+6. Cleanup    → Session killed, worktree merged/removed
 ```
+
+> **CONDUCTOR_SESSION is required** - workers use it to notify the conductor when done.
+> If not passed during spawn, workers complete silently.
 
 ## Worker Prompt Guidelines
 

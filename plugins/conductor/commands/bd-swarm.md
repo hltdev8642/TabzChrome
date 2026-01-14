@@ -6,13 +6,15 @@ description: "Spawn multiple Claude workers with skill-aware prompts to tackle b
 
 Spawn multiple Claude workers to tackle beads issues in parallel.
 
-## Prerequisites
+## Prerequisites (Execute Now)
 
-**First, load orchestration context** (spawn patterns, tmux commands):
+**Invoke orchestration skill** to load spawn patterns and tmux commands:
+
 ```
-/conductor:orchestration
+Skill(skill: "conductor:orchestration")
 ```
-Skip if already loaded or running as `--agent conductor:conductor`.
+
+Skip only if already loaded this session or running as `--agent conductor:conductor`.
 
 ## Quick Start
 
@@ -28,80 +30,127 @@ Skip if already loaded or running as `--agent conductor:conductor`.
 
 ```
 1. Get ready issues      →  bd ready
-2. Craft prompts         →  /conductor:prompt-engineer (forked context)
-3. Create worktrees      →  scripts/setup-worktree.sh (parallel)
+2. Create worktrees      →  scripts/setup-worktree.sh (BEFORE spawning)
+3. Set CONDUCTOR_SESSION →  tmux display-message (REQUIRED for notifications)
 4. Spawn workers         →  TabzChrome /api/spawn
-5. Send prompts          →  tmux send-keys with crafted prompts
+5. Craft & send prompts  →  /conductor:prompt-engineer + tmux send-keys
 6. Monitor               →  scripts/monitor-workers.sh
 7. Merge & review        →  /conductor:wave-done
 ```
 
 **Key insight:** TabzChrome spawn creates tmux sessions with `ctt-*` prefix. Cleanup is via `tmux kill-session`.
 
+> **⚠️ CRITICAL ORDER: Worktrees BEFORE spawn, CONDUCTOR_SESSION BEFORE spawn**
+>
+> Workers need isolated directories (worktrees) and must know how to notify you (CONDUCTOR_SESSION).
+> If you skip these, workers conflict on files and complete silently.
+
 ---
 
 ## Prompt Crafting with prompt-engineer
 
-**Use the prompt-engineer skill** to craft context-rich prompts for workers:
+**Load the prompt-engineer skill** to get prompting guidelines, then execute its workflow:
 
-```bash
-/conductor:prompt-engineer
+```
+Skill(skill: "conductor:prompt-engineer")
 ```
 
-This skill runs in a **forked context** (won't bloat conductor) and:
-1. Spawns parallel **haiku Explore agents** per issue
-2. Gathers: key files, patterns, dependencies, tests
-3. Synthesizes into detailed prompts with file paths and line numbers
-4. Returns ready-to-use prompts
+This loads the skill, then **you execute the workflow**:
+
+1. **Spawn parallel Explore agents** (haiku) per issue via Task tool
+2. Explore agents return **only summaries** (full exploration is out of your context)
+3. **Synthesize** the findings into detailed prompts
+4. Output ready-to-use prompts for workers
+
+> **Context efficient:** Task tool subagents run out of your context and return only summaries.
+> The heavy exploration work doesn't bloat your context.
 
 **The skill handles skill-matching automatically** via the UserPromptSubmit hook - no manual skill verification needed.
 
 ---
 
-## Spawn Workers - Copy-Paste Example
+## Execute Workflow - Step by Step
 
-**IMPORTANT**: Use this exact pattern to spawn workers via TabzChrome:
+Follow these steps in order. Do not skip or reorder.
+
+### Step 1: Get Ready Issues
 
 ```bash
-# 0. Setup worktree FIRST (installs deps + builds)
+bd ready
+```
+
+Select issues to work on (or use all for `--auto` mode).
+
+### Step 2: Create Worktrees (MANDATORY - Before Spawning)
+
+**Run this for EACH issue before spawning any workers:**
+
+```bash
 ISSUE_ID="TabzChrome-xxx"
 ./plugins/conductor/scripts/setup-worktree.sh "$ISSUE_ID"
 # Output: READY: /path/to/TabzChrome-worktrees/TabzChrome-xxx
-WORKTREE_PATH="$(pwd)-worktrees/$ISSUE_ID"
+```
 
-# 1. Get auth token and conductor session
-TOKEN=$(cat /tmp/tabz-auth-token)
+For multiple issues in parallel:
+```bash
+for ISSUE in TabzChrome-abc TabzChrome-def; do
+  ./plugins/conductor/scripts/setup-worktree.sh "$ISSUE" &
+done
+wait
+echo "All worktrees ready"
+```
+
+**What the script does:**
+- Creates worktree with proper locking (safe for parallel workers)
+- Installs dependencies (npm/pnpm/yarn based on lockfile)
+- Runs initial build
+- Output: `READY: /path/to/worktree`
+
+### Step 3: Set CONDUCTOR_SESSION (REQUIRED - Before Spawning)
+
+**Workers use this to notify you when done. If not set, workers complete silently.**
+
+```bash
 CONDUCTOR_SESSION=$(tmux display-message -p '#{session_name}')
+echo "Conductor session: $CONDUCTOR_SESSION"
+```
 
-# 2. Spawn worker with env vars (creates ctt-worker-ISSUE-xxxx tmux session)
-# BD_SOCKET isolates beads daemon per worker (prevents conflicts in parallel workers)
+### Step 4: Spawn Workers
+
+Now spawn workers with CONDUCTOR_SESSION in their environment:
+
+```bash
+ISSUE_ID="TabzChrome-xxx"
+WORKTREE_PATH="$(pwd)-worktrees/$ISSUE_ID"
+TOKEN=$(cat /tmp/tabz-auth-token)
+
+# BD_SOCKET isolates beads daemon per worker (prevents conflicts)
 RESPONSE=$(curl -s -X POST http://localhost:8129/api/spawn \
   -H "Content-Type: application/json" \
   -H "X-Auth-Token: $TOKEN" \
   -d "{\"name\": \"worker-$ISSUE_ID\", \"workingDir\": \"$WORKTREE_PATH\", \"command\": \"BD_SOCKET=/tmp/bd-worker-$ISSUE_ID.sock CONDUCTOR_SESSION='$CONDUCTOR_SESSION' claude --dangerously-skip-permissions\"}")
 
-# 3. Extract session name from response
 SESSION_NAME=$(echo "$RESPONSE" | jq -r '.terminal.ptyInfo.tmuxSession // .terminal.id')
 echo "Spawned: $SESSION_NAME"
 
-# 4. Record session IDs in beads for audit trail
+# Record session IDs in beads for audit trail
 bd update "$ISSUE_ID" --notes "conductor_session: $CONDUCTOR_SESSION
 worker_session: $SESSION_NAME
 started_at: $(date -Iseconds)"
+```
 
-# 5. Wait for Claude to initialize, then send prompt
+### Step 5: Send Prompts
+
+Wait for Claude to initialize, then send the prompt:
+
+```bash
 sleep 4
-# Skills are already loaded in worker context - send prompt directly
 tmux send-keys -t "$SESSION_NAME" -l 'Your prompt here...'
 sleep 0.3
 tmux send-keys -t "$SESSION_NAME" C-m
 ```
 
-**The setup-worktree.sh script:**
-- Creates worktree with proper locking (safe for parallel workers)
-- Installs dependencies (npm/pnpm/yarn based on lockfile)
-- Runs initial build
-- Output: `READY: /path/to/worktree`
+Skills auto-activate via UserPromptSubmit hook - no manual skill invocation needed in prompts.
 
 **Alternative - Direct tmux** (simpler, no TabzChrome UI):
 ```bash
@@ -132,23 +181,24 @@ tmux send-keys -t "$SESSION" C-m
 
 ## Worker Completion Notifications
 
-Workers notify the conductor when done via API (push-based, no polling, no session corruption):
+Workers notify the conductor when done via tmux send-keys (primary) and API broadcast (secondary):
 
 ```
 Worker completes → /conductor:worker-done
-                 → POST /api/notify with worker-complete type
-                 → WebSocket broadcasts to conductor
-                 → Conductor receives and cleans up immediately
+                 → tmux send-keys to CONDUCTOR_SESSION (primary)
+                 → POST /api/notify for browser UIs (secondary)
+                 → Conductor receives message and can cleanup
 ```
 
 **How it works:**
 1. Worker completes task and runs `/conductor:worker-done`
-2. Worker calls `POST /api/notify` with completion details
-3. Backend broadcasts via WebSocket to all connected clients
-4. Conductor receives notification and can cleanup immediately
-5. No polling needed - workers push completion status via API
+2. Worker sends message via `tmux send-keys -t "$CONDUCTOR_SESSION"` (Claude Code queues these safely)
+3. Worker also calls `POST /api/notify` for browser UIs
+4. Conductor receives notification and can cleanup
 
-**Why API over tmux send-keys:** The old tmux-based notification could corrupt the conductor's Claude session if it was mid-output or mid-prompt. The API broadcasts via WebSocket, which the conductor receives cleanly without interrupting its session.
+**Why tmux is primary:** Claude Code queues incoming tmux messages even during output, so it's safe. The API broadcasts via WebSocket which browser UIs can receive, but tmux-based Claude sessions cannot receive WebSocket messages.
+
+**CONDUCTOR_SESSION is required** - if not passed during spawn, Step 7 in worker-done skips notification.
 
 **API notification pattern:**
 ```bash

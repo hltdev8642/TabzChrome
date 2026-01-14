@@ -1,7 +1,6 @@
 ---
 name: prompt-engineer
 description: "Craft monster prompts for beads issues. First explores codebase with parallel haiku agents to gather context (files, patterns, dependencies), then crafts detailed prompts. Use before spawning workers."
-context: fork
 model: opus
 allowed-tools:
   - Read
@@ -14,6 +13,10 @@ allowed-tools:
 # Prompt Engineer - Context-Aware Prompt Crafting
 
 Craft detailed, context-rich prompts for beads issues by first gathering codebase context via parallel exploration.
+
+> **Context efficient:** Explore agents via Task tool run as subagents and return only summaries.
+> The full exploration happens out of your context - only the findings come back.
+> This skill loads prompting guidelines, then **you execute the workflow below**.
 
 ## Workflow
 
@@ -55,7 +58,7 @@ Using gathered context, craft prompts following these principles:
 
 ```markdown
 ## Task: [ISSUE-ID] - [Title]
-[Explicit, actionable description of what to do]
+[Explicit, actionable description of what to do - be specific about the work]
 
 ## Context
 [Background and WHY this matters - gathered from exploration]
@@ -71,11 +74,13 @@ Using gathered context, craft prompts following these principles:
 ## Approach
 [Implementation guidance based on codebase patterns]
 
-Use subagents in parallel for exploration, testing, and multi-file analysis.
-
 ## When Done
 Run `/conductor:worker-done [ISSUE-ID]`
 ```
+
+> **DO NOT include `/skill:name` commands in prompts** (except worker-done).
+> Skills auto-activate via UserPromptSubmit hook based on task description.
+> Just describe WHAT needs to be done clearly - Claude will load relevant skills.
 
 ### Prompt Principles
 
@@ -139,7 +144,9 @@ This skill runs as Opus (orchestrator) but spawns Haiku for exploration:
 - **Haiku**: Fast parallel exploration, cheap context gathering
 - **Opus**: Synthesis and prompt crafting requiring judgment
 
-## Example Session
+---
 
-```
-User: Prepare prompts for TabzChrome-123 and TabzChrome-124
+**Execute this workflow now.** Get the issue IDs from the args or ask for them, then:
+1. Spawn parallel Explore agents
+2. Synthesize findings into prompts
+3. Return the formatted prompts

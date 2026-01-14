@@ -37,32 +37,7 @@ Extract key fields:
 - **labels**: Hints for skill matching
 - **priority**: Urgency level
 
-## Step 2: Match Skills
-
-Use the central skill matching script (single source of truth):
-
-```bash
-# Find the script (works from project root or with CLAUDE_PLUGIN_ROOT)
-MATCH_SCRIPT="${CLAUDE_PLUGIN_ROOT:-./plugins/conductor}/scripts/match-skills.sh"
-
-# Get skill hints for an issue (reads from notes if persisted, or matches on-the-fly)
-SKILL_HINTS=$($MATCH_SCRIPT --issue "$ISSUE_ID")
-
-# Or match directly from text:
-SKILL_HINTS=$($MATCH_SCRIPT "$TITLE $DESCRIPTION $LABELS")
-```
-
-**Key mappings** (see `scripts/match-skills.sh` for complete list):
-- terminal/xterm/pty → xterm-js skill
-- ui/component/modal → ui-styling skill
-- backend/api/server → backend-development skill
-- browser/mcp/tabz → MCP tabz_* tools
-- auth/login/oauth → better-auth skill
-- plugin/skill/agent → plugin-dev skills
-
-**Combine multiple matches** if the issue spans domains.
-
-## Step 3: Identify Key Files (Quick Search)
+## Step 2: Identify Key Files (Quick Search)
 
 Do a **fast, targeted search** (max 30 seconds):
 
@@ -81,7 +56,7 @@ wc -l /path/to/file.ts
 - Prefer files in `extension/` and `backend/` over tests
 - If search takes >30 seconds, skip and let worker explore
 
-## Step 4: Craft Enhanced Prompt
+## Step 3: Craft Enhanced Prompt
 
 Build the enhanced prompt using this exact structure:
 
@@ -97,24 +72,22 @@ Fix beads issue ISSUE-ID: "Title"
 [Or: "Explore as needed based on the issue description."]
 
 ## Approach
-[Skill triggers woven naturally:]
-Use the xterm-js skill for terminal rendering. Reference existing patterns in Terminal.tsx for consistency.
+[Clear description of the work - what needs to be implemented/fixed]
+Reference existing patterns in the codebase for consistency.
 
 After implementation, verify the build passes and test the changes work as expected.
 
 ## When Done
 Run: /conductor:worker-done ISSUE-ID
-
-This command will: build, run code review, commit changes, and close the issue.
 ```
 
 **Key principles:**
-- Be explicit about what to do
+- Be explicit about WHAT to do (not which skills to use)
 - Include WHY to help make good decisions
-- Skill triggers as natural guidance, not a list
+- Skills auto-activate via UserPromptSubmit hook based on task description
 - Always include the "When Done" section
 
-## Step 5: Save and Trigger Wipe
+## Step 4: Save and Trigger Wipe
 
 Save the enhanced prompt to a temp file and trigger context reset:
 
@@ -194,7 +167,7 @@ Rapidly narrowing the Chrome sidebar during heavy terminal output causes text wr
 - extension/hooks/useTerminalSessions.ts (session lifecycle)
 
 ## Approach
-Use the xterm-js skill for terminal rendering and resize handling. Focus on debouncing resize events and ensuring FitAddon.fit() completes before new output arrives. Reference the existing resize observer pattern in Terminal.tsx.
+Focus on debouncing resize events and ensuring FitAddon.fit() completes before new output arrives. Reference the existing resize observer pattern in Terminal.tsx.
 
 After implementation, verify the build passes and test rapid sidebar resizing with heavy output.
 

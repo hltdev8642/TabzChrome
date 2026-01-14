@@ -4,13 +4,15 @@ description: "Fully autonomous backlog completion. Runs waves until `bd ready` i
 
 # BD Swarm Auto - Autonomous Backlog Completion
 
-## Prerequisites
+## Prerequisites (Execute Now)
 
-**First, load orchestration context** (spawn patterns, tmux commands):
+**Invoke orchestration skill** to load spawn patterns and tmux commands:
+
 ```
-/conductor:orchestration
+Skill(skill: "conductor:orchestration")
 ```
-Skip if already loaded or running as `--agent conductor:conductor`.
+
+Skip only if already loaded this session or running as `--agent conductor:conductor`.
 
 ---
 
@@ -24,15 +26,7 @@ Skip if already loaded or running as `--agent conductor:conductor`.
    ```
    If empty, announce "Backlog complete!" and stop.
 
-2. **VERIFY available skills (MANDATORY):**
-   ```bash
-   # Get list of actually available skills - ONLY use these in prompts
-   ${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh --available-full
-   ```
-   Save this output. Only include skills that appear here in worker prompts.
-   MCP tools (shadcn/*, tabz/*) are NOT skills - they're called directly via `mcp-cli`.
-
-4. **Create worktrees in parallel:**
+2. **Create worktrees in parallel:**
    ```bash
    PROJECT_DIR=$(pwd)
    WORKTREE_DIR="${PROJECT_DIR}-worktrees"
@@ -44,29 +38,38 @@ Skip if already loaded or running as `--agent conductor:conductor`.
    wait
    ```
 
-5. **Spawn workers (max 4):**
+3. **Set CONDUCTOR_SESSION (REQUIRED for notifications):**
+   ```bash
+   CONDUCTOR_SESSION=$(tmux display-message -p '#{session_name}')
+   echo "Conductor session: $CONDUCTOR_SESSION"
+   ```
+
+4. **Spawn workers (max 4):**
    ```bash
    TOKEN=$(cat /tmp/tabz-auth-token)
    for ISSUE_ID in $(bd ready --json | jq -r '.[].id' | head -4); do
      WORKTREE="${WORKTREE_DIR}/${ISSUE_ID}"
+     # BD_SOCKET isolates beads daemon, CONDUCTOR_SESSION enables notifications
      RESPONSE=$(curl -s -X POST http://localhost:8129/api/spawn \
        -H "Content-Type: application/json" \
        -H "X-Auth-Token: $TOKEN" \
-       -d "{\"name\": \"worker-$ISSUE_ID\", \"workingDir\": \"$WORKTREE\", \"command\": \"claude --dangerously-skip-permissions\"}")
+       -d "{\"name\": \"worker-$ISSUE_ID\", \"workingDir\": \"$WORKTREE\", \"command\": \"BD_SOCKET=/tmp/bd-worker-$ISSUE_ID.sock CONDUCTOR_SESSION='$CONDUCTOR_SESSION' claude --dangerously-skip-permissions\"}")
      SESSION=$(echo "$RESPONSE" | jq -r '.terminal.ptyInfo.tmuxSession')
      echo "Spawned $ISSUE_ID -> $SESSION"
    done
    ```
 
-6. **Send prompts (crafted via prompt-engineer):**
-   Use `/conductor:prompt-engineer` to craft context-rich prompts:
-   - Runs in forked context (won't bloat conductor)
-   - Spawns haiku Explore agents per issue
-   - Returns ready-to-use prompts with file paths and patterns
-   - Skills auto-activate via hook - no manual matching needed
+5. **Craft prompts via prompt-engineer:**
+   ```
+   Skill(skill: "conductor:prompt-engineer")
+   ```
+   Then execute its workflow:
+   - Spawn parallel Explore agents (haiku) per issue via Task tool
+   - Explore agents return only summaries (context efficient)
+   - Synthesize into detailed prompts with file paths and patterns
    - Each prompt ends with `/conductor:worker-done <issue-id>`
 
-7. **Monitor and loop:**
+6. **Monitor and loop:**
    - Poll `${CLAUDE_PLUGIN_ROOT}/scripts/monitor-workers.sh --summary` every 2 min
    - When all issues closed, run completion pipeline
    - Check `bd ready` - if more issues, start next wave

@@ -7,6 +7,11 @@ description: "Multi-session Claude workflow orchestration. Spawn workers via Tab
 
 Orchestrate multiple Claude Code sessions, spawn workers, and coordinate parallel work.
 
+> **Invoke via:** `Skill(skill: "conductor:orchestration")`
+>
+> This skill loads spawn patterns, tmux commands, and worker coordination knowledge.
+> Must be invoked before running bd-swarm or bd-swarm-auto workflows.
+
 ## Architecture
 
 ```

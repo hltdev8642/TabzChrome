@@ -5,13 +5,15 @@ description: "Fully autonomous backlog completion. Runs waves until `bd ready` i
 
 # BD Swarm Auto - Autonomous Backlog Completion
 
-## Prerequisites
+## Prerequisites (Execute Now)
 
-**First, load orchestration context** (spawn patterns, tmux commands):
+**Invoke orchestration skill** to load spawn patterns and tmux commands:
+
 ```
-/conductor:orchestration
+Skill(skill: "conductor:orchestration")
 ```
-Skip if already loaded or running as `--agent conductor:conductor`.
+
+Skip only if already loaded this session or running as `--agent conductor:conductor`.
 
 ---
 
@@ -92,16 +94,18 @@ NEXT=$(bd ready --json | jq 'length')
 
 ## Prompt Crafting
 
-**Before each wave**, use the prompt-engineer skill to craft prompts:
+**Before each wave**, load the prompt-engineer skill to get prompting guidelines:
 
-```bash
-/conductor:prompt-engineer
+```
+Skill(skill: "conductor:prompt-engineer")
 ```
 
-This runs in **forked context** and:
-1. Spawns haiku Explore agents per issue
-2. Gathers file paths, patterns, dependencies
-3. Returns ready-to-use prompts
+Then **execute its workflow**:
+
+1. Spawn parallel **Explore agents** (haiku) per issue via Task tool
+2. Explore agents return **only summaries** (context efficient - full exploration is out of your context)
+3. Synthesize findings into detailed prompts with file paths and patterns
+4. Output ready-to-use prompts for workers
 
 Skills auto-activate via UserPromptSubmit hook - no manual skill hints needed.
 

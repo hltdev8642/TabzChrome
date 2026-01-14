@@ -2,6 +2,12 @@
 
 Default mode when running `/conductor:bd-swarm` without `--auto` flag.
 
+> **⚠️ CRITICAL ORDER: Follow steps 1-5 in sequence**
+>
+> - Step 3 (worktrees) MUST complete before Step 4 (spawn)
+> - CONDUCTOR_SESSION MUST be set before spawning workers
+> - Skipping these causes file conflicts and silent worker completion
+
 ## 1. Get Ready Issues
 
 ```bash
@@ -31,6 +37,10 @@ echo "All worktrees initialized with dependencies"
 ```
 
 ## 4. Spawn Workers
+
+> **⚠️ PREREQUISITE: CONDUCTOR_SESSION must be set (Step 3 shows this)**
+>
+> Without CONDUCTOR_SESSION, workers complete silently and cannot notify you.
 
 **How spawning works:**
 - TabzChrome's `/api/spawn` (POST) creates tmux sessions with `ctt-*` prefix
@@ -114,16 +124,21 @@ Before sending, craft a detailed prompt following the structure in `references/w
 
 ### Step 5a: Craft Prompts
 
-Use `/conductor:prompt-engineer` (forked context) to craft prompts:
+**Load prompt-engineer skill** to get prompting guidelines:
 
-```bash
-/conductor:prompt-engineer
+```
+Skill(skill: "conductor:prompt-engineer")
 ```
 
-This skill:
-1. Spawns parallel haiku Explore agents per issue
-2. Gathers file paths, patterns, dependencies
-3. Returns ready-to-use prompts
+Then **execute its workflow**:
+
+1. Spawn parallel **Explore agents** (haiku) per issue via Task tool
+2. Explore agents return **only summaries** (context efficient)
+3. Synthesize findings into detailed prompts with file paths and patterns
+4. Output ready-to-use prompts for workers
+
+> **Context efficient:** Task tool subagents run out of your context and return only summaries.
+> The heavy exploration work doesn't bloat your context.
 
 **Skills auto-activate** via UserPromptSubmit hook - no manual skill matching needed.
 

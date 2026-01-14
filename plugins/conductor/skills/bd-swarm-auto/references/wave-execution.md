@@ -2,6 +2,12 @@
 
 Detailed step-by-step wave execution for autonomous backlog processing.
 
+> **⚠️ CRITICAL ORDER: Follow steps in sequence**
+>
+> - Step 3 (worktrees) MUST complete before Step 4 (spawn)
+> - Step 3.5 (CONDUCTOR_SESSION) MUST be done before Step 4 (spawn)
+> - Skipping these causes file conflicts and silent worker completion
+
 ## Step 1: Get Ready Issues
 
 ```bash
@@ -49,6 +55,15 @@ wait
 
 **WAIT for ALL worktrees to be ready before Step 4.**
 
+## Step 3.5: Set CONDUCTOR_SESSION (REQUIRED)
+
+**Workers use this to notify you when done. If not set, workers complete silently.**
+
+```bash
+CONDUCTOR_SESSION=$(tmux display-message -p '#{session_name}')
+echo "Conductor session: $CONDUCTOR_SESSION"
+```
+
 ## Step 4: Spawn Terminal Workers
 
 Spawn only 3-4 terminal workers, NOT one per issue:
@@ -56,14 +71,18 @@ Spawn only 3-4 terminal workers, NOT one per issue:
 ```bash
 TOKEN=$(cat /tmp/tabz-auth-token)
 WORKER_NUM=1  # 1, 2, 3, or 4
+ISSUE_ID="TabzChrome-xxx"  # Issue for this worker
 
+# BD_SOCKET isolates beads daemon, CONDUCTOR_SESSION enables notifications
 curl -s -X POST http://localhost:8129/api/spawn \
   -H "Content-Type: application/json" \
   -H "X-Auth-Token: $TOKEN" \
   -d "$(jq -n \
     --arg name "worker-${WORKER_NUM}" \
     --arg dir "$PROJECT_DIR" \
-    --arg cmd "claude --dangerously-skip-permissions" \
+    --arg issue "$ISSUE_ID" \
+    --arg conductor "$CONDUCTOR_SESSION" \
+    --arg cmd "BD_SOCKET=/tmp/bd-worker-\($issue).sock CONDUCTOR_SESSION='\($conductor)' claude --dangerously-skip-permissions" \
     '{name: $name, workingDir: $dir, command: $cmd}')"
 ```
 

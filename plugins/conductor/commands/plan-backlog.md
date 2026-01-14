@@ -72,38 +72,7 @@ bd ready --json | jq -r '.[] | "\(.id): [\(.priority)] \(.title)"'
 
 Ask: How many parallel workers? (2-5, recommend 3)
 
-### 2. Match Issues to Skills & Persist
-
-**Use the central skill matcher** (`scripts/match-skills.sh`) to analyze issues and persist skill hints:
-
-```bash
-# Find the script (works from project root or with CLAUDE_PLUGIN_ROOT)
-MATCH_SCRIPT="${CLAUDE_PLUGIN_ROOT:-./plugins/conductor}/scripts/match-skills.sh"
-
-# For each ready issue, match and persist skills
-for ISSUE_ID in $(bd ready --json | jq -r '.[].id'); do
-  ISSUE_JSON=$(bd show "$ISSUE_ID" --json)
-  TITLE=$(echo "$ISSUE_JSON" | jq -r '.[0].title // ""')
-  DESC=$(echo "$ISSUE_JSON" | jq -r '.[0].description // ""')
-  LABELS=$(echo "$ISSUE_JSON" | jq -r '.[0].labels[]?' | tr '\n' ' ')
-
-  # Match skills using central script (use --verify to filter to available skills)
-  SKILLS=$($MATCH_SCRIPT --verify "$TITLE $DESC $LABELS")
-
-  # Extract skill names for storage
-  SKILL_NAMES=$(echo "$SKILLS" | grep -oE '[a-z]+-[a-z]+' | sort -u | tr '\n' ',' | sed 's/,$//')
-
-  # Persist to beads notes (so bd-swarm can read them later)
-  if [ -n "$SKILL_NAMES" ]; then
-    $MATCH_SCRIPT --persist "$ISSUE_ID" "$SKILL_NAMES"
-    echo "$ISSUE_ID: $SKILL_NAMES"
-  fi
-done
-```
-
-**Why persist?** Skills are matched once during planning and stored in issue notes. When bd-swarm spawns workers, it reads from notes instead of re-matching - ensuring consistency across the workflow.
-
-### 3. Build Waves
+### 2. Build Waves
 
 - **Wave 1:** All `bd ready` issues (no blockers)
 - **Wave 2:** Issues unblocked after Wave 1
@@ -119,20 +88,21 @@ bd blocked --filter-parent <epic-id>      # Future waves (resolve deps first)
 bd ready --filter-parent TabzChrome-xyz --json | jq -r '.[].id' | xargs /conductor:bd-swarm
 ```
 
-### 4. Output Format
+### 3. Output Format
 
 ```markdown
 ## Wave 1 (Start Now)
-| Issue | Type | Priority | Skills (persisted) |
-|-------|------|----------|--------------------|
-| xxx | feature | P1 | ui-styling, backend-development |
-| yyy | bug | P2 | xterm-js |
-
-Skills have been persisted to issue notes. bd-swarm will read them automatically.
+| Issue | Type | Priority | Description |
+|-------|------|----------|-------------|
+| xxx | feature | P1 | Add loading state to dashboard |
+| yyy | bug | P2 | Fix terminal resize corruption |
 
 **Next steps:**
 Spawn workers: `/conductor:bd-swarm xxx yyy`
 ```
+
+> **Skills auto-activate** via UserPromptSubmit hook based on task description.
+> No need to persist or specify skills - workers load relevant skills automatically.
 
 ---
 
