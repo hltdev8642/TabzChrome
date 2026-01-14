@@ -49,23 +49,33 @@ Skip only if already loaded this session or running as `--agent conductor:conduc
 
 ## Prompt Crafting with prompt-engineer
 
-**Load the prompt-engineer skill** to get prompting guidelines, then execute its workflow:
+Run `/conductor:prompt-engineer` to craft context-rich prompts:
 
+```bash
+/conductor:prompt-engineer TabzChrome-abc TabzChrome-def
 ```
-Skill(skill: "conductor:prompt-engineer")
-```
 
-This loads the skill, then **you execute the workflow**:
+The prompt-engineer workflow:
 
-1. **Spawn parallel Explore agents** (haiku) per issue via Task tool
-2. Explore agents return **only summaries** (full exploration is out of your context)
-3. **Synthesize** the findings into detailed prompts
-4. Output ready-to-use prompts for workers
+1. **Match skills** for each issue using `scripts/match-skills.sh`
+2. **Spawn parallel Explore agents** (haiku) per issue via Task tool
+3. Explore agents return **only summaries** (full exploration is out of your context)
+4. **Synthesize** findings + skill triggers into detailed prompts
+5. Output ready-to-use prompts with Skills section for workers
 
 > **Context efficient:** Task tool subagents run out of your context and return only summaries.
-> The heavy exploration work doesn't bloat your context.
 
-**The skill handles skill-matching automatically** via the UserPromptSubmit hook - no manual skill verification needed.
+### Skill Matching
+
+The `match-skills.sh` script generates natural trigger phrases from issue titles:
+
+```bash
+# Example:
+${CLAUDE_PLUGIN_ROOT}/scripts/match-skills.sh --triggers "fix terminal resize bug"
+# Output: Use the xterm-js skill for terminal integration and resize handling.
+```
+
+These triggers are included in the prompt's **Skills** section to help workers load the right capabilities.
 
 ---
 

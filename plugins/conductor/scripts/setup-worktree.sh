@@ -36,15 +36,30 @@ WORKTREE_LOCK="/tmp/git-worktree-$(basename "$PROJECT_DIR").lock"
 ) 200>"$WORKTREE_LOCK"
 
 # Install deps based on lockfile type (outside lock - can run in parallel)
-if [ -f "$WORKTREE/package.json" ] && [ ! -d "$WORKTREE/node_modules" ]; then
-  echo "Installing dependencies..."
+# Always install if node_modules is missing OR if it looks stale (no .package-lock.json)
+if [ -f "$WORKTREE/package.json" ]; then
   cd "$WORKTREE"
-  if [ -f "pnpm-lock.yaml" ]; then
-    pnpm install --frozen-lockfile
-  elif [ -f "yarn.lock" ]; then
-    yarn install --frozen-lockfile
+
+  NEEDS_INSTALL=false
+  if [ ! -d "node_modules" ]; then
+    echo "node_modules missing - installing dependencies..."
+    NEEDS_INSTALL=true
+  elif [ ! -f "node_modules/.package-lock.json" ] && [ ! -f "node_modules/.yarn-integrity" ]; then
+    echo "node_modules looks incomplete - reinstalling..."
+    NEEDS_INSTALL=true
+  fi
+
+  if [ "$NEEDS_INSTALL" = true ]; then
+    if [ -f "pnpm-lock.yaml" ]; then
+      pnpm install --frozen-lockfile
+    elif [ -f "yarn.lock" ]; then
+      yarn install --frozen-lockfile
+    else
+      npm ci 2>/dev/null || npm install
+    fi
+    echo "Dependencies installed"
   else
-    npm ci 2>/dev/null || npm install
+    echo "Dependencies already installed"
   fi
 fi
 
@@ -52,8 +67,13 @@ fi
 if [ -f "$WORKTREE/package.json" ]; then
   cd "$WORKTREE"
   if grep -q '"build"' package.json; then
-    echo "Running initial build..."
-    npm run build 2>&1 | tail -5 || echo "Build had warnings (continuing)"
+    # Only build if dist doesn't exist or is older than src
+    if [ ! -d "dist" ] && [ ! -d "dist-extension" ] && [ ! -d "build" ] && [ ! -d ".next" ]; then
+      echo "Running initial build..."
+      npm run build 2>&1 | tail -10 || echo "Build had warnings (continuing)"
+    else
+      echo "Build output exists - skipping initial build"
+    fi
   fi
 fi
 

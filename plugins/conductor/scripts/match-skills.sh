@@ -38,16 +38,20 @@ find_conductor_root() {
     return 0
   fi
 
-  # 4. Find latest conductor in plugin cache
+  # 4. Find latest conductor in plugin cache (any marketplace, not just tabz-chrome)
   local CACHE_DIR="$HOME/.claude/plugins/cache"
   if [ -d "$CACHE_DIR" ]; then
-    # Find most recently modified conductor plugin
-    local LATEST=$(find "$CACHE_DIR" -type d -name "conductor" -path "*/tabz-chrome/*" 2>/dev/null | head -1)
+    # Find most recently modified conductor plugin in any marketplace
+    local LATEST=$(find "$CACHE_DIR" -type d -name "conductor" 2>/dev/null | head -1)
     if [ -n "$LATEST" ]; then
-      # Get the versioned subdirectory
+      # Check if this is a versioned directory structure
       local VERSIONED=$(ls -t "$LATEST" 2>/dev/null | head -1)
       if [ -n "$VERSIONED" ] && [ -d "$LATEST/$VERSIONED" ]; then
         echo "$LATEST/$VERSIONED"
+        return 0
+      elif [ -f "$LATEST/plugin.json" ]; then
+        # Direct plugin directory (no versioning)
+        echo "$LATEST"
         return 0
       fi
     fi
@@ -63,65 +67,78 @@ CONDUCTOR_ROOT=$(find_conductor_root)
 # ============================================================================
 # SKILL MAPPINGS - Single Source of Truth
 # ============================================================================
-# Format: keyword_pattern|skill_invocation_command
+# Format: keyword_pattern|keyword_phrase
 # Pattern uses bash regex (extended)
 # Add new mappings here - all skills/commands reference this file
 #
-# IMPORTANT: Output is explicit invocation commands (e.g., "/xterm-js")
-# Workers need explicit /skill-name commands to actually load skills.
-# "Use the X skill" is interpreted as guidance, not invocation.
+# IMPORTANT: Output is keyword phrases that help skill-eval hook identify relevant skills.
+# The hook (meta plugin UserPromptSubmit) tells Claude to evaluate and activate skills.
+# Keywords in prompts help Claude identify WHICH skills are relevant to the task.
+# This approach works WITH the hook instead of duplicating explicit invocation.
+#
+# FORMAT: pattern|skill_name|keyword_phrase|trigger_phrase
+# - pattern: regex to match against input text
+# - skill_name: the skill ID for natural triggers (e.g., "xterm-js")
+# - keyword_phrase: keywords for skill-eval hook activation
+# - trigger_phrase: natural language trigger for prompts (e.g., "terminal resize handling")
 
 SKILL_MAPPINGS=(
-  # Terminal / TabzChrome (project-level skill - shorthand ok)
-  "terminal|xterm|pty|resize|buffer|fitaddon|websocket.*terminal|/tabz-guide"
+  # Terminal / TabzChrome
+  "terminal|xterm|pty|resize|buffer|fitaddon|websocket.*terminal|xterm-js|xterm.js terminal, resize handling, FitAddon, WebSocket PTY|terminal integration and resize handling"
 
-  # UI / Frontend (user-level plugin)
-  "ui|component|modal|dashboard|styling|tailwind|shadcn|form|button|/ui-styling:ui-styling"
+  # UI / Frontend - shadcn/ui patterns
+  "ui|component|modal|dashboard|styling|tailwind|shadcn|form|button|ui-styling|shadcn/ui components, Tailwind CSS styling, Radix UI primitives|UI components and styling patterns"
 
-  # Frontend frameworks (user-level plugin)
-  "react|next|vue|svelte|frontend|/frontend-development:frontend-development"
+  # Frontend frameworks
+  "react|next|vue|svelte|frontend|frontend-development|React, TypeScript, modern frontend patterns, component architecture|React and frontend architecture"
 
-  # Backend / API (user-level plugin)
-  "backend|api|server|database|endpoint|express|websocket.*server|/backend-development:backend-development"
+  # Backend / API
+  "backend|api|server|endpoint|express|websocket.*server|backend-development|backend development, REST API, Node.js, Python FastAPI|backend APIs and server patterns"
 
-  # Browser automation / MCP (conductor skill)
-  "browser|screenshot|click|mcp|tabz_|automation|/conductor:tabz-mcp"
+  # Browser automation / MCP
+  "browser|screenshot|click|mcp|tabz_|automation|tabz-mcp|browser automation, MCP tools, screenshots, DOM interaction|browser automation via MCP"
 
-  # Authentication (user-level plugin)
-  "auth|login|oauth|session|token|jwt|/better-auth:better-auth"
+  # Visual QA / UI review
+  "visual|qa|regression|console.*error|ui.*test|screenshot.*test|visual-qa|visual QA, UI testing, screenshot comparison, console error detection|visual QA and UI testing"
 
-  # Plugin development (user-level plugin)
-  "plugin|skill|agent|hook|command|frontmatter|/plugin-dev:plugin-dev"
+  # Visual asset generation
+  "hero.*image|team.*photo|icon.*generat|poster|dall-e|sora|video.*generat|tabz-artist|DALL-E image generation, Sora video, visual assets, poster design|visual asset generation"
 
-  # Conductor / orchestration (conductor skill)
-  "prompt|worker|swarm|conductor|orchestrat|/conductor:orchestration"
+  # Authentication
+  "auth|login|oauth|session|token|jwt|backend-development|Better Auth, authentication, OAuth, session management, JWT tokens|authentication patterns"
 
-  # Audio / TTS / Multimodal (user-level plugin)
-  "audio|tts|speech|sound|voice|speak|gemini|/ai-multimodal:ai-multimodal"
+  # Plugin development
+  "plugin|skill|agent|hook|command|frontmatter|plugin-dev|Claude Code plugin development, skill creation, agent patterns, hooks|plugin and skill development"
 
-  # Media processing (user-level plugin - verify exists)
-  "image|video|media|ffmpeg|imagemagick|/media-processing:media-processing"
+  # Conductor / orchestration
+  "prompt|worker|swarm|conductor|orchestrat|bdc-orchestration|multi-session orchestration, worker coordination, parallel execution|multi-session orchestration"
 
-  # 3D / Three.js (project-specific reference - not a skill)
-  "3d|three|scene|focus.*mode|webgl|# Reference extension/3d/ for Three.js patterns"
+  # Audio / TTS / Multimodal
+  "audio|tts|speech|sound|voice|speak|gemini|media-processing|audio processing, TTS speech synthesis, Gemini multimodal|audio and TTS processing"
 
-  # Chrome extension (project-level skill - shorthand ok)
-  "chrome|extension|manifest|sidepanel|background|service.*worker|/tabz-guide"
+  # Media processing
+  "image|video|media|ffmpeg|imagemagick|media-processing|FFmpeg video processing, ImageMagick, media manipulation|media processing and conversion"
 
-  # Databases (user-level plugin - verify exists)
-  "postgres|mongodb|redis|sql|database|query|/databases:databases"
+  # 3D / Three.js (reference, not skill)
+  "3d|three|scene|focus.*mode|webgl|frontend-development|Three.js 3D rendering, WebGL, scene management|3D rendering with Three.js"
 
-  # Documentation discovery (user-level plugin - verify exists)
-  "docs|documentation|llms.txt|repomix|/docs-seeker:docs-seeker"
+  # Chrome extension
+  "chrome|extension|manifest|sidepanel|background|service.*worker|plugin-dev|Chrome extension development, manifest v3, service workers|Chrome extension development"
 
-  # Code review (conductor skill)
-  "review|pr|pull.*request|lint|/conductor:code-review"
+  # Databases
+  "postgres|mongodb|redis|sql|database|query|database-design|PostgreSQL, MongoDB, Redis, database queries, schema design|database design and queries"
 
-  # Web frameworks (user-level plugin - verify exists)
-  "nextjs|express|fastapi|django|nest|/web-frameworks:web-frameworks"
+  # Documentation discovery
+  "docs|documentation|llms.txt|repomix|docs-seeker|documentation, llms.txt, repomix context generation|documentation discovery"
 
-  # Testing (general guidance, not a specific skill)
-  "test|jest|vitest|spec|coverage|# Check existing test files for testing conventions"
+  # Code review
+  "review|pr|pull.*request|lint|code-review|code review, pull request analysis, linting, quality checks|code review and quality checks"
+
+  # Web frameworks
+  "nextjs|express|fastapi|django|nest|backend-development|Next.js, Express, FastAPI, Django, NestJS web frameworks|web framework patterns"
+
+  # Testing (general guidance)
+  "test|jest|vitest|spec|coverage|debugging|testing patterns, Jest, Vitest, test coverage|testing and test coverage"
 )
 
 # ============================================================================
@@ -134,9 +151,11 @@ LABEL_MAPPINGS=(
   "ui|frontend|styling"
   "backend|api|server"
   "mcp|browser|automation"
+  "visual|qa|screenshot"
   "auth|security"
   "plugin|skill|conductor"
   "audio|media"
+  "assets|image|video"
 )
 
 # ============================================================================
@@ -238,10 +257,15 @@ is_skill_available() {
 # ============================================================================
 # MATCH FUNCTION
 # ============================================================================
+# FORMAT: pattern|skill_name|keyword_phrase|trigger_phrase
+# Output modes:
+#   text (default): keyword phrases for skill-eval hook
+#   json: structured output with all fields
+#   triggers: natural language triggers for prompts ("Use the X skill to Y")
 
 match_skills() {
   local INPUT_TEXT="$1"
-  local OUTPUT_FORMAT="${2:-text}"  # text or json
+  local OUTPUT_FORMAT="${2:-text}"  # text, json, or triggers
 
   if [ -z "$INPUT_TEXT" ]; then
     return 0
@@ -250,36 +274,64 @@ match_skills() {
   # Normalize: lowercase, collapse whitespace
   local NORMALIZED=$(echo "$INPUT_TEXT" | tr '[:upper:]' '[:lower:]' | tr -s '[:space:]' ' ')
 
-  local MATCHED_SKILLS=""
+  local MATCHED_KEYWORDS=""
+  local MATCHED_TRIGGERS=""
   local MATCHED_JSON="[]"
 
   for mapping in "${SKILL_MAPPINGS[@]}"; do
-    # Split on last |
-    local PATTERN="${mapping%|*}"
-    local TRIGGER="${mapping##*|}"
+    # Parse 4-field format: pattern|skill_name|keyword_phrase|trigger_phrase
+    # Pattern contains | for regex alternation, so parse from the right
+    local TRIGGER_PHRASE="${mapping##*|}"
+    local WITHOUT_TRIGGER="${mapping%|*}"
+    local KEYWORDS="${WITHOUT_TRIGGER##*|}"
+    local WITHOUT_KEYWORDS="${WITHOUT_TRIGGER%|*}"
+    local SKILL_NAME="${WITHOUT_KEYWORDS##*|}"
+    local PATTERN="${WITHOUT_KEYWORDS%|*}"
 
-    # Convert | to regex alternation
-    local REGEX_PATTERN=$(echo "$PATTERN" | sed 's/|/\\|/g')
+    # Validate we have all fields (if skill_name looks like pattern, it's old format)
+    if [ "$SKILL_NAME" = "$PATTERN" ] || [ -z "$SKILL_NAME" ]; then
+      # Old 2-field format (backward compatibility): pattern|keywords
+      PATTERN="${mapping%|*}"
+      KEYWORDS="${mapping##*|}"
+      SKILL_NAME="general"
+      TRIGGER_PHRASE="$KEYWORDS"
+    fi
 
     # Check if any keyword matches
     if echo "$NORMALIZED" | grep -qE "$PATTERN"; then
-      if [ -n "$MATCHED_SKILLS" ]; then
-        MATCHED_SKILLS="$MATCHED_SKILLS "
+      # Keywords output (for skill-eval hook)
+      if [ -n "$MATCHED_KEYWORDS" ]; then
+        MATCHED_KEYWORDS="$MATCHED_KEYWORDS "
       fi
-      MATCHED_SKILLS="$MATCHED_SKILLS$TRIGGER"
+      MATCHED_KEYWORDS="$MATCHED_KEYWORDS$KEYWORDS"
 
-      # For JSON output
-      local SKILL_NAME=$(echo "$TRIGGER" | grep -oE '[a-z]+-[a-z]+' | head -1)
-      [ -z "$SKILL_NAME" ] && SKILL_NAME="general"
-      MATCHED_JSON=$(echo "$MATCHED_JSON" | jq --arg skill "$SKILL_NAME" --arg trigger "$TRIGGER" '. + [{"skill": $skill, "trigger": $trigger}]')
+      # Natural triggers output (for prompts)
+      if [ -n "$MATCHED_TRIGGERS" ]; then
+        MATCHED_TRIGGERS="$MATCHED_TRIGGERS
+"
+      fi
+      MATCHED_TRIGGERS="${MATCHED_TRIGGERS}Use the ${SKILL_NAME} skill for ${TRIGGER_PHRASE}."
+
+      # JSON output
+      MATCHED_JSON=$(echo "$MATCHED_JSON" | jq \
+        --arg skill "$SKILL_NAME" \
+        --arg keywords "$KEYWORDS" \
+        --arg trigger "Use the ${SKILL_NAME} skill for ${TRIGGER_PHRASE}." \
+        '. + [{"skill": $skill, "keywords": $keywords, "trigger": $trigger}]')
     fi
   done
 
-  if [ "$OUTPUT_FORMAT" = "json" ]; then
-    echo "$MATCHED_JSON"
-  else
-    echo "$MATCHED_SKILLS"
-  fi
+  case "$OUTPUT_FORMAT" in
+    json)
+      echo "$MATCHED_JSON"
+      ;;
+    triggers)
+      echo "$MATCHED_TRIGGERS"
+      ;;
+    *)
+      echo "$MATCHED_KEYWORDS"
+      ;;
+  esac
 }
 
 # ============================================================================
@@ -306,37 +358,53 @@ match_skills_with_labels() {
 get_issue_skills() {
   local ISSUE_ID="$1"
 
-  # Try to get from notes first (persisted by plan-backlog)
+  # Try to get from notes first (persisted by bd-plan)
   # bd show returns an array, so use .[0] to get the first element
   local NOTES=$(bd show "$ISSUE_ID" --json 2>/dev/null | jq -r '.[0].notes // ""')
-  local PERSISTED_SKILLS=$(echo "$NOTES" | grep -oP 'skills?:\s*\K.*' | head -1)
+
+  # Check new prepared.skills format first, then legacy skills: format
+  local PERSISTED_SKILLS=$(echo "$NOTES" | grep -oP '^prepared\.skills:\s*\K.*' | head -1)
+  if [ -z "$PERSISTED_SKILLS" ]; then
+    PERSISTED_SKILLS=$(echo "$NOTES" | grep -oP '^skills:\s*\K.*' | head -1)
+  fi
 
   if [ -n "$PERSISTED_SKILLS" ]; then
-    # Convert comma-separated skill names to explicit invocation commands
-    # Use full plugin:skill format for user-level plugins
+    # Output keyword phrases directly - the skill-eval hook handles activation
+    # Keywords help Claude identify which skills are relevant to the task
     for skill in $(echo "$PERSISTED_SKILLS" | tr ',' ' '); do
       skill=$(echo "$skill" | tr -d ' ')
       case "$skill" in
-        # Project-level skills (shorthand ok)
-        xterm-js|xterm|tabz-guide) echo "/tabz-guide" ;;
-        # Conductor skills
-        tabz-mcp|mcp|browser) echo "/conductor:tabz-mcp" ;;
-        conductor*|orchestration) echo "/conductor:orchestration" ;;
-        code-review|review) echo "/conductor:code-review" ;;
-        # User-level plugins (need full plugin:skill format)
-        ui-styling|ui) echo "/ui-styling:ui-styling" ;;
-        backend*) echo "/backend-development:backend-development" ;;
-        better-auth|auth) echo "/better-auth:better-auth" ;;
-        plugin-dev|plugin) echo "/plugin-dev:plugin-dev" ;;
-        ai-multimodal|audio) echo "/ai-multimodal:ai-multimodal" ;;
-        media-processing|media) echo "/media-processing:media-processing" ;;
-        docs-seeker|docs) echo "/docs-seeker:docs-seeker" ;;
-        frontend*) echo "/frontend-development:frontend-development" ;;
+        # Terminal
+        xterm-js|xterm|tabz-guide|terminal) echo "xterm.js terminal, resize handling, FitAddon" ;;
+        # Browser automation
+        tabz-mcp|mcp|browser) echo "browser automation, MCP tools, screenshots" ;;
+        # Orchestration
+        conductor*|orchestration) echo "multi-session orchestration, worker coordination" ;;
+        # Code review
+        code-review|review) echo "code review, pull request analysis, quality checks" ;;
+        # UI/styling
+        ui-styling|ui|shadcn) echo "shadcn/ui components, Tailwind CSS, Radix UI" ;;
+        # Backend
+        backend*) echo "backend development, REST API, Node.js, FastAPI" ;;
+        # Auth
+        better-auth|auth) echo "Better Auth, authentication, OAuth, JWT" ;;
+        # Plugin dev
+        plugin-dev|plugin) echo "Claude Code plugin development, skill creation" ;;
+        # Multimodal
+        ai-multimodal|audio) echo "audio processing, TTS, Gemini multimodal" ;;
+        # Media
+        media-processing|media) echo "FFmpeg video, ImageMagick, media processing" ;;
+        # Docs
+        docs-seeker|docs) echo "documentation, llms.txt, repomix" ;;
+        # Frontend
+        frontend*) echo "React, TypeScript, frontend patterns" ;;
+        # Databases
+        databases|postgres|mongodb) echo "PostgreSQL, MongoDB, Redis, database queries" ;;
+        # Visual
+        visual|qa) echo "visual QA, UI testing, screenshot comparison" ;;
         *)
-          # For unknown skills, try full format if looks like a skill name
-          if [[ "$skill" =~ ^[a-z]+(-[a-z]+)*$ ]]; then
-            echo "/$skill:$skill"
-          fi
+          # Return the skill name as-is for unknown skills
+          echo "$skill"
           ;;
       esac
     done
@@ -406,11 +474,11 @@ match_skills_verified() {
 # ============================================================================
 # PERSIST SKILLS TO BEADS
 # ============================================================================
-# Used by plan-backlog to save skill hints
+# Used by bd-plan to save skill hints in prepared.* format
 
 persist_skills_to_issue() {
   local ISSUE_ID="$1"
-  local SKILLS="$2"  # Comma-separated skill names (e.g., "xterm-js, ui-styling")
+  local SKILLS="$2"  # Comma-separated skill names (e.g., "ui-styling,backend-development")
 
   if [ -z "$ISSUE_ID" ] || [ -z "$SKILLS" ]; then
     return 1
@@ -419,15 +487,291 @@ persist_skills_to_issue() {
   # Get existing notes (bd show returns an array)
   local EXISTING_NOTES=$(bd show "$ISSUE_ID" --json 2>/dev/null | jq -r '.[0].notes // ""')
 
-  # Remove any existing skills line
-  local CLEAN_NOTES=$(echo "$EXISTING_NOTES" | grep -v '^skills:')
+  # Remove any existing prepared.skills or legacy skills line
+  local CLEAN_NOTES=$(echo "$EXISTING_NOTES" | grep -v '^prepared\.skills:' | grep -v '^skills:')
 
-  # Add new skills line
+  # Add new prepared.skills line (consistent with prepared.* schema)
   local NEW_NOTES="${CLEAN_NOTES}
-skills: ${SKILLS}"
+prepared.skills: ${SKILLS}"
 
   # Update issue
   bd update "$ISSUE_ID" --notes "$NEW_NOTES" 2>/dev/null
+}
+
+# Persist full prepared prompt (skills + files + prompt)
+persist_prepared_prompt() {
+  local ISSUE_ID="$1"
+  local SKILLS="$2"    # Comma-separated skill names
+  local FILES="$3"     # Comma-separated file paths
+  local PROMPT="$4"    # Full worker prompt text
+
+  if [ -z "$ISSUE_ID" ]; then
+    return 1
+  fi
+
+  # Build notes in prepared.* format
+  local NEW_NOTES="prepared.skills: ${SKILLS:-}
+prepared.files: ${FILES:-}
+prepared.prompt: |
+$(echo "${PROMPT:-}" | sed 's/^/  /')"
+
+  # Update issue (replaces all notes)
+  bd update "$ISSUE_ID" --notes "$NEW_NOTES" 2>/dev/null
+}
+
+# ============================================================================
+# BATCH PERSISTENCE
+# ============================================================================
+# Used by bd-plan "Group Tasks" to group issues into batches
+
+# Persist batch ID to issue notes
+persist_batch_to_issue() {
+  local ISSUE_ID="$1"
+  local BATCH_ID="$2"
+  local POSITION="${3:-1}"  # Position within batch (1, 2, or 3)
+
+  if [ -z "$ISSUE_ID" ] || [ -z "$BATCH_ID" ]; then
+    return 1
+  fi
+
+  # Get existing notes (bd show returns an array)
+  local EXISTING_NOTES=$(bd show "$ISSUE_ID" --json 2>/dev/null | jq -r '.[0].notes // ""')
+
+  # Remove any existing batch.* lines
+  local CLEAN_NOTES=$(echo "$EXISTING_NOTES" | grep -v '^batch\.')
+
+  # Add new batch info
+  local NEW_NOTES="${CLEAN_NOTES}
+batch.id: ${BATCH_ID}
+batch.position: ${POSITION}"
+
+  # Update issue
+  bd update "$ISSUE_ID" --notes "$NEW_NOTES" 2>/dev/null
+}
+
+# Get batch ID from issue notes
+get_batch_from_issue() {
+  local ISSUE_ID="$1"
+
+  if [ -z "$ISSUE_ID" ]; then
+    return 1
+  fi
+
+  local NOTES=$(bd show "$ISSUE_ID" --json 2>/dev/null | jq -r '.[0].notes // ""')
+  echo "$NOTES" | grep -oP '^batch\.id:\s*\K.*' | head -1
+}
+
+# Get all issues in a batch
+get_batch_issues() {
+  local BATCH_ID="$1"
+
+  if [ -z "$BATCH_ID" ]; then
+    return 1
+  fi
+
+  # Search all ready issues for this batch ID
+  for ISSUE_ID in $(bd ready --json 2>/dev/null | jq -r '.[].id'); do
+    local NOTES=$(bd show "$ISSUE_ID" --json 2>/dev/null | jq -r '.[0].notes // ""')
+    local ISSUE_BATCH=$(echo "$NOTES" | grep -oP '^batch\.id:\s*\K.*' | head -1)
+    if [ "$ISSUE_BATCH" = "$BATCH_ID" ]; then
+      local POSITION=$(echo "$NOTES" | grep -oP '^batch\.position:\s*\K.*' | head -1)
+      echo "${POSITION:-1}:$ISSUE_ID"
+    fi
+  done | sort -n | cut -d: -f2
+}
+
+# Get unique batch IDs from ready issues
+get_all_batches() {
+  for ISSUE_ID in $(bd ready --json 2>/dev/null | jq -r '.[].id'); do
+    local NOTES=$(bd show "$ISSUE_ID" --json 2>/dev/null | jq -r '.[0].notes // ""')
+    echo "$NOTES" | grep -oP '^batch\.id:\s*\K.*' | head -1
+  done | grep -v '^$' | sort -u
+}
+
+# ============================================================================
+# FILE OVERLAP DETECTION
+# ============================================================================
+# Detect issues that may touch same files to prevent merge conflicts
+
+# Extract potential file paths/patterns from issue
+# Sources: prepared.files, title keywords, description patterns
+get_issue_files() {
+  local ISSUE_ID="$1"
+
+  local ISSUE_JSON=$(bd show "$ISSUE_ID" --json 2>/dev/null)
+  if [ -z "$ISSUE_JSON" ]; then
+    return 1
+  fi
+
+  local NOTES=$(echo "$ISSUE_JSON" | jq -r '.[0].notes // ""')
+  local TITLE=$(echo "$ISSUE_JSON" | jq -r '.[0].title // ""')
+  local DESC=$(echo "$ISSUE_JSON" | jq -r '.[0].description // ""')
+
+  # 1. Explicit prepared.files from notes
+  local EXPLICIT_FILES=$(echo "$NOTES" | grep -oP '^prepared\.files:\s*\K.*' | head -1)
+  if [ -n "$EXPLICIT_FILES" ]; then
+    echo "$EXPLICIT_FILES" | tr ',' '\n' | sed 's/^\.\///' | sort -u
+  fi
+
+  # 2. Extract file-like patterns from title/description
+  # Look for: Component names (PascalCase), file paths, .tsx/.ts/.md extensions
+  local TEXT="$TITLE $DESC"
+
+  # PascalCase component names -> likely .tsx files
+  echo "$TEXT" | grep -oE '\b[A-Z][a-z]+([A-Z][a-z]+)+\b' | while read -r COMPONENT; do
+    echo "$COMPONENT.tsx"
+    echo "$COMPONENT.ts"
+  done
+
+  # Explicit file paths mentioned
+  echo "$TEXT" | grep -oE '[a-zA-Z0-9_/-]+\.(tsx?|jsx?|md|json|sh|css|scss)' | sort -u
+
+  # Common patterns: "X component" -> X.tsx, "X file" -> X.*
+  echo "$TEXT" | grep -oiE '([a-zA-Z]+)\s+(component|file|page|hook|util)' | \
+    sed -E 's/\s+(component|file|page|hook|util)$//' | \
+    while read -r NAME; do
+      echo "${NAME}.tsx"
+    done
+}
+
+# Get skills from issue for overlap heuristic
+get_issue_skills_raw() {
+  local ISSUE_ID="$1"
+
+  local NOTES=$(bd show "$ISSUE_ID" --json 2>/dev/null | jq -r '.[0].notes // ""')
+
+  # Check prepared.skills first, then legacy skills:
+  local SKILLS=$(echo "$NOTES" | grep -oP '^prepared\.skills:\s*\K.*' | head -1)
+  if [ -z "$SKILLS" ]; then
+    SKILLS=$(echo "$NOTES" | grep -oP '^skills:\s*\K.*' | head -1)
+  fi
+
+  echo "$SKILLS" | tr ',' '\n' | tr -d ' ' | sort -u
+}
+
+# Check if two issues have file overlap
+check_file_overlap() {
+  local ISSUE1="$1"
+  local ISSUE2="$2"
+
+  local FILES1=$(get_issue_files "$ISSUE1" 2>/dev/null | sort -u)
+  local FILES2=$(get_issue_files "$ISSUE2" 2>/dev/null | sort -u)
+
+  # Check for exact file matches
+  local COMMON=$(comm -12 <(echo "$FILES1") <(echo "$FILES2") 2>/dev/null)
+
+  if [ -n "$COMMON" ]; then
+    echo "file:$(echo "$COMMON" | head -1)"
+    return 0
+  fi
+
+  # Check for skill overlap (heuristic - same frontend/backend skill = potential conflict)
+  local SKILLS1=$(get_issue_skills_raw "$ISSUE1" 2>/dev/null | sort -u)
+  local SKILLS2=$(get_issue_skills_raw "$ISSUE2" 2>/dev/null | sort -u)
+
+  local SKILL_COMMON=$(comm -12 <(echo "$SKILLS1") <(echo "$SKILLS2") 2>/dev/null | head -1)
+
+  if [ -n "$SKILL_COMMON" ]; then
+    echo "skill:$SKILL_COMMON"
+    return 0
+  fi
+
+  return 1
+}
+
+# Detect overlapping issue pairs from a list of issue IDs
+# Output format: issue1|issue2|reason (one per line)
+detect_file_overlap() {
+  local ISSUE_IDS="$1"  # Space-separated issue IDs
+
+  if [ -z "$ISSUE_IDS" ]; then
+    return 0
+  fi
+
+  # Convert to array
+  local IDS=($ISSUE_IDS)
+  local COUNT=${#IDS[@]}
+
+  if [ "$COUNT" -lt 2 ]; then
+    return 0
+  fi
+
+  # Compare all pairs
+  local i=0
+  while [ $i -lt $((COUNT - 1)) ]; do
+    local j=$((i + 1))
+    while [ $j -lt $COUNT ]; do
+      local ID1="${IDS[$i]}"
+      local ID2="${IDS[$j]}"
+
+      local REASON=$(check_file_overlap "$ID1" "$ID2" 2>/dev/null)
+      if [ -n "$REASON" ]; then
+        echo "$ID1|$ID2|$REASON"
+      fi
+
+      ((j++))
+    done
+    ((i++))
+  done
+}
+
+# Get overlap groups - issues that should be grouped together
+# Returns clusters of issues that have transitive overlap
+get_overlap_groups() {
+  local ISSUE_IDS="$1"
+
+  local OVERLAPS=$(detect_file_overlap "$ISSUE_IDS")
+
+  if [ -z "$OVERLAPS" ]; then
+    # No overlaps - each issue is its own group
+    for ID in $ISSUE_IDS; do
+      echo "$ID"
+    done
+    return 0
+  fi
+
+  # Build groups using union-find (simplified)
+  declare -A PARENT
+
+  # Initialize each issue as its own parent
+  for ID in $ISSUE_IDS; do
+    PARENT["$ID"]="$ID"
+  done
+
+  # Find root of a set
+  find_root() {
+    local ID="$1"
+    while [ "${PARENT[$ID]}" != "$ID" ]; do
+      ID="${PARENT[$ID]}"
+    done
+    echo "$ID"
+  }
+
+  # Union overlapping pairs
+  while IFS='|' read -r ID1 ID2 REASON; do
+    [ -z "$ID1" ] && continue
+    local ROOT1=$(find_root "$ID1")
+    local ROOT2=$(find_root "$ID2")
+    if [ "$ROOT1" != "$ROOT2" ]; then
+      PARENT["$ROOT1"]="$ROOT2"
+    fi
+  done <<< "$OVERLAPS"
+
+  # Collect groups
+  declare -A ISSUE_GROUPS
+  for ID in $ISSUE_IDS; do
+    local ROOT=$(find_root "$ID")
+    if [ -n "${ISSUE_GROUPS[$ROOT]}" ]; then
+      ISSUE_GROUPS["$ROOT"]="${ISSUE_GROUPS[$ROOT]} $ID"
+    else
+      ISSUE_GROUPS["$ROOT"]="$ID"
+    fi
+  done
+
+  # Output groups (one per line, space-separated IDs)
+  for ROOT in "${!ISSUE_GROUPS[@]}"; do
+    echo "${ISSUE_GROUPS[$ROOT]}"
+  done
 }
 
 # ============================================================================
@@ -441,24 +785,57 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
       echo "Usage: match-skills.sh [OPTIONS] 'text to match'"
       echo ""
       echo "Options:"
-      echo "  --json            Output as JSON array"
+      echo "  --json            Output as JSON array with skill, keywords, and trigger"
+      echo "  --triggers        Output natural trigger phrases for prompts"
+      echo "                    (e.g., 'Use the xterm-js skill for terminal handling.')"
       echo "  --issue ID        Match from beads issue ID"
       echo "  --verify          Match AND verify skills are available (runtime check)"
       echo "  --available       List all currently available skill IDs"
       echo "  --available-full  List skills with descriptions (for prompt crafting)"
       echo "  --available-json  List skills as JSON array with descriptions"
-      echo "  --persist ID SK   Persist skills to issue: --persist ISSUE-ID 'skill1, skill2'"
+      echo "  --persist ID SK   Store skills in issue notes (prepared.skills format)"
+      echo ""
+      echo "Batch Operations:"
+      echo "  --persist-batch ID BATCH [POS]  Store batch ID in issue notes"
+      echo "  --get-batch ID                  Get batch ID from issue notes"
+      echo "  --batch-issues BATCH            Get all issues in a batch (sorted by position)"
+      echo "  --all-batches                   List unique batch IDs from ready issues"
+      echo ""
+      echo "Overlap Detection (prevent merge conflicts):"
+      echo "  --detect-overlap 'ID1 ID2 ...'  Find overlapping issue pairs"
+      echo "  --issue-files ID                List potential files an issue may touch"
+      echo "  --overlap-groups 'ID1 ID2 ...'  Group issues by overlap (same group = sequential)"
+      echo ""
+      echo "Notes Format (prepared.* schema):"
+      echo "  prepared.skills: ui-styling,backend-development"
+      echo "  prepared.files: src/Button.tsx,src/utils.ts"
+      echo "  prepared.prompt: |"
+      echo "    Full worker prompt here..."
+      echo ""
+      echo "Batch Format:"
+      echo "  batch.id: batch-001"
+      echo "  batch.position: 1"
       echo ""
       echo "Examples:"
       echo "  match-skills.sh 'fix terminal resize bug'"
+      echo "  match-skills.sh --triggers 'add React dashboard component'"
+      echo "  match-skills.sh --json 'create Claude Code plugin'"
       echo "  match-skills.sh --verify 'add dashboard component'"
       echo "  match-skills.sh --issue TabzChrome-abc"
       echo "  match-skills.sh --available-full"
-      echo "  match-skills.sh --persist TabzChrome-abc 'ui-styling, backend-development'"
+      echo "  match-skills.sh --persist TabzChrome-abc 'ui-styling,backend-development'"
+      echo "  match-skills.sh --persist-batch TabzChrome-abc batch-001 2"
+      echo "  match-skills.sh --batch-issues batch-001"
+      echo "  match-skills.sh --detect-overlap 'issue-1 issue-2 issue-3'"
+      echo "  match-skills.sh --overlap-groups 'issue-1 issue-2 issue-3'"
       ;;
     --json)
       shift
       match_skills "$*" "json"
+      ;;
+    --triggers)
+      shift
+      match_skills "$*" "triggers"
       ;;
     --verify)
       shift
@@ -486,6 +863,62 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     --persist)
       shift
       persist_skills_to_issue "$1" "$2"
+      ;;
+    --persist-batch)
+      shift
+      persist_batch_to_issue "$1" "$2" "${3:-1}"
+      ;;
+    --get-batch)
+      shift
+      get_batch_from_issue "$1"
+      ;;
+    --batch-issues)
+      shift
+      get_batch_issues "$1"
+      ;;
+    --all-batches)
+      get_all_batches
+      ;;
+    --detect-overlap)
+      shift
+      OVERLAPS=$(detect_file_overlap "$*")
+      if [ -z "$OVERLAPS" ]; then
+        echo "No overlapping issues detected"
+      else
+        echo "Overlapping issue pairs (may conflict during merge):"
+        echo ""
+        while IFS='|' read -r ID1 ID2 REASON; do
+          [ -z "$ID1" ] && continue
+          echo "  $ID1 <-> $ID2 ($REASON)"
+        done <<< "$OVERLAPS"
+      fi
+      ;;
+    --issue-files)
+      shift
+      FILES=$(get_issue_files "$1" 2>/dev/null | sort -u)
+      if [ -z "$FILES" ]; then
+        echo "No files detected for $1"
+      else
+        echo "Potential files for $1:"
+        echo "$FILES" | sed 's/^/  /'
+      fi
+      ;;
+    --overlap-groups)
+      shift
+      OVERLAP_RESULT=$(get_overlap_groups "$*")
+      echo "Issue groups (issues in same group should run sequentially):"
+      echo ""
+      GROUP_NUM=1
+      while read -r GROUP_LINE; do
+        [ -z "$GROUP_LINE" ] && continue
+        COUNT=$(echo "$GROUP_LINE" | wc -w)
+        if [ "$COUNT" -gt 1 ]; then
+          echo "  Group $GROUP_NUM (overlapping - run sequentially): $GROUP_LINE"
+        else
+          echo "  Group $GROUP_NUM (isolated): $GROUP_LINE"
+        fi
+        ((GROUP_NUM++))
+      done <<< "$OVERLAP_RESULT"
       ;;
     *)
       match_skills "$*"

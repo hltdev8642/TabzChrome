@@ -164,12 +164,23 @@ function isAllowedUrl(url: string, settings?: UrlSettings): { allowed: boolean; 
     if (settings?.allowAllUrls) {
       normalized = `https://${normalized}`;
     } else {
+      // Local dev servers default to http:// (not https://)
+      const localDomains = /^(localhost|127\.0\.0\.1)(:\d+)?(\/.*)?$/i;
+      if (localDomains.test(normalized)) {
+        normalized = `http://${normalized}`;
+        // Check if allowed
+        for (const pattern of ALLOWED_URL_PATTERNS) {
+          if (pattern.test(normalized)) {
+            return { allowed: true, normalizedUrl: normalized };
+          }
+        }
+        return { allowed: false };
+      }
+
       // Known domains that can have https:// auto-added
       const knownDomains = [
         // Code hosting
         /^(www\.)?(github\.com|gitlab\.com|bitbucket\.org)/i,
-        // Local
-        /^(localhost|127\.0\.0\.1)/i,
         // Deployment platforms (*.vercel.app, *.netlify.app, etc.)
         /^[\w-]+\.(vercel\.app|vercel\.com|netlify\.app|railway\.app|onrender\.com|pages\.dev|fly\.dev)/i,
         // Developer docs
@@ -281,8 +292,13 @@ tab accumulation over time. Use reuseExisting=false to force a new tab.
 - "Allow All URLs" enabled: Any URL can be opened
 - "Allow All URLs" disabled: Only whitelisted domains (dev-focused sites)
 
+**Protocol handling:**
+- localhost/127.0.0.1: Defaults to http:// (local dev servers)
+- Other domains: Defaults to https://
+- Explicit protocol always honored: http://example.com or https://example.com
+
 Args:
-  - url (required): URL to open (can omit https://)
+  - url (required): URL to open (protocol optional, see above)
   - newTab: Open in new tab (default: true) or replace current tab
   - background: Open in background (default: false, opens in foreground)
   - reuseExisting: If URL is already open, switch to it instead of new tab (default: true)
@@ -295,8 +311,9 @@ Returns:
 
 Examples:
   - Open any site: url="https://example.com"
-  - Open GitHub repo: url="github.com/user/repo"
-  - Open localhost: url="localhost:3000"
+  - Open GitHub repo: url="github.com/user/repo" → https://github.com/user/repo
+  - Open localhost: url="localhost:3000" → http://localhost:3000
+  - Open localhost: url="localhost:8129" → http://localhost:8129
   - Current tab: url="github.com/user/repo", newTab=false
   - Background: url="example.com", background=true
   - Force new tab: url="github.com/user/repo", reuseExisting=false
