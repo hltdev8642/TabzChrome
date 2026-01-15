@@ -40,3 +40,6 @@ beads.right.meta.json
 
 # Sync lock (bd sync)
 .sync.lock
+
+# Beads sync base state (bd sync)
+sync_base.jsonl
