@@ -1,5 +1,0 @@
-{
-  "name": "state-tracker",
-  "version": "1.0.0",
-  "description": "Live session state tracking hooks - enables TabzChrome terminal updates and audio notifications"
-}

@@ -1,0 +1,13 @@
+{
+  "name": "conductor",
+  "version": "1.0.0",
+  "description": "Orchestrate multi-session Claude workflows - spawn workers, use subagents for monitoring, manage beads issues",
+  "author": {
+    "name": "TabzChrome Team"
+  },
+  "license": "MIT",
+  "keywords": ["orchestration", "workers", "beads", "parallel", "swarm"],
+  "commands": "./commands/",
+  "agents": "./agents/",
+  "skills": "./skills/"
+}

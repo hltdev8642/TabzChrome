@@ -1,0 +1,11 @@
+{
+  "name": "page-reader",
+  "version": "1.0.0",
+  "description": "Summarize and read aloud the current browser page content",
+  "author": {
+    "name": "TabzChrome Team"
+  },
+  "license": "MIT",
+  "keywords": ["page", "reader", "tts", "summarize"],
+  "commands": "./commands/"
+}

@@ -1,8 +1,9 @@
 {
   "name": "tabz-chrome",
+  "version": "1.0.0",
   "description": "Browser automation, terminal management, and Claude Code integration for TabzChrome - includes MCP tools, terminal integration commands, and specialized skills for xterm.js development",
   "author": {
-    "name": "Matt",
+    "name": "TabzChrome Team",
     "url": "https://github.com/GGPrompts"
   },
   "homepage": "https://github.com/GGPrompts/TabzChrome",
@@ -30,6 +31,7 @@
   "hooks": {
     "SessionStart": [
       {
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
@@ -41,6 +43,7 @@
     ],
     "UserPromptSubmit": [
       {
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
@@ -52,6 +55,7 @@
     ],
     "PreToolUse": [
       {
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
@@ -63,6 +67,7 @@
     ],
     "PostToolUse": [
       {
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
@@ -74,10 +79,23 @@
     ],
     "Stop": [
       {
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/state-tracker.sh stop",
+            "timeout": 1
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/state-tracker.sh subagent-stop",
             "timeout": 1
           }
         ]
