@@ -67,9 +67,35 @@ echo "All worktrees ready"
 The script creates worktree, installs dependencies, and runs initial build.
 
 **Validation:**
-- All worktrees show "READY: /path/..."? → Proceed to Step 4
+- All worktrees show "READY: /path/..."? → Proceed to Step 3b
 - Setup failed? → Check error output, fix issues, retry
 - **DO NOT proceed without worktrees** - workers will conflict on files
+
+---
+
+## Step 3b: Start Lookahead Enhancer (OPTIONAL but recommended)
+
+**While worktrees are being created, start the prompt enhancer in a background terminal:**
+
+```bash
+# In a separate terminal (or background)
+${CLAUDE_PLUGIN_ROOT}/scripts/lookahead-enhancer.sh &
+```
+
+This script:
+- Runs ahead of your workflow, preparing prompts for ready issues
+- Stores `prepared.prompt` in issue notes for instant retrieval
+- Matches skills and finds key files automatically
+- Prevents duplicate work with `enhancing: true` flag
+
+**Check status:**
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/lookahead-enhancer.sh --status
+```
+
+**Validation:**
+- Enhancer running? → Proceed to Step 4
+- Skipped? → You'll craft prompts manually in Step 6
 
 ---
 
@@ -120,7 +146,21 @@ Repeat for each issue.
 
 ## Step 6: Craft and Send Prompts
 
-**6a. Craft prompts using engineering-prompts skill:**
+**6a. Check for pre-prepared prompts (if lookahead enhancer was running):**
+
+```bash
+# Check if prompt is already prepared
+NOTES=$(bd show "$ISSUE_ID" --json | jq -r '.[0].notes // ""')
+if echo "$NOTES" | grep -q "prepared.prompt:"; then
+  # Extract prepared prompt from notes
+  PROMPT=$(echo "$NOTES" | sed -n '/^prepared\.prompt:/,/^[a-z]*\./p' | tail -n +2 | sed 's/^  //')
+  echo "Using pre-prepared prompt for $ISSUE_ID"
+else
+  echo "No prepared prompt - crafting manually"
+fi
+```
+
+**6b. If no prepared prompt, craft manually using engineering-prompts skill:**
 
 ```
 Skill(skill: "conductor:engineering-prompts")
@@ -147,11 +187,11 @@ This spawns parallel Explore agents (haiku) and synthesizes findings into detail
 Run `/conductor:worker-done ISSUE-ID`
 ```
 
-**6b. Send prompts to workers:**
+**6c. Send prompts to workers:**
 
 ```bash
 sleep 4
-tmux send-keys -t "$SESSION_NAME" -l 'Your prompt here...'
+tmux send-keys -t "$SESSION_NAME" -l "$PROMPT"
 sleep 0.3
 tmux send-keys -t "$SESSION_NAME" C-m
 ```
