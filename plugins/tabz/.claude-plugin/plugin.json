@@ -8,12 +8,5 @@
   "license": "MIT",
   "keywords": ["browser", "automation", "mcp", "screenshots", "tts"],
   "agents": ["./agents/tabz-expert.md"],
-  "skills": "./skills/",
-  "mcpServers": {
-    "tabz": {
-      "command": "${CLAUDE_PLUGIN_ROOT}/../../tabz-mcp-server/run-auto.sh",
-      "args": [],
-      "env": { "BACKEND_URL": "http://localhost:8129" }
-    }
-  }
+  "skills": "./skills/"
 }
