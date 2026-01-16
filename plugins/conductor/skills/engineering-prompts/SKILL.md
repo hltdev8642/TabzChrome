@@ -18,7 +18,28 @@ Craft detailed, context-rich prompts for beads issues by first gathering codebas
 > The full exploration happens out of your context - only the findings come back.
 > This skill loads prompting guidelines, then **you execute the workflow below**.
 
-## Workflow
+## Workflow Options
+
+### Option A: Background Lookahead (No LLM, fast)
+
+For batch preparation during `bd-swarm`, run the lookahead script in background:
+
+```bash
+${CLAUDE_SKILL_ROOT}/scripts/lookahead-enhancer.sh &
+```
+
+This script:
+- Runs without LLM calls (bash-only)
+- Matches skills using `match-skills.sh`
+- Quick-greps for key files
+- Stores `prepared.prompt` in issue notes
+- Stays 1-2 waves ahead
+
+**Best for:** High-volume swarms where speed > depth.
+
+### Option B: Full Exploration (Haiku + Opus)
+
+For deep context gathering, use this skill directly:
 
 ```
 1. Receive issue(s) to prepare prompts for
@@ -26,6 +47,10 @@ Craft detailed, context-rich prompts for beads issues by first gathering codebas
 3. Synthesize findings into monster prompts
 4. Return prompts ready for worker spawning
 ```
+
+**Best for:** Complex issues needing code pattern analysis.
+
+---
 
 ## Phase 1: Parallel Context Gathering
 

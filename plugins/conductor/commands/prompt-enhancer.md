@@ -8,7 +8,7 @@ Analyze beads issues and craft skill-aware enhanced prompts. Stores prepared pro
 
 ## When to Use
 
-- Run `scripts/lookahead-enhancer.sh` in background during `bd-swarm` for automatic enhancement
+- Run `skills/engineering-prompts/scripts/lookahead-enhancer.sh` in background during `bd-swarm` for automatic enhancement
 - Or use this command to understand the enhancement process
 
 ## Process Overview
@@ -139,8 +139,8 @@ If enhancement is slow, skip file search - workers can explore.
 
 | Resource | Purpose |
 |----------|---------|
-| `references/worker-prompt-guidelines.md` | Prompt quality principles |
+| `skills/engineering-prompts/references/worker-prompt-guidelines.md` | Prompt quality principles |
 | `references/anthropic-prompting-guide.md` | Full Claude 4.x prompting guide |
 | `scripts/match-skills.sh` | Central skill matching (single source of truth) |
-| `scripts/lookahead-enhancer.sh` | Batch enhancement during swarm |
+| `skills/engineering-prompts/scripts/lookahead-enhancer.sh` | Batch enhancement during swarm |
 | `/conductor:bd-swarm` | Main workflow that uses prepared prompts |

@@ -79,10 +79,10 @@ The script creates worktree, installs dependencies, and runs initial build.
 
 ```bash
 # In a separate terminal (or background)
-${CLAUDE_PLUGIN_ROOT}/scripts/lookahead-enhancer.sh &
+${CLAUDE_PLUGIN_ROOT}/skills/engineering-prompts/scripts/lookahead-enhancer.sh &
 ```
 
-This script:
+This script (part of the `engineering-prompts` skill):
 - Runs ahead of your workflow, preparing prompts for ready issues
 - Stores `prepared.prompt` in issue notes for instant retrieval
 - Matches skills and finds key files automatically
@@ -90,7 +90,7 @@ This script:
 
 **Check status:**
 ```bash
-${CLAUDE_PLUGIN_ROOT}/scripts/lookahead-enhancer.sh --status
+${CLAUDE_PLUGIN_ROOT}/skills/engineering-prompts/scripts/lookahead-enhancer.sh --status
 ```
 
 **Validation:**
