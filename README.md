@@ -59,26 +59,15 @@ Using Claude Code's experimental MCP CLI mode, tool schemas are loaded on-demand
 
 TabzChrome includes a [Claude Code plugin marketplace](.claude-plugin/marketplace.json) with agents, skills, hooks, and MCP tools:
 
-| Plugin | Type | Description |
-|--------|------|-------------|
-| [**conductor**](plugins/conductor/) | agents + skills | Multi-session orchestration - spawn parallel workers, manage beads issues, autonomous backlog processing (**requires [beads MCP](https://github.com/steveyegge/beads)**) |
-| [**tabz-mcp**](plugins/tabz-mcp/skills/tabz-mcp/SKILL.md) | skill | Guided browser automation with dynamic tool discovery |
-| [**xterm-js**](plugins/xterm-js/skills/xterm-js/SKILL.md) | skill | Terminal development patterns (resize, WebSocket, React hooks, tmux) |
-| [**tabz-guide**](plugins/tabz-guide/skills/tabz-guide/SKILL.md) | skill | Progressive help for TabzChrome (profiles, API, debugging) |
-| [**state-tracker**](plugins/state-tracker/) | hooks | Live Claude status tracking for terminal tab updates |
-| [**ctthandoff**](plugins/ctthandoff/) | command | Generate handoff summary, copy to clipboard, speak via TTS |
-| [**tabz-integration**](plugins/tabz-integration/) | command | Integration guide for connecting projects to TabzChrome |
+| Component | Type | Description |
+|-----------|------|-------------|
 | [**Tabz MCP Server**](tabz-mcp-server/MCP_TOOLS.md) | MCP | 70+ browser control tools (screenshots, clicks, bookmarks, network, tab groups, windows, history, cookies, emulation) |
+| [**tabz-browser**](.claude/skills/tabz-browser/) | skill | Browser automation patterns (screenshots, forms, network debugging) |
+| [**tabz-terminals**](.claude/skills/tabz-terminals/) | skill | Terminal spawning and worker management via REST API |
+| [**tabz-development**](.claude/skills/tabz-development/) | skill | Terminal.tsx, xterm.js, WebSocket patterns |
+| [**tabz-expert**](.claude/agents/tabz-expert.md) | agent | Browser automation specialist with 70 MCP tools |
 
-> **Conductor Plugin Requirement:** The conductor plugin uses [beads](https://github.com/steveyegge/beads) for issue tracking. Install the beads MCP server to use `/bd-swarm`, `/bd-work`, `/plan-backlog`, and other orchestration commands.
-
-**Quick setup:** Plugins auto-load when you run Claude Code in the TabzChrome directory.
-
-**📦 Install from anywhere:**
-```bash
-/plugin marketplace add GGPrompts/TabzChrome
-/plugin install tabz-chrome:conductor   # Install specific plugins
-```
+**Quick setup:** Skills auto-load when you run Claude Code in the TabzChrome directory.
 
 ---
 

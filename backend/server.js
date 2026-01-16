@@ -402,9 +402,9 @@ app.post('/api/spawn', async (req, res) => {
   res.json({ success: true, terminal: result.terminal });
 });
 
-// Worker notification endpoint for conductor orchestration
+// Worker notification endpoint
 // POST /api/notify { type, issueId, summary, session }
-// Used by workers to notify conductor of completion without corrupting tmux sessions
+// Used by workers to broadcast completion/status updates via WebSocket
 // Requires auth token (header X-Auth-Token or query param ?token=)
 app.post('/api/notify', (req, res) => {
   // Require auth token to prevent unauthorized notifications
@@ -419,7 +419,7 @@ app.post('/api/notify', (req, res) => {
     return res.status(400).json({ success: false, error: 'Missing type parameter' });
   }
 
-  // Broadcast notification to all WebSocket clients (conductor will receive this)
+  // Broadcast notification to all WebSocket clients
   broadcast({
     type: 'worker-notification',
     data: {

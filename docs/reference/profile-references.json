@@ -7,18 +7,6 @@
       "reference": "~/projects/TabzChrome/docs/reference/claude-code.md"
     },
     {
-      "id": "🎭-conductor",
-      "name": "🎭 Conductor",
-      "command": "claude --dangerously-skip-permissions --agent conductor:conductor",
-      "reference": "~/projects/TabzChrome/docs/reference/claude-code.md"
-    },
-    {
-      "id": "🫶-tabz-manager",
-      "name": "🫶 Tabz Manager",
-      "command": "claude --dangerously-skip-permissions --agent conductor:tabz-manager",
-      "reference": "~/projects/TabzChrome/docs/reference/claude-code.md"
-    },
-    {
       "id": "matrixclaude",
       "name": "💚 MatrixClaude",
       "command": "claude --dangerously-skip-permissions",

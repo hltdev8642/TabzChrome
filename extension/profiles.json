@@ -40,15 +40,6 @@
       "fontFamily": "JetBrains Mono, monospace",
       "fontSize": 16,
       "themeName": "matrix"
-    },
-    {
-      "id": "conductor",
-      "name": "Conductor",
-      "command": "claude --dangerously-skip-permissions \"/conductor:orchestration\"",
-      "workingDir": "~/projects",
-      "fontFamily": "JetBrains Mono, monospace",
-      "fontSize": 16,
-      "themeName": "high-contrast"
     }
   ],
   "defaultProfile": "default"
