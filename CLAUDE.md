@@ -27,32 +27,29 @@ extension/                          backend/
 ├── background/
 │   ├── index.ts                    tabz-mcp-server/src/
 │   ├── websocket.ts                ├── index.ts (MCP server entry)
-│   ├── messageHandlers.ts          └── tools/ (MCP tool definitions,
-│   ├── browserMcp/                           call backend directly)
+│   ├── messageHandlers.ts          └── tools/ (MCP tool definitions)
+│   ├── browserMcp/
 │   │   ├── tabs.ts
 │   │   ├── screenshots.ts
 │   │   └── ...
 │   └── ...
 ├── dashboard/
-│   ├── App.tsx                     (Full-page dashboard UI)
-│   ├── sections/
-│   │   ├── Profiles.tsx            (Profile management)
-│   │   ├── Files.tsx               (File browser)
-│   │   ├── Terminals.tsx           (Terminal management)
-│   │   ├── Audio.tsx               (Audio notifications config)
-│   │   ├── McpPlayground.tsx       (MCP tool testing)
-│   │   └── Settings.tsx
-│   ├── components/files/           (File tree, viewers)
-│   ├── components/audio/           (EventCard, PhraseEditor, etc.)
-│   └── contexts/                   (React contexts)
-├── 3d/FocusScene.tsx
-└── shared/messaging.ts
+│   ├── App.tsx                     .claude/
+│   ├── sections/                   ├── skills/        (project skills)
+│   │   ├── Profiles.tsx            │   ├── spawning-terminals/
+│   │   ├── Files.tsx               │   ├── taking-screenshots/
+│   │   ├── Terminals.tsx           │   ├── xterm-js/
+│   │   └── ...                     │   └── ...
+│   └── contexts/                   ├── agents/
+├── 3d/FocusScene.tsx               │   └── tabz-expert.md
+└── shared/messaging.ts             └── commands/
 ```
 
 **Key patterns:**
 - **Terminal IDs**: `ctt-{profile}-{uuid}` prefix for Chrome extension terminals
 - **State**: Chrome storage (UI) + tmux (process persistence)
 - **Communication**: WebSocket for terminal I/O, Chrome messages for extension
+- **MCP Tools**: 70 tabz_* tools available via project-scoped `.mcp.json`
 
 ---
 
@@ -102,28 +99,13 @@ After completing work:
 ```bash
 # Development
 ./scripts/dev.sh              # Start backend (creates tabzchrome tmux session)
-/rebuild                      # Build extension (cross-platform, handles WSL copy)
+npm run build                 # Build extension
 npm test                      # Run tests
 
 # Debugging
 tmux ls | grep "^ctt-"                        # List extension terminals
-tail -50 backend/logs/unified.log             # View unified logs (backend + browser)
-lnav backend/logs/unified.log                 # Interactive log filtering (if lnav installed)
+tail -50 backend/logs/unified.log             # View unified logs
 ps aux | grep "node server"                   # Check backend running
-
-# lnav filtering (in logs window)
-:filter-in \[Server\]                         # Show only Server logs
-:filter-in \[Browser                          # Show only browser logs
-:filter-in ERROR                              # Show only errors
-:filter-out \[buildFileTree\]                 # Hide verbose file tree logs
-```
-
-### Build & Deploy
-**IMPORTANT:** Always use `/rebuild` to build the extension. Never use `npm run build` with manual rsync - the skill handles cross-platform paths correctly.
-
-```bash
-/rebuild                      # Build + copy (WSL users: set TABZ_WIN_PATH in ~/.bashrc)
-# Then reload at chrome://extensions
 ```
 
 ### Spawn API
@@ -148,9 +130,7 @@ See `docs/API.md` for full API documentation.
 | `extension/hooks/useProfiles.ts` | Profile CRUD and persistence |
 | `extension/background/index.ts` | Service worker entry point |
 | `extension/background/websocket.ts` | WebSocket connection management |
-| `extension/background/messageHandlers.ts` | Chrome runtime message handlers |
 | `extension/background/browserMcp/` | Browser MCP handlers (tabs, screenshots, etc.) |
-| `extension/3d/FocusScene.tsx` | 3D Focus Mode (Three.js + React Three Fiber) |
 | `tabz-mcp-server/src/tools/` | MCP tool definitions (call backend directly) |
 | `backend/modules/pty-handler.js` | PTY spawning, tmux integration |
 | `backend/routes/api.js` | REST endpoints including spawn API |
@@ -182,130 +162,60 @@ See `docs/API.md` for full API documentation.
 
 ## AI Assistant Notes
 
-### Skills for TabzChrome Development
+### Project-Local Skills & Agents
 
-Use these skills when working on TabzChrome itself:
+This project has local skills and agents in `.claude/`:
 
-| Skill | When to Use |
-|-------|-------------|
-| `xterm-js` | Terminal.tsx changes, resize handling, input/output, WebSocket I/O |
-| `tabz-guide` | Understanding TabzChrome features, API, MCP tools, audio/TTS |
-| `tabz-mcp` | Browser automation, testing MCP tools, screenshot workflows |
-| `shadcn-ui` | Dashboard UI components, settings modals, forms |
-| `tailwindcss` | Styling sidepanel, dashboard, responsive layouts |
+| Location | Purpose |
+|----------|---------|
+| `.claude/skills/xterm-js/` | Terminal rendering, resize handling |
+| `.claude/skills/spawning-terminals/` | Spawn workers via TabzChrome API |
+| `.claude/skills/taking-screenshots/` | Screenshots via tabz MCP |
+| `.claude/skills/engineering-prompts/` | Craft context-rich prompts |
+| `.claude/agents/tabz-expert.md` | Browser automation specialist (70 MCP tools) |
 
-**Trigger with:** "use the xterm-js skill to debug terminal rendering"
+### MCP Tools (Project-Scoped)
 
-### Skill & Command Invocation Patterns
+The 70 tabz_* MCP tools are only available in this project (configured in `.mcp.json`). Use MCPSearch to find and load specific tools before calling them.
 
-**IMPORTANT:** Skills and slash commands have different invocation patterns.
+### Spawning Workers
 
-| Context | Format | Example |
-|---------|--------|---------|
-| **User types** (chat) | `/plugin:command` or `/command` | `/conductor:worker-done` |
-| **Claude calls** (Skill tool) | `skill: "plugin:skill"` (no slash) | `Skill(skill: "conductor:worker-done")` |
+For parallel work, spawn vanilla Claude workers on worktrees:
 
-**Common mistakes to avoid:**
-- ❌ `Skill(skill: "/conductor:worker-done")` - NO leading slash in Skill tool
-- ❌ `/pmux` - WRONG, use `/pmux:pmux` (plugin:skill format)
-- ❌ `skill: "worker-done"` - WRONG, need full `plugin:skill` name
-
-**Correct patterns:**
-```
-# User typing in chat (slash command):
-/conductor:worker-done TabzChrome-abc
-/rebuild
-/bd-status
-
-# Claude calling programmatically (Skill tool):
-Skill(skill: "conductor:worker-done", args: "TabzChrome-abc")
-Skill(skill: "rebuild")
-Skill(skill: "pmux:pmux")
-```
-
-**Shorthand rules:**
-- `/rebuild` works if unambiguous (only one `rebuild` skill exists)
-- `/worker-done` may NOT work - use `/conductor:worker-done` for clarity
-- When in doubt, use full `plugin:skill` format
-
-### Slash Commands
-
-| Command | Purpose |
-|---------|---------|
-| `/rebuild` | Build extension (WSL: also copies to Windows) |
-| `/ctthandoff` | Generate handoff summary, copy to clipboard, speak via TTS |
-| `/bd-work` | Pick top beads issue and start working |
-| `/bd-swarm` | Spawn parallel workers for multiple issues |
-| `/bd-status` | Show beads issue tracker overview |
-| `/plan-backlog` | Groom issues into parallelizable waves |
-
-### Conductor Agents
-
-For orchestrating multi-session work on TabzChrome:
-
-| Agent | When to Use |
-|-------|-------------|
-| `conductor:tabz-manager` | Browser automation (spawn as visible terminal) |
-| `conductor:tui-expert` | Spawn btop, lazygit, lnav for system info |
-| `conductor:code-reviewer` | Autonomous code review for workers |
-
-**Worker Monitoring:** Use `plugins/conductor/scripts/monitor-workers.sh` to spawn tmuxplexer in a background window and poll worker status. No watcher subagent needed.
-
-**Spawn tabz-manager for browser testing:**
 ```bash
-claude --agent conductor:tabz-manager --dangerously-skip-permissions
-```
-
-### Parallel Worker Patterns
-
-When spawning multiple Claude workers via conductor:
-
-**Use git worktrees** - Workers in same directory cause conflicts:
-```bash
+# Create worktree
 git worktree add ../TabzChrome-feature branch-name
-# Spawn worker with workingDir pointing to worktree
+
+# Spawn worker via TabzChrome API
+TOKEN=$(cat /tmp/tabz-auth-token)
+curl -X POST http://localhost:8129/api/spawn \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: $TOKEN" \
+  -d '{"name": "Feature Worker", "workingDir": "~/projects/TabzChrome-feature", "command": "claude"}'
 ```
 
-**Common worker issues observed:**
-1. **Prompt doesn't submit** - Always use `sleep 0.3` before `C-m`
-2. **Worker finishes but doesn't close issue** - Nudge with explicit `bd close` command
-3. **Worker sits idle after commit** - May need reminder to close beads issue
-4. **Workers conflict on same files** - Use worktrees for parallel work
+Workers receive plain prompts and use beads naturally (`bd show`, `bd close`).
 
-**Nudging idle workers:**
+### Beads Integration
+
+Track work across sessions with beads:
 ```bash
-# If worker has uncommitted changes but is idle
-tmux send-keys -t "$SESSION" "npm run build && git add . && git commit -m 'message' && bd close ISSUE-ID --reason 'done'" Enter
+bd ready                    # Find available work
+bd show <id>                # View issue details
+bd close <id> --reason="done"  # Complete work
 ```
 
 ### Autonomous Debugging
 ```bash
-# Check backend + terminals without asking user
 ps aux | grep "node server.js" | grep -v grep
 tmux ls | grep "^ctt-"
-tail -50 backend/logs/unified.log              # Unified log (backend + browser)
+tail -50 backend/logs/unified.log
 ```
 
 ### Key Constraints
 - `tabz_screenshot` cannot capture Chrome sidebar (Chrome limitation)
 - Keep dependencies minimal - avoid adding npm packages
 - Follow semantic versioning - project is public with active users
-
-### Clickable File Paths
-File paths in terminal output and chat are clickable and open in the dashboard Files viewer.
-For paths to be detected as links, use absolute paths:
-- ✅ `/home/matt/projects/TabzChrome/extension/file.ts`
-- ✅ `~/projects/TabzChrome/extension/file.ts`
-- ❌ `./extension/file.ts` (relative paths don't resolve in chat)
-- ❌ `extension/file.ts` (needs leading `/` or `~`)
-
-### Tmux Send-Keys Pattern
-```bash
-# Send prompt to another Claude session
-tmux send-keys -t "$SESSION" -l "prompt text"
-sleep 0.3  # CRITICAL: prevents premature submission
-tmux send-keys -t "$SESSION" C-m
-```
 
 ### When Making Changes
 1. Check `docs/lessons-learned/` for common pitfalls
