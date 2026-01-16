@@ -14,8 +14,10 @@ You search skillsmp.com's 28,000+ skills using AI semantic search, preview skill
 ## API Configuration
 
 ```bash
-API_KEY="sk_live_skillsmp_mM56unNCsc6BaVF5w9RT0VL9Y3gvhhG6qaPc0axbTaU"
+API_KEY="${SKILLSMP_API_KEY:-}"  # Set SKILLSMP_API_KEY environment variable
 ```
+
+> **Note:** Get your API key from https://skillsmp.com/settings/api-keys
 
 ## Search Skills
 
@@ -130,7 +132,7 @@ User: "Find a skill for building FastAPI applications"
 ```bash
 # Search
 curl -s -X GET "https://skillsmp.com/api/v1/skills/ai-search?q=building+production+FastAPI+applications" \
-  -H "Authorization: Bearer sk_live_skillsmp_mM56unNCsc6BaVF5w9RT0VL9Y3gvhhG6qaPc0axbTaU" | jq '.data.data[0].skill'
+  -H "Authorization: Bearer $SKILLSMP_API_KEY" | jq '.data.data[0].skill'
 
 # Preview
 curl -s "https://raw.githubusercontent.com/wshobson/agents/main/skills/fastapi-templates/SKILL.md" | head -50

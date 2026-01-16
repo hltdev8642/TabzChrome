@@ -71,7 +71,7 @@ KEY_FILES=$(echo "$KEY_FILES" | tr ' ' '\n' | sort -u | head -10 | tr '\n' ',' |
 
 ## Step 4: Build Enhanced Prompt
 
-Structure the prompt for worker consumption. See [../../references/worker-prompt-guidelines.md](../../references/worker-prompt-guidelines.md) for detailed best practices.
+Structure the prompt for worker consumption. See [../skills/engineering-prompts/references/worker-prompt-guidelines.md](../skills/engineering-prompts/references/worker-prompt-guidelines.md) for detailed best practices.
 
 ### Prompt Quality Principles
 
