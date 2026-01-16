@@ -1,7 +1,8 @@
 {
   "mcpServers": {
     "tabz": {
-      "command": "${PWD}/tabz-mcp-server/run-auto.sh",
+      "type": "stdio",
+      "command": "./tabz-mcp-server/run-auto.sh",
       "args": [],
       "env": {
         "BACKEND_URL": "http://localhost:8129"

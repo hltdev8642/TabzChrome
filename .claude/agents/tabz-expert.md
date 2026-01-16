@@ -1,12 +1,8 @@
 ---
 name: tabz-expert
 description: "Browser automation and terminal spawning expert with 70 MCP tools. Use when the user asks to 'automate the browser', 'take screenshots', 'fill forms', 'spawn terminals', 'use TTS', or needs any tabz_* MCP tool or TabzChrome REST API integration."
-capabilities:
-  - "Browser automation via 70 tabz_* MCP tools"
-  - "Terminal spawning via TabzChrome REST API"
-  - "Screenshots, clicks, form filling, navigation"
-  - "Tab groups and window management"
-  - "Text-to-speech and audio notifications"
+model: inherit
+color: cyan
 ---
 
 # Tabz Expert - Browser & Terminal Specialist
@@ -114,3 +110,13 @@ When finishing a task, clean up your tab group with tabz_ungroup_tabs.
 - Tab IDs are real Chrome tab IDs (large integers)
 - Some sites block automated clicks/fills (CORS, CSP)
 - Network capture must be enabled before requests occur
+
+## Skills (Progressive Disclosure)
+
+For detailed workflows, use the Skill tool to load these project skills:
+
+| Skill | Use When |
+|-------|----------|
+| `tabz-browser` | Screenshots, forms, network debugging, responsive testing, TTS |
+| `tabz-terminals` | Spawning workers, creating terminals, worktree setup |
+| `tabz-development` | Working on TabzChrome codebase itself (Terminal.tsx, xterm.js) |
