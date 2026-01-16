@@ -4,7 +4,26 @@ description: "Complete a wave of parallel workers: verify completion, merge bran
 
 # Wave Done - Wave Completion Orchestrator
 
-Orchestrates the completion of a wave of parallel workers spawned by bd-swarm. Handles merge, review, cleanup, and push.
+Orchestrates the completion of a wave of parallel workers spawned by bd-swarm.
+
+## Workflow Steps
+
+**Add these steps to your to-dos using TodoWrite, then mark each as completed:**
+
+```
+Steps:
+- [ ] Step 1: Verify all workers completed
+- [ ] Step 2: Capture transcripts and kill sessions
+- [ ] Step 3: Merge branches to main
+- [ ] Step 4: Build verification
+- [ ] Step 5: Unified code review
+- [ ] Step 6: Cleanup worktrees and branches
+- [ ] Step 7: Visual QA (if UI changes)
+- [ ] Step 8: Sync and push
+- [ ] Step 9: Summary and next wave check
+```
+
+---
 
 ## Usage
 
@@ -18,33 +37,12 @@ Orchestrates the completion of a wave of parallel workers spawned by bd-swarm. H
 
 ---
 
-## Pipeline Overview
-
-| Step | Description | Blocking? |
-|------|-------------|-----------|
-| 1 | Verify all workers completed | Yes - all issues must be closed |
-| 1.5 | Review worker discoveries | No - check for untracked TODOs |
-| 2 | Capture transcripts and kill sessions | No |
-| 3 | Merge branches to main | Yes - stop on conflicts |
-| 4 | Build verification | Yes |
-| 5 | Unified code review | Yes |
-| 6 | Cleanup worktrees and branches | No |
-| 7 | Visual QA (if UI changes) | Optional |
-| 8 | Sync and push | Yes |
-| 9 | Audio summary | No |
-
-**Why unified review at wave level:** Workers do NOT run code review (to avoid conflicts when running in parallel). The conductor does the sole code review after merge, catching cross-worker interactions.
-
----
-
-## Execute Pipeline
-
-### Step 1: Verify All Workers Completed
+## Step 1: Verify All Workers Completed
 
 ```bash
 echo "=== Step 1: Verify Worker Completion ==="
 
-ISSUES="$@"  # From command args
+ISSUES="$@"
 ALL_CLOSED=true
 
 for ISSUE in $ISSUES; do
@@ -63,54 +61,46 @@ if [ "$ALL_CLOSED" != "true" ]; then
 fi
 ```
 
-If any issue is not closed -> **STOP**. Wait for workers to complete.
+**Validation:**
+- All issues closed? → Proceed to Step 2
+- Some not closed? → **STOP**, wait for workers, re-run Step 1
 
 ---
 
-### Step 2: Capture Transcripts and Kill Sessions
+## Step 2: Capture Transcripts and Kill Sessions
 
-**IMPORTANT:** Capture transcripts BEFORE killing sessions to preserve worker output for analysis.
+**Capture transcripts BEFORE killing sessions.**
 
 ```bash
 echo "=== Step 2: Capture Transcripts and Kill Sessions ==="
 
 CAPTURE_SCRIPT="${CLAUDE_PLUGIN_ROOT:-./plugins/conductor}/scripts/capture-session.sh"
 
-# Helper function to capture then kill
-capture_and_kill() {
-  local SESSION="$1"
-  local ISSUE="$2"
-
-  # Capture transcript BEFORE killing (preserves token usage, tool calls, etc.)
-  if [ -x "$CAPTURE_SCRIPT" ]; then
-    "$CAPTURE_SCRIPT" "$SESSION" "$ISSUE" 2>/dev/null || echo "Warning: Could not capture $SESSION"
-  fi
-
-  # Now kill session
-  tmux kill-session -t "$SESSION" 2>/dev/null && echo "Killed: $SESSION"
-}
-
 for ISSUE in $ISSUES; do
   # Try worker-ISSUE format
   if tmux has-session -t "worker-${ISSUE}" 2>/dev/null; then
-    capture_and_kill "worker-${ISSUE}" "$ISSUE"
+    [ -x "$CAPTURE_SCRIPT" ] && "$CAPTURE_SCRIPT" "worker-${ISSUE}" "$ISSUE" 2>/dev/null
+    tmux kill-session -t "worker-${ISSUE}" 2>/dev/null && echo "Killed: worker-${ISSUE}"
   fi
 
-  # Try ctt-worker-* format (TabzChrome spawned terminals)
+  # Try ctt-worker-* format (TabzChrome spawned)
   SHORT_ID="${ISSUE##*-}"
   tmux list-sessions -F '#{session_name}' 2>/dev/null | grep -E "ctt-worker.*${SHORT_ID}" | while read -r S; do
-    capture_and_kill "$S" "$ISSUE"
+    [ -x "$CAPTURE_SCRIPT" ] && "$CAPTURE_SCRIPT" "$S" "$ISSUE" 2>/dev/null
+    tmux kill-session -t "$S" 2>/dev/null && echo "Killed: $S"
   done || true
 done
 
 echo "Transcripts saved to .beads/transcripts/"
 ```
 
-Use `/conductor:analyze-transcripts` after wave-done to review worker performance.
+**Validation:**
+- Sessions killed? → Proceed to Step 3
+- Session not found? → Log warning, continue (may already be killed)
 
 ---
 
-### Step 3: Merge Branches to Main
+## Step 3: Merge Branches to Main
 
 ```bash
 echo "=== Step 3: Merge Branches ==="
@@ -130,25 +120,35 @@ for ISSUE in $ISSUES; do
 done
 ```
 
-If merge conflicts -> **STOP**. Resolve manually and re-run.
+**Validation:**
+- All branches merged? → Proceed to Step 4
+- Merge conflict? → **STOP**, resolve manually, re-run from Step 3
 
 ---
 
-### Step 4: Build Verification
+## Step 4: Build Verification
 
-Run `/conductor:verify-build`. If failed -> **STOP**, fix errors, re-run.
+Run `/conductor:verify-build`.
 
----
-
-### Step 5: Unified Code Review
-
-Run `/conductor:code-review`. This reviews all merged changes together.
-
-If blockers found -> **STOP**, fix issues, re-run.
+**Validation:**
+- Build succeeded? → Proceed to Step 5
+- Build failed? → **STOP**, fix errors, re-run from Step 4
 
 ---
 
-### Step 6: Cleanup Worktrees and Branches
+## Step 5: Unified Code Review
+
+Run `/conductor:code-review`.
+
+This reviews all merged changes together, catching cross-worker interactions.
+
+**Validation:**
+- No blockers found? → Proceed to Step 6
+- Blockers found? → **STOP**, fix issues, re-run from Step 5
+
+---
+
+## Step 6: Cleanup Worktrees and Branches
 
 ```bash
 echo "=== Step 6: Cleanup ==="
@@ -170,22 +170,30 @@ done
 rmdir "$WORKTREE_DIR" 2>/dev/null || true
 ```
 
+**Validation:**
+- Cleanup completed? → Proceed to Step 7
+- Cleanup errors? → Log and continue (non-blocking)
+
 ---
 
-### Step 7: Visual QA (Optional)
+## Step 7: Visual QA (Optional)
 
-If UI changes were in the wave, spawn tabz-manager for visual verification:
+**Skip if wave was backend/config only.**
+
+If UI changes were in the wave:
 
 ```markdown
 Task(subagent_type="conductor:tabz-manager",
      prompt="Visual QA after wave merge. Screenshot key UI areas and check for errors.")
 ```
 
-Skip if wave was backend/config only.
+**Validation:**
+- Visual QA passed (or skipped)? → Proceed to Step 8
+- Visual issues found? → Fix, commit, re-run from Step 4
 
 ---
 
-### Step 8: Sync and Push
+## Step 8: Sync and Push
 
 ```bash
 echo "=== Step 8: Sync and Push ==="
@@ -196,32 +204,20 @@ git push origin main
 echo "Pushed to main"
 ```
 
+**Validation:**
+- Push succeeded? → Proceed to Step 9
+- Push failed? → Check git errors, retry
+
 ---
 
-### Step 9: Summary
+## Step 9: Summary and Next Wave
 
 Announce completion:
 - Issues completed
 - Branches merged
-- Next ready issues (if any)
+- Commits included
 
----
-
-## Error Handling
-
-| Step | On Failure | Recovery |
-|------|------------|----------|
-| Worker verification | Show which not closed | Wait for workers |
-| Merge | Show conflicts | Resolve manually, re-run |
-| Build | Show errors | Fix, re-run |
-| Review | Show blockers | Fix, re-run |
-| Push | Show git errors | Manual push |
-
----
-
-## Next Wave
-
-After wave-done completes:
+Check for next wave:
 
 ```bash
 NEXT_COUNT=$(bd ready --json | jq 'length')
@@ -229,5 +225,26 @@ if [ "$NEXT_COUNT" -gt 0 ]; then
   echo "$NEXT_COUNT issues ready for next wave"
 fi
 ```
+
+---
+
+## Error Recovery
+
+| Step | On Failure | Recovery |
+|------|------------|----------|
+| 1 | Issues not closed | Wait for workers to finish |
+| 2 | Session not found | Log warning, continue |
+| 3 | Merge conflict | Resolve manually, re-run |
+| 4 | Build failed | Fix errors, re-run |
+| 5 | Review blockers | Fix issues, re-run |
+| 6 | Cleanup failed | Log and continue |
+| 7 | Visual issues | Fix, re-run from Step 4 |
+| 8 | Push failed | Check git errors, retry |
+
+---
+
+## After Wave-Done
+
+Use `/conductor:analyze-transcripts` to review worker performance and improve prompts.
 
 For fully autonomous operation, use `/conductor:bd-swarm-auto` which loops waves automatically.

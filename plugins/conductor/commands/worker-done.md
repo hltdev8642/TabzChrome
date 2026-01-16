@@ -2,26 +2,28 @@
 description: "Complete worker task: verify build, run tests, commit, and close issue. Code review happens at conductor level after merge."
 ---
 
-# Worker Done - Task Completion Orchestrator
+# Worker Done - Task Completion Pipeline
 
-Orchestrates the full task completion pipeline by composing atomic commands.
+Orchestrates the full task completion pipeline for workers.
 
-## Before Starting: Create Todo List
+## Workflow Steps
 
-**Use TodoWrite to track pipeline progress.** This ensures no steps are missed:
+**Add these steps to your to-dos using TodoWrite, then mark each as completed:**
 
 ```
-1. Detect change types
-2. Verify build (if code changes)
-3. Run tests (if code changes)
-4. Commit changes
-5. Create follow-ups
-6. Update docs
-7. Close issue
-8. Notify conductor
+Steps:
+- [ ] Step 0: Detect change types
+- [ ] Step 1: Verify build (if code changes)
+- [ ] Step 1a: Validate plugin (if plugin-only changes)
+- [ ] Step 2: Run tests (if code changes)
+- [ ] Step 3: Commit changes
+- [ ] Step 4: Create follow-ups (non-blocking)
+- [ ] Step 5: Update docs (non-blocking)
+- [ ] Step 6: Close issue
+- [ ] Step 7: Notify conductor (REQUIRED)
 ```
 
-Mark each step as `in_progress` when starting and `completed` when done.
+---
 
 ## Usage
 
@@ -32,29 +34,9 @@ Mark each step as `in_progress` when starting and `completed` when done.
 /conductor:worker-done
 ```
 
-## Pipeline Overview
-
-| Step | Command | Blocking? |
-|------|---------|-----------|
-| 0 | Detect change types | No |
-| 1 | `/conductor:verify-build` | Yes (if code changes) |
-| 1a | `plugin-validator` agent | Yes (if plugin-only changes) |
-| 2 | `/conductor:run-tests` | Yes (if code changes) |
-| 3 | `/conductor:commit-changes` | Yes |
-| 4 | `/conductor:create-followups` | No |
-| 5 | `/conductor:update-docs` | No |
-| 6 | `/conductor:close-issue` | Yes |
-| 7 | **Notify conductor** | No (REQUIRED) |
-
-**CRITICAL: You MUST execute Step 7 after Step 6.** Workers that skip Step 7 force the conductor to poll.
-
-**Code review happens at conductor level:** Workers do NOT run code review. The conductor runs unified review after merging all branches.
-
 ---
 
-## Execute Pipeline
-
-### Step 0: Detect Change Types
+## Step 0: Detect Change Types
 
 ```bash
 echo "=== Step 0: Detecting Change Types ==="
@@ -71,23 +53,28 @@ fi
 echo "Change type: $CHANGE_TYPE"
 ```
 
-| CHANGE_TYPE | Action |
-|-------------|--------|
-| `none` | Skip to commit |
-| `plugin` | Run plugin-validator, skip build/test |
-| `code` | Run full pipeline |
+**Decision tree:**
+- `none` → Skip to Step 3
+- `plugin` → Run Step 1a, skip Steps 1-2
+- `code` → Run Steps 1-2
 
 ---
 
-### Step 1: Verify Build (CHANGE_TYPE=code)
+## Step 1: Verify Build (CHANGE_TYPE=code)
 
 ```bash
 echo "=== Step 1: Build Verification ==="
 ```
 
-Run `/conductor:verify-build`. If failed -> **STOP**, fix errors, re-run.
+Run `/conductor:verify-build`.
 
-### Step 1a: Plugin Validator (CHANGE_TYPE=plugin)
+**Validation:**
+- Build succeeded? → Proceed to Step 2
+- Build failed? → **STOP**, fix errors, re-run from Step 1
+
+---
+
+## Step 1a: Plugin Validator (CHANGE_TYPE=plugin)
 
 When only plugin files changed:
 
@@ -96,35 +83,61 @@ Task(subagent_type="plugin-dev:plugin-validator",
      prompt="Validate plugin changes: $CHANGED_FILES")
 ```
 
-If validation fails -> **STOP**, fix issues.
-If passes -> Skip to **Step 3**.
+**Validation:**
+- Validation passed? → Skip to Step 3
+- Validation failed? → **STOP**, fix issues, re-run from Step 1a
 
-### Step 2: Run Tests (CHANGE_TYPE=code)
+---
+
+## Step 2: Run Tests (CHANGE_TYPE=code)
 
 ```bash
 echo "=== Step 2: Test Verification ==="
 ```
 
-Run `/conductor:run-tests`. If failed -> **STOP**, fix tests, re-run.
+Run `/conductor:run-tests`.
 
-### Step 3: Commit Changes
+**Validation:**
+- Tests passed (or no tests)? → Proceed to Step 3
+- Tests failed? → **STOP**, fix tests, re-run from Step 2
+
+---
+
+## Step 3: Commit Changes
 
 ```bash
 echo "=== Step 3: Commit ==="
 ```
 
-Run `/conductor:commit-changes`. Creates conventional commit.
+Run `/conductor:commit-changes`.
 
-### Step 4-5: Non-blocking
+**Validation:**
+- Commit created? → Proceed to Step 4
+- Commit failed? → Fix git errors, re-run from Step 3
+
+---
+
+## Step 4: Create Follow-ups (Non-blocking)
 
 ```bash
 echo "=== Step 4: Follow-ups ==="
+```
+
+Run `/conductor:create-followups`. Log and continue regardless of result.
+
+---
+
+## Step 5: Update Docs (Non-blocking)
+
+```bash
 echo "=== Step 5: Documentation ==="
 ```
 
-Run `/conductor:create-followups` and `/conductor:update-docs`. Log and continue.
+Run `/conductor:update-docs`. Log and continue regardless of result.
 
-### Step 6: Close Issue
+---
+
+## Step 6: Close Issue
 
 ```bash
 echo "=== Step 6: Close Issue ==="
@@ -132,9 +145,13 @@ echo "=== Step 6: Close Issue ==="
 
 Run `/conductor:close-issue <issue-id>`.
 
+**Validation:**
+- Issue closed? → Proceed to Step 7
+- Close failed? → Check beads errors, retry
+
 ---
 
-### Step 7: Notify Conductor (REQUIRED)
+## Step 7: Notify Conductor (REQUIRED)
 
 **DO NOT SKIP THIS STEP.** After closing the issue, notify the conductor:
 
@@ -168,21 +185,19 @@ fi
 echo "=== Worker Done ==="
 ```
 
-**Why tmux is primary:** Claude Code queues incoming messages even during output, so tmux send-keys is safe.
-
 ---
 
-## Error Handling
+## Error Recovery
 
-| Step | On Failure |
-|------|------------|
-| Build | Show errors, stop pipeline |
-| Tests | Show failures, stop pipeline |
-| Commit | Show git errors, stop pipeline |
-| Follow-ups | Log and continue |
-| Docs | Log and continue |
-| Close | Show beads errors |
-| Notify | Log and continue |
+| Step | On Failure | Recovery |
+|------|------------|----------|
+| 1 | Build failed | Fix errors, re-run pipeline |
+| 1a | Plugin invalid | Fix issues, re-run pipeline |
+| 2 | Tests failed | Fix tests, re-run pipeline |
+| 3 | Commit failed | Fix git errors, retry |
+| 4-5 | Non-blocking | Log and continue |
+| 6 | Close failed | Check beads errors |
+| 7 | Notify failed | Log warning (conductor will poll) |
 
 ---
 
@@ -196,51 +211,8 @@ The pipeline is idempotent - safe to re-run.
 
 ---
 
-## After Notification
+## Important Notes
 
-When worker-done succeeds:
-- Issue is closed in beads
-- Commit is on the feature branch
-- Conductor notified (if CONDUCTOR_SESSION set)
-- Worker's job is done
-
-**The conductor then:**
-- Merges the feature branch to main
-- Kills worker's tmux session
-- Removes the worktree
-- Deletes the feature branch
-
-Workers do NOT kill their own session.
-
----
-
-## Important: Use `bd` CLI, not MCP
-
-Workers should use the `bd` command-line tool, NOT beads MCP commands:
-
-```bash
-# CORRECT - use bd CLI
-bd show TabzChrome-abc
-bd close TabzChrome-abc --reason "done"
-bd update TabzChrome-abc --status in_progress
-
-# WRONG - don't use MCP
-mcp-cli call beads/show ...  # Workers can't use MCP reliably
-```
-
-The `bd` CLI is always available and doesn't require MCP server connection.
-
----
-
-## Composable Commands
-
-| Command | Description |
-|---------|-------------|
-| `/conductor:verify-build` | Run build, report errors |
-| `/conductor:run-tests` | Run tests if available |
-| `/conductor:commit-changes` | Stage + commit |
-| `/conductor:create-followups` | Create follow-up issues |
-| `/conductor:update-docs` | Update documentation |
-| `/conductor:close-issue` | Close beads issue |
-
-**Note:** `/conductor:code-review` is NOT used by workers. Review runs at conductor level.
+- **Use `bd` CLI, not MCP** - Workers should use `bd show`, `bd close`, not `mcp-cli call beads/...`
+- **Code review happens at conductor level** - Workers do NOT run code review
+- **Workers do NOT kill their own session** - Conductor handles cleanup
