@@ -2,6 +2,7 @@
 name: silent-failure-hunter
 description: "Audit code for silent failure patterns. Use when the user asks to 'find swallowed errors', 'audit error handling', 'check for empty catch blocks', 'review error logging', or needs a thorough review of how errors are handled in the codebase."
 model: sonnet
+color: red
 ---
 
 # Silent Failure Hunter

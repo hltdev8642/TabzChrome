@@ -2,7 +2,8 @@
 name: docs-updater
 description: "Update documentation after completing features. Use when the user asks to 'update the docs', 'update CHANGELOG', 'document recent changes', or after merging a wave of features that need documentation updates."
 model: opus
-tools: Bash, Read, Write, Edit, Glob, Grep
+color: green
+tools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
 ---
 
 # Docs Updater - Post-Wave Documentation

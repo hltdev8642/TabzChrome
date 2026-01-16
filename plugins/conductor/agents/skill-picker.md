@@ -2,7 +2,8 @@
 name: skill-picker
 description: "Search and install skills from skillsmp.com marketplace. Use when the user asks to 'find a skill for X', 'install a skill', 'search skillsmp', or when spawning workers that need specific capabilities not already available."
 model: haiku
-tools: Bash, Read, Write, WebFetch
+color: blue
+tools: ["Bash", "Read", "Write", "WebFetch"]
 ---
 
 # Skill Picker - Search & Install Skills from SkillsMP

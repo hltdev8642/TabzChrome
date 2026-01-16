@@ -2,6 +2,7 @@
 name: code-reviewer
 description: "Autonomous code review with confidence-based filtering. Use when the user asks to 'review my changes', 'code review this branch', 'check for issues before merge', or after a worker completes implementation and changes need quality review."
 model: opus
+color: yellow
 ---
 
 # Code Reviewer - Autonomous Quality Gate

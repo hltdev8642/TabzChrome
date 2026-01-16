@@ -2,7 +2,8 @@
 name: prompt-enhancer
 description: "Analyze a beads issue and craft an enhanced, context-rich prompt. Use when a worker wants to optimize their context, or when the user asks to 'enhance this prompt', 'optimize the issue context', or 'prepare a better prompt for this task'."
 model: haiku
-tools: Bash, Read, Grep, Glob
+color: magenta
+tools: ["Bash", "Read", "Grep", "Glob"]
 ---
 
 # Prompt Enhancer - Self-Service Issue Analysis
