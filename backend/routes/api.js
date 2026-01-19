@@ -313,10 +313,20 @@ router.post('/agents', spawnRateLimiter, validateBody(spawnAgentSchema), asyncHa
 
 /**
  * GET /api/agents - List all active agent terminals
+ *
+ * Waits for session recovery to complete before returning results.
+ * This ensures terminals spawned before a server restart are properly listed.
  */
 router.get('/agents', asyncHandler(async (req, res) => {
+  // Wait for recovery to complete (max 5s to avoid hanging forever)
+  const recoveryPromise = req.app.get('recoveryPromise');
+  if (recoveryPromise) {
+    const timeout = new Promise(resolve => setTimeout(resolve, 5000));
+    await Promise.race([recoveryPromise, timeout]);
+  }
+
   const terminals = terminalRegistry.getAllTerminals();
-  
+
   res.json({
     success: true,
     count: terminals.length,

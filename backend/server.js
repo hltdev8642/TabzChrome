@@ -495,6 +495,8 @@ const sidebarConnections = new Set();
 
 // Track if session recovery is complete (prevents frontend from clearing Chrome storage too early)
 let recoveryComplete = false;
+let recoveryResolve = null;
+const recoveryPromise = new Promise(resolve => { recoveryResolve = resolve; });
 
 // Track which connections own which terminals (for targeted output routing)
 // terminalId -> Set<WebSocket>
@@ -1614,6 +1616,8 @@ function broadcast(message) {
 
 // Make broadcast available to routes (for browser MCP)
 app.set('broadcast', broadcast);
+// Make recoveryPromise available to routes (for /api/agents to wait for recovery)
+app.set('recoveryPromise', recoveryPromise);
 
 // Terminal output streaming - remove any existing listeners first
 terminalRegistry.removeAllListeners('output');
@@ -1892,6 +1896,7 @@ server.listen(PORT, '127.0.0.1', async () => {
           const allTerminals = terminalRegistry.getAllTerminals();
           const chromeTerminals = allTerminals.filter(t => t.id && t.id.startsWith('ctt-'));
           recoveryComplete = true;
+          recoveryResolve();
           log.info(`[WS] Broadcasting ${chromeTerminals.length} recovered terminals to ${activeConnections.size} clients (${sidebarConnections.size} sidebars, recoveryComplete=true)`);
           broadcast({
             type: 'terminals',
@@ -1902,17 +1907,20 @@ server.listen(PORT, '127.0.0.1', async () => {
         } else {
           // No ctt- sessions to recover - mark recovery as complete
           recoveryComplete = true;
+          recoveryResolve();
           log.info('No ctt- sessions to recover, recoveryComplete=true');
         }
       } catch (error) {
         log.warn('Recovery check failed (tmux not running?):', error.message);
         // Even on error, mark recovery as complete so frontend doesn't wait forever
         recoveryComplete = true;
+        recoveryResolve();
       }
     }, 2500);
   } else {
     // CLEANUP_ON_START=true means no recovery to do
     recoveryComplete = true;
+    recoveryResolve();
     log.info('CLEANUP_ON_START=true, recoveryComplete=true (no recovery needed)');
   }
 });
