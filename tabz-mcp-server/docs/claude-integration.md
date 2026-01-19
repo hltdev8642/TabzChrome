@@ -86,6 +86,188 @@ Tools for terminal profiles and Claude Code plugins.
 
 ---
 
+## tabz_spawn_profile
+
+**Purpose:** Spawn a terminal using a saved profile.
+
+**Trigger phrases:**
+- [Spawn claude profile](tabz:paste?text=Spawn%20claude%20profile)
+- [Start terminal with codex-reviewer](tabz:paste?text=Start%20terminal%20with%20codex-reviewer)
+- [Spawn profile in ~/projects](tabz:paste?text=Spawn%20profile%20in%20~/projects)
+
+**Parameters:**
+- `profileId` (required): Profile ID or name to spawn
+- `workingDir` (optional): Override the profile's default working directory
+- `name` (optional): Custom name for this terminal instance
+- `env` (optional): Additional environment variables (key-value object)
+
+**Returns (JSON format):**
+```json
+{
+  "success": true,
+  "terminal": {
+    "id": "ctt-claude-abc123",
+    "name": "Claude Worker",
+    "terminalType": "claude-code",
+    "platform": "local",
+    "state": "running",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "profileId": "claude",
+    "profileName": "Claude"
+  }
+}
+```
+
+**Examples:**
+```javascript
+// Basic spawn
+{ profileId: "claude" }
+
+// With working directory override
+{ profileId: "claude", workingDir: "~/projects/myapp" }
+
+// Named instance with env vars
+{ profileId: "codex-reviewer", name: "PR Review #123", env: { PR_NUMBER: "123" } }
+```
+
+**Notes:**
+- Requires auth token at `/tmp/tabz-auth-token` (created by backend)
+- Use `tabz_list_profiles` to discover available profiles
+- Profile settings (command, theme, etc.) are automatically applied
+
+---
+
+## tabz_get_profile
+
+**Purpose:** Get details of a specific terminal profile.
+
+**Trigger phrases:**
+- [Show claude profile](tabz:paste?text=Show%20claude%20profile)
+- [Get profile details](tabz:paste?text=Get%20profile%20details)
+
+**Parameters:**
+- `profileId` (required): Profile ID or name to retrieve
+- `response_format`: `markdown` (default) or `json`
+
+**Returns (JSON format):**
+```json
+{
+  "id": "claude",
+  "name": "Claude",
+  "category": "AI Assistants",
+  "command": "claude",
+  "workingDir": "~/projects",
+  "themeName": "matrix",
+  "fontSize": 14,
+  "fontFamily": "JetBrains Mono"
+}
+```
+
+**Notes:**
+- Searches by both ID and name
+- Use before `tabz_spawn_profile` to check profile settings
+
+---
+
+## tabz_create_profile
+
+**Purpose:** Create a new terminal profile.
+
+**Trigger phrases:**
+- [Create new profile](tabz:paste?text=Create%20new%20profile)
+- [Add checkpoint profile](tabz:paste?text=Add%20checkpoint%20profile)
+
+**Parameters:**
+- `name` (required): Display name for the profile (max 50 chars)
+- `command` (optional): Command to run on terminal start
+- `workingDir` (optional): Default working directory
+- `category` (optional): Category for organization
+- `themeName` (optional): Color theme (e.g., 'matrix', 'dracula')
+- `fontSize` (optional): Font size in pixels (8-32)
+- `fontFamily` (optional): Font family name
+
+**Returns:**
+```json
+{
+  "success": true,
+  "profile": {
+    "id": "my-profile-abc123",
+    "name": "My Profile",
+    ...
+  }
+}
+```
+
+**Examples:**
+```javascript
+// Basic profile
+{ name: "My Claude" }
+
+// With command and category
+{ name: "Codex Review", command: "claude /codex-review", category: "Checkpoints" }
+
+// Styled profile
+{ name: "Matrix Terminal", themeName: "matrix", fontSize: 16 }
+```
+
+---
+
+## tabz_update_profile
+
+**Purpose:** Update an existing terminal profile.
+
+**Trigger phrases:**
+- [Update profile theme](tabz:paste?text=Update%20profile%20theme)
+- [Change profile command](tabz:paste?text=Change%20profile%20command)
+
+**Parameters:**
+- `profileId` (required): ID of the profile to update
+- `updates` (required): Object with fields to update:
+  - `name`, `command`, `workingDir`, `category`, `themeName`, `fontSize`, `fontFamily`
+
+**Examples:**
+```javascript
+// Change theme
+{ profileId: "claude", updates: { themeName: "dracula" } }
+
+// Change command
+{ profileId: "my-worker", updates: { command: "claude --agent codex-reviewer" } }
+
+// Multiple updates
+{ profileId: "dev", updates: { category: "Checkpoints", themeName: "amber" } }
+```
+
+**Notes:**
+- Only specified fields are updated
+- Changes apply to new terminals using this profile
+
+---
+
+## tabz_delete_profile
+
+**Purpose:** Delete a terminal profile.
+
+**Trigger phrases:**
+- [Delete profile](tabz:paste?text=Delete%20profile)
+- [Remove old profile](tabz:paste?text=Remove%20old%20profile)
+
+**Parameters:**
+- `profileId` (required): ID of the profile to delete
+
+**Returns:**
+```json
+{
+  "success": true
+}
+```
+
+**Notes:**
+- Deletion is permanent and cannot be undone
+- Running terminals using this profile will continue to work
+- Default profile cannot be deleted
+
+---
+
 ## tabz_list_plugins
 
 **Purpose:** List installed Claude Code plugins with their status.

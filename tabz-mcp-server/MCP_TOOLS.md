@@ -1,6 +1,6 @@
 # Tabz MCP Tools Reference
 
-Quick reference for the 77 browser MCP tools available to Claude Code.
+Quick reference for the 82 browser MCP tools available to Claude Code.
 
 ## Tools Overview
 
@@ -60,6 +60,11 @@ Quick reference for the 77 browser MCP tools available to Claude Code.
 | `tabz_notification_*` | "show notification", "progress bar", "clear notification" | Desktop notification tools (5 tools) |
 | `tabz_list_profiles` | "list profiles", "terminal profiles", "available profiles" | List terminal profiles with optional category filter |
 | `tabz_list_categories` | "list categories", "profile categories" | List all profile categories |
+| `tabz_spawn_profile` | "spawn profile", "spawn terminal", "start profile" | Spawn a terminal using a saved profile |
+| `tabz_get_profile` | "get profile", "show profile", "profile details" | Get details of a specific terminal profile |
+| `tabz_create_profile` | "create profile", "new profile", "add profile" | Create a new terminal profile |
+| `tabz_update_profile` | "update profile", "modify profile", "change profile" | Update an existing terminal profile |
+| `tabz_delete_profile` | "delete profile", "remove profile" | Delete a terminal profile |
 | `tabz_list_plugins` | "list plugins", "installed plugins" | List Claude Code plugins with status |
 | `tabz_list_skills` | "list skills", "available skills", "find skill" | List skills from enabled plugins |
 | `tabz_get_skill` | "get skill", "skill details", "show skill" | Get full SKILL.md content for a skill |
@@ -87,7 +92,7 @@ For full tool documentation with parameters, examples, and error handling:
 
 ## Architecture
 
-All 77 MCP tools use **Chrome Extension APIs** exclusively (no CDP required since v1.2.0).
+All 82 MCP tools use **Chrome Extension APIs** exclusively (no CDP required since v1.2.0).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
