@@ -267,6 +267,10 @@ router.post('/agents', spawnRateLimiter, validateBody(spawnAgentSchema), asyncHa
   }
 
   // Spawn agent using UnifiedSpawn for validation and rate limiting
+  // Always use tmux for persistence and isChrome for ctt- prefix
+  config.useTmux = true;
+  config.isChrome = true;
+
   const result = await unifiedSpawn.spawn(config);
 
   if (!result.success) {
@@ -279,6 +283,12 @@ router.post('/agents', spawnRateLimiter, validateBody(spawnAgentSchema), asyncHa
   }
 
   const terminal = result.terminal;
+
+  // Broadcast to WebSocket clients so Chrome extension picks up the new terminal
+  const broadcast = req.app.get('broadcast');
+  if (broadcast) {
+    broadcast({ type: 'terminal-spawned', data: terminal });
+  }
 
   res.status(201).json({
     success: true,
