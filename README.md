@@ -61,11 +61,11 @@ TabzChrome includes a [Claude Code plugin marketplace](.claude-plugin/marketplac
 
 | Component | Type | Description |
 |-----------|------|-------------|
-| [**Tabz MCP Server**](tabz-mcp-server/MCP_TOOLS.md) | MCP | 70+ browser control tools (screenshots, clicks, bookmarks, network, tab groups, windows, history, cookies, emulation) |
+| [**Tabz MCP Server**](tabz-mcp-server/MCP_TOOLS.md) | MCP | 77 browser control tools (screenshots, clicks, bookmarks, network, tab groups, windows, history, cookies, emulation) |
 | [**tabz-browser**](.claude/skills/tabz-browser/) | skill | Browser automation patterns (screenshots, forms, network debugging) |
 | [**tabz-terminals**](.claude/skills/tabz-terminals/) | skill | Terminal spawning and worker management via REST API |
 | [**tabz-development**](.claude/skills/tabz-development/) | skill | Terminal.tsx, xterm.js, WebSocket patterns |
-| [**tabz-expert**](.claude/agents/tabz-expert.md) | agent | Browser automation specialist with 70 MCP tools |
+| [**tabz-expert**](.claude/agents/tabz-expert.md) | agent | Browser automation specialist with 77 MCP tools |
 
 **Quick setup:** Skills auto-load when you run Claude Code in the TabzChrome directory.
 
