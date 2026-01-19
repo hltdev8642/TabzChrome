@@ -9,44 +9,81 @@ Control Chrome via MCP tools for screenshots, interaction, debugging, and notifi
 
 ## Quick Start
 
-Use MCPSearch to find and load tools before calling them:
-```
-MCPSearch("select:mcp__tabz__tabz_screenshot")
+Use mcp-cli to discover and call tools:
+
+```bash
+# Get tool schema (REQUIRED before calling)
+mcp-cli info tabz/tabz_screenshot
+
+# Call tool
+mcp-cli call tabz/tabz_screenshot '{}'
 ```
 
 ## Core Workflows
 
 ### Screenshot a Page
-```
-1. mcp__tabz__tabz_list_tabs → get tabId
-2. mcp__tabz__tabz_screenshot with tabId → get filePath
-3. Read filePath to view
+
+```bash
+# Get current tab info
+mcp-cli call tabz/tabz_get_page_info '{}'
+
+# Take screenshot
+mcp-cli call tabz/tabz_screenshot '{}'
+# Returns file path - use Read tool to view
 ```
 
 ### Debug Network/API Issues
-```
-1. mcp__tabz__tabz_enable_network_capture
-2. Trigger the action on page
-3. mcp__tabz__tabz_get_network_requests with filter="/api/"
-4. mcp__tabz__tabz_get_console_logs for JS errors
+
+```bash
+# 1. Enable capture BEFORE triggering action
+mcp-cli call tabz/tabz_enable_network_capture '{}'
+
+# 2. Trigger the action on page
+
+# 3. Get failed requests (status >= 400)
+mcp-cli call tabz/tabz_get_network_requests '{"statusMin": 400}'
+
+# 4. Check console for JS errors
+mcp-cli call tabz/tabz_get_console_logs '{"level": "error"}'
 ```
 
 ### Test Responsive Design
-```
-1. mcp__tabz__tabz_emulate_device with "iPhone 14"
-2. mcp__tabz__tabz_screenshot
-3. mcp__tabz__tabz_emulate_clear
+
+```bash
+# Emulate device
+mcp-cli call tabz/tabz_emulate_device '{"device": "iPhone 14"}'
+
+# Take screenshot
+mcp-cli call tabz/tabz_screenshot '{}'
+
+# Clear emulation
+mcp-cli call tabz/tabz_emulate_clear '{}'
 ```
 
 ### Fill and Submit Form
-```
-1. mcp__tabz__tabz_fill with selector and value
-2. mcp__tabz__tabz_click on submit button
+
+```bash
+mcp-cli call tabz/tabz_fill '{"selector": "#email", "value": "test@example.com"}'
+mcp-cli call tabz/tabz_click '{"selector": "button[type=submit]"}'
 ```
 
 ### Notify User (TTS)
+
+```bash
+mcp-cli call tabz/tabz_speak '{"text": "Task complete"}'
 ```
-mcp__tabz__tabz_speak with text="Task complete"
+
+### Performance Profiling
+
+```bash
+mcp-cli call tabz/tabz_profile_performance '{}'
+# Returns: DOM nodes, JS heap, event listeners, timing
+```
+
+### DOM Tree Inspection
+
+```bash
+mcp-cli call tabz/tabz_get_dom_tree '{"maxDepth": 3}'
 ```
 
 ## Tool Categories
@@ -56,7 +93,7 @@ mcp__tabz__tabz_speak with text="Task complete"
 | Screenshots | 2 | screenshot, screenshot_full |
 | Interaction | 4 | click, fill, get_element |
 | Network | 3 | enable_network_capture, get_network_requests |
-| DOM/Debug | 4 | get_dom_tree, get_console_logs |
+| DOM/Debug | 4 | get_dom_tree, get_console_logs, profile_performance |
 | Emulation | 6 | emulate_device, emulate_geolocation |
 | Audio/TTS | 3 | speak, list_voices, play_audio |
 | Tabs | 5 | list_tabs, open_url, switch_tab |
@@ -64,7 +101,8 @@ mcp__tabz__tabz_speak with text="Task complete"
 
 ## Important Notes
 
-- Always use explicit `tabId` - don't rely on "active" tab
+- Always run `mcp-cli info tabz/<tool>` before calling
+- Use explicit `tabId` when possible - don't rely on "active" tab
 - Tab IDs are large integers (e.g., `1762561083`)
 - `tabz_screenshot` cannot capture Chrome sidebar
 

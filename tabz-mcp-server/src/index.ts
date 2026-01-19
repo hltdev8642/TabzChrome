@@ -20,6 +20,7 @@
  * - history: tabz_history_search, tabz_history_visits, tabz_history_recent, tabz_history_delete_url, tabz_history_delete_range
  * - cookies: (future) tabz_check_auth, tabz_get_cookies
  * - profiles: tabz_list_profiles, tabz_list_categories
+ * - plugins: tabz_list_plugins, tabz_list_skills, tabz_get_skill, tabz_plugins_health, tabz_toggle_plugin
  *
  * Tool groups can be configured via the backend /api/mcp-config endpoint.
  */
@@ -47,12 +48,13 @@ import { registerCookieTools } from "./tools/cookies.js";
 import { registerEmulationTools } from "./tools/emulation.js";
 import { registerNotificationTools } from "./tools/notifications.js";
 import { registerProfileTools } from "./tools/profiles.js";
+import { registerPluginTools } from "./tools/plugins.js";
 
 // Backend URL (TabzChrome backend running in WSL)
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8129";
 
 // Default enabled tool groups (used if backend is not reachable)
-const DEFAULT_ENABLED_GROUPS = ['core', 'interaction', 'navigation', 'console', 'network', 'downloads', 'bookmarks', 'debugger', 'tabgroups', 'windows', 'audio', 'history', 'sessions', 'cookies', 'emulation', 'notifications', 'profiles'];
+const DEFAULT_ENABLED_GROUPS = ['core', 'interaction', 'navigation', 'console', 'network', 'downloads', 'bookmarks', 'debugger', 'tabgroups', 'windows', 'audio', 'history', 'sessions', 'cookies', 'emulation', 'notifications', 'profiles', 'plugins'];
 
 // Tool group registration functions
 // Maps group names to their registration functions
@@ -130,6 +132,10 @@ const TOOL_GROUPS: Record<string, ToolGroupRegistrar> = {
   // Profile tools (terminal profiles and categories)
   profiles: (server) => {
     registerProfileTools(server);      // tabz_list_profiles, tabz_list_categories
+  },
+  // Plugins tools (Claude Code plugin management)
+  plugins: (server) => {
+    registerPluginTools(server);       // tabz_list_plugins, tabz_list_skills, tabz_get_skill, tabz_plugins_health, tabz_toggle_plugin
   },
 };
 

@@ -29,7 +29,7 @@ async function getDomTree(options: {
 }): Promise<DOMTreeResult> {
   try {
     const response = await axios.post<DOMTreeResult>(
-      `${BACKEND_URL}/api/browser/dom-tree`,
+      `${BACKEND_URL}/api/browser/debugger/dom-tree`,
       {
         tabId: options.tabId,
         maxDepth: options.maxDepth,
@@ -51,7 +51,7 @@ async function profilePerformance(options: {
 }): Promise<PerformanceResult> {
   try {
     const response = await axios.post<PerformanceResult>(
-      `${BACKEND_URL}/api/browser/profile-performance`,
+      `${BACKEND_URL}/api/browser/debugger/performance`,
       { tabId: options.tabId },
       { timeout: 30000 }
     );
@@ -70,7 +70,7 @@ async function getCoverage(options: {
 }): Promise<CoverageResult> {
   try {
     const response = await axios.post<CoverageResult>(
-      `${BACKEND_URL}/api/browser/coverage`,
+      `${BACKEND_URL}/api/browser/debugger/coverage`,
       { tabId: options.tabId, type: options.type },
       { timeout: 30000 }
     );
