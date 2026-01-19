@@ -14,6 +14,7 @@ const rateLimit = require('express-rate-limit');
 const terminalRegistry = require('../modules/terminal-registry');
 const unifiedSpawn = require('../modules/unified-spawn');
 const { createModuleLogger } = require('../modules/logger');
+const { makeBrowserRequest } = require('./browser');
 
 const router = express.Router();
 const log = createModuleLogger('API');
@@ -50,8 +51,11 @@ const spawnRateLimiter = rateLimit({
 const terminalTypes = unifiedSpawn.getTerminalTypes();
 
 const spawnAgentSchema = Joi.object({
+  // Profile-based spawning (optional) - if provided, fetches settings from Chrome storage
+  profileId: Joi.string().min(1).max(100).optional(),
+  // Terminal type - required unless profileId is provided (defaults to 'bash' for profiles)
+  terminalType: Joi.string().valid(...terminalTypes).optional(),
   name: Joi.string().min(1).max(50).optional(),
-  terminalType: Joi.string().valid(...terminalTypes).required(),
   platform: Joi.string().valid('docker', 'local').default('local'),
   workingDir: Joi.string().optional(),
   resumable: Joi.boolean().default(false),
@@ -60,7 +64,7 @@ const spawnAgentSchema = Joi.object({
   env: Joi.object().pattern(Joi.string(), Joi.string()).optional(),
   prompt: Joi.string().max(500).optional(),
   autoStart: Joi.boolean().default(true)
-});
+}).or('terminalType', 'profileId'); // Require at least one of these
 
 const commandSchema = Joi.object({
   command: Joi.string().required().min(1).max(10000)
@@ -154,19 +158,117 @@ function errorHandler(err, req, res, next) {
 // NOTE: spawn-options.json API endpoints removed - profiles are now stored in Chrome storage
 
 /**
- * POST /api/agents - Spawn new agent with explicit terminal type
+ * POST /api/agents - Spawn new agent with explicit terminal type or profile
  *
- * Required: terminalType (explicit - no guessing!)
- * Optional: name, platform, workingDir, env, etc.
+ * Two modes:
+ * 1. Direct: Provide terminalType and other settings directly
+ * 2. Profile-based: Provide profileId to fetch settings from Chrome storage
+ *
+ * When using profileId:
+ * - Fetches profile from Chrome storage via browser extension
+ * - Profile command determines terminal type (e.g., 'claude' → claude-code)
+ * - Explicit parameters override profile settings (workingDir, name, env)
  *
  * Rate limited: 10 requests per minute per IP (DoS prevention)
  */
 router.post('/agents', spawnRateLimiter, validateBody(spawnAgentSchema), asyncHandler(async (req, res) => {
-  const config = req.body;
-  
+  let config = { ...req.body };
+
+  // If profileId provided, fetch profile from Chrome storage
+  if (config.profileId) {
+    const broadcast = req.app.get('broadcast');
+    if (!broadcast) {
+      return res.status(500).json({
+        success: false,
+        error: 'WebSocket broadcast not available - cannot fetch profile'
+      });
+    }
+
+    try {
+      // Fetch profiles from Chrome storage
+      const profilesResult = await makeBrowserRequest(broadcast, 'browser-get-profiles', {});
+
+      if (!profilesResult.success || !profilesResult.profiles) {
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to fetch profiles from browser'
+        });
+      }
+
+      // Find profile by ID or name (support both)
+      const profile = profilesResult.profiles.find(
+        p => p.id === config.profileId || p.name === config.profileId
+      );
+
+      if (!profile) {
+        return res.status(404).json({
+          success: false,
+          error: `Profile not found: ${config.profileId}`,
+          availableProfiles: profilesResult.profiles.map(p => ({ id: p.id, name: p.name }))
+        });
+      }
+
+      log.debug('Resolved profile:', profile.name, profile.id);
+
+      // Determine terminal type from profile command
+      let terminalType = config.terminalType; // Explicit override takes precedence
+      if (!terminalType) {
+        // Infer terminal type from profile command
+        const command = profile.command || '';
+        if (command.startsWith('claude') || command.includes('claude ')) {
+          terminalType = 'claude-code';
+        } else if (command.startsWith('gemini') || command.includes('gemini ')) {
+          terminalType = 'gemini';
+        } else if (command.startsWith('codex') || command.includes('codex ')) {
+          terminalType = 'codex';
+        } else if (command.startsWith('opencode') || command.includes('opencode ')) {
+          terminalType = 'opencode';
+        } else if (command.startsWith('docker ai') || command.includes('docker ai ')) {
+          terminalType = 'docker-ai';
+        } else {
+          // Default to bash for profiles without AI commands
+          terminalType = 'bash';
+        }
+      }
+
+      // Merge profile settings with explicit overrides
+      // Explicit request params take precedence over profile settings
+      config = {
+        // Profile-derived settings
+        terminalType,
+        name: config.name || profile.name,
+        workingDir: config.workingDir || profile.workingDir || undefined,
+        command: profile.command || undefined,
+        // Visual settings from profile
+        color: config.color || undefined, // Profile theme colors could be mapped here
+        // Preserve explicit overrides
+        platform: config.platform,
+        resumable: config.resumable,
+        env: config.env,
+        prompt: config.prompt,
+        autoStart: config.autoStart,
+        // Pass profile metadata for terminal registry
+        profileId: profile.id,
+        profileName: profile.name,
+        // Pass theme settings for potential use
+        themeName: profile.themeName,
+        fontSize: profile.fontSize,
+        fontFamily: profile.fontFamily,
+      };
+
+      log.debug('Merged config from profile:', config);
+    } catch (error) {
+      log.error('Failed to fetch profile:', error);
+      return res.status(500).json({
+        success: false,
+        error: `Failed to fetch profile: ${error.message}`
+      });
+    }
+  }
+
   // Spawn agent using UnifiedSpawn for validation and rate limiting
   const result = await unifiedSpawn.spawn(config);
-  
+
   if (!result.success) {
     return res.status(400).json({
       error: 'Failed to spawn agent',
@@ -175,9 +277,9 @@ router.post('/agents', spawnRateLimiter, validateBody(spawnAgentSchema), asyncHa
       retryAfter: result.retryAfter
     });
   }
-  
+
   const terminal = result.terminal;
-  
+
   res.status(201).json({
     success: true,
     message: `Agent '${terminal.name}' spawned successfully`,
@@ -191,7 +293,10 @@ router.post('/agents', spawnRateLimiter, validateBody(spawnAgentSchema), asyncHa
       icon: terminal.icon,
       workingDir: terminal.workingDir,
       state: terminal.state,
-      createdAt: terminal.createdAt
+      createdAt: terminal.createdAt,
+      // Include profile info if spawned via profile
+      profileId: config.profileId || undefined,
+      profileName: config.profileName || undefined
     }
   });
 }));

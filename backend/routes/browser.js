@@ -1947,3 +1947,4 @@ module.exports.addConsoleLog = addConsoleLog;
 module.exports.getConsoleLogs = getConsoleLogs;
 module.exports.resolvePendingRequest = resolvePendingRequest;
 module.exports.pendingRequests = pendingRequests;
+module.exports.makeBrowserRequest = makeBrowserRequest;
