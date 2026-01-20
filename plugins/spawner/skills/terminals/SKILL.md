@@ -1,6 +1,11 @@
 ---
 name: terminals
-description: "TabzChrome terminal spawning and worker management"
+description: |
+  TabzChrome terminal spawning and worker management patterns.
+  Use when spawning workers, managing terminals, or setting up worktrees.
+  Trigger with "spawn worker", "create terminal", "worktree setup".
+model: haiku
+allowed-tools: Bash, Read
 ---
 
 # Terminals - Worker Spawning

@@ -8,29 +8,33 @@ argument-hint: "ISSUE_ID"
 
 Spawn a Claude terminal in an isolated git worktree to work on a beads issue.
 
-## Usage
+## Steps
 
-```bash
-/spawner:spawn ISSUE-ID
-```
+Add these to your to-dos:
 
-## Prerequisites
+1. **Pre-flight checks** - Verify TabzChrome running and issue is ready
+2. **Create git worktree** - Isolated working directory for the worker
+3. **Initialize dependencies** - Use `/spawner:terminals` skill (Haiku)
+4. **Spawn terminal** - Create worker via TabzChrome API
+5. **Send prompt** - Extract from issue notes or use default
+6. **Update issue status** - Mark as in_progress
 
-### Check TabzChrome Health
+---
+
+## Step 1: Pre-flight Checks
+
+**Check TabzChrome Health:**
 ```bash
 curl -sf http://localhost:8129/api/health >/dev/null || echo "TabzChrome not running"
 ```
 
-### Verify Issue is Ready
+**Verify Issue is Ready:**
 ```python
 issue = mcp__beads__show(issue_id="ISSUE-ID")
 # Check: status is ready or open with 'ready' label
-# Check: prepared.prompt exists in notes (optional)
 ```
 
-## Workflow
-
-### 1. Create Git Worktree
+## Step 2: Create Git Worktree
 
 ```bash
 ISSUE_ID="ISSUE-ID"
@@ -39,7 +43,7 @@ WORKDIR=$(pwd)
 git worktree add ".worktrees/$ISSUE_ID" -b "feature/$ISSUE_ID"
 ```
 
-### 2. Initialize Dependencies (SYNCHRONOUS)
+## Step 3: Initialize Dependencies (SYNCHRONOUS)
 
 Initialize BEFORE spawning so worker doesn't waste time:
 
@@ -57,7 +61,7 @@ The init script handles:
 | `Cargo.toml` | `cargo fetch` |
 | `go.mod` | `go mod download` |
 
-### 3. Spawn Terminal via TabzChrome
+## Step 4: Spawn Terminal via TabzChrome
 
 **Using MCP (preferred):**
 ```python
@@ -88,7 +92,7 @@ curl -s -X POST http://localhost:8129/api/spawn \
 - `BEADS_NO_DAEMON=1`: Worktrees share the DB
 - `--plugin-dir`: Workers need access to plugins
 
-### 4. Wait for Claude Initialization
+## Step 4a: Wait for Claude Initialization
 
 ```bash
 echo "Waiting for Claude to initialize..."
@@ -97,13 +101,13 @@ sleep 8
 
 Claude needs 8+ seconds to fully boot.
 
-### 5. Get Session ID
+## Step 4b: Get Session ID
 
 ```bash
 SESSION=$(curl -s http://localhost:8129/api/agents | jq -r --arg id "$ISSUE_ID" '.data[] | select(.name == $id) | .id')
 ```
 
-### 6. Send Prompt
+## Step 5: Send Prompt
 
 **Check for prepared.prompt in issue notes:**
 ```python
@@ -141,7 +145,7 @@ sleep 1
 tmux send-keys -t "$SESSION" C-m
 ```
 
-### 7. Update Issue Status
+## Step 6: Update Issue Status
 
 ```python
 mcp__beads__update(issue_id="ISSUE-ID", status="in_progress")
