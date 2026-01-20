@@ -19,7 +19,7 @@ Add these to your to-dos:
 2. **Create git worktree** - Isolated working directory for the worker
 3. **Initialize dependencies** - Use `/spawner:terminals` skill (Haiku)
 4. **Spawn terminal** - Create worker via TabzChrome API
-5. **Send prompt** - Extract from issue notes or use default
+5. **Send prompt** - Pep-talk with TTS announcement
 6. **Update issue status** - Mark as in_progress
 
 ---
@@ -110,29 +110,31 @@ Claude needs 8+ seconds to fully boot.
 SESSION=$(curl -s http://localhost:8129/api/agents | jq -r --arg id "$ISSUE_ID" '.data[] | select(.name == $id) | .id')
 ```
 
-## Step 5: Send Prompt
+## Step 5: Send Pep-Talk Prompt with TTS Announcement
 
-**Check for prepared.prompt in issue notes:**
-```python
-issue = mcp__beads__show(issue_id="ISSUE-ID")
-# Look for ## prepared.prompt section in notes
-# If found, use that as the prompt
-# Otherwise, use the standard prompt
-```
+Workers get a short, encouraging prompt with a fun TTS intro announcement.
 
-**Extract prepared.prompt from notes (bash):**
+**Build the pep-talk prompt:**
 ```bash
-# Get issue notes and extract prepared.prompt section
-NOTES=$(bd show "$ISSUE_ID" --json | jq -r '.[0].notes // empty')
-if echo "$NOTES" | grep -q '## prepared.prompt'; then
-  # Extract content after "## prepared.prompt" until next ## or end
-  PROMPT=$(echo "$NOTES" | sed -n '/## prepared\.prompt/,/^## /p' | tail -n +2 | sed '/^## /,$d')
-fi
+# Randomized phrases for variety
+INTROS=("is in the game" "has entered the chat" "is on the case" "is locked in" "just clocked in")
+OUTROS=("Let's go!" "Time to shine!" "This is gonna be good." "Easy money." "Watch this.")
+VIBES=("Users are counting on this one." "Straightforward win." "Time to make it shine." "This is gonna be good.")
 
-# Fallback to standard prompt if prepared.prompt not found
-if [ -z "$PROMPT" ]; then
-  PROMPT="Complete beads issue $ISSUE_ID. Run: bd show $ISSUE_ID --json"
-fi
+# Pick random elements
+INTRO="${INTROS[$RANDOM % ${#INTROS[@]}]}"
+OUTRO="${OUTROS[$RANDOM % ${#OUTROS[@]}]}"
+VIBE="${VIBES[$RANDOM % ${#VIBES[@]}]}"
+
+# Get issue title
+TITLE=$(bd show "$ISSUE_ID" --json | jq -r '.[0].title // "the task"')
+
+# Build the prompt
+PROMPT="You've got $ISSUE_ID - $TITLE. $VIBE
+
+First, announce yourself: tabz_speak(\"$ISSUE_ID $INTRO - $TITLE. $OUTRO\")
+
+Then check \`bd show $ISSUE_ID\` and make it happen!"
 ```
 
 **Using safe-send-keys.sh (reliable for long prompts):**
@@ -185,12 +187,19 @@ curl -s -X POST http://localhost:8129/api/spawn \
 sleep 8
 SESSION=$(curl -s http://localhost:8129/api/agents | jq -r --arg id "$ISSUE_ID" '.data[] | select(.name == $id) | .id')
 
-# Extract prepared.prompt from issue notes (if present)
-NOTES=$(bd show "$ISSUE_ID" --json | jq -r '.[0].notes // empty')
-if echo "$NOTES" | grep -q '## prepared.prompt'; then
-  PROMPT=$(echo "$NOTES" | sed -n '/## prepared\.prompt/,/^## /p' | tail -n +2 | sed '/^## /,$d')
-fi
-[ -z "$PROMPT" ] && PROMPT="Complete beads issue $ISSUE_ID. Run: bd show $ISSUE_ID --json"
+# Build pep-talk prompt with random phrases
+INTROS=("is in the game" "has entered the chat" "is on the case" "is locked in" "just clocked in")
+OUTROS=("Let's go!" "Time to shine!" "This is gonna be good." "Easy money." "Watch this.")
+VIBES=("Users are counting on this one." "Straightforward win." "Time to make it shine." "This is gonna be good.")
+INTRO="${INTROS[$RANDOM % ${#INTROS[@]}]}"
+OUTRO="${OUTROS[$RANDOM % ${#OUTROS[@]}]}"
+VIBE="${VIBES[$RANDOM % ${#VIBES[@]}]}"
+TITLE=$(bd show "$ISSUE_ID" --json | jq -r '.[0].title // "the task"')
+PROMPT="You've got $ISSUE_ID - $TITLE. $VIBE
+
+First, announce yourself: tabz_speak(\"$ISSUE_ID $INTRO - $TITLE. $OUTRO\")
+
+Then check \`bd show $ISSUE_ID\` and make it happen!"
 
 # Send prompt
 SAFE_SEND_KEYS=$(find ~/plugins ~/.claude/plugins -name "safe-send-keys.sh" -path "*spawner*" 2>/dev/null | head -1)
