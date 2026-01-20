@@ -1,20 +1,33 @@
 ---
 name: gg-auto
 description: "Autonomous worker loop - delegates to planner, prompt-writer, spawner, and cleanup plugins"
+context:
+  skills:
+    - spawner:terminals           # TabzChrome API patterns
+    - conductor:automating-browser # MCP tool reference for browser debugging
 ---
 
 # Auto Mode - Autonomous Worker Loop
 
-Lightweight orchestrator that coordinates the focused plugins to process work autonomously.
+Lightweight orchestrator that coordinates focused plugins to process work autonomously.
+
+## First: Load Context
+
+**Before starting, read the context skills to understand available tools:**
+
+1. Read `/spawner:terminals` skill for TabzChrome spawning patterns
+2. Read `/conductor:automating-browser` skill for MCP tool reference
+
+These skills teach you the TabzChrome MCP tools (tabz_*) and REST API patterns.
 
 ## Steps
 
 Add these to your to-dos:
 
 1. **Pre-flight checks** - Verify TabzChrome running, start beads daemon
-2. **Spawn dashboard** - Launch tmuxplexer for worker monitoring
-3. **For each ready issue** - Run `/spawner:spawn` (max 3 parallel workers)
-4. **Poll loop** - Every 30s: detect closed issues, run `/cleanup:done`
+2. **Start background poller** - Launch monitoring script
+3. **Spawn workers** - For each ready issue (max 3 parallel)
+4. **Monitor and cleanup** - Check poller output, run cleanup when issues close
 5. **When empty** - Sync beads and push
 
 ---
@@ -38,80 +51,111 @@ curl -sf http://localhost:8129/api/health >/dev/null || { echo "TabzChrome not r
 bd daemon status >/dev/null 2>&1 || bd daemon start
 ```
 
-## Step 2: Spawn Dashboard
+## Step 2: Start Background Poller
+
+Start the monitoring script in background - it writes status to `/tmp/worker-status.json`:
 
 ```bash
-curl -s -X POST http://localhost:8129/api/spawn \
-  -H "Content-Type: application/json" \
-  -H "X-Auth-Token: $(cat /tmp/tabz-auth-token)" \
-  -d '{"name": "Worker Dashboard", "workingDir": "~/projects/tmuxplexer", "command": "./tmuxplexer --watcher"}'
+# Find and start poll script
+POLL_SCRIPT=$(find ~/plugins ~/.claude/plugins ~/projects/TabzChrome/plugins -name "poll-workers.sh" 2>/dev/null | head -1)
+if [ -n "$POLL_SCRIPT" ]; then
+  nohup "$POLL_SCRIPT" 30 /tmp/worker-status.json > /tmp/poll-workers.log 2>&1 &
+  echo "Started background poller (PID: $!)"
+fi
 ```
 
-Shows: status, context usage, working directory, git branch.
+The poller:
+- Checks worker status every 30s
+- Detects newly closed issues
+- Writes events to `/tmp/worker-events.jsonl`
 
 ## Step 3: Spawn Workers
 
-For each issue with `ready` label (up to MAX_WORKERS=3), run `/spawner:spawn`:
+For each ready issue (up to MAX_WORKERS=3), use the Task tool with Haiku:
 
-```bash
-# Get ready issues
-READY=$(bd ready --json | jq -r '.[].id')
+```python
+# Get ready issues (excluding epics)
+ready_issues = bd ready --json | jq '[.[] | select(.issue_type != "epic")] | .[0:3]'
 
-for ISSUE_ID in $READY; do
-  # Delegate to spawner plugin
-  claude -p "/spawner:spawn $ISSUE_ID"
-done
+# Spawn each using Task tool (parallel)
+for issue in ready_issues:
+    Task(
+        subagent_type="general-purpose",
+        model="haiku",
+        prompt=f"/spawner:spawn {issue['id']}",
+        description=f"Spawn {issue['id']}"
+    )
 ```
 
-The spawner plugin will:
+The spawner will:
 - Create git worktree
-- Initialize dependencies
+- Initialize dependencies (npm, python, etc.)
+- Run `npm run build` for Next.js types
 - Spawn terminal via TabzChrome
-- Send prompt to worker
+- Send prepared prompt to worker
 
-## Step 4: Poll Loop
+## Step 4: Monitor and Cleanup
 
-Every 30 seconds, check for closed issues and run cleanup:
+**You are now free to continue other work.** Periodically check the poller output:
 
 ```bash
-# Get closed issues with active workers
-CLOSED=$(bd list --status closed --json | jq -r '.[].id')
+# Check current status
+cat /tmp/worker-status.json | jq '{workers: .workers, in_progress: .in_progress | length, ready: .ready | length}'
 
-for ISSUE_ID in $CLOSED; do
-  # Check if worker terminal exists
-  SESSION=$(curl -s http://localhost:8129/api/agents | jq -r --arg id "$ISSUE_ID" '.data[] | select(.name == $id) | .id')
-
-  if [ -n "$SESSION" ]; then
-    # Delegate cleanup
-    claude -p "/cleanup:done $ISSUE_ID"
-  fi
-done
-
-# Spawn newly unblocked issues (up to MAX_WORKERS)
+# Check for events (newly closed issues)
+tail -5 /tmp/worker-events.jsonl 2>/dev/null
 ```
+
+When an issue closes, spawn a cleanup task:
+
+```python
+# Check for closed events
+events = Read("/tmp/worker-events.jsonl")  # Get recent events
+
+for event in new_closed_events:
+    Task(
+        subagent_type="general-purpose",
+        model="haiku",
+        prompt=f"/cleanup:done {event['issue']}",
+        description=f"Cleanup {event['issue']}"
+    )
+```
+
+The cleanup will:
+- Verify issue is closed
+- Merge feature branch to main
+- Remove worktree
+- Delete local branch
+- Sync beads
+- Push to remote
 
 ## Step 5: Complete
 
 When no active workers and no ready tasks:
 
 ```bash
+# Stop poller
+pkill -f poll-workers.sh
+
+# Final sync
 bd sync
 git push
 echo "All work complete!"
 ```
 
-## Implementation Notes
+## Background Polling Benefits
 
-The conductor now delegates all heavy work:
+- **Non-blocking**: You can continue planning while workers run
+- **Event-driven**: Cleanup triggers only when issues close
+- **Persistent**: Poller survives conversation compaction
+- **Observable**: Status always available in `/tmp/worker-status.json`
 
-| Task | Delegated To |
-|------|--------------|
-| Write prompts | `/prompt-writer:write` (Haiku) |
-| Spawn terminals | `/spawner:spawn` (Haiku) |
-| Merge/cleanup | `/cleanup:done` (Haiku) |
-| Planning | `/planner:plan` (Sonnet) |
+## Quick Status Check
 
-This keeps conductor lightweight and focused on coordination.
+```bash
+# One-liner status
+jq -r '"Workers: \(.workers | length), In Progress: \(.in_progress | length), Ready: \(.ready | length)"' /tmp/worker-status.json
+```
 
 ## Worker Workflow
 
@@ -125,7 +169,7 @@ Workers follow PRIME.md instructions (injected via beads hook):
 6. Close the issue
 7. Run `bd sync` and push branch
 
-The conductor detects closed status via polling and delegates cleanup.
+The conductor detects closed status via poller and delegates cleanup.
 
 ## Configuration
 
@@ -133,6 +177,8 @@ The conductor detects closed status via polling and delegates cleanup.
 |---------|---------|-------------|
 | MAX_WORKERS | 3 | Maximum parallel workers |
 | POLL_INTERVAL | 30s | How often to check status |
+| STATUS_FILE | /tmp/worker-status.json | Poller output |
+| EVENTS_FILE | /tmp/worker-events.jsonl | Closed issue events |
 
 ## Related Plugins
 
@@ -146,6 +192,7 @@ The conductor detects closed status via polling and delegates cleanup.
 ## Notes
 
 - Conductor is now a lightweight orchestrator
-- All heavy work delegated to focused plugins
-- Each plugin can use optimal model (Haiku for mechanical, Sonnet for reasoning)
+- Background poller handles monitoring
+- All heavy work delegated to focused plugins (Haiku)
+- Planning uses Sonnet for reasoning
 - Workers follow PRIME.md - MCP tools and `bd sync` work in worktrees

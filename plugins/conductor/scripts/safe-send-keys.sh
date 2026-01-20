@@ -66,8 +66,9 @@ tmux send-keys -t "$SESSION" -l "$TEXT"
 
 # Add Enter unless --no-enter specified
 if [ -z "$NO_ENTER" ]; then
-  # Configurable delay - default 1.0s for long prompts in Claude Code
-  DELAY=${SEND_KEYS_DELAY:-1.0}
+  # Configurable delay - default 2.0s for long prompts in Claude Code
+  # Claude Code needs time to wrap/process multi-line prompts before Enter
+  DELAY=${SEND_KEYS_DELAY:-2.0}
   sleep "$DELAY"
   tmux send-keys -t "$SESSION" C-m
 fi
