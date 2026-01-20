@@ -314,15 +314,15 @@ main "$@"
 
 Quality checking is split into two phases:
 
-### Phase 1: Pre-commit (Cleanup Agent)
+### Phase 1: Pre-commit (Precommit-Gate Agent)
 
-The `cleanup` agent is a **lightweight pre-commit check** that:
+The `precommit-gate` agent is a **lightweight pre-commit check** that:
 - Verifies gates are assigned to the issue
 - Checks if any `.checkpoints/*.json` results exist from previous runs
 - If checkpoints exist and failed -> blocks commit (worker must fix first)
 - Does NOT run gates itself - just checks status
 
-**Cleanup does NOT:**
+**Precommit-gate does NOT:**
 - Run code review (gate-runner does that)
 - Run tests (gate-runner does that)
 - Do deep analysis
@@ -363,7 +363,7 @@ The `gate-runner` handles the actual quality gates after worker closes:
 The gate-runner can run alongside `/conductor:auto`:
 
 1. **auto** spawns workers for ready issues
-2. Workers complete work and commit (cleanup agent does quick check)
+2. Workers complete work and commit (precommit-gate agent does quick check)
 3. Workers close issues
 4. **gate-runner** runs full quality gates
 5. Gates pass -> merge proceeds

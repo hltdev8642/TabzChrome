@@ -1,5 +1,5 @@
 ---
-name: cleanup
+name: precommit-gate
 description: "Lightweight pre-commit quality gate for beads-managed workflows. Masters checkpoint status verification and staged change analysis."
 tools:
   - Read
@@ -14,7 +14,7 @@ skills:
   - reviewing-code
 ---
 
-# Cleanup Agent (Pre-commit Gate)
+# Pre-commit Gate Agent
 
 Lightweight pre-commit quality gate that checks gate status and previous checkpoint results.
 
