@@ -1,7 +1,8 @@
 {
   "name": "tabzchrome-marketplace",
   "owner": {
-    "name": "GGPrompts"
+    "name": "GGPrompts",
+    "url": "https://github.com/GGPrompts"
   },
   "metadata": {
     "description": "TabzChrome plugins - terminal management, browser automation, and worker orchestration",
@@ -10,10 +11,48 @@
   "plugins": [
     {
       "name": "conductor",
-      "description": "AI backlog grooming + TabzChrome terminal spawning for parallel beads workflows",
       "source": "./plugins/conductor",
+      "description": "AI backlog grooming + TabzChrome terminal spawning for parallel beads workflows",
+      "version": "2.5.0",
+      "author": {
+        "name": "GGPrompts",
+        "url": "https://github.com/GGPrompts"
+      },
+      "homepage": "https://github.com/GGPrompts/TabzChrome",
+      "repository": "https://github.com/GGPrompts/TabzChrome",
+      "license": "MIT",
       "category": "orchestration",
-      "keywords": ["orchestration", "beads", "planning", "tabzchrome", "spawn", "parallel", "brainstorm", "conductor", "worker"]
+      "keywords": [
+        "orchestration",
+        "beads",
+        "planning",
+        "tabzchrome",
+        "spawn",
+        "parallel",
+        "brainstorm",
+        "conductor",
+        "worker"
+      ],
+      "strict": false,
+      "commands": [
+        "./commands/spawn.md",
+        "./commands/auto.md",
+        "./commands/plan-backlog.md",
+        "./commands/gate-runner.md",
+        "./commands/worker-done.md"
+      ],
+      "agents": [
+        "./agents/cleanup.md"
+      ],
+      "skills": [
+        "./skills/spawning-terminals",
+        "./skills/automating-browser",
+        "./skills/brainstorming",
+        "./skills/checking-docs",
+        "./skills/checking-visuals",
+        "./skills/reviewing-code",
+        "./skills/running-tests"
+      ]
     }
   ]
 }
