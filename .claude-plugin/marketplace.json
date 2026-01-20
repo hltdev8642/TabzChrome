@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "TabzChrome plugins - terminal management, browser automation, and worker orchestration",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   "plugins": [
     {
       "name": "conductor",
       "source": "./plugins/conductor",
-      "description": "AI backlog grooming + TabzChrome terminal spawning for parallel beads workflows",
-      "version": "2.5.0",
+      "description": "Lightweight orchestrator that coordinates worker pipelines - delegates to prompt-writer, planner, spawner, and cleanup plugins",
+      "version": "3.0.0",
       "author": {
         "name": "GGPrompts",
         "url": "https://github.com/GGPrompts"
@@ -25,33 +25,147 @@
       "keywords": [
         "orchestration",
         "beads",
-        "planning",
-        "tabzchrome",
-        "spawn",
-        "parallel",
-        "brainstorm",
         "conductor",
-        "worker"
+        "worker",
+        "pipeline"
       ],
       "strict": false,
       "commands": [
-        "./commands/spawn.md",
         "./commands/auto.md",
         "./commands/plan-backlog.md",
         "./commands/gate-runner.md",
-        "./commands/worker-done.md"
+        "./commands/status.md"
       ],
       "agents": [
-        "./agents/cleanup.md"
+        "./agents/precommit-gate.md"
       ],
       "skills": [
-        "./skills/spawning-terminals",
         "./skills/automating-browser",
         "./skills/brainstorming",
         "./skills/checking-docs",
         "./skills/checking-visuals",
         "./skills/reviewing-code",
         "./skills/running-tests"
+      ]
+    },
+    {
+      "name": "prompt-writer",
+      "source": "./plugins/prompt-writer",
+      "description": "Crafts optimized worker prompts from backlog issues using Claude 4 prompt engineering best practices",
+      "version": "1.0.0",
+      "author": {
+        "name": "GGPrompts",
+        "url": "https://github.com/GGPrompts"
+      },
+      "homepage": "https://github.com/GGPrompts/TabzChrome",
+      "repository": "https://github.com/GGPrompts/TabzChrome",
+      "license": "MIT",
+      "category": "prompting",
+      "keywords": [
+        "prompts",
+        "prompt-engineering",
+        "workers",
+        "beads"
+      ],
+      "strict": false,
+      "commands": [
+        "./commands/write.md"
+      ],
+      "agents": [
+        "./agents/writer.md"
+      ],
+      "skills": [
+        "./skills/prompt-craft"
+      ]
+    },
+    {
+      "name": "planner",
+      "source": "./plugins/planner",
+      "description": "Breaks down features and epics into concrete backlog issues with dependency tracking",
+      "version": "1.0.0",
+      "author": {
+        "name": "GGPrompts",
+        "url": "https://github.com/GGPrompts"
+      },
+      "homepage": "https://github.com/GGPrompts/TabzChrome",
+      "repository": "https://github.com/GGPrompts/TabzChrome",
+      "license": "MIT",
+      "category": "planning",
+      "keywords": [
+        "planning",
+        "decomposition",
+        "epics",
+        "backlog",
+        "beads"
+      ],
+      "strict": false,
+      "commands": [
+        "./commands/plan.md"
+      ],
+      "agents": [
+        "./agents/planner.md"
+      ],
+      "skills": [
+        "./skills/breakdown"
+      ]
+    },
+    {
+      "name": "spawner",
+      "source": "./plugins/spawner",
+      "description": "Spawns Claude workers via TabzChrome API with worktree isolation and prepared prompts",
+      "version": "1.0.0",
+      "author": {
+        "name": "GGPrompts",
+        "url": "https://github.com/GGPrompts"
+      },
+      "homepage": "https://github.com/GGPrompts/TabzChrome",
+      "repository": "https://github.com/GGPrompts/TabzChrome",
+      "license": "MIT",
+      "category": "terminals",
+      "keywords": [
+        "spawn",
+        "terminals",
+        "worktrees",
+        "tabzchrome",
+        "workers"
+      ],
+      "strict": false,
+      "commands": [
+        "./commands/spawn.md"
+      ],
+      "agents": [],
+      "skills": [
+        "./skills/terminals"
+      ]
+    },
+    {
+      "name": "cleanup",
+      "source": "./plugins/cleanup",
+      "description": "Post-work cleanup - merges branches, removes worktrees, syncs beads after worker completion",
+      "version": "1.0.0",
+      "author": {
+        "name": "GGPrompts",
+        "url": "https://github.com/GGPrompts"
+      },
+      "homepage": "https://github.com/GGPrompts/TabzChrome",
+      "repository": "https://github.com/GGPrompts/TabzChrome",
+      "license": "MIT",
+      "category": "cleanup",
+      "keywords": [
+        "cleanup",
+        "merge",
+        "worktrees",
+        "git"
+      ],
+      "strict": false,
+      "commands": [
+        "./commands/done.md"
+      ],
+      "agents": [
+        "./agents/cleanup.md"
+      ],
+      "skills": [
+        "./skills/merge"
       ]
     }
   ]
