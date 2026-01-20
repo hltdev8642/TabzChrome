@@ -1,6 +1,11 @@
 ---
 name: prompt-craft
-description: "Claude 4 prompt engineering best practices for crafting effective worker prompts"
+description: |
+  Craft effective worker prompts from backlog issues using Claude 4 best practices.
+  Use when preparing issues for workers, writing prompts, or optimizing prompt quality.
+  Trigger with "craft prompt", "write prompt", "prepare issue", "make ready".
+model: haiku
+allowed-tools: Read, Grep, Glob, Bash
 ---
 
 # Prompt Craft - Claude 4 Best Practices

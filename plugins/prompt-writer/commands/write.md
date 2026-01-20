@@ -8,15 +8,19 @@ argument-hint: "ISSUE_ID"
 
 Transform a backlog issue into a worker-ready prompt with skill hints and context.
 
-## Usage
+## Steps
 
-```bash
-/prompt-writer:write ISSUE-ID
-```
+Add these to your to-dos:
 
-## Workflow
+1. **Read the issue** - Get issue details with `mcp__beads__show()`
+2. **Discover relevant skills** - Find matching skills with `tabz_list_skills()`
+3. **Quick file exploration** - Use Explore agent to find 3-5 key files
+4. **Craft the prompt** - Use `/prompt-writer:prompt-craft` skill (Haiku)
+5. **Store and mark ready** - Update issue notes and add ready label
 
-### 1. Read the Issue
+---
+
+## Step 1: Read the Issue
 
 ```python
 mcp__beads__show(issue_id="ISSUE-ID")
@@ -26,15 +30,11 @@ Verify:
 - Issue exists
 - Status is `open` or `backlog` (not already in_progress/closed)
 
-### 2. Discover Relevant Skills
+## Step 2: Discover Relevant Skills
 
 Use the `tabz_list_skills` MCP tool to find skills that match the work:
 
 ```python
-# List all available skills
-tabz_list_skills()
-
-# Or search by keyword
 tabz_list_skills(query="terminal")
 ```
 
@@ -43,17 +43,25 @@ Match skills based on:
 - Keywords in description (auth -> better-auth, database -> databases)
 - Issue type (docs -> docs-seeker, visual -> ui-styling)
 
-### 3. Quick File Exploration
+## Step 3: Quick File Exploration
 
 Use Explore agent to identify 3-5 key files:
 
-```
+```python
 Task(subagent_type="Explore", prompt="Find the main files related to: [issue description]")
 ```
 
-### 4. Craft the Prompt
+## Step 4: Craft the Prompt
 
-Create a focused prompt following Claude 4 best practices:
+Use the `/prompt-writer:prompt-craft` skill which runs with Haiku for fast prompt crafting.
+
+The skill will apply Claude 4 best practices:
+- Explicit action verbs
+- Context/motivation for rules
+- Natural skill triggers
+- Positive framing
+
+**Prompt structure:**
 
 ```markdown
 ## Context
@@ -64,7 +72,6 @@ Create a focused prompt following Claude 4 best practices:
 
 ## Approach
 Use the [skill] skill for [specific purpose].
-Use subagents in parallel to explore [areas].
 
 ## Key Files
 - path/to/main/file.ts
@@ -74,56 +81,21 @@ Use subagents in parallel to explore [areas].
 Close issue: bd close ISSUE-ID --reason "summary"
 ```
 
-### 5. Store Prompt in Issue Notes
+## Step 5: Store and Mark Ready
 
 ```python
 mcp__beads__update(
   issue_id="ISSUE-ID",
-  notes="""[existing notes]
-
-## Prepared Prompt
-[Your crafted prompt]
-"""
+  notes="[existing notes]\n\n## Prepared Prompt\n[your prompt]"
 )
 ```
 
-### 6. Mark Issue Ready
-
-```python
-mcp__beads__update(issue_id="ISSUE-ID", add_labels=["ready"])
-```
-
-Or move to ready status:
+Add the ready label:
 ```bash
-bd update ISSUE-ID --status ready
+bd update ISSUE-ID --add-label ready
 ```
 
-## Prompt Engineering Principles
-
-### Be Explicit
-Claude 4.x follows instructions precisely. Use action verbs.
-- Less: "Can you suggest improvements?"
-- More: "Update the function to improve performance."
-
-### Add Context/Motivation
-Explain WHY, not just WHAT. Claude generalizes from explanations.
-- Less: "Never use ellipses"
-- More: "Never use ellipses since the TTS engine won't know how to pronounce them."
-
-### Natural Skill Triggers
-Use natural language, not aggressive markers:
-- Avoid: "CRITICAL: You MUST use this tool when..."
-- Use: "Use the X skill for Y."
-
-### Subagent Hints
-Claude 4.5 naturally delegates. Prompt with:
-"Use subagents in parallel to explore the codebase first."
-
-### Avoid Overengineering
-- Tell Claude what to DO (positive framing)
-- Explain the goal and context
-- Reference existing patterns in the codebase
-- Avoid excessive ALL CAPS or MUST/NEVER language
+---
 
 ## Example Output
 
