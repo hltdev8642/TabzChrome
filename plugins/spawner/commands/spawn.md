@@ -44,7 +44,7 @@ git worktree add ".worktrees/$ISSUE_ID" -b "feature/$ISSUE_ID"
 Initialize BEFORE spawning so worker doesn't waste time:
 
 ```bash
-INIT_SCRIPT=$(find ~/plugins ~/.claude/plugins -name "init-worktree.sh" -path "*conductor*" 2>/dev/null | head -1)
+INIT_SCRIPT=$(find ~/plugins ~/.claude/plugins -name "init-worktree.sh" -path "*spawner*" 2>/dev/null | head -1)
 [ -n "$INIT_SCRIPT" ] && $INIT_SCRIPT ".worktrees/$ISSUE_ID" 2>&1 | tail -5
 ```
 
@@ -105,14 +105,32 @@ SESSION=$(curl -s http://localhost:8129/api/agents | jq -r --arg id "$ISSUE_ID" 
 
 ### 6. Send Prompt
 
-**Standard prompt (workers follow PRIME.md):**
+**Check for prepared.prompt in issue notes:**
+```python
+issue = mcp__beads__show(issue_id="ISSUE-ID")
+# Look for ## prepared.prompt section in notes
+# If found, use that as the prompt
+# Otherwise, use the standard prompt
+```
+
+**Extract prepared.prompt from notes (bash):**
 ```bash
-PROMPT="Complete beads issue $ISSUE_ID. Run: bd show $ISSUE_ID --json"
+# Get issue notes and extract prepared.prompt section
+NOTES=$(bd show "$ISSUE_ID" --json | jq -r '.[0].notes // empty')
+if echo "$NOTES" | grep -q '## prepared.prompt'; then
+  # Extract content after "## prepared.prompt" until next ## or end
+  PROMPT=$(echo "$NOTES" | sed -n '/## prepared\.prompt/,/^## /p' | tail -n +2 | sed '/^## /,$d')
+fi
+
+# Fallback to standard prompt if prepared.prompt not found
+if [ -z "$PROMPT" ]; then
+  PROMPT="Complete beads issue $ISSUE_ID. Run: bd show $ISSUE_ID --json"
+fi
 ```
 
 **Using safe-send-keys.sh (reliable for long prompts):**
 ```bash
-SAFE_SEND_KEYS=$(find ~/plugins ~/.claude/plugins -name "safe-send-keys.sh" -path "*conductor*" 2>/dev/null | head -1)
+SAFE_SEND_KEYS=$(find ~/plugins ~/.claude/plugins -name "safe-send-keys.sh" -path "*spawner*" 2>/dev/null | head -1)
 "$SAFE_SEND_KEYS" "$SESSION" "$PROMPT"
 ```
 
@@ -140,7 +158,7 @@ TOKEN=$(cat /tmp/tabz-auth-token)
 git worktree add ".worktrees/$ISSUE_ID" -b "feature/$ISSUE_ID"
 
 # Initialize deps
-INIT_SCRIPT=$(find ~/plugins ~/.claude/plugins -name "init-worktree.sh" -path "*conductor*" 2>/dev/null | head -1)
+INIT_SCRIPT=$(find ~/plugins ~/.claude/plugins -name "init-worktree.sh" -path "*spawner*" 2>/dev/null | head -1)
 [ -n "$INIT_SCRIPT" ] && $INIT_SCRIPT ".worktrees/$ISSUE_ID"
 
 # Plugin directories
@@ -156,11 +174,20 @@ curl -s -X POST http://localhost:8129/api/spawn \
     \"command\": \"BEADS_NO_DAEMON=1 claude $PLUGIN_DIRS\"
   }"
 
-# Wait and send prompt
+# Wait and get session
 sleep 8
 SESSION=$(curl -s http://localhost:8129/api/agents | jq -r --arg id "$ISSUE_ID" '.data[] | select(.name == $id) | .id')
-SAFE_SEND_KEYS=$(find ~/plugins ~/.claude/plugins -name "safe-send-keys.sh" -path "*conductor*" 2>/dev/null | head -1)
-"$SAFE_SEND_KEYS" "$SESSION" "Complete beads issue $ISSUE_ID. Run: bd show $ISSUE_ID --json"
+
+# Extract prepared.prompt from issue notes (if present)
+NOTES=$(bd show "$ISSUE_ID" --json | jq -r '.[0].notes // empty')
+if echo "$NOTES" | grep -q '## prepared.prompt'; then
+  PROMPT=$(echo "$NOTES" | sed -n '/## prepared\.prompt/,/^## /p' | tail -n +2 | sed '/^## /,$d')
+fi
+[ -z "$PROMPT" ] && PROMPT="Complete beads issue $ISSUE_ID. Run: bd show $ISSUE_ID --json"
+
+# Send prompt
+SAFE_SEND_KEYS=$(find ~/plugins ~/.claude/plugins -name "safe-send-keys.sh" -path "*spawner*" 2>/dev/null | head -1)
+"$SAFE_SEND_KEYS" "$SESSION" "$PROMPT"
 ```
 
 ## Worker Dashboard

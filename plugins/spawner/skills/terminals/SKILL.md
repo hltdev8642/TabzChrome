@@ -75,7 +75,7 @@ git branch -d "feature/ISSUE-ID"
 Worktrees share git but NOT node_modules. Initialize before spawning:
 
 ```bash
-INIT_SCRIPT=$(find ~/plugins ~/.claude/plugins -name "init-worktree.sh" -path "*conductor*" 2>/dev/null | head -1)
+INIT_SCRIPT=$(find ~/plugins ~/.claude/plugins -name "init-worktree.sh" -path "*spawner*" 2>/dev/null | head -1)
 $INIT_SCRIPT ".worktrees/ISSUE-ID"
 ```
 
@@ -93,7 +93,7 @@ Wait for Claude to boot (8+ seconds), then:
 
 ```bash
 # Find safe-send-keys.sh
-SAFE_SEND_KEYS=$(find ~/plugins ~/.claude/plugins -name "safe-send-keys.sh" -path "*conductor*" 2>/dev/null | head -1)
+SAFE_SEND_KEYS=$(find ~/plugins ~/.claude/plugins -name "safe-send-keys.sh" -path "*spawner*" 2>/dev/null | head -1)
 
 # Send prompt
 "$SAFE_SEND_KEYS" "$SESSION" "Complete beads issue $ISSUE_ID. Run: bd show $ISSUE_ID --json"
