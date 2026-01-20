@@ -1,11 +1,5 @@
 {
   "name": "spawner",
   "version": "1.0.0",
-  "description": "Spawn Claude workers in isolated git worktrees via TabzChrome API",
-  "commands": [
-    "./commands/spawn.md"
-  ],
-  "skills": [
-    "./skills/terminals"
-  ]
+  "description": "Spawn Claude workers in isolated git worktrees via TabzChrome API"
 }
