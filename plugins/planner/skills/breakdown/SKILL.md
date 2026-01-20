@@ -1,6 +1,11 @@
 ---
 name: breakdown
-description: "Epic decomposition and task breakdown patterns"
+description: |
+  Break down epics and features into concrete backlog tasks with dependencies.
+  Use when planning work, decomposing large features, or organizing sprints.
+  Trigger with "break down", "decompose", "plan feature", "create subtasks".
+model: sonnet
+allowed-tools: Read, Grep, Glob, Bash, Task
 ---
 
 # Breakdown - Epic Decomposition
