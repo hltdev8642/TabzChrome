@@ -5,24 +5,22 @@ description: "AI-assisted backlog grooming: prioritize, add dependencies, assign
 
 # Plan Backlog - AI Scrum Master
 
-You are a beads expert helping groom and organize the backlog. Transform rough notes into a well-organized, parallelizable backlog with worker-ready prompts.
+Transform rough notes into a well-organized, parallelizable backlog with worker-ready prompts.
 
-**Use MCP tools when available** - they're more efficient than CLI.
+## Steps
 
-## Your Role
+Add these to your to-dos:
 
-The user adds rough issues to beads. You analyze and organize them:
-- Set appropriate priorities
-- Add dependencies and blockers
-- Group related work
-- Break down epics into subtasks
-- **Assign quality gates** based on issue type, files, and labels
-- **Prepare issue notes** with skill hints and context
-- Organize into parallelizable waves
+1. **Analyze current state** - Get backlog stats and ready/blocked issues
+2. **Break down epics** - Use `/planner:breakdown` skill (Sonnet) for decomposition
+3. **Prioritize and wire dependencies** - Set priorities, add blockers
+4. **Assign quality gates** - Create gate issues based on issue characteristics
+5. **Prepare issue prompts** - Use `/prompt-writer:write` for each backlog issue (Haiku)
+6. **Output sprint plan** - Present waves of parallelizable work
 
-## Workflow
+---
 
-### 1. Analyze Current State
+## Step 1: Analyze Current State
 
 **Using MCP (preferred):**
 ```python
@@ -40,7 +38,36 @@ bd blocked --json
 bd list --status open --json
 ```
 
-### 2. Review and Prioritize
+## Step 2: Break Down Large Work (Epics)
+
+Use the `/planner:breakdown` skill for strategic decomposition of epics.
+
+The skill runs with Sonnet and will:
+- Apply decomposition patterns (feature, refactor, or bug fix)
+- Identify task sizing (target S-M tasks)
+- Detect file overlaps that need sequencing
+- Suggest wave organization
+
+**Using MCP:**
+```python
+# Create epic
+mcp__beads__create(
+  title="Auth System",
+  issue_type="epic",
+  priority=1
+)
+
+# Add subtasks
+mcp__beads__create(title="Design auth flow", issue_type="task")
+mcp__beads__create(title="Implement login", issue_type="task")
+mcp__beads__create(title="Add tests", issue_type="task")
+
+# Wire dependencies
+mcp__beads__dep(issue_id="IMPL-ID", depends_on_id="DESIGN-ID")
+mcp__beads__dep(issue_id="TESTS-ID", depends_on_id="IMPL-ID")
+```
+
+## Step 3: Prioritize and Wire Dependencies
 
 For each issue, consider:
 - Is it blocking other work? -> Raise priority
@@ -64,57 +91,11 @@ bd dep add BLOCKED-ID BLOCKER-ID --json
 bd label add ID frontend,auth --json
 ```
 
-### 3. Break Down Large Work
-
-Epics should be decomposed into smaller tasks:
-
-**Using MCP:**
-```python
-# Create epic
-mcp__beads__create(
-  title="Auth System",
-  issue_type="epic",
-  priority=1
-)
-
-# Add subtasks
-mcp__beads__create(title="Design auth flow", issue_type="task")
-mcp__beads__create(title="Implement login", issue_type="task")
-mcp__beads__create(title="Add tests", issue_type="task")
-
-# Wire dependencies
-mcp__beads__dep(issue_id="IMPL-ID", depends_on_id="DESIGN-ID")
-mcp__beads__dep(issue_id="TESTS-ID", depends_on_id="IMPL-ID")
-```
-
-### 4. Auto-Detect Skills
-
-Use `match-skills.sh` to automatically detect relevant skills based on issue content:
-
-```bash
-# Get skill suggestions for an issue
-SCRIPT="$HOME/.claude/plugins/cache/my-plugins/conductor/*/scripts/match-skills.sh"
-SKILLS=$($SCRIPT --triggers "$(bd show ISSUE-ID --json | jq -r '.[0].title + " " + .[0].description')")
-
-# Example output: "Use the xterm-js skill for terminal integration and resize handling."
-```
-
-Or match from issue ID directly:
-```bash
-$SCRIPT --issue ISSUE-ID
-```
-
-**Available options:**
-- `--triggers "text"` - Get natural language skill suggestions
-- `--issue ID` - Match from beads issue content
-- `--json "text"` - Get structured JSON output
-- `--available-full` - List all available skills with descriptions
-
-### 5. Assign Quality Gates
+## Step 4: Assign Quality Gates
 
 Based on issue characteristics, assign appropriate quality gates. The `/conductor:gate-runner` will execute these gates before merging.
 
-#### Gate Types
+### Gate Types
 
 | Gate | Purpose | Checkpoint Skill |
 |------|---------|-----------------|
@@ -203,98 +184,21 @@ Would you like to:
 3. Skip gate assignment
 ```
 
-### 6. Prepare Issue Notes & Mark Ready
+## Step 5: Prepare Issue Prompts
 
-The conductor sends the same standard prompt to every worker. All context goes in the issue notes/design/acceptance fields.
+Use `/prompt-writer:write` for each backlog issue to craft worker-ready prompts.
 
-**Important:** After drafting the prompt/notes, add the `ready` label to mark the issue as ready for workers:
+The prompt-writer skill runs with Haiku and will:
+- Read issue details
+- Discover relevant skills
+- Explore key files (3-5 only)
+- Craft a focused prompt following Claude 4 best practices
+- Store prompt in issue notes
+- Mark issue as ready
 
-```bash
-bd label add ISSUE-ID ready
-```
+For batch processing, use `/prompt-writer:write-all` to process all backlog issues in parallel.
 
-Or via MCP:
-```python
-mcp__beads__update(issue_id="ISSUE-ID", add_labels=["ready"])
-```
-
-Issues without the `ready` label are considered "backlog" - they have been created but not yet planned/drafted. The `/conductor:auto` command only picks up issues with the `ready` label.
-
-#### Update Issue with Context
-
-First get skill suggestions, then update the issue:
-
-```bash
-# Get skill hints
-SKILLS=$($SCRIPT --triggers "$(bd show ISSUE-ID --json | jq -r '.[0].title')")
-```
-
-**Using MCP:**
-```python
-mcp__beads__update(
-  issue_id="ISSUE-ID",
-  notes="""## Problem
-Brief description of what needs fixing.
-
-## Approach
-{SKILLS}  # e.g., "Use the xterm-js skill for terminal integration."
-
-## Key Files
-- path/to/file.ts
-
-## When Done
-Close issue with reason summary""",
-  design="Technical approach notes here",
-  acceptance_criteria="""- [ ] Feature works as expected
-- [ ] Tests pass
-- [ ] No console errors"""
-)
-```
-
-**CLI fallback:**
-```bash
-bd update ISSUE-ID --notes "## Problem
-Brief description...
-
-## Approach
-$SKILLS
-
-## Key Files
-- path/to/file.ts"
-```
-
-#### Notes Structure
-
-| Field | Purpose |
-|-------|---------|
-| `notes` | Problem, approach, skill hints, key files |
-| `design` | Technical approach, architecture decisions |
-| `acceptance_criteria` | Checkboxes for definition of done |
-
-Keep notes concise - workers read the issue description too.
-
-#### Parallelization Hints
-
-For multi-part tasks, add to notes:
-
-```
-Use subagents in parallel to scaffold Dashboard, Settings, and Profile pages.
-```
-
-### 7. Organize Into Waves
-
-Group ready issues for parallel execution:
-
-**Using MCP:**
-```python
-# Wave 1 = all currently ready (no blockers)
-mcp__beads__ready()
-
-# After Wave 1 completes, new work becomes ready
-# Check with mcp__beads__ready() again
-```
-
-### 8. Output Sprint Plan
+## Step 6: Output Sprint Plan
 
 Present the organized backlog:
 

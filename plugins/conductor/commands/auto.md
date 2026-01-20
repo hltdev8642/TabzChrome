@@ -7,38 +7,28 @@ description: "Autonomous worker loop - delegates to planner, prompt-writer, spaw
 
 Lightweight orchestrator that coordinates the focused plugins to process work autonomously.
 
+## Steps
+
+Add these to your to-dos:
+
+1. **Pre-flight checks** - Verify TabzChrome running, start beads daemon
+2. **Spawn dashboard** - Launch tmuxplexer for worker monitoring
+3. **For each ready issue** - Run `/spawner:spawn` (max 3 parallel workers)
+4. **Poll loop** - Every 30s: detect closed issues, run `/cleanup:done`
+5. **When empty** - Sync beads and push
+
+---
+
 ## Plugins Used
 
 | Plugin | Command | Purpose |
 |--------|---------|---------|
-| planner | `/planner:plan` | Break down epics into tasks |
-| prompt-writer | `/prompt-writer:write` | Prepare backlog issues with prompts |
 | spawner | `/spawner:spawn` | Spawn workers for ready issues |
 | cleanup | `/cleanup:done` | Merge and cleanup completed work |
 
-## How It Works
-
-1. **Pre-flight**: Check TabzChrome health, start beads daemon
-2. **Dashboard**: Launch tmuxplexer --watcher for monitoring
-3. **Prepare**: For each backlog issue without `ready` label, delegate to `/prompt-writer:write`
-4. **Spawn**: For each ready issue (up to 3 parallel), delegate to `/spawner:spawn`
-5. **Poll** every 30 seconds:
-   - Query beads for closed issues
-   - For closed issues, delegate to `/cleanup:done`
-   - Spawn newly unblocked issues
-6. **Done**: When no work remains, `bd sync && git push`
-
-## Usage
-
-```bash
-/conductor:auto
-```
-
 **Max 3 workers** - workers spawn subagents, more causes resource contention.
 
-## Orchestration Flow
-
-### Phase 1: Pre-flight
+## Step 1: Pre-flight Checks
 
 ```bash
 # Check TabzChrome
@@ -46,59 +36,61 @@ curl -sf http://localhost:8129/api/health >/dev/null || { echo "TabzChrome not r
 
 # Start beads daemon
 bd daemon status >/dev/null 2>&1 || bd daemon start
+```
 
-# Launch dashboard
+## Step 2: Spawn Dashboard
+
+```bash
 curl -s -X POST http://localhost:8129/api/spawn \
   -H "Content-Type: application/json" \
   -H "X-Auth-Token: $(cat /tmp/tabz-auth-token)" \
   -d '{"name": "Worker Dashboard", "workingDir": "~/projects/tmuxplexer", "command": "./tmuxplexer --watcher"}'
 ```
 
-### Phase 2: Prepare Backlog
+Shows: status, context usage, working directory, git branch.
 
-For each issue in backlog status without `ready` label:
+## Step 3: Spawn Workers
 
-```bash
-# Use Task tool to spawn prompt-writer agent
-Task(subagent_type="prompt-writer:writer", model="haiku", prompt="/prompt-writer:write ISSUE-ID")
-```
-
-Or via command:
-```bash
-claude -p "/prompt-writer:write ISSUE-ID"
-```
-
-### Phase 3: Spawn Workers
-
-For each issue with `ready` label (up to MAX_WORKERS):
+For each issue with `ready` label (up to MAX_WORKERS=3), run `/spawner:spawn`:
 
 ```bash
-# Use Task tool to spawn worker
-Task(subagent_type="spawner", prompt="/spawner:spawn ISSUE-ID")
+# Get ready issues
+READY=$(bd ready --json | jq -r '.[].id')
+
+for ISSUE_ID in $READY; do
+  # Delegate to spawner plugin
+  claude -p "/spawner:spawn $ISSUE_ID"
+done
 ```
 
-Or directly:
-```bash
-claude -p "/spawner:spawn ISSUE-ID"
-```
+The spawner plugin will:
+- Create git worktree
+- Initialize dependencies
+- Spawn terminal via TabzChrome
+- Send prompt to worker
 
-### Phase 4: Poll and Cleanup
+## Step 4: Poll Loop
 
-Every 30 seconds:
+Every 30 seconds, check for closed issues and run cleanup:
 
 ```bash
 # Get closed issues with active workers
-CLOSED=$(bd list --status closed --label in_progress --json | jq -r '.[].id')
+CLOSED=$(bd list --status closed --json | jq -r '.[].id')
 
 for ISSUE_ID in $CLOSED; do
-  # Delegate cleanup
-  claude -p "/cleanup:done $ISSUE_ID"
+  # Check if worker terminal exists
+  SESSION=$(curl -s http://localhost:8129/api/agents | jq -r --arg id "$ISSUE_ID" '.data[] | select(.name == $id) | .id')
+
+  if [ -n "$SESSION" ]; then
+    # Delegate cleanup
+    claude -p "/cleanup:done $ISSUE_ID"
+  fi
 done
 
-# Check for newly ready issues and spawn more workers
+# Spawn newly unblocked issues (up to MAX_WORKERS)
 ```
 
-### Phase 5: Complete
+## Step 5: Complete
 
 When no active workers and no ready tasks:
 
