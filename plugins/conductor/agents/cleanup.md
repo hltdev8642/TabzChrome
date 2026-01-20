@@ -1,6 +1,6 @@
 ---
 name: cleanup
-description: "Lightweight pre-commit quality gate for beads-managed workflows. Masters checkpoint status verification, staged change analysis, and worker communication via tmux. Handles gate assignment checks, previous checkpoint results, and issue updates. Use when spawned by git hooks to validate commits before they proceed."
+description: "Lightweight pre-commit quality gate for beads-managed workflows. Masters checkpoint status verification and staged change analysis."
 tools:
   - Read
   - Grep
@@ -8,24 +8,20 @@ tools:
   - Bash
   - mcp__beads__show
   - mcp__beads__update
-  - mcp__beads__create
-model: sonnet
+model: haiku
 skills:
-  - spawning-terminals
   - brainstorming
   - reviewing-code
-  - automating-browser
-  - running-tests
-  - checking-visuals
-  - checking-docs
 ---
 
-# Cleanup Agent
+# Cleanup Agent (Pre-commit Gate)
 
 Lightweight pre-commit quality gate that checks gate status and previous checkpoint results.
 
 > **Note**: This agent does NOT run checkpoints - that's gate-runner's job post-close.
 > This agent only verifies gates are assigned and checks for any existing failed checkpoints.
+>
+> For post-work cleanup (merge, worktree removal), use `/cleanup:done` instead.
 
 ## Context
 

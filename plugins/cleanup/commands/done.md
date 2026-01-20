@@ -1,31 +1,84 @@
 ---
-name: worker-done
+name: done
 description: "Clean up after a worker completes - merge, remove worktree, sync beads"
 argument-hint: "ISSUE_ID"
 ---
 
-# Worker Done
+# Worker Done - Cleanup
 
 Clean up after a worker finishes their issue.
 
 ## Usage
 
 ```bash
-/conductor:worker-done V4V-ct9
+/cleanup:done ISSUE-ID
 ```
 
-## What This Does
+## Workflow
 
-1. **Verify issue is closed** in beads
-2. **Kill terminal** via TabzChrome API
-3. **Merge changes** from worktree branch to main
-4. **Remove worktree** and branch
-5. **Sync beads** to persist state
+### 1. Verify Issue is Closed
 
-## Quick Cleanup
+```python
+issue = mcp__beads__show(issue_id="ISSUE-ID")
+# Verify status == "closed"
+```
 
 ```bash
-ISSUE_ID="V4V-ct9"
+STATUS=$(bd show "$ISSUE_ID" --json | jq -r '.[0].status')
+[ "$STATUS" != "closed" ] && echo "Issue not closed!" && exit 1
+```
+
+### 2. Kill Terminal via TabzChrome API
+
+```bash
+TABZ_API="http://localhost:8129"
+TOKEN=$(cat /tmp/tabz-auth-token)
+
+# Find session by name (issue ID)
+SESSION=$(curl -s "$TABZ_API/api/agents" | jq -r --arg id "$ISSUE_ID" \
+  '.data[] | select(.name == $id) | .id')
+
+# Kill if found
+[ -n "$SESSION" ] && curl -s -X DELETE "$TABZ_API/api/agents/$SESSION" \
+  -H "X-Auth-Token: $TOKEN"
+```
+
+### 3. Capture Session Transcript (Optional)
+
+For debugging or handoff:
+```bash
+curl -s "$TABZ_API/api/tmux/sessions/$SESSION/capture" | jq -r '.data.content' > ".worktrees/$ISSUE_ID/session.log"
+```
+
+### 4. Merge Feature Branch
+
+```bash
+git merge "feature/$ISSUE_ID" --no-edit
+```
+
+**If merge conflicts:**
+- Stop and report - don't auto-resolve
+- Leave worktree intact for manual resolution
+- Output conflict files for user
+
+### 5. Remove Worktree and Branch
+
+```bash
+git worktree remove ".worktrees/$ISSUE_ID" --force
+git branch -d "feature/$ISSUE_ID"
+```
+
+### 6. Sync Beads and Push
+
+```bash
+bd sync
+git push
+```
+
+## Quick Reference
+
+```bash
+ISSUE_ID="ISSUE-ID"
 TABZ_API="http://localhost:8129"
 TOKEN=$(cat /tmp/tabz-auth-token)
 
@@ -33,7 +86,7 @@ TOKEN=$(cat /tmp/tabz-auth-token)
 STATUS=$(bd show "$ISSUE_ID" --json | jq -r '.[0].status')
 [ "$STATUS" != "closed" ] && echo "Issue not closed!" && exit 1
 
-# 2. Kill terminal via API (find by name)
+# 2. Kill terminal via API
 SESSION=$(curl -s "$TABZ_API/api/agents" | jq -r --arg id "$ISSUE_ID" \
   '.data[] | select(.name == $id) | .id')
 [ -n "$SESSION" ] && curl -s -X DELETE "$TABZ_API/api/agents/$SESSION" \
@@ -86,56 +139,20 @@ bd sync
 git push
 ```
 
-## Finding Workers via API
+## Error Handling
 
-```bash
-# List all workers with worktrees
-curl -s http://localhost:8129/api/agents | jq '.data[] | select(.workingDir | contains(".worktrees/")) | {name, id, workingDir}'
-
-# Find specific worker by issue ID
-curl -s http://localhost:8129/api/agents | jq -r '.data[] | select(.name == "V4V-ct9")'
-
-# Get terminal output for debugging
-SESSION="ctt-V4V-ct9-abc123"
-curl -s "http://localhost:8129/api/tmux/sessions/$SESSION/capture" | jq -r '.data.content' | tail -50
-```
-
-## Handoff Notes
-
-Workers should write structured handoff notes before closing. See [handoff-format.md](../references/handoff-format.md) for the full format.
-
-### Quick Example
-
-```bash
-bd update ISSUE-ID --notes "$(cat <<'EOF'
-## Handoff
-
-**Status**: done
-**Summary**: Fixed null check in profile loader
-
-### Changes
-- src/profile.ts: Added null guard on line 45
-
-### Retro
-- Straightforward fix, no issues
-EOF
-)"
-```
-
-### Mining Handoffs
-
-```bash
-# Find all issues with handoff notes
-bd list --status closed --json | jq -r '.[] | select(.notes | contains("Handoff")) | "\(.id): \(.title)"'
-
-# Extract status from a specific issue
-bd show ISSUE-ID --json | jq -r '.[0].notes' | grep -oP '(?<=\*\*Status\*\*: )\w+'
-```
+| Scenario | Action |
+|----------|--------|
+| Issue not closed | Stop - worker should complete first |
+| Merge conflicts | Stop and report - don't auto-resolve |
+| Missing worktree | Skip removal, continue |
+| Terminal already dead | Continue |
+| Branch doesn't exist | Skip branch deletion, continue |
 
 ## Notes
 
-- **Find workers by name** (issue ID) via `/api/agents`
-- **Kill terminals via API** instead of `tmux kill-session`
 - Always verify issue is closed before cleanup
+- Find workers by name (issue ID) via `/api/agents`
+- Kill terminals via API instead of `tmux kill-session`
 - Merge conflicts require manual resolution
 - Use `bd sync && git push` at the end
