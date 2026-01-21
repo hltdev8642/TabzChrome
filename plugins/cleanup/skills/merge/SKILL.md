@@ -12,24 +12,43 @@ allowed-tools: Bash, Read
 
 Patterns for merging worker branches and handling conflicts.
 
+**CRITICAL**: Always kill the worker terminal BEFORE merging. See @references/terminal-cleanup.md
+
 ## Standard Merge Flow
 
 ```bash
 ISSUE_ID="ISSUE-ID"
+TABZ_API="http://localhost:8129"
+TOKEN=$(cat /tmp/tabz-auth-token)
 
-# Ensure on main
+# 1. Kill worker terminal first
+AGENT_ID=$(curl -s "$TABZ_API/api/agents" | jq -r --arg id "$ISSUE_ID" \
+  '.data[] | select(.name == $id) | .id')
+[ -n "$AGENT_ID" ] && curl -s -X DELETE "$TABZ_API/api/agents/$AGENT_ID" \
+  -H "X-Auth-Token: $TOKEN"
+
+# 2. Ensure on main
 git checkout main
 git pull
 
-# Merge feature branch
+# 3. Merge feature branch
 git merge "feature/$ISSUE_ID" --no-edit
 
-# Remove worktree and branch
+# 4. Remove worktree and branch
 git worktree remove ".worktrees/$ISSUE_ID" --force
 git branch -d "feature/$ISSUE_ID"
 
-# Push
+# 5. Sync and push
+bd sync
 git push
+```
+
+## One-Command Alternative
+
+For full cleanup with checkpoints, capture, and terminal kill:
+
+```bash
+./plugins/conductor/scripts/finalize-issue.sh "$ISSUE_ID"
 ```
 
 ## Conflict Detection
@@ -134,12 +153,14 @@ git worktree list | grep -v "$(pwd)$"
 | Worktree not found | Skip worktree removal |
 | Not on main | Checkout main first |
 | Uncommitted changes | Stash or warn |
+| TabzChrome not running | Skip terminal kill, continue with merge |
+| No auth token | Skip terminal kill, continue with merge |
 
 ## Safety Checks
 
 Before merging:
 1. Verify issue is closed
-2. Verify worker terminal is stopped
+2. **Kill worker terminal via TabzChrome API** (see @references/terminal-cleanup.md)
 3. Verify branch exists
 4. Check for conflicts first
 

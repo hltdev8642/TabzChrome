@@ -1,108 +1,98 @@
 ---
 name: gg-plan
-description: "Break down a feature or epic into concrete backlog issues with dependencies"
-argument-hint: "FEATURE_DESCRIPTION or --epic EPIC-ID"
+description: "Plan work: brainstorm ideas, break down features, or groom existing backlog"
+argument-hint: "[FEATURE_DESCRIPTION] [--epic EPIC-ID]"
 ---
 
-# Plan Feature
+# Plan - Unified Planning Command
 
-Break down a feature description or epic into concrete, parallelizable backlog issues.
+Smart routing based on your situation.
 
-## Steps
+## Step 0: Assess Current State
 
-Add these to your to-dos:
+First, check the backlog:
 
-1. **Understand the scope** - Read epic or analyze feature description
-2. **Explore the codebase** - Find relevant files and patterns
-3. **Break down into tasks** - Use `/planner:breakdown` skill (Sonnet)
-4. **Create issues with dependencies** - Wire up the backlog
-5. **Output sprint plan** - Present organized waves
+```python
+stats = mcp__beads__stats()
+ready = mcp__beads__ready()
+backlog = mcp__beads__list(status="backlog")
+```
+
+Then route based on what you find:
 
 ---
 
-## Step 1: Understand the Scope
+## Route A: Brainstorm Mode
+**When:** No arguments given AND (empty backlog OR user says "help me think", "not sure what to build", "brainstorm")
 
-If given an epic ID:
-```python
-mcp__beads__show(issue_id="EPIC-ID")
-```
+Use the `/conductor:brainstorming` skill - it has comprehensive beads references for:
+- Dependencies (fan-out, fan-in, diamond patterns)
+- Epics (when and how to structure)
+- Molecules (reusable workflow templates)
+- Full command reference (MCP + CLI)
+- Advanced features (gates, agents, defer)
 
-If given a description, analyze:
-- What's the end goal?
-- What areas of the codebase are affected?
-- Are there dependencies on external systems?
+The brainstorming skill is a thinking partner - help the user figure out WHAT to build through questions and progressive disclosure of beads features.
 
-## Step 2: Explore the Codebase
+When concrete tasks are identified, create them in beads, then continue to Route C.
 
-Use an Explore agent to understand context:
+---
 
-```python
-Task(
-  subagent_type="Explore",
-  prompt="Find the main components and patterns for: [feature area]. Identify key files, existing patterns, and potential file conflicts."
-)
-```
+## Route B: Decomposition Mode
+**When:** User provides a feature description OR --epic ID
 
-## Step 3: Break Down Into Tasks
+Break down the feature into concrete tasks:
 
-Use the `/planner:breakdown` skill which runs with Sonnet for strategic decomposition.
-
-The skill will:
-- Apply decomposition patterns (feature, refactor, or bug fix)
-- Identify task sizing (target S-M tasks)
-- Detect file overlaps that need sequencing
-- Suggest wave organization
-
-## Step 4: Create Issues with Dependencies
-
-Create concrete, actionable tasks:
+1. **Understand scope** - Read epic or analyze description
+2. **Explore codebase** - Find relevant files and patterns
+3. **Decompose** - Use `/planner:breakdown` skill (Sonnet) for strategic breakdown
+4. **Create issues** - With dependencies wired
 
 ```python
-# Create subtasks
-mcp__beads__create(
-  title="Add theme context provider",
-  issue_type="task",
-  priority=1,
-  description="Create React context for theme state management"
-)
+# Create tasks
+mcp__beads__create(title="Add theme context", priority=2)
+mcp__beads__create(title="Update components", priority=2)
 
-# Wire dependencies (BLOCKED depends on BLOCKER)
-mcp__beads__dep(issue_id="BLOCKED-ID", depends_on_id="BLOCKER-ID")
+# Wire dependencies
+mcp__beads__dep(issue_id="COMPONENTS-ID", depends_on_id="CONTEXT-ID")
 ```
 
-**Good tasks:**
-- "Add theme context provider to React app"
-- "Update Header component for dark mode support"
+When tasks are created, continue to Route C.
 
-**Bad tasks:**
-- "Implement dark mode" (too vague)
-- "Fix everything" (not actionable)
+---
 
-## Step 5: Output Sprint Plan
+## Route C: Backlog Grooming Mode
+**When:** Backlog has tasks that need organizing (no prompts, no gates, priorities unclear)
 
-Present the organized breakdown:
+Run `/conductor:plan-backlog` to:
+- Prioritize and wire dependencies
+- Assign quality gates (codex-review, test-runner, etc.)
+- Write worker prompts via `/prompt-writer:write`
+- Output sprint waves
 
-```markdown
-## Feature: [Name]
+```
+After creating tasks, ask:
+"Tasks created. Ready to groom the backlog for worker prompts and gates?"
 
-### Wave 1 (Ready Now)
-| Issue | Priority | Description |
-|-------|----------|-------------|
-| ID-1 | P1 | First task (no blockers) |
-
-### Wave 2 (After Wave 1)
-| Issue | Blocked By | Description |
-|-------|------------|-------------|
-| ID-2 | ID-1 | Depends on infrastructure |
-| ID-3 | ID-1 | Can run parallel with ID-2 |
-
-### File Overlap Notes
-- ID-2 and ID-4 both touch styles.css - sequenced via dependency
+If yes → run /conductor:plan-backlog
 ```
 
 ---
 
-## Decomposition Patterns
+## Quick Reference
+
+| User says | Route |
+|-----------|-------|
+| `/plan` (no args, empty backlog) | A: Brainstorm |
+| `/plan` (no args, has backlog) | C: Groom backlog |
+| `/plan dark mode feature` | B: Decompose → C: Groom |
+| `/plan --epic bd-xxx` | B: Decompose → C: Groom |
+| "help me think", "not sure" | A: Brainstorm |
+| "I have tasks, now what?" | C: Groom backlog |
+
+---
+
+## Decomposition Patterns (Route B)
 
 ### New Feature
 1. Core infrastructure (contexts, state, types)
@@ -121,17 +111,24 @@ Present the organized breakdown:
 2. Implement fix
 3. Add regression test
 
-## Task Sizing Guidelines
+## Task Sizing
 
 | Size | Guideline |
 |------|-----------|
-| Too small | "Add import statement" - combine with related work |
-| Right size | "Add theme context with toggle hook" - 1-2 files, clear scope |
-| Too large | "Implement full feature" - break into subtasks |
+| Too small | "Add import" - combine with related work |
+| Right size | "Add theme context with toggle" - 1-2 files, clear scope |
+| Too large | "Implement feature" - break into subtasks |
 
-## Notes
+---
 
-- Create backlog status issues - prompt-writer will prepare them
-- Set realistic priorities (don't make everything P1)
-- Identify file conflicts early - saves merge headaches
-- Keep tasks independent where possible for parallelization
+## End State
+
+Planning is done when:
+- [ ] Tasks exist in beads with clear titles
+- [ ] Dependencies wired (blocking relationships)
+- [ ] Priorities set (0-4)
+- [ ] Quality gates assigned (gate:* labels)
+- [ ] Worker prompts written (in issue notes)
+- [ ] Sprint waves presented
+
+Then ready to spawn workers on Wave 1.

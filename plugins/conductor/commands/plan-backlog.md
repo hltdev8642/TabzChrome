@@ -1,4 +1,5 @@
 ---
+user-invocable: false
 name: gg-plan-backlog
 description: "AI-assisted backlog grooming: prioritize, add dependencies, assign quality gates, draft worker prompts"
 ---
@@ -19,6 +20,7 @@ Add these to your to-dos:
 6. **Output sprint plan** - Present waves of parallelizable work
 
 ---
+user-invocable: false
 
 ## Step 1: Analyze Current State
 
