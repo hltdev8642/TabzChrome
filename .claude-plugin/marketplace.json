@@ -162,6 +162,38 @@
       "skills": [
         "./skills/merge"
       ]
+    },
+    {
+      "name": "tabz",
+      "source": "./plugins/tabz",
+      "description": "TabzChrome integration: spawn terminals, browser automation via MCP tools, and project integration via HTML/WebSocket/JS API",
+      "version": "1.0.0",
+      "author": {
+        "name": "GGPrompts",
+        "url": "https://github.com/GGPrompts"
+      },
+      "homepage": "https://github.com/GGPrompts/TabzChrome",
+      "repository": "https://github.com/GGPrompts/TabzChrome",
+      "license": "MIT",
+      "category": "integration",
+      "keywords": [
+        "tabzchrome",
+        "terminals",
+        "browser",
+        "mcp",
+        "automation",
+        "screenshots"
+      ],
+      "strict": true,
+      "commands": [],
+      "agents": [
+        "./agents/tabz-expert.md"
+      ],
+      "skills": [
+        "./skills/terminals",
+        "./skills/browser",
+        "./skills/integration"
+      ]
     }
   ]
 }
