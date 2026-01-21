@@ -1,32 +1,26 @@
 ---
 name: gg-auto
-description: "Autonomous worker loop - spawns workers, monitors for completion, cleans up"
+description: "Event-driven worker orchestration - spawns workers, delegates monitoring to background agent, handles events as they come"
 context:
   skills:
     - spawner:terminals           # TabzChrome API patterns
-    - conductor:automating-browser # MCP tool reference for browser debugging
 ---
 
-# Auto Mode - Autonomous Worker Loop
+# Auto Mode - Event-Driven Orchestration
 
-Orchestrate parallel workers: spawn → monitor → cleanup → repeat.
+Orchestrate parallel workers using background monitoring. You stay free to work with the user while a haiku watcher monitors in the background.
 
-**CRITICAL**: This is a CONTINUOUS LOOP. Do NOT stop after spawning. You MUST actively monitor and cleanup.
-
-## Main Loop (Your Job)
+## How It Works
 
 ```
-WHILE there is work:
-  1. Spawn workers for ready issues (up to 3)
-  2. LOOP every 30-60s:
-     - Check which workers completed
-     - Run cleanup for each completed worker
-     - Check for new ready issues
-     - Spawn more workers if slots available
-  3. When all done: sync and push
+1. Spawn workers for ready issues
+2. Kick off background watcher (haiku)
+3. You're FREE - help user plan, groom backlog, answer questions
+4. When watcher returns with event → handle it → spawn new watcher
+5. Repeat until all work done
 ```
 
-**You must keep checking and cleaning up until no workers remain and no issues are ready.**
+**Key difference from old approach**: You don't poll. You delegate monitoring to a cheap background agent and stay available.
 
 ---
 
@@ -40,36 +34,30 @@ curl -sf http://localhost:8129/api/health >/dev/null || { echo "TabzChrome not r
 bd daemon status >/dev/null 2>&1 || bd daemon start
 
 # Clear old events
-rm -f /tmp/worker-events.jsonl
+rm -f /tmp/worker-events.jsonl /tmp/worker-status.json
+
+# Ensure tmuxplexer monitor is running
+MONITOR_SCRIPT=$(find ~/plugins ~/.claude/plugins ~/projects/TabzChrome/plugins -name "monitor-workers.sh" 2>/dev/null | head -1)
+[ -n "$MONITOR_SCRIPT" ] && "$MONITOR_SCRIPT" --spawn
 ```
 
-## Step 2: Start Background Poller
+## Step 2: Check Current State
 
 ```bash
-POLL_SCRIPT=$(find ~/plugins ~/.claude/plugins ~/projects/TabzChrome/plugins -name "poll-workers.sh" 2>/dev/null | head -1)
-if [ -z "$POLL_SCRIPT" ]; then
-  echo "ERROR: poll-workers.sh not found" >&2
-  exit 1
-fi
-pkill -f poll-workers.sh 2>/dev/null || true
-nohup "$POLL_SCRIPT" 30 /tmp/worker-status.json > /tmp/poll-workers.log 2>&1 &
-echo "Started background poller"
+# Current workers
+curl -sf http://localhost:8129/api/agents | jq '[.data[] | {name, id}]'
+
+# Ready issues
+bd ready --json | jq -r '.[] | "\(.id): \(.title)"'
+
+# In progress
+bd list --status in_progress --json | jq -r '.[] | "\(.id): \(.title)"'
 ```
 
-## Step 3: Spawn Initial Workers
+## Step 3: Spawn Workers
 
-Get ready issues and spawn up to 3:
+For each ready issue (up to 3 workers total):
 
-```bash
-# How many workers are already running?
-CURRENT=$(curl -sf http://localhost:8129/api/agents | jq '[.data[] | select(.workingDir | contains(".worktrees/"))] | length')
-SLOTS=$((3 - CURRENT))
-
-# Get ready issues
-bd ready --json | jq -r '.[].id' | head -$SLOTS
-```
-
-For each issue, spawn with Task tool:
 ```python
 Task(
     subagent_type="general-purpose",
@@ -79,93 +67,46 @@ Task(
 )
 ```
 
-**Spawn in parallel** - send multiple Task calls in one message.
+**Spawn in parallel** - multiple Task calls in one message.
 
-## Step 4: Monitor Loop (CRITICAL)
+## Step 4: Start Background Watcher
 
-**YOU MUST ACTIVELY LOOP HERE.** Check every 30-60 seconds until all work is done.
-
-### Check Status
-
-```bash
-# Quick status (now includes dashboard data)
-jq -r '"Workers: \(.workers | length), In Progress: \(.in_progress | length), Ready: \(.ready | length)"' /tmp/worker-status.json 2>/dev/null || echo "Waiting for poller..."
-
-# Check worker context % and status from tmuxplexer
-jq -r '.worker_status[] | "\(.session): \(.status) [\(.context)%]"' /tmp/worker-status.json 2>/dev/null
-
-# Check for alerts (high context, stale workers, etc.)
-jq -r '.alerts[] | "⚠️ \(.type): \(.session) - \(.message)"' /tmp/worker-status.json 2>/dev/null
-
-# Check for newly closed issues
-cat /tmp/worker-events.jsonl 2>/dev/null | tail -5
-```
-
-### Handle Alerts
-
-When you see alerts in the status:
-
-- **critical** (context ≥75%): Worker needs `/wipe` soon - notify user or let auto-compact handle it
-- **warning** (context ≥60%): Monitor closely, may need intervention
-- **stale**: Worker hasn't shown activity - check if stuck
-- **attention**: Worker waiting for user input - needs human response
-
-### Self-Monitoring (Conductor Context)
-
-Check your own context usage periodically:
-
-```bash
-# Get conductor's own context %
-MONITOR_SCRIPT=$(find ~/plugins ~/.claude/plugins ~/projects/TabzChrome/plugins -name "monitor-workers.sh" 2>/dev/null | head -1)
-"$MONITOR_SCRIPT" --self
-```
-
-If conductor context ≥ 70%, consider running `/wipe:wipe` then resuming with `/conductor:auto`.
-The conductor is stateless - all state lives in beads and tmuxplexer, so it's safe to restart.
-
-### When Issues Close - IMMEDIATELY Cleanup
-
-When you see closed issues in the events file:
+After spawning, kick off the watcher:
 
 ```python
-# For EACH closed issue, spawn cleanup
 Task(
-    subagent_type="general-purpose",
-    model="haiku",
-    prompt="/cleanup:done CLOSED-ISSUE-ID",
-    description="Cleanup CLOSED-ISSUE-ID"
+    subagent_type="conductor:worker-watcher",
+    prompt="Monitor workers. Return when: issue closes, critical alert (context >=75%), worker asking for input, or after 20 polls (~10 min).",
+    description="Watch workers",
+    run_in_background=True
 )
 ```
 
-### After Cleanup - Check for More Work
+**Now you're free.** Help the user with planning, grooming, or other tasks.
+
+## Step 5: Handle Watcher Events
+
+When the background watcher returns, it will report one of:
+
+| Event Type | Action |
+|------------|--------|
+| `completed` | Run cleanup: `Task(prompt="/cleanup:done ISSUE-ID")` |
+| `critical` | Notify user - worker at high context |
+| `asking` | Notify user - worker needs input |
+| `stale` | Check if worker is stuck |
+| `timeout` | Just a check-in, spawn new watcher |
+
+After handling the event:
+1. Check if more ready issues exist
+2. Spawn workers to fill slots
+3. Spawn a new watcher
+4. Return to being available
+
+## Step 6: Wave Complete
+
+When watcher reports no workers and no ready issues:
 
 ```bash
-# How many slots available?
-CURRENT=$(curl -sf http://localhost:8129/api/agents | jq '[.data[] | select(.workingDir | contains(".worktrees/"))] | length')
-SLOTS=$((3 - CURRENT))
-
-# Get ready issues
-READY=$(bd ready --json | jq -r '.[].id' | head -$SLOTS)
-echo "Slots: $SLOTS, Ready: $READY"
-```
-
-If there are ready issues and available slots, **spawn more workers** (go back to Step 3).
-
-### Loop Termination
-
-Only stop when:
-1. No workers running (`.workers | length == 0`)
-2. No issues in progress (`.in_progress | length == 0`)
-3. No issues ready (`.ready | length == 0`)
-
-## Step 5: Final Cleanup
-
-When all work is done:
-
-```bash
-# Stop poller
-pkill -f poll-workers.sh
-
 # Final sync
 bd sync
 git push
@@ -175,52 +116,53 @@ echo "Wave complete!"
 
 ---
 
-## Example Session Flow
+## Example Flow
 
 ```
-[Check ready issues] → Found 5 ready
-[Spawn 3 workers] → bd-001, bd-002, bd-003
-[Wait 30s, check status] → 3 in progress, 2 ready
-[Wait 30s, check status] → bd-001 closed!
-[Cleanup bd-001] → merged, worktree removed
-[Spawn 1 worker] → bd-004 (filling slot)
-[Wait 30s, check status] → bd-002 closed!
-[Cleanup bd-002] → merged
-[Spawn 1 worker] → bd-005 (last ready issue)
-[Wait 30s, check status] → 3 in progress, 0 ready
-[Wait 30s, check status] → bd-003, bd-004 closed!
-[Cleanup both] → merged
-[Wait 30s, check status] → bd-005 closed!
-[Cleanup bd-005] → merged
-[Check status] → 0 workers, 0 in progress, 0 ready
-[Final sync] → Done!
+User: "Let's run gg-auto"
+Conductor: [Pre-flight checks pass]
+Conductor: [Spawns 3 workers: bd-001, bd-002, bd-003]
+Conductor: [Kicks off background watcher]
+Conductor: "Workers spawned and watcher running. What would you like to work on?"
+
+User: "Let's plan the next feature - dark mode"
+Conductor: [Helps plan dark mode, creates issues, etc.]
+
+[Background watcher returns]: "completed: bd-001 closed"
+Conductor: "bd-001 finished! Running cleanup..."
+Conductor: [Spawns cleanup task]
+Conductor: [Checks for more ready work, spawns bd-004]
+Conductor: [Spawns new watcher]
+Conductor: "Cleaned up bd-001, spawned bd-004. Back to dark mode planning?"
+
+User: "Yes, what about the toggle component?"
+[Conversation continues naturally...]
 ```
 
 ---
 
-## Quick Reference
+## Quick Commands
 
-| Action | Command |
-|--------|---------|
-| Check status | `jq . /tmp/worker-status.json` |
-| See closed events | `cat /tmp/worker-events.jsonl` |
-| Count workers | `curl -s localhost:8129/api/agents \| jq '.data \| length'` |
-| Ready issues | `bd ready --json \| jq -r '.[].id'` |
-| Spawn worker | `Task(prompt="/spawner:spawn ID")` |
-| Cleanup worker | `Task(prompt="/cleanup:done ID")` |
+| Action | How |
+|--------|-----|
+| Spawn worker | `Task(subagent_type="general-purpose", model="haiku", prompt="/spawner:spawn ID")` |
+| Cleanup | `Task(subagent_type="general-purpose", model="haiku", prompt="/cleanup:done ID")` |
+| Start watcher | `Task(subagent_type="conductor:worker-watcher", ..., run_in_background=True)` |
+| Manual status | `jq . /tmp/worker-status.json` |
+| Check own context | `$MONITOR_SCRIPT --self` |
 
-## Configuration
+## Self-Monitoring
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| MAX_WORKERS | 3 | Maximum parallel workers |
-| POLL_INTERVAL | 30s | How often poller checks |
-| CHECK_INTERVAL | 30-60s | How often YOU should check |
+If your own context gets high (≥70%), you can safely:
+1. Tell the user "I need to restart to free up context"
+2. Run `/wipe:wipe`
+3. Resume with `/conductor:auto`
+
+All state lives in beads and the watcher - nothing is lost.
 
 ## Notes
 
-- Workers are autonomous - they close issues when done
-- Poller detects closures and writes to events file
-- You must actively check the events file and trigger cleanup
-- Always fill available slots with ready work
-- Don't stop until everything is done
+- Watcher is cheap (haiku) and disposable
+- You stay present for the user instead of busy-looping
+- Events come to you - you don't poll for them
+- Multiple watchers can run if needed (they're independent)

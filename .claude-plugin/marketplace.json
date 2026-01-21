@@ -37,7 +37,8 @@
         "./commands/wave-done.md"
       ],
       "agents": [
-        "./agents/precommit-gate.md"
+        "./agents/precommit-gate.md",
+        "./agents/worker-watcher.md"
       ],
       "skills": [
         "./skills/automating-browser",
