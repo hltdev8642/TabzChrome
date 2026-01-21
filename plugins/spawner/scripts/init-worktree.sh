@@ -9,7 +9,8 @@
 # - Multi-language deps (Node, Python, Rust, Go, Ruby, Elixir)
 # - npm run build for Next.js types (fixes LSP errors)
 
-set -e
+# Don't use set -e - we want to continue even if some steps fail
+# set -e
 
 WORKTREE="${1:-.}"
 QUIET="${2:-}"
@@ -71,7 +72,7 @@ install_node() {
   install_node "."
 
   # Monorepo subdirectories (skip if using workspaces)
-  if ! grep -q '"workspaces"' package.json 2>/dev/null; then
+  if [ -f package.json ] && ! grep -q '"workspaces"' package.json 2>/dev/null; then
     for subdir in frontend backend web app packages/* apps/*; do
       [ -d "$subdir" ] && install_node "$subdir"
     done
