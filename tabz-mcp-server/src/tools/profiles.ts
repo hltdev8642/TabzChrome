@@ -52,6 +52,17 @@ interface SpawnResult {
     profileId?: string;
     profileName?: string;
   };
+  // Backend returns terminal data in 'data' field
+  data?: {
+    id: string;
+    name: string;
+    terminalType: string;
+    platform: string;
+    state: string;
+    createdAt: string;
+    profileId?: string;
+    profileName?: string;
+  };
   error?: string;
 }
 
@@ -683,7 +694,14 @@ Error Handling:
           };
         }
 
-        const terminal = result.terminal!;
+        // Backend returns terminal in 'data' field, not 'terminal'
+        const terminal = result.data || result.terminal;
+        if (!terminal) {
+          return {
+            content: [{ type: "text", text: `Error: Spawn succeeded but no terminal data returned` }],
+            isError: true
+          };
+        }
         const resultText = `## Terminal Spawned
 
 **ID:** \`${terminal.id}\`
