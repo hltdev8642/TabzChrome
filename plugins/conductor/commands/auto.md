@@ -88,12 +88,40 @@ Task(
 ### Check Status
 
 ```bash
-# Quick status
+# Quick status (now includes dashboard data)
 jq -r '"Workers: \(.workers | length), In Progress: \(.in_progress | length), Ready: \(.ready | length)"' /tmp/worker-status.json 2>/dev/null || echo "Waiting for poller..."
+
+# Check worker context % and status from tmuxplexer
+jq -r '.worker_status[] | "\(.session): \(.status) [\(.context)%]"' /tmp/worker-status.json 2>/dev/null
+
+# Check for alerts (high context, stale workers, etc.)
+jq -r '.alerts[] | "⚠️ \(.type): \(.session) - \(.message)"' /tmp/worker-status.json 2>/dev/null
 
 # Check for newly closed issues
 cat /tmp/worker-events.jsonl 2>/dev/null | tail -5
 ```
+
+### Handle Alerts
+
+When you see alerts in the status:
+
+- **critical** (context ≥75%): Worker needs `/wipe` soon - notify user or let auto-compact handle it
+- **warning** (context ≥60%): Monitor closely, may need intervention
+- **stale**: Worker hasn't shown activity - check if stuck
+- **attention**: Worker waiting for user input - needs human response
+
+### Self-Monitoring (Conductor Context)
+
+Check your own context usage periodically:
+
+```bash
+# Get conductor's own context %
+MONITOR_SCRIPT=$(find ~/plugins ~/.claude/plugins ~/projects/TabzChrome/plugins -name "monitor-workers.sh" 2>/dev/null | head -1)
+"$MONITOR_SCRIPT" --self
+```
+
+If conductor context ≥ 70%, consider running `/wipe:wipe` then resuming with `/conductor:auto`.
+The conductor is stateless - all state lives in beads and tmuxplexer, so it's safe to restart.
 
 ### When Issues Close - IMMEDIATELY Cleanup
 
