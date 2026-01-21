@@ -122,9 +122,32 @@ else
 fi
 
 # ============================================================================
-# Step 2: Kill Worker Sessions
+# Step 2: Kill Worker Sessions (TabzChrome API + tmux)
 # ============================================================================
 echo "=== Step 2: Kill Worker Sessions ==="
+
+# TabzChrome API settings
+TABZ_API="${TABZ_API:-http://localhost:8129}"
+TABZ_TOKEN="${TABZ_TOKEN:-$(cat /tmp/tabz-auth-token 2>/dev/null || true)}"
+
+# Kill via TabzChrome API first (preferred - closes browser tabs)
+if curl -sf "$TABZ_API/api/health" >/dev/null 2>&1 && [ -n "$TABZ_TOKEN" ]; then
+  for ISSUE in $ISSUES; do
+    [[ "$ISSUE" =~ ^[a-zA-Z0-9_-]+$ ]] || continue
+
+    # Find agent by name (issue ID)
+    AGENT_ID=$(curl -s "$TABZ_API/api/agents" 2>/dev/null | \
+      jq -r --arg name "$ISSUE" '.data[] | select(.name == $name) | .id' 2>/dev/null | head -1)
+
+    if [ -n "$AGENT_ID" ]; then
+      curl -s -X DELETE "$TABZ_API/api/agents/$AGENT_ID" \
+        -H "X-Auth-Token: $TABZ_TOKEN" >/dev/null 2>&1 && \
+        echo "  Killed TabzChrome agent: $ISSUE ($AGENT_ID)" || true
+    fi
+  done
+else
+  echo "  (TabzChrome not available - skipping API cleanup)"
+fi
 
 # From saved session list if it exists
 if [ -f /tmp/swarm-sessions.txt ]; then
@@ -132,25 +155,25 @@ if [ -f /tmp/swarm-sessions.txt ]; then
     [[ "$SESSION" =~ ^[a-zA-Z0-9_-]+$ ]] || continue
     if tmux has-session -t "$SESSION" 2>/dev/null; then
       tmux kill-session -t "$SESSION"
-      echo "  Killed: $SESSION"
+      echo "  Killed tmux: $SESSION"
     fi
   done < /tmp/swarm-sessions.txt
   rm -f /tmp/swarm-sessions.txt
 fi
 
-# Kill by issue ID pattern
+# Kill tmux sessions by issue ID pattern (fallback)
 for ISSUE in $ISSUES; do
   [[ "$ISSUE" =~ ^[a-zA-Z0-9_-]+$ ]] || continue
   SHORT_ID="${ISSUE##*-}"
 
   # Try various naming patterns
   for SESSION_PATTERN in "worker-${ISSUE}" "worker-${SHORT_ID}"; do
-    tmux kill-session -t "$SESSION_PATTERN" 2>/dev/null && echo "  Killed: $SESSION_PATTERN" || true
+    tmux kill-session -t "$SESSION_PATTERN" 2>/dev/null && echo "  Killed tmux: $SESSION_PATTERN" || true
   done
 
   # Kill sessions matching ctt-worker-XXX-* pattern
   tmux list-sessions -F '#{session_name}' 2>/dev/null | grep -E "ctt-worker-${SHORT_ID}-" | while read -r S; do
-    tmux kill-session -t "$S" 2>/dev/null && echo "  Killed: $S"
+    tmux kill-session -t "$S" 2>/dev/null && echo "  Killed tmux: $S"
   done || true
 done
 
