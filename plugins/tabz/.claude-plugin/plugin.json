@@ -1,5 +1,15 @@
 {
   "name": "tabz",
   "version": "1.0.0",
-  "description": "TabzChrome integration: spawn terminals, browser automation, and project integration via HTML/WebSocket/JS API"
+  "description": "TabzChrome integration: spawn terminals, browser automation, and project integration via HTML/WebSocket/JS API",
+  "mcpServers": {
+    "tabz": {
+      "type": "stdio",
+      "command": "${CLAUDE_PLUGIN_ROOT}/tabz-mcp-server/run-auto.sh",
+      "args": [],
+      "env": {
+        "BACKEND_URL": "http://localhost:8129"
+      }
+    }
+  }
 }
