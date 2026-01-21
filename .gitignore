@@ -57,3 +57,7 @@ mcp-config.json
 
 # Plugin audit logs
 .audit-logs/
+# bd worktree
+test-beads-mcp/
+# bd worktree
+test-env-var/

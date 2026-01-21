@@ -32,9 +32,9 @@
       "strict": true,
       "commands": [
         "./commands/auto.md",
-        "./commands/plan-backlog.md",
         "./commands/gate-runner.md",
-        "./commands/status.md"
+        "./commands/status.md",
+        "./commands/wave-done.md"
       ],
       "agents": [
         "./agents/precommit-gate.md"
@@ -43,6 +43,7 @@
         "./skills/automating-browser",
         "./skills/brainstorming",
         "./skills/docs-check",
+        "./skills/plan-backlog",
         "./skills/reviewing-code",
         "./skills/running-tests",
         "./skills/visual-qa"
