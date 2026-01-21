@@ -2,7 +2,7 @@
   "mcpServers": {
     "tabz": {
       "type": "stdio",
-      "command": "./tabz-mcp-server/run-auto.sh",
+      "command": "${CLAUDE_PLUGIN_ROOT}/tabz-mcp-server/run-auto.sh",
       "args": [],
       "env": {
         "BACKEND_URL": "http://localhost:8129"
