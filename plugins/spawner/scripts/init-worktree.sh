@@ -31,6 +31,38 @@ log "Initializing dependencies in $(pwd)..."
 # Track what we installed
 INSTALLED=""
 
+#######################################
+# Beads redirect (for MCP tools to work in worktrees)
+#######################################
+ensure_beads_redirect() {
+  # Only if this is a beads project (main repo has .beads/)
+  local main_repo
+  main_repo=$(git rev-parse --show-toplevel 2>/dev/null)
+
+  # If we're in a worktree, find the main repo
+  if [ -f ".git" ]; then
+    # .git is a file in worktrees, pointing to the real git dir
+    local git_dir
+    git_dir=$(cat .git | sed 's/gitdir: //')
+    # Go up from .git/worktrees/<name> to find main repo
+    main_repo=$(cd "$git_dir/../.." && pwd)
+  fi
+
+  # Check if main repo has beads
+  if [ -d "$main_repo/.beads" ] && [ ! -d ".beads" ]; then
+    # Create redirect file so MCP tools can find the database
+    mkdir -p .beads
+    # Use relative path for portability
+    local rel_path
+    rel_path=$(realpath --relative-to="$(pwd)" "$main_repo/.beads")
+    echo "$rel_path" > .beads/redirect
+    log "  -> Created .beads/redirect -> $rel_path"
+    INSTALLED="$INSTALLED beads-redirect"
+  fi
+}
+
+ensure_beads_redirect
+
 # Lockfile for dependency installation (prevents npm cache corruption with parallel workers)
 PROJECT_NAME=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo "$WORKTREE")")
 DEP_LOCK="/tmp/init-worktree-${PROJECT_NAME}.lock"

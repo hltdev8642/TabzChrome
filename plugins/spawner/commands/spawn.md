@@ -43,11 +43,16 @@ issue = mcp__beads__show(issue_id="ISSUE-ID")
 ISSUE_ID="ISSUE-ID"
 WORKDIR=$(pwd)
 
-# Preferred: bd handles beads redirect for MCP tools
+# REQUIRED for MCP tools to work - creates .beads/redirect file
 bd worktree create ".worktrees/$ISSUE_ID" --branch "feature/$ISSUE_ID"
+```
 
-# Fallback if beads not available
-# git worktree add ".worktrees/$ISSUE_ID" -b "feature/$ISSUE_ID"
+**Why `bd worktree create`?** It creates a `.beads/redirect` file in the worktree that points MCP tools to the main repo's database. Without this, MCP tools fail silently.
+
+**Fallback** (only if beads not installed):
+```bash
+git worktree add ".worktrees/$ISSUE_ID" -b "feature/$ISSUE_ID"
+# Worker must use CLI only (bd commands), not MCP tools
 ```
 
 ## Step 3: Initialize Dependencies (SYNCHRONOUS)
@@ -232,4 +237,6 @@ curl -s -X POST http://localhost:8129/api/spawn \
 - Initialize deps SYNCHRONOUSLY before spawning
 - Wait 8+ seconds for Claude to boot before sending prompt
 - Workers follow PRIME.md - they'll read the issue and work autonomously
-- Use `BEADS_WORKING_DIR=$WORKDIR` so beads MCP tools work in worktrees
+- **Use `bd worktree create`** (not `git worktree add`) - this creates the `.beads/redirect` file that MCP tools need
+- `BEADS_WORKING_DIR=$WORKDIR` is set as backup, but the redirect file is what actually makes MCP work
+- **Ignore the worktree warning** about `BEADS_NO_DAEMON=1` - the conductor's daemon handles sync, workers just read/write the shared database

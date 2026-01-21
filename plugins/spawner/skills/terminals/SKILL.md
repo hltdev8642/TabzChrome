@@ -68,18 +68,20 @@ curl -s -X DELETE "http://localhost:8129/api/agents/$SESSION" \
 Worktrees enable parallel workers on same repo.
 
 ```bash
-# Create (with beads redirect for MCP tools)
+# REQUIRED for beads projects - creates .beads/redirect for MCP tools
 bd worktree create .worktrees/ISSUE-ID --branch feature/ISSUE-ID
-
-# Or plain git (if beads not available)
-git worktree add ".worktrees/ISSUE-ID" -b "feature/ISSUE-ID"
 
 # Remove
 git worktree remove ".worktrees/ISSUE-ID" --force
 git branch -d "feature/ISSUE-ID"
 ```
 
-**Note:** `bd worktree create` sets up `.beads/redirect` so beads MCP tools work in the worktree. Use this when the project has beads.
+**Critical:** Always use `bd worktree create` for beads projects. It creates `.beads/redirect` which points MCP tools to the main database. Without this file, MCP tools fail silently and workers must use CLI only.
+
+Fallback (non-beads projects only):
+```bash
+git worktree add ".worktrees/ISSUE-ID" -b "feature/ISSUE-ID"
+```
 
 ### Dependency Initialization
 
