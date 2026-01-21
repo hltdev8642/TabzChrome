@@ -42,8 +42,6 @@
       "skills": [
         "./skills/automating-browser",
         "./skills/brainstorming",
-        "./skills/checking-docs",
-        "./skills/checking-visuals",
         "./skills/docs-check",
         "./skills/reviewing-code",
         "./skills/running-tests",
