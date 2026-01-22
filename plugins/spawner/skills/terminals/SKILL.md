@@ -102,21 +102,19 @@ $INIT_SCRIPT ".worktrees/ISSUE-ID"
 
 ## Sending Prompts
 
-Wait for Claude to boot (8+ seconds), then:
+Wait for Claude to boot (8+ seconds), then use the `tabz_send_keys` MCP tool:
 
-```bash
-# Find safe-send-keys.sh
-SAFE_SEND_KEYS=$(find ~/plugins ~/.claude/plugins -name "safe-send-keys.sh" -path "*spawner*" 2>/dev/null | head -1)
-
-# Send prompt
-"$SAFE_SEND_KEYS" "$SESSION" "Complete beads issue $ISSUE_ID. Run: bd show $ISSUE_ID --json"
+```python
+tabz_send_keys(
+    terminal="BD-xyz",  # Terminal name or ID
+    text="Complete beads issue BD-xyz. Run: bd show BD-xyz --json",
+    delay=600  # ms before Enter (increase for long prompts)
+)
 ```
 
-Fallback:
+Or via mcp-cli:
 ```bash
-tmux send-keys -t "$SESSION" -l "$PROMPT"
-sleep 1
-tmux send-keys -t "$SESSION" C-m
+mcp-cli call plugin_tabz_tabz/tabz_send_keys '{"terminal": "BD-xyz", "text": "Your prompt here", "delay": 600}'
 ```
 
 ## Worker Naming

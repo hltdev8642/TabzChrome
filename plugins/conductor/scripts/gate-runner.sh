@@ -22,7 +22,17 @@ TOKEN="${TABZ_TOKEN:-$(cat /tmp/tabz-auth-token 2>/dev/null || true)}"
 TIMEOUT="${TIMEOUT:-300}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SAFE_SEND_KEYS="$SCRIPT_DIR/safe-send-keys.sh"
+
+# Send keys to terminal via REST API (replaces safe-send-keys.sh)
+send_keys() {
+  local session="$1"
+  local text="$2"
+  local delay="${3:-600}"
+  curl -s -X POST "$TABZ_API/api/terminals/send-keys" \
+    -H "Content-Type: application/json" \
+    -H "X-Auth-Token: $TOKEN" \
+    -d "{\"terminalId\": \"$session\", \"sessionName\": \"$session\", \"text\": \"$text\", \"execute\": true, \"delay\": $delay}" >/dev/null
+}
 
 declare -A GATE_SKILLS=(
   ["codex-review"]="conductor:reviewing-code"
@@ -72,10 +82,6 @@ check_health() {
   fi
   if [ -z "$TOKEN" ]; then
     log_err "No auth token found. Check /tmp/tabz-auth-token"
-    exit 1
-  fi
-  if [ ! -x "$SAFE_SEND_KEYS" ]; then
-    log_err "safe-send-keys.sh not found or not executable: $SAFE_SEND_KEYS"
     exit 1
   fi
   log_ok "TabzChrome healthy"
@@ -221,7 +227,7 @@ Include: {checkpoint, timestamp, passed, summary}."
     return 1
   fi
 
-  "$SAFE_SEND_KEYS" "$session" "$prompt"
+  send_keys "$session" "$prompt"
 
   echo "$session"
 }

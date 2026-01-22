@@ -1,8 +1,18 @@
 ---
 name: tabz-expert
-description: "Browser automation and terminal spawning expert with 70 MCP tools. Use when the user asks to 'automate the browser', 'take screenshots', 'fill forms', 'spawn terminals', 'use TTS', or needs any tabz_* MCP tool or TabzChrome REST API integration."
+description: "Browser automation and terminal spawning expert with 82 MCP tools. Use when the user asks to 'automate the browser', 'take screenshots', 'fill forms', 'spawn terminals', 'use TTS', or needs any tabz_* MCP tool or TabzChrome REST API integration."
 model: inherit
 color: cyan
+tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  - WebFetch
+  - WebSearch
+  - mcp:plugin_tabz_tabz/*
 ---
 
 # Tabz Expert - Browser & Terminal Specialist
