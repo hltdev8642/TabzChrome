@@ -223,6 +223,124 @@ curl "http://localhost:8129/api/claude-status?dir=/home/user/project&sessionName
 
 ---
 
+## MCP Configuration
+
+Endpoints for configuring which MCP tools are available to Claude Code.
+
+### GET /api/mcp-config
+
+Get the current MCP tool configuration.
+
+```bash
+curl http://localhost:8129/api/mcp-config
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "enabledTools": ["tabz_list_tabs", "tabz_screenshot", "..."],
+  "allowAllUrls": false,
+  "customDomains": "example.com\n*.mycompany.com"
+}
+```
+
+---
+
+### POST /api/mcp-config
+
+Save MCP tool configuration. Changes take effect after Claude Code restart.
+
+```bash
+curl -X POST http://localhost:8129/api/mcp-config \
+  -H "Content-Type: application/json" \
+  -d '{"enabledTools": ["tabz_list_tabs", "tabz_screenshot"], "allowAllUrls": false}'
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `enabledTools` | string[] | No | Tool IDs to enable |
+| `allowAllUrls` | boolean | No | Allow `tabz_open_url` to any domain |
+| `customDomains` | string | No | Additional allowed domains (newline-separated) |
+
+---
+
+### GET /api/mcp-presets
+
+List all saved tool presets.
+
+```bash
+curl http://localhost:8129/api/mcp-presets
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "presets": {
+    "minimal": {
+      "name": "Minimal",
+      "description": "4 tools",
+      "tools": ["tabz_list_tabs", "tabz_switch_tab", "tabz_rename_tab", "tabz_get_page_info"],
+      "updatedAt": "2026-01-21T00:00:00.000Z"
+    }
+  }
+}
+```
+
+---
+
+### POST /api/mcp-presets
+
+Save a new preset or update an existing one.
+
+```bash
+curl -X POST http://localhost:8129/api/mcp-presets \
+  -H "Content-Type: application/json" \
+  -d '{"name": "My Preset", "tools": ["tabz_list_tabs", "tabz_screenshot"], "description": "2 tools"}'
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Display name for the preset |
+| `tools` | string[] | Yes | Array of tool IDs |
+| `description` | string | No | Optional description |
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Preset \"My Preset\" saved",
+  "slug": "my-preset",
+  "preset": { "name": "My Preset", "tools": [...], "updatedAt": "..." }
+}
+```
+
+**Usage:** Load a preset when starting Claude Code:
+```bash
+MCP_PRESET=my-preset claude
+```
+
+---
+
+### DELETE /api/mcp-presets/:slug
+
+Delete a saved preset.
+
+```bash
+curl -X DELETE http://localhost:8129/api/mcp-presets/my-preset
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Preset \"My Preset\" deleted"
+}
+```
+
+---
+
 ## WebSocket
 
 Real-time terminal I/O uses WebSocket at `ws://localhost:8129`.

@@ -138,7 +138,7 @@ const TOOL_GROUPS = {
     },
     // Notifications tools (Chrome notifications API)
     notifications: (server) => {
-        registerNotificationTools(server); // tabz_notification_show, tabz_notification_update, tabz_notification_progress, tabz_notification_clear, tabz_notification_list
+        registerNotificationTools(server); // tabz_notification_show, tabz_notification_update, tabz_notification_clear, tabz_notification_list
     },
     // Profile tools (terminal profiles CRUD and spawning)
     profiles: (server) => {
@@ -157,6 +157,7 @@ async function getPresetTools(presetName) {
     try {
         const response = await fetch(`${BACKEND_URL}/api/mcp-presets`);
         if (!response.ok) {
+            console.error(`[MCP] Failed to fetch presets: HTTP ${response.status}`);
             return null;
         }
         const data = await response.json();
@@ -165,11 +166,12 @@ async function getPresetTools(presetName) {
             console.error(`[MCP] Using preset "${presetName}" with ${preset.tools.length} tools`);
             return preset.tools;
         }
-        console.error(`[MCP] Preset "${presetName}" not found`);
+        console.error(`[MCP] Preset "${presetName}" not found in saved presets`);
         return null;
     }
-    catch {
-        console.error(`[MCP] Failed to load preset "${presetName}"`);
+    catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[MCP] Network error loading preset "${presetName}": ${errorMsg}`);
         return null;
     }
 }
@@ -185,7 +187,8 @@ async function getEnabledTools() {
         if (presetTools) {
             return new Set(presetTools);
         }
-        // Preset not found, fall through to default config
+        // Preset not found or failed to load, fall through to default config
+        console.error(`[MCP] MCP_PRESET="${presetName}" not found or failed to load, falling back to mcp-config`);
     }
     try {
         const response = await fetch(`${BACKEND_URL}/api/mcp-config`);
@@ -197,26 +200,50 @@ async function getEnabledTools() {
         console.error(`[MCP] Loaded ${tools.length} enabled tools from backend`);
         return new Set(tools);
     }
-    catch {
-        console.error(`[MCP] Backend not reachable, enabling all ${ALL_TOOL_IDS.length} tools`);
+    catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[MCP] Failed to fetch mcp-config from ${BACKEND_URL}: ${errorMsg}`);
+        console.error(`[MCP] Falling back to all ${ALL_TOOL_IDS.length} tools`);
         return new Set(ALL_TOOL_IDS);
     }
 }
 /**
  * Create a filtered McpServer wrapper that only registers enabled tools
+ *
+ * Note: server.tool() is deprecated in MCP SDK v1.25+ in favor of registerTool().
+ * We intercept both methods to support current tool registrations and future migrations.
+ * The deprecation warnings are expected until all tools migrate to registerTool().
  */
 function createFilteredServer(server, enabledTools) {
-    const originalTool = server.tool.bind(server);
-    // Override server.tool to filter based on enabledTools
-    server.tool = function (name, ...args) {
+    // Use 'any' casts to work around complex MCP SDK type signatures
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const serverAny = server;
+    // Intercept deprecated server.tool() - used by current tool registrations
+    const originalTool = serverAny.tool.bind(server);
+    serverAny.tool = function (...allArgs) {
+        const name = allArgs[0];
         if (enabledTools.has(name)) {
-            return originalTool(name, ...args);
+            return originalTool(...allArgs);
         }
         else {
             console.error(`[MCP] Skipping disabled tool: ${name}`);
             return undefined;
         }
     };
+    // Also intercept registerTool() for future compatibility
+    if (serverAny.registerTool) {
+        const originalRegisterTool = serverAny.registerTool.bind(server);
+        serverAny.registerTool = function (...allArgs) {
+            const name = allArgs[0];
+            if (enabledTools.has(name)) {
+                return originalRegisterTool(...allArgs);
+            }
+            else {
+                console.error(`[MCP] Skipping disabled tool: ${name}`);
+                return undefined;
+            }
+        };
+    }
     return server;
 }
 /**

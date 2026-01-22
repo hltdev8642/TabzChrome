@@ -19,7 +19,7 @@ extension/                          backend/
 ├── sidepanel/sidepanel.tsx         ├── server.js (Express + WebSocket)
 ├── components/                     ├── modules/
 │   ├── Terminal.tsx                │   ├── pty-handler.js
-│   └── SettingsModal.tsx           │   ├── terminal-registry.js
+│   └── settings/                   │   ├── terminal-registry.js
 ├── hooks/                          │   └── tmux-session-manager.js
 │   ├── useTerminalSessions.ts      └── routes/
 │   ├── useProfiles.ts                  ├── api.js
@@ -36,10 +36,10 @@ extension/                          backend/
 ├── dashboard/
 │   ├── App.tsx                     .claude/
 │   ├── sections/                   ├── skills/        (project skills)
-│   │   ├── Profiles.tsx            │   ├── spawning-terminals/
-│   │   ├── Files.tsx               │   ├── taking-screenshots/
-│   │   ├── Terminals.tsx           │   ├── xterm-js/
-│   │   └── ...                     │   └── ...
+│   │   ├── Profiles.tsx            │   ├── tabz-browser/
+│   │   ├── Files.tsx               │   ├── tabz-terminals/
+│   │   ├── Terminals.tsx           │   ├── tabz-development/
+│   │   └── ...                     │   └── tabz-integration/
 │   └── contexts/                   ├── agents/
 ├── 3d/FocusScene.tsx               │   └── tabz-expert.md
 └── shared/messaging.ts             └── commands/
@@ -49,7 +49,7 @@ extension/                          backend/
 - **Terminal IDs**: `ctt-{profile}-{uuid}` prefix for Chrome extension terminals
 - **State**: Chrome storage (UI) + tmux (process persistence)
 - **Communication**: WebSocket for terminal I/O, Chrome messages for extension
-- **MCP Tools**: 77 tabz_* tools available via project-scoped `.mcp.json`
+- **MCP Tools**: 82 tabz_* tools available via project-scoped `.mcp.json`
 
 ---
 
@@ -172,11 +172,11 @@ This project has local skills and agents in `.claude/`:
 | `.claude/skills/tabz-terminals/` | Spawn workers via TabzChrome API, worktree setup |
 | `.claude/skills/tabz-development/` | Working on TabzChrome codebase (Terminal.tsx, xterm.js) |
 | `.claude/skills/claude-code-setup/` | Diagnose/manage Claude Code CLI config, MCP, plugins |
-| `.claude/agents/tabz-expert.md` | Browser automation specialist (77 MCP tools) |
+| `.claude/agents/tabz-expert.md` | Browser automation specialist (82 MCP tools) |
 
 ### MCP Tools (Project-Scoped)
 
-The 77 tabz_* MCP tools are only available in this project (configured in `.mcp.json`). Use `mcp-cli` to discover and call tools.
+The 82 tabz_* MCP tools are only available in this project (configured in `.mcp.json`). Use `mcp-cli` to discover and call tools.
 
 ### Spawning Workers
 

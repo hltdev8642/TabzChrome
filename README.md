@@ -53,7 +53,7 @@ TabzChrome is designed to work seamlessly with Claude Code:
 
 ![MCP settings](docs/screenshots/mcp-settings.png)
 
-Using Claude Code's experimental MCP CLI mode, tool schemas are loaded on-demand instead of all 44 definitions into context. Enable with the `ENABLE_EXPERIMENTAL_MCP_CLI=true` environment variable. See the [setup gist](https://gist.github.com/GGPrompts/50e82596b345557656df2fc8d2d54e2c) for details.
+Using Claude Code's experimental MCP CLI mode, tool schemas are loaded on-demand instead of all 82 definitions into context. Enable with the `ENABLE_EXPERIMENTAL_MCP_CLI=true` environment variable. See the [setup gist](https://gist.github.com/GGPrompts/50e82596b345557656df2fc8d2d54e2c) for details.
 
 **🎭 Power Features (Claude Code Integration):**
 
@@ -61,11 +61,11 @@ TabzChrome includes a [Claude Code plugin marketplace](.claude-plugin/marketplac
 
 | Component | Type | Description |
 |-----------|------|-------------|
-| [**Tabz MCP Server**](tabz-mcp-server/MCP_TOOLS.md) | MCP | 77 browser control tools (screenshots, clicks, bookmarks, network, tab groups, windows, history, cookies, emulation) |
+| [**Tabz MCP Server**](tabz-mcp-server/MCP_TOOLS.md) | MCP | 82 browser control tools (screenshots, clicks, bookmarks, network, tab groups, windows, history, cookies, emulation, profiles, plugins) |
 | [**tabz-browser**](.claude/skills/tabz-browser/) | skill | Browser automation patterns (screenshots, forms, network debugging) |
 | [**tabz-terminals**](.claude/skills/tabz-terminals/) | skill | Terminal spawning and worker management via REST API |
 | [**tabz-development**](.claude/skills/tabz-development/) | skill | Terminal.tsx, xterm.js, WebSocket patterns |
-| [**tabz-expert**](.claude/agents/tabz-expert.md) | agent | Browser automation specialist with 77 MCP tools |
+| [**tabz-expert**](.claude/agents/tabz-expert.md) | agent | Browser automation specialist with 82 MCP tools |
 
 **Quick setup:** Skills auto-load when you run Claude Code in the TabzChrome directory.
 
@@ -219,8 +219,8 @@ Click the **+** dropdown to spawn terminals from saved profiles:
 - **Font Size** - 12-24px per profile
 - **Appearance** - Fully customizable with separate controls:
   - **Text Colors** - 11 themes (high-contrast, dracula, ocean, neon, amber, matrix, cyberpunk, vaporwave, synthwave, aurora, holographic)
-  - **Background Gradient** - 28 gradient options, independent of text colors
-  - **Panel Color** - Base solid color with 13 presets
+  - **Background Gradient** - 21 gradient options, independent of text colors
+  - **Panel Color** - Base solid color with 9 presets
   - **Transparency** - 0-100% slider for gradient visibility
   - **Dark/Light Toggle** - Header toggle switches all themes between variants
 
@@ -334,7 +334,7 @@ Terminal tabs show live Claude Code status with emoji indicators:
 
 **Subagent indicators** - When Claude spawns subagents, multiple robot emojis appear (🤖🤖) to show parallel work happening.
 
-**Setup required** - See [claude-hooks/README.md](claude-hooks/README.md) for installation.
+**Setup required** - Claude Code hooks are configured automatically when you run Claude Code in the TabzChrome directory.
 
 ### Claude Code Audio Announcements
 
@@ -481,7 +481,7 @@ The URL opens in a new tab and the sidebar activates automatically.
 
 ## Tabz MCP Integration
 
-Tabz includes an **MCP server** with 44 tools that let Claude Code control your browser:
+Tabz includes an **MCP server** with 82 tools that let Claude Code control your browser:
 
 ![Claude using MCP tools to control DALL-E in the browser - filling prompts, clicking generate, downloading results](docs/screenshots/mcp-dalle-demo.png)
 
@@ -533,7 +533,7 @@ Install the `tabz-mcp` skill for guided browser automation. The skill dynamicall
 
 ### No Remote Debugging Required
 
-**All 47 MCP tools work using Chrome Extension APIs only!** No `--remote-debugging-port=9222` flag needed.
+**All 82 MCP tools work using Chrome Extension APIs only!** No `--remote-debugging-port=9222` flag needed.
 
 | Feature | Works Out of the Box |
 |---------|---------------------|

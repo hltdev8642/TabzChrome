@@ -406,25 +406,6 @@ DOM inspection, performance profiling, device emulation, notifications, and audi
 
 ---
 
-## tabz_notification_progress
-
-**Purpose:** Show or update a progress notification (convenience wrapper).
-
-**Trigger phrases:**
-- [Show progress](tabz:paste?text=Show%20progress)
-- [Update progress bar](tabz:paste?text=Update%20progress%20bar)
-
-**Parameters:**
-- `title` (required): Notification title
-- `message` (required): Status message
-- `progress` (required): 0-100 percentage
-- `notificationId` (optional): ID for updates (creates new if omitted)
-
-**Returns:**
-- `notificationId`: ID for further updates
-
----
-
 ## tabz_notification_clear
 
 **Purpose:** Dismiss a notification.

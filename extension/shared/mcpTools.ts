@@ -189,8 +189,6 @@ export const MCP_TOOLS: McpTool[] = [
     triggers: ['show notification', 'send notification', 'desktop alert', 'notify me'] },
   { id: 'tabz_notification_update', name: 'Update Notification', desc: 'Modify existing notification', tokens: 800, category: 'Notifications',
     triggers: ['update notification', 'change notification'] },
-  { id: 'tabz_notification_progress', name: 'Progress Notification', desc: 'Show progress bar notification', tokens: 900, category: 'Notifications',
-    triggers: ['progress notification', 'show progress', 'progress bar'] },
   { id: 'tabz_notification_clear', name: 'Clear Notification', desc: 'Dismiss a notification', tokens: 600, category: 'Notifications',
     triggers: ['clear notification', 'dismiss notification', 'close notification'] },
   { id: 'tabz_notification_list', name: 'List Notifications', desc: 'Get active notifications', tokens: 800, category: 'Notifications',

@@ -10,11 +10,6 @@
       "env": {
         "BACKEND_URL": "http://localhost:8129"
       }
-    },
-    "tmux": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "tmux-mcp"]
     }
   }
 }

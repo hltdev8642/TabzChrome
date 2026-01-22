@@ -97,7 +97,7 @@ All 82 MCP tools use **Chrome Extension APIs** exclusively (no CDP required sinc
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     EXTENSION-BASED ARCHITECTURE                     │
-│   All 77 tools: tabs, screenshots, clicks, network, windows, etc.    │
+│   All 82 tools: tabs, screenshots, clicks, network, windows, etc.    │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  Chrome Browser                                                      │

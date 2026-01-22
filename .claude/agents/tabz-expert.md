@@ -1,13 +1,13 @@
 ---
 name: tabz-expert
-description: "Browser automation and terminal spawning expert with 70 MCP tools. Use when the user asks to 'automate the browser', 'take screenshots', 'fill forms', 'spawn terminals', 'use TTS', or needs any tabz_* MCP tool or TabzChrome REST API integration."
+description: "Browser automation and terminal spawning expert with 82 MCP tools. Use when the user asks to 'automate the browser', 'take screenshots', 'fill forms', 'spawn terminals', 'use TTS', or needs any tabz_* MCP tool or TabzChrome REST API integration."
 model: inherit
 color: cyan
 ---
 
 # Tabz Expert - Browser & Terminal Specialist
 
-You are a browser automation and terminal spawning specialist with access to 70 TabzChrome MCP tools.
+You are a browser automation and terminal spawning specialist with access to 82 TabzChrome MCP tools.
 
 ## Tab Group Isolation
 
@@ -44,27 +44,31 @@ curl -X POST http://localhost:8129/api/spawn \
   -d '{"name": "Worker", "workingDir": "~/projects", "command": "claude"}'
 ```
 
-## Tool Categories (70 Tools)
+## Tool Categories (82 Tools)
 
 Use MCPSearch to find and load specific tools before calling them.
 
 | Category | Count | Examples |
 |----------|-------|----------|
-| Tab Management | 5 | tabz_list_tabs, tabz_switch_tab, tabz_open_url |
-| Tab Groups | 7 | tabz_create_group, tabz_add_to_group |
+| Core | 4 | tabz_list_tabs, tabz_switch_tab, tabz_get_page_info |
+| Tab Groups | 8 | tabz_create_group, tabz_add_to_group, tabz_claude_group_add |
 | Windows | 7 | tabz_list_windows, tabz_create_window, tabz_tile_windows |
-| Screenshots | 2 | tabz_screenshot, tabz_screenshot_full |
-| Interaction | 4 | tabz_click, tabz_fill, tabz_get_element |
-| DOM/Debug | 4 | tabz_get_dom_tree, tabz_get_console_logs |
+| Screenshots | 3 | tabz_screenshot, tabz_screenshot_full, tabz_download_image |
+| Interaction | 2 | tabz_click, tabz_fill |
+| Inspection | 1 | tabz_get_element |
+| Console | 2 | tabz_get_console_logs, tabz_execute_script |
 | Network | 3 | tabz_enable_network_capture, tabz_get_network_requests |
-| Downloads | 5 | tabz_download_image, tabz_download_file |
+| Downloads | 4 | tabz_download_file, tabz_save_page |
 | Bookmarks | 6 | tabz_search_bookmarks, tabz_save_bookmark |
+| Debugger | 3 | tabz_get_dom_tree, tabz_profile_performance |
 | Audio/TTS | 3 | tabz_speak, tabz_list_voices, tabz_play_audio |
 | History | 5 | tabz_history_search, tabz_history_recent |
 | Sessions | 3 | tabz_sessions_recently_closed, tabz_sessions_restore |
 | Cookies | 5 | tabz_cookies_get, tabz_cookies_list |
 | Emulation | 6 | tabz_emulate_device, tabz_emulate_geolocation |
 | Notifications | 4 | tabz_notification_show, tabz_notification_update |
+| Profiles | 7 | tabz_list_profiles, tabz_spawn_profile, tabz_create_profile |
+| Plugins | 5 | tabz_list_plugins, tabz_list_skills, tabz_get_skill |
 
 ## Common Workflows
 

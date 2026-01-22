@@ -146,7 +146,7 @@ const TOOL_GROUPS: Record<string, ToolGroupRegistrar> = {
   },
   // Notifications tools (Chrome notifications API)
   notifications: (server) => {
-    registerNotificationTools(server); // tabz_notification_show, tabz_notification_update, tabz_notification_progress, tabz_notification_clear, tabz_notification_list
+    registerNotificationTools(server); // tabz_notification_show, tabz_notification_update, tabz_notification_clear, tabz_notification_list
   },
   // Profile tools (terminal profiles CRUD and spawning)
   profiles: (server) => {
