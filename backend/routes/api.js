@@ -1811,6 +1811,107 @@ router.post('/mcp-config', asyncHandler(async (req, res) => {
 }));
 
 // =============================================================================
+// MCP PRESETS - Save/load custom tool presets
+// =============================================================================
+
+const presetsPath = require('path').join(__dirname, '../../mcp-presets.json');
+
+/**
+ * GET /api/mcp-presets - List all saved presets
+ */
+router.get('/mcp-presets', asyncHandler(async (req, res) => {
+  let presets = {};
+
+  try {
+    const data = await fs.readFile(presetsPath, 'utf-8');
+    presets = JSON.parse(data);
+  } catch (err) {
+    // File doesn't exist, return empty
+    if (err.code !== 'ENOENT') {
+      log.error('Error reading MCP presets:', err.message);
+    }
+  }
+
+  res.json({
+    success: true,
+    presets
+  });
+}));
+
+/**
+ * POST /api/mcp-presets - Save a new preset
+ * Body: { name: string, tools: string[], description?: string }
+ */
+router.post('/mcp-presets', asyncHandler(async (req, res) => {
+  const { name, tools, description } = req.body;
+
+  if (!name || typeof name !== 'string') {
+    return res.status(400).json({ success: false, error: 'Preset name is required' });
+  }
+
+  if (!Array.isArray(tools)) {
+    return res.status(400).json({ success: false, error: 'Tools array is required' });
+  }
+
+  // Load existing presets
+  let presets = {};
+  try {
+    const data = await fs.readFile(presetsPath, 'utf-8');
+    presets = JSON.parse(data);
+  } catch (err) {
+    // File doesn't exist, start fresh
+  }
+
+  // Add/update preset
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  presets[slug] = {
+    name,
+    description: description || '',
+    tools,
+    updatedAt: new Date().toISOString()
+  };
+
+  await fs.writeFile(presetsPath, JSON.stringify(presets, null, 2), 'utf-8');
+
+  res.json({
+    success: true,
+    message: `Preset "${name}" saved`,
+    slug,
+    preset: presets[slug]
+  });
+}));
+
+/**
+ * DELETE /api/mcp-presets/:slug - Delete a preset
+ */
+router.delete('/mcp-presets/:slug', asyncHandler(async (req, res) => {
+  const { slug } = req.params;
+
+  // Load existing presets
+  let presets = {};
+  try {
+    const data = await fs.readFile(presetsPath, 'utf-8');
+    presets = JSON.parse(data);
+  } catch (err) {
+    return res.status(404).json({ success: false, error: 'Preset not found' });
+  }
+
+  if (!presets[slug]) {
+    return res.status(404).json({ success: false, error: 'Preset not found' });
+  }
+
+  const deletedName = presets[slug].name;
+  delete presets[slug];
+
+  await fs.writeFile(presetsPath, JSON.stringify(presets, null, 2), 'utf-8');
+
+  res.json({
+    success: true,
+    message: `Preset "${deletedName}" deleted`
+  });
+}));
+
+// =============================================================================
 // SETTINGS API - Sync between extension and dashboard
 // =============================================================================
 

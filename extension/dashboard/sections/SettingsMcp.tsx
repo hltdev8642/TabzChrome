@@ -1,8 +1,15 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { Search, RefreshCw, ChevronDown, ChevronRight, ExternalLink, CheckCircle, Circle, Settings, Zap, Terminal, Microscope } from 'lucide-react'
+import { Search, RefreshCw, ChevronDown, ChevronRight, ExternalLink, CheckCircle, Circle, Settings, Zap, Terminal, Microscope, Save, Trash2, FolderOpen, Copy, Play } from 'lucide-react'
 import { SettingsIcon, type AnimatedIconHandle } from '../../components/icons'
 import { spawnTerminal } from '../hooks/useDashboard'
 import { MCP_TOOLS, CORE_TOOL_IDS, ALL_TOOL_IDS, type McpTool } from '../../shared/mcpTools'
+
+interface Preset {
+  name: string
+  description: string
+  tools: string[]
+  updatedAt: string
+}
 
 const PRESETS = {
   minimal: CORE_TOOL_IDS,
@@ -24,6 +31,9 @@ export default function McpPlayground() {
   const [customDomains, setCustomDomains] = useState('')
   const [inspectorCommand, setInspectorCommand] = useState<string>('')
   const [inspectorUrl, setInspectorUrl] = useState<string>('http://localhost:6274')
+  const [presets, setPresets] = useState<Record<string, Preset>>({})
+  const [newPresetName, setNewPresetName] = useState('')
+  const [showPresetSave, setShowPresetSave] = useState(false)
 
   // Animated icon ref - play animation on mount
   const iconRef = useRef<AnimatedIconHandle>(null)
@@ -32,13 +42,14 @@ export default function McpPlayground() {
     return () => clearTimeout(timer)
   }, [])
 
-  // Fetch config and inspector command on mount
+  // Fetch config, inspector command, and presets on mount
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const [configRes, inspectorRes] = await Promise.all([
+        const [configRes, inspectorRes, presetsRes] = await Promise.all([
           fetch(`${API_BASE}/api/mcp-config`),
           fetch(`${API_BASE}/api/mcp/inspector-command`),
+          fetch(`${API_BASE}/api/mcp-presets`),
         ])
 
         if (configRes.ok) {
@@ -52,6 +63,11 @@ export default function McpPlayground() {
           const inspectorData = await inspectorRes.json()
           setInspectorCommand(inspectorData.data?.command || '')
           setInspectorUrl(inspectorData.data?.inspectorUrl || 'http://localhost:6274')
+        }
+
+        if (presetsRes.ok) {
+          const presetsData = await presetsRes.json()
+          setPresets(presetsData.presets || {})
         }
       } catch (err) {
         console.error('Failed to fetch MCP config:', err)
@@ -101,6 +117,61 @@ export default function McpPlayground() {
     setEnabledTools(PRESETS[preset])
     setChanged(true)
     setSaved(false)
+  }
+
+  // Custom preset functions
+  const saveCustomPreset = async () => {
+    if (!newPresetName.trim()) return
+
+    try {
+      const res = await fetch(`${API_BASE}/api/mcp-presets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newPresetName.trim(),
+          tools: enabledTools,
+          description: `${enabledTools.length} tools`
+        }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setPresets(prev => ({ ...prev, [data.slug]: data.preset }))
+        setNewPresetName('')
+        setShowPresetSave(false)
+      }
+    } catch (err) {
+      console.error('Failed to save preset:', err)
+    }
+  }
+
+  const loadCustomPreset = (slug: string) => {
+    const preset = presets[slug]
+    if (preset) {
+      setEnabledTools(preset.tools)
+      setChanged(true)
+      setSaved(false)
+    }
+  }
+
+  const deleteCustomPreset = async (slug: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/mcp-presets/${slug}`, { method: 'DELETE' })
+      if (res.ok) {
+        setPresets(prev => {
+          const newPresets = { ...prev }
+          delete newPresets[slug]
+          return newPresets
+        })
+      }
+    } catch (err) {
+      console.error('Failed to delete preset:', err)
+    }
+  }
+
+  const copyPresetEnvCommand = (slug: string) => {
+    const cmd = `MCP_PRESET=${slug} claude`
+    navigator.clipboard.writeText(cmd)
   }
 
   const toggleCategory = (category: string) => {
@@ -239,7 +310,7 @@ export default function McpPlayground() {
       {/* Presets and Search */}
       <div className="flex flex-wrap items-center gap-4 mb-6">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Presets:</span>
+          <span className="text-sm text-muted-foreground">Quick:</span>
           <button
             onClick={() => applyPreset('minimal')}
             className="px-3 py-1.5 text-sm rounded-lg bg-card border border-border hover:border-primary/50 transition-colors"
@@ -268,6 +339,111 @@ export default function McpPlayground() {
             placeholder="Search tools..."
             className="w-full pl-10 pr-4 py-2 rounded-lg bg-card border border-border focus:border-primary focus:outline-none"
           />
+        </div>
+      </div>
+
+      {/* Custom Presets */}
+      <div className="p-4 rounded-lg bg-indigo-500/10 border border-indigo-500/30 mb-6">
+        <div className="flex items-start gap-3">
+          <FolderOpen className="w-5 h-5 text-indigo-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="font-semibold text-indigo-200 mb-1">Custom Presets</h3>
+            <p className="text-sm text-indigo-200/80 mb-3">
+              Save your current tool selection as a preset. Use presets via environment variable for different agents.
+            </p>
+
+            {/* Save new preset */}
+            <div className="flex items-center gap-2 mb-3">
+              {showPresetSave ? (
+                <>
+                  <input
+                    type="text"
+                    value={newPresetName}
+                    onChange={(e) => setNewPresetName(e.target.value)}
+                    placeholder="Preset name..."
+                    className="flex-1 px-3 py-1.5 text-sm rounded-lg bg-background border border-indigo-500/30 focus:border-indigo-400 focus:outline-none"
+                    onKeyDown={(e) => e.key === 'Enter' && saveCustomPreset()}
+                    autoFocus
+                  />
+                  <button
+                    onClick={saveCustomPreset}
+                    disabled={!newPresetName.trim()}
+                    className="flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 transition-colors disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save
+                  </button>
+                  <button
+                    onClick={() => { setShowPresetSave(false); setNewPresetName('') }}
+                    className="px-3 py-1.5 text-sm rounded-lg bg-muted/50 text-muted-foreground hover:bg-muted transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setShowPresetSave(true)}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 transition-colors"
+                >
+                  <Save className="w-4 h-4" />
+                  Save Current as Preset
+                </button>
+              )}
+            </div>
+
+            {/* List of saved presets */}
+            {Object.keys(presets).length > 0 && (
+              <div className="space-y-2">
+                {Object.entries(presets).map(([slug, preset]) => (
+                  <div
+                    key={slug}
+                    className="flex items-center justify-between p-2 rounded-lg bg-background/50 border border-indigo-500/20"
+                  >
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => loadCustomPreset(slug)}
+                        className="flex items-center gap-2 px-2 py-1 text-sm rounded bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 transition-colors"
+                        title="Load this preset"
+                      >
+                        <Play className="w-3 h-3" />
+                        Apply
+                      </button>
+                      <div>
+                        <span className="font-medium text-indigo-200">{preset.name}</span>
+                        <span className="text-xs text-indigo-400/60 ml-2">{preset.tools.length} tools</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => copyPresetEnvCommand(slug)}
+                        className="p-1.5 rounded text-indigo-400/60 hover:text-indigo-400 hover:bg-indigo-500/20 transition-colors"
+                        title={`Copy: MCP_PRESET=${slug} claude`}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => deleteCustomPreset(slug)}
+                        className="p-1.5 rounded text-red-400/60 hover:text-red-400 hover:bg-red-500/20 transition-colors"
+                        title="Delete preset"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {Object.keys(presets).length === 0 && !showPresetSave && (
+              <p className="text-xs text-indigo-200/50">
+                No custom presets saved yet. Save your current selection to create one.
+              </p>
+            )}
+
+            <p className="text-xs text-indigo-200/50 mt-3">
+              Use a preset: <code className="bg-indigo-500/20 px-1.5 py-0.5 rounded">MCP_PRESET=preset-name claude</code>
+            </p>
+          </div>
         </div>
       </div>
 

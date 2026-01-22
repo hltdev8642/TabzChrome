@@ -159,10 +159,44 @@ const TOOL_GROUPS: Record<string, ToolGroupRegistrar> = {
 };
 
 /**
+ * Fetch preset tools from backend
+ * Returns null if preset not found
+ */
+async function getPresetTools(presetName: string): Promise<string[] | null> {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/mcp-presets`);
+    if (!response.ok) {
+      return null;
+    }
+    const data = await response.json();
+    const preset = data.presets?.[presetName];
+    if (preset?.tools) {
+      console.error(`[MCP] Using preset "${presetName}" with ${preset.tools.length} tools`);
+      return preset.tools;
+    }
+    console.error(`[MCP] Preset "${presetName}" not found`);
+    return null;
+  } catch {
+    console.error(`[MCP] Failed to load preset "${presetName}"`);
+    return null;
+  }
+}
+
+/**
  * Fetch enabled tool IDs from the backend
- * Falls back to all tools if backend is not reachable
+ * Checks MCP_PRESET env var first, then falls back to mcp-config
  */
 async function getEnabledTools(): Promise<Set<string>> {
+  // Check for preset override via environment variable
+  const presetName = process.env.MCP_PRESET;
+  if (presetName) {
+    const presetTools = await getPresetTools(presetName);
+    if (presetTools) {
+      return new Set(presetTools);
+    }
+    // Preset not found, fall through to default config
+  }
+
   try {
     const response = await fetch(`${BACKEND_URL}/api/mcp-config`);
     if (!response.ok) {
@@ -172,7 +206,7 @@ async function getEnabledTools(): Promise<Set<string>> {
     const tools = config.enabledTools || ALL_TOOL_IDS;
     console.error(`[MCP] Loaded ${tools.length} enabled tools from backend`);
     return new Set(tools);
-  } catch (error) {
+  } catch {
     console.error(`[MCP] Backend not reachable, enabling all ${ALL_TOOL_IDS.length} tools`);
     return new Set(ALL_TOOL_IDS);
   }
