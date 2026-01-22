@@ -136,8 +136,17 @@ for issue in ready_issues[:3]:
     # 2. Wait for Claude boot (4s on fast machines, 8s on laptops)
     time.sleep(4)
 
-    # 3. Send prompt
-    prompt = f"bd show {issue_id}"
+    # 3. Extract prepared.prompt from issue notes (or use default)
+    issue_data = mcp__beads__show(issue_id=issue_id)
+    notes = issue_data[0].get('notes', '') if issue_data else ''
+
+    if '## prepared.prompt' in notes:
+        import re
+        match = re.search(r'## prepared\.prompt\s*\n(.*?)(?=\n## |\Z)', notes, re.DOTALL)
+        prompt = match.group(1).strip() if match else f"bd show {issue_id}"
+    else:
+        prompt = f"bd show {issue_id}"
+
     tabz_send_keys(terminal=issue_id, text=prompt)
 
     # 4. Claim issue and announce
@@ -174,35 +183,34 @@ When the background watcher returns, it will report one of:
 
 ### Cleanup Completed Worker
 
-When an issue closes, clean up immediately:
+When an issue closes, run the full finalize flow:
 
 ```bash
 ISSUE_ID="bd-abc"  # The completed issue
-PROJECT_DIR="/path/to/project"
 
-# 1. Kill worker terminal (terminal ID = tmux session name)
-#    Get the terminal ID from tabz_list_terminals, then kill via tmux
-TERMINAL_ID="ctt-${ISSUE_ID}-xxxxxxxx"  # From tabz_list_terminals response
-tmux kill-session -t "$TERMINAL_ID" 2>/dev/null || true
-
-# 2. Remove worktree
-cd "$PROJECT_DIR"
-git worktree remove ".worktrees/$ISSUE_ID" --force 2>/dev/null || true
-
-# 3. Delete branch
-git branch -d "feature/$ISSUE_ID" 2>/dev/null || true
+# One command does everything: checkpoints, capture, kill, merge, cleanup, push
+./plugins/conductor/scripts/finalize-issue.sh "$ISSUE_ID"
 ```
+
+This runs:
+1. Verify issue is closed
+2. Run required checkpoints (from `gate:*` labels)
+3. Verify checkpoints passed
+4. Capture session transcript/stats
+5. Kill worker terminal via TabzChrome API
+6. Merge feature branch to main
+7. Remove worktree and delete branch
+8. `bd sync && git push`
 
 ```python
-# 4. Announce
-tabz_speak(text=f"{ISSUE_ID} cleaned up")
+# Announce completion
+tabz_speak(text=f"{ISSUE_ID} finalized and merged")
 ```
 
-After cleanup:
-1. Check if more ready issues exist
-2. Spawn workers to fill slots
-3. Spawn a new watcher
-4. Return to being available
+**After each cleanup, immediately:**
+1. Check if more ready issues exist → spawn new workers
+2. Check if in_progress issues remain → spawn new watcher
+3. If all done → announce wave complete
 
 ## Step 8: Wave Complete
 
@@ -296,9 +304,7 @@ for w in workers['terminals']:
 | Launch tmuxplexer | `monitor-workers.sh --spawn` |
 | Worker summary | `monitor-workers.sh --summary` |
 | Check your context | `monitor-workers.sh --self` |
-| **Kill worker** | `tmux kill-session -t "$TERMINAL_ID"` |
-| **Remove worktree** | `git worktree remove ".worktrees/$ISSUE_ID" --force` |
-| **Delete branch** | `git branch -d "feature/$ISSUE_ID"` |
+| **Finalize issue** | `./plugins/conductor/scripts/finalize-issue.sh "$ISSUE_ID"` |
 | **Sync beads** | `bd sync` |
 
 ## Self-Monitoring

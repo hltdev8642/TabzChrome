@@ -12,6 +12,22 @@ Lightweight visual smoke test for UI-facing changes.
 
 Writes result to `.checkpoints/visual-qa.json`.
 
+## IMPORTANT: Not for Workers on Worktrees
+
+**This checkpoint should only be run by the conductor AFTER merging changes to main.**
+
+Workers on git worktrees cannot run visual-qa because:
+1. **Changes aren't built** - The extension/app isn't rebuilt with worktree changes
+2. **No isolated browser** - Workers share the same Chrome instance
+3. **Tab group conflicts** - Multiple workers fighting for tabs (especially if groups disabled)
+4. **Dev server conflicts** - Multiple `npm run dev` instances on same port
+
+**Correct workflow:**
+1. Worker completes code changes and commits
+2. Conductor merges to main
+3. Conductor rebuilds extension/app
+4. Conductor runs `/conductor:visual-qa` on main branch
+
 ## Heuristics (v1)
 
 - If no UI-facing files changed (no changes under `extension/` and no `*.css`, `*.tsx`, `*.jsx`) → PASS (skipped).

@@ -98,8 +98,9 @@ SKILL_MAPPINGS=(
   # Browser automation / MCP
   "browser|screenshot|click|mcp|tabz_|automation|tabz-mcp|browser automation, MCP tools, screenshots, DOM interaction|browser automation via MCP"
 
-  # Visual QA / UI review
-  "visual|qa|regression|console.*error|ui.*test|screenshot.*test|visual-qa|visual QA, UI testing, screenshot comparison, console error detection|visual QA and UI testing"
+  # Visual QA / UI review (NOTE: Only for conductor post-merge, not workers)
+  # Deliberately narrow pattern - only trigger on explicit "visual qa" request, not generic UI terms
+  "visual.*qa|screenshot.*test|visual-qa|visual QA, UI testing, screenshot comparison, console error detection|visual QA and UI testing (conductor only, post-merge)"
 
   # Visual asset generation
   "hero.*image|team.*photo|icon.*generat|poster|dall-e|sora|video.*generat|tabz-artist|DALL-E image generation, Sora video, visual assets, poster design|visual asset generation"

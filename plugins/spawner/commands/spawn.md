@@ -29,7 +29,7 @@ PROJECT_DIR=$(pwd)
 bd worktree create ".worktrees/$ISSUE_ID" --branch "feature/$ISSUE_ID"
 
 # 3. Init deps (optional - runs in background, overlaps with Claude boot)
-INIT_SCRIPT=$(find ~/plugins ~/.claude/plugins -name "init-worktree.sh" -path "*spawner*" 2>/dev/null | head -1)
+INIT_SCRIPT=$(find ~/plugins ~/.claude/plugins ~/projects/TabzChrome/plugins -name "init-worktree.sh" -path "*spawner*" 2>/dev/null | head -1)
 [ -n "$INIT_SCRIPT" ] && $INIT_SCRIPT ".worktrees/$ISSUE_ID" &
 ```
 
@@ -98,7 +98,7 @@ bd worktree create ".worktrees/$ISSUE_ID" --branch "feature/$ISSUE_ID"
 
 ```bash
 # Find and run init script
-INIT_SCRIPT=$(find ~/plugins ~/.claude/plugins -name "init-worktree.sh" -path "*spawner*" 2>/dev/null | head -1)
+INIT_SCRIPT=$(find ~/plugins ~/.claude/plugins ~/projects/TabzChrome/plugins -name "init-worktree.sh" -path "*spawner*" 2>/dev/null | head -1)
 [ -n "$INIT_SCRIPT" ] && $INIT_SCRIPT ".worktrees/$ISSUE_ID"
 ```
 

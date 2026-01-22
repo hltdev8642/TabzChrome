@@ -10,32 +10,20 @@ Clean up completed workers, worktrees, and sync beads. You handle this directly 
 
 ## Quick Cleanup (Single Issue)
 
-```python
-ISSUE_ID = "bd-abc"
-
-# 1. Verify issue is closed
-issue = mcp__beads__show(issue_id=ISSUE_ID)
-if issue[0]['status'] != 'closed':
-    print(f"Warning: {ISSUE_ID} not closed yet")
-```
+Use the finalize script for complete cleanup:
 
 ```bash
 ISSUE_ID="bd-abc"
 
-# 2. Kill worker terminal if still running
-TOKEN=$(cat /tmp/tabz-auth-token)
-AGENT_ID=$(curl -s http://localhost:8129/api/agents | jq -r --arg name "$ISSUE_ID" '.data[] | select(.name == $name) | .id')
-[ -n "$AGENT_ID" ] && curl -s -X DELETE "http://localhost:8129/api/agents/$AGENT_ID" -H "X-Auth-Token: $TOKEN"
-
-# 3. Remove worktree
-git worktree remove ".worktrees/$ISSUE_ID" --force 2>/dev/null || true
-git branch -d "feature/$ISSUE_ID" 2>/dev/null || true
+# One command: checkpoints, capture, kill, merge, cleanup, push
+./plugins/conductor/scripts/finalize-issue.sh "$ISSUE_ID"
 ```
 
 ```python
-# 4. Announce
-tabz_speak(text=f"{ISSUE_ID} cleaned up")
+tabz_speak(text=f"{ISSUE_ID} finalized")
 ```
+
+The script handles: verify closed → run checkpoints → capture transcript → kill terminal → merge → cleanup worktree → bd sync → git push
 
 ---
 
@@ -43,26 +31,16 @@ tabz_speak(text=f"{ISSUE_ID} cleaned up")
 
 ```bash
 ISSUES="bd-abc bd-def bd-ghi"
-TOKEN=$(cat /tmp/tabz-auth-token)
 
 for ISSUE_ID in $ISSUES; do
-    echo "Cleaning up $ISSUE_ID..."
-
-    # Kill worker
-    AGENT_ID=$(curl -s http://localhost:8129/api/agents | jq -r --arg name "$ISSUE_ID" '.data[] | select(.name == $name) | .id')
-    [ -n "$AGENT_ID" ] && curl -s -X DELETE "http://localhost:8129/api/agents/$AGENT_ID" -H "X-Auth-Token: $TOKEN"
-
-    # Remove worktree
-    git worktree remove ".worktrees/$ISSUE_ID" --force 2>/dev/null || true
-    git branch -d "feature/$ISSUE_ID" 2>/dev/null || true
+    echo "=== Finalizing $ISSUE_ID ==="
+    ./plugins/conductor/scripts/finalize-issue.sh "$ISSUE_ID" || echo "Failed: $ISSUE_ID"
 done
 
-# Sync beads
-bd sync
-
-# Push changes
-git push
+echo "All issues finalized"
 ```
+
+Each finalize-issue.sh call handles the full flow including its own bd sync and git push.
 
 ---
 
@@ -96,82 +74,38 @@ for w in workers['terminals']:
 ```
 
 ```bash
-# 3. Kill completed workers
-TOKEN=$(cat /tmp/tabz-auth-token)
+# 3. Finalize all completed issues (one at a time)
 for ISSUE_ID in bd-abc bd-def bd-ghi; do  # Replace with actual completed IDs
-    AGENT_ID=$(curl -s http://localhost:8129/api/agents | jq -r --arg name "$ISSUE_ID" '.data[] | select(.name == $name) | .id')
-    [ -n "$AGENT_ID" ] && curl -s -X DELETE "http://localhost:8129/api/agents/$AGENT_ID" -H "X-Auth-Token: $TOKEN"
+    echo "=== Finalizing $ISSUE_ID ==="
+    ./plugins/conductor/scripts/finalize-issue.sh "$ISSUE_ID" || echo "Failed: $ISSUE_ID"
 done
-
-# 4. Clean all completed worktrees
-for ISSUE_ID in bd-abc bd-def bd-ghi; do
-    git worktree remove ".worktrees/$ISSUE_ID" --force 2>/dev/null || true
-    git branch -d "feature/$ISSUE_ID" 2>/dev/null || true
-done
-
-# 5. Final sync
-bd sync
-git push
 ```
 
 ```python
-# 6. Announce
-tabz_speak(text="Wave complete! All cleaned up.")
+# 4. Announce
+tabz_speak(text="Wave complete! All finalized and merged.")
 ```
 
 ---
 
-## Capture Transcripts (Optional)
+## Notes
 
-Before killing workers, capture their session transcripts:
-
-```python
-ISSUE_ID = "bd-abc"
-
-# Capture full output via MCP
-output = tabz_capture_terminal(terminal=ISSUE_ID, lines=1000)
-
-# Save to file
-with open(f"/tmp/transcript-{ISSUE_ID}.txt", "w") as f:
-    f.write(output)
-print(f"Saved transcript to /tmp/transcript-{ISSUE_ID}.txt")
-```
-
-Or via tmux directly:
-```bash
-ISSUE_ID="bd-abc"
-SESSION=$(curl -s http://localhost:8129/api/agents | jq -r --arg name "$ISSUE_ID" '.data[] | select(.name == $name) | .id')
-
-if [ -n "$SESSION" ]; then
-    tmux capture-pane -t "$SESSION" -p -S -10000 > "/tmp/transcript-$ISSUE_ID.txt"
-    echo "Saved transcript"
-fi
-```
-
----
+- **finalize-issue.sh handles everything**: checkpoints, capture, kill, merge, cleanup, sync, push
+- **Transcripts captured automatically**: Script saves to `.beads/transcripts/<issue-id>.txt`
+- **Checkpoints from labels**: Add `gate:codex-review`, `gate:test-runner` labels to issues
 
 ## Checklist
 
 Before calling wave done:
 
 - [ ] All issues closed in beads (`mcp__beads__show` returns `status: closed`)
-- [ ] Changes committed and pushed from worktrees
-- [ ] No uncommitted work in any worktree
-- [ ] Ready to remove worktrees
 
-After cleanup:
+After cleanup (finalize-issue.sh does all of this):
 
-- [ ] All workers killed
-- [ ] All worktrees removed
-- [ ] Branches deleted
-- [ ] Beads synced
-- [ ] Git pushed
-
----
-
-## Notes
-
-- **Capture before kill** if you want transcripts
-- **Check status first** - don't kill workers still in progress
-- **Force remove** worktrees to handle uncommitted changes
-- **Sync beads** before final push to ensure consistency
+- [x] Checkpoints run and verified
+- [x] Transcripts captured
+- [x] All workers killed
+- [x] All worktrees removed
+- [x] Branches deleted
+- [x] Beads synced
+- [x] Git pushed

@@ -88,7 +88,7 @@ git worktree add ".worktrees/ISSUE-ID" -b "feature/ISSUE-ID"
 Worktrees share git but NOT node_modules. Initialize before spawning:
 
 ```bash
-INIT_SCRIPT=$(find ~/plugins ~/.claude/plugins -name "init-worktree.sh" -path "*spawner*" 2>/dev/null | head -1)
+INIT_SCRIPT=$(find ~/plugins ~/.claude/plugins ~/projects/TabzChrome/plugins -name "init-worktree.sh" -path "*spawner*" 2>/dev/null | head -1)
 $INIT_SCRIPT ".worktrees/ISSUE-ID"
 ```
 

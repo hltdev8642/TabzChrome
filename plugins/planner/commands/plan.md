@@ -134,12 +134,25 @@ If yes → run /conductor:plan-backlog
 
 ## End State
 
-Planning is done when:
+Planning is done when ALL of these are complete:
 - [ ] Tasks exist in beads with clear titles
 - [ ] Dependencies wired (blocking relationships)
 - [ ] Priorities set (0-4)
 - [ ] Quality gates assigned (gate:* labels)
-- [ ] Worker prompts written (in issue notes)
+- [ ] **Worker prompts written** (via `/prompt-writer:write-all`)
 - [ ] Sprint waves presented
 
-Then ready to spawn workers on Wave 1.
+**IMPORTANT: Do NOT offer to spawn workers until prompts are written.**
+
+Check for prompts:
+```python
+# Issues with prepared.prompt in notes are ready
+ready = mcp__beads__ready()
+for issue in ready:
+    full = mcp__beads__show(issue_id=issue['id'])
+    notes = full[0].get('notes', '')
+    has_prompt = '## prepared.prompt' in notes or 'prepared.prompt:' in notes
+    print(f"{issue['id']}: {'✓ prompt ready' if has_prompt else '✗ needs prompt'}")
+```
+
+Only when all ready issues have prompts → "Ready to spawn workers on Wave 1?"

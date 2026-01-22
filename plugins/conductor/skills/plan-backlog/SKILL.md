@@ -117,14 +117,29 @@ Analyze each issue and suggest gates based on:
 | Docs only | (none) |
 | Epic close | `codex-review` |
 | **Files Touched** | |
-| `*.tsx`, `*.jsx`, `*.css`, `*.scss` | `visual-qa` |
 | `*.test.ts`, `*.spec.ts` | `test-runner` |
 | `README.md`, `docs/`, `*.md` | `docs-check` |
 | **Labels** | |
-| `needs-visual`, `ui`, `frontend` | `visual-qa` |
 | `needs-tests`, `testing` | `test-runner` |
 | `needs-review`, `security` | `codex-review` |
 | `needs-docs` | `docs-check` |
+
+#### Visual QA - Conductor Only (Not for Workers)
+
+**IMPORTANT:** `visual-qa` should NOT be assigned as a gate label on work issues.
+
+Visual QA requires:
+- Changes merged to main (extension rebuilt)
+- Browser access (workers on worktrees don't have isolated browsers)
+- Tab group isolation (which may be disabled)
+
+Instead, the **conductor** runs visual QA after merging:
+```bash
+# After merge, conductor can run visual-qa directly
+/conductor:visual-qa
+```
+
+If an issue truly needs visual verification, add a note in the issue description for the conductor to check post-merge, but don't add `gate:visual-qa` as a label.
 
 #### Assigning Gates (Recommended: labels on the work issue)
 
@@ -195,10 +210,27 @@ For batch processing, use `/prompt-writer:write-all` to process all backlog issu
 
 ## Step 6: Output Sprint Plan
 
-Present the organized backlog:
+**Before presenting the plan, verify prompts are written:**
+
+```python
+ready = mcp__beads__ready()
+missing_prompts = []
+for issue in ready:
+    full = mcp__beads__show(issue_id=issue['id'])
+    notes = full[0].get('notes', '') if full else ''
+    if '## prepared.prompt' not in notes and 'prepared.prompt:' not in notes:
+        missing_prompts.append(issue['id'])
+
+if missing_prompts:
+    print(f"⚠ {len(missing_prompts)} issues need prompts: {missing_prompts}")
+    print("Run /prompt-writer:write-all first")
+    # DO NOT proceed to spawn offer
+```
+
+**Only after all prompts are ready**, present the organized backlog:
 
 ```markdown
-## Wave 1 (Ready Now)
+## Wave 1 (Ready Now - All Prompts Written ✓)
 | Issue | Priority | Type | Description |
 |-------|----------|------|-------------|
 | bd-xxx | P1 | bug | Fix login redirect |
@@ -208,6 +240,8 @@ Present the organized backlog:
 | Issue | Blocked By | Description |
 |-------|------------|-------------|
 | bd-zzz | bd-xxx | Refactor auth flow |
+
+Ready to spawn workers on Wave 1?
 ```
 
 ## Decision Guidance
@@ -234,3 +268,14 @@ Then help the user think through:
 See the brainstorm skill references for dependency patterns and epic structures.
 
 Start by running `mcp__beads__stats()` and `mcp__beads__ready()` to understand the current state.
+
+## Checklist Before Offering to Spawn
+
+**Do NOT ask "Ready to spawn?" until ALL of these are true:**
+
+- [ ] All issues have priorities set
+- [ ] Dependencies are wired
+- [ ] Gate labels assigned (or explicitly skipped)
+- [ ] **All ready issues have `prepared.prompt` in notes** ← Most commonly missed!
+
+If prompts are missing, run `/prompt-writer:write-all` first.

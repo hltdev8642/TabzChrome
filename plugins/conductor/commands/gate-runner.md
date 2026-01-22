@@ -30,7 +30,19 @@ Runs required quality checkpoints for a beads issue.
 - `gate:codex-review` → `/conductor:reviewing-code` → `.checkpoints/codex-review.json`
 - `gate:test-runner` → `/conductor:running-tests` → `.checkpoints/test-runner.json`
 - `gate:docs-check` → `/conductor:docs-check` → `.checkpoints/docs-check.json`
-- `gate:visual-qa` → `/conductor:visual-qa` → `.checkpoints/visual-qa.json`
+
+## Visual QA - Conductor Only
+
+**Do NOT add `gate:visual-qa` as a label on work issues.**
+
+Visual QA requires changes to be merged and rebuilt first. The conductor runs visual-qa directly after merge:
+
+```bash
+# After merging worker's changes to main
+/conductor:visual-qa
+```
+
+See `/conductor:visual-qa` skill for details on why this can't run in worktrees.
 
 ## Implementation
 
