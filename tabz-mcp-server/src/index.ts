@@ -49,6 +49,7 @@ import { registerEmulationTools } from "./tools/emulation.js";
 import { registerNotificationTools } from "./tools/notifications.js";
 import { registerProfileTools } from "./tools/profiles.js";
 import { registerPluginTools } from "./tools/plugins.js";
+import { registerTerminalTools } from "./tools/terminals.js";
 
 // Backend URL (TabzChrome backend running in WSL)
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8129";
@@ -72,7 +73,8 @@ const ALL_TOOL_IDS = [
   'tabz_emulate_device', 'tabz_emulate_clear', 'tabz_emulate_geolocation', 'tabz_emulate_network', 'tabz_emulate_media', 'tabz_emulate_vision',
   'tabz_notification_show', 'tabz_notification_update', 'tabz_notification_clear', 'tabz_notification_list',
   'tabz_list_profiles', 'tabz_list_categories', 'tabz_spawn_profile', 'tabz_get_profile', 'tabz_create_profile', 'tabz_update_profile', 'tabz_delete_profile',
-  'tabz_list_plugins', 'tabz_list_skills', 'tabz_get_skill', 'tabz_plugins_health', 'tabz_toggle_plugin'
+  'tabz_list_plugins', 'tabz_list_skills', 'tabz_get_skill', 'tabz_plugins_health', 'tabz_toggle_plugin',
+  'tabz_list_terminals', 'tabz_send_keys', 'tabz_capture_terminal'
 ];
 
 // Tool group registration functions
@@ -155,6 +157,10 @@ const TOOL_GROUPS: Record<string, ToolGroupRegistrar> = {
   // Plugins tools (Claude Code plugin management)
   plugins: (server) => {
     registerPluginTools(server);       // tabz_list_plugins, tabz_list_skills, tabz_get_skill, tabz_plugins_health, tabz_toggle_plugin
+  },
+  // Terminal tools (list, send-keys, capture)
+  terminals: (server) => {
+    registerTerminalTools(server);     // tabz_list_terminals, tabz_send_keys, tabz_capture_terminal
   },
 };
 

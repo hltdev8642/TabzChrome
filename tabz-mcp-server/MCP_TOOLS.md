@@ -1,6 +1,6 @@
 # Tabz MCP Tools Reference
 
-Quick reference for the 82 browser MCP tools available to Claude Code.
+Quick reference for the 85 browser MCP tools available to Claude Code.
 
 ## Tools Overview
 
@@ -70,6 +70,9 @@ Quick reference for the 82 browser MCP tools available to Claude Code.
 | `tabz_get_skill` | "get skill", "skill details", "show skill" | Get full SKILL.md content for a skill |
 | `tabz_plugins_health` | "plugin health", "outdated plugins" | Check plugin versions and cache |
 | `tabz_toggle_plugin` | "enable plugin", "disable plugin" | Toggle plugin enabled/disabled |
+| `tabz_list_terminals` | "list terminals", "running terminals", "show workers" | List running terminals/workers |
+| `tabz_send_keys` | "send keys", "send prompt", "type in terminal" | Send text/keys to a terminal with delay |
+| `tabz_capture_terminal` | "capture terminal", "terminal output", "what's in terminal" | Capture recent output from terminal |
 
 > **Note:** Most tools support a `tabId` parameter to target a specific tab. Get tab IDs from `tabz_list_tabs`.
 
@@ -92,12 +95,12 @@ For full tool documentation with parameters, examples, and error handling:
 
 ## Architecture
 
-All 82 MCP tools use **Chrome Extension APIs** exclusively (no CDP required since v1.2.0).
+All 85 MCP tools use **Chrome Extension APIs** exclusively (no CDP required since v1.2.0).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     EXTENSION-BASED ARCHITECTURE                     │
-│   All 82 tools: tabs, screenshots, clicks, network, windows, etc.    │
+│   All 85 tools: tabs, screenshots, clicks, network, windows, etc.    │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  Chrome Browser                                                      │

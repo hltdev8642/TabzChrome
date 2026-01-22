@@ -219,6 +219,13 @@ export const MCP_TOOLS: McpTool[] = [
     triggers: ['plugin health', 'outdated plugins', 'check plugins'] },
   { id: 'tabz_toggle_plugin', name: 'Toggle Plugin', desc: 'Enable or disable a plugin', tokens: 800, category: 'Plugins',
     triggers: ['enable plugin', 'disable plugin', 'toggle plugin'] },
+  // Terminals tools
+  { id: 'tabz_list_terminals', name: 'List Terminals', desc: 'List all terminal sessions', tokens: 1000, category: 'Terminals',
+    triggers: ['list terminals', 'show terminals', 'terminal sessions', 'what terminals'] },
+  { id: 'tabz_send_keys', name: 'Send Keys', desc: 'Send keystrokes to a terminal', tokens: 1100, category: 'Terminals',
+    triggers: ['send keys', 'type in terminal', 'send to terminal', 'terminal input'] },
+  { id: 'tabz_capture_terminal', name: 'Capture Terminal', desc: 'Capture terminal output', tokens: 1000, category: 'Terminals',
+    triggers: ['capture terminal', 'terminal output', 'read terminal', 'get terminal content'] },
 ]
 
 /**

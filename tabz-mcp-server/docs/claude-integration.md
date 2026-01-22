@@ -351,3 +351,130 @@ Tools for terminal profiles and Claude Code plugins.
 - Success/failure with message to run /restart
 
 ---
+
+## tabz_list_terminals
+
+**Purpose:** List running terminals/workers with their current state.
+
+**Trigger phrases:**
+- [List terminals](tabz:paste?text=List%20terminals)
+- [Running workers](tabz:paste?text=Running%20workers)
+- [Show terminals](tabz:paste?text=Show%20terminals)
+- [What terminals are running?](tabz:paste?text=What%20terminals%20are%20running%3F)
+
+**Parameters:**
+- `response_format`: `markdown` (default) or `json`
+
+**Returns (JSON format):**
+```json
+{
+  "total": 3,
+  "terminals": [
+    {
+      "id": "ctt-claude-abc123",
+      "name": "Claude Worker",
+      "state": "running",
+      "workingDir": "/home/user/projects/myapp",
+      "profileId": "claude",
+      "createdAt": "2026-01-21T10:30:00Z"
+    }
+  ]
+}
+```
+
+**Notes:**
+- Use terminal IDs with `tabz_send_keys` and `tabz_capture_terminal`
+- State can be: `running`, `idle`, `ghost` (detached)
+
+---
+
+## tabz_send_keys
+
+**Purpose:** Send text or keys to a terminal with configurable delay.
+
+**Trigger phrases:**
+- [Send keys to terminal](tabz:paste?text=Send%20keys%20to%20terminal)
+- [Send prompt to worker](tabz:paste?text=Send%20prompt%20to%20worker)
+- [Type in terminal](tabz:paste?text=Type%20in%20terminal)
+
+**Parameters:**
+- `terminalId` (required): Terminal ID from `tabz_list_terminals`
+- `keys` (required): Text or keys to send
+- `delay` (optional): Delay in ms before sending (default: 600 for Claude terminals, 0 otherwise)
+
+**Returns:**
+```json
+{
+  "success": true,
+  "terminalId": "ctt-claude-abc123",
+  "keysSent": "ls -la\n"
+}
+```
+
+**Examples:**
+```javascript
+// Send a command
+{ terminalId: "ctt-bash-abc123", keys: "npm test\n" }
+
+// Send to Claude worker (uses 600ms delay by default)
+{ terminalId: "ctt-claude-abc123", keys: "Fix the bug in auth.ts" }
+
+// Send with custom delay
+{ terminalId: "ctt-claude-abc123", keys: "/commit", delay: 1000 }
+```
+
+**Notes:**
+- Default 600ms delay for Claude terminals allows UI to stabilize
+- Use `\n` at end of text to press Enter
+- Supports special keys like `\x03` (Ctrl+C)
+
+---
+
+## tabz_capture_terminal
+
+**Purpose:** Capture recent output from a terminal's scrollback buffer.
+
+**Trigger phrases:**
+- [Capture terminal output](tabz:paste?text=Capture%20terminal%20output)
+- [What's in the terminal?](tabz:paste?text=What%27s%20in%20the%20terminal%3F)
+- [Terminal output](tabz:paste?text=Terminal%20output)
+- [Get terminal scrollback](tabz:paste?text=Get%20terminal%20scrollback)
+
+**Parameters:**
+- `terminalId` (required): Terminal ID from `tabz_list_terminals`
+- `lines` (optional): Number of lines to capture (default: 100)
+- `response_format`: `markdown` (default) or `json`
+
+**Returns (JSON format):**
+```json
+{
+  "success": true,
+  "terminalId": "ctt-claude-abc123",
+  "lines": 100,
+  "content": "$ npm test\n\n  PASS  src/auth.test.ts\n  ...",
+  "metadata": {
+    "workingDir": "/home/user/projects/myapp",
+    "gitBranch": "feature-auth",
+    "capturedAt": "2026-01-21T10:35:00Z"
+  }
+}
+```
+
+**Examples:**
+```javascript
+// Capture last 100 lines (default)
+{ terminalId: "ctt-claude-abc123" }
+
+// Capture last 500 lines
+{ terminalId: "ctt-claude-abc123", lines: 500 }
+
+// Get JSON for parsing
+{ terminalId: "ctt-claude-abc123", response_format: "json" }
+```
+
+**Notes:**
+- ANSI escape codes are stripped for clean text output
+- Captures from tmux scrollback buffer
+- Use with `tabz_list_terminals` to find terminal IDs
+
+---

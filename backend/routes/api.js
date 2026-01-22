@@ -75,6 +75,18 @@ const resizeSchema = Joi.object({
   rows: Joi.number().integer().min(10).max(100).required()
 });
 
+const sendKeysSchema = Joi.object({
+  terminalId: Joi.string().required(),
+  sessionName: Joi.string().required(),
+  text: Joi.string().required().min(1).max(50000),
+  execute: Joi.boolean().default(true),
+  delay: Joi.number().integer().min(0).max(5000).default(600)
+});
+
+const captureSchema = Joi.object({
+  lines: Joi.number().integer().min(1).max(1000).default(50)
+});
+
 // =============================================================================
 // VALIDATION MIDDLEWARE
 // =============================================================================
@@ -521,6 +533,137 @@ router.post('/agents/:id/resize', validateBody(resizeSchema), asyncHandler(async
       rows
     }
   });
+}));
+
+// =============================================================================
+// TERMINAL SEND-KEYS ROUTES (for MCP tools)
+// =============================================================================
+
+/**
+ * POST /api/terminals/send-keys - Send keys to terminal via tmux
+ * Uses tmux send-keys with configurable delay for Claude terminals.
+ */
+router.post('/terminals/send-keys', validateBody(sendKeysSchema), asyncHandler(async (req, res) => {
+  const { terminalId, sessionName, text, execute, delay } = req.body;
+  const { spawnSync } = require('child_process');
+
+  // Verify terminal exists
+  const terminal = terminalRegistry.getTerminal(terminalId);
+  if (!terminal) {
+    return res.status(404).json({
+      success: false,
+      error: 'Terminal not found',
+      message: `No terminal found with ID: ${terminalId}`
+    });
+  }
+
+  // Verify tmux session exists
+  const hasSession = spawnSync('tmux', ['has-session', '-t', sessionName], { timeout: 1000 });
+  if (hasSession.status !== 0) {
+    return res.status(404).json({
+      success: false,
+      error: 'Session not found',
+      message: `tmux session "${sessionName}" does not exist`
+    });
+  }
+
+  try {
+    // Send text using tmux send-keys with -l (literal) flag
+    if (text) {
+      spawnSync('tmux', ['send-keys', '-t', sessionName, '-l', text], { timeout: 5000 });
+      log.debug(`Send-keys → ${sessionName}: ${text.length} bytes`);
+    }
+
+    // If execute is true, wait for delay then send Enter
+    if (execute) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+      spawnSync('tmux', ['send-keys', '-t', sessionName, 'Enter'], { timeout: 5000 });
+      log.debug(`Send-keys Enter → ${sessionName} (after ${delay}ms delay)`);
+    }
+
+    res.json({
+      success: true,
+      message: 'Keys sent successfully',
+      data: {
+        terminalId,
+        sessionName,
+        textLength: text?.length || 0,
+        executed: execute,
+        delay: execute ? delay : null
+      }
+    });
+  } catch (err) {
+    log.error(`Failed to send keys to ${sessionName}:`, err.message);
+    res.status(500).json({
+      success: false,
+      error: 'Send failed',
+      message: err.message
+    });
+  }
+}));
+
+/**
+ * GET /api/terminals/:id/capture - Capture terminal output via tmux
+ */
+router.get('/terminals/:id/capture', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const lines = parseInt(req.query.lines) || 50;
+  const { spawnSync } = require('child_process');
+
+  // Verify terminal exists
+  const terminal = terminalRegistry.getTerminal(id);
+  if (!terminal) {
+    return res.status(404).json({
+      success: false,
+      error: 'Terminal not found',
+      message: `No terminal found with ID: ${id}`
+    });
+  }
+
+  // Use terminal ID as tmux session name
+  const sessionName = id;
+
+  // Verify tmux session exists
+  const hasSession = spawnSync('tmux', ['has-session', '-t', sessionName], { timeout: 1000 });
+  if (hasSession.status !== 0) {
+    return res.status(404).json({
+      success: false,
+      error: 'Session not found',
+      message: `tmux session "${sessionName}" does not exist`
+    });
+  }
+
+  try {
+    // Capture pane output
+    // -p: print to stdout
+    // -S: start line (negative = from end of scrollback)
+    const result = spawnSync('tmux', [
+      'capture-pane',
+      '-t', sessionName,
+      '-p',
+      '-S', `-${lines}`
+    ], { timeout: 5000, encoding: 'utf-8' });
+
+    if (result.error) {
+      throw result.error;
+    }
+
+    const output = result.stdout || '';
+
+    res.json({
+      success: true,
+      output,
+      lines: output.split('\n').length,
+      terminalId: id
+    });
+  } catch (err) {
+    log.error(`Failed to capture terminal ${id}:`, err.message);
+    res.status(500).json({
+      success: false,
+      error: 'Capture failed',
+      message: err.message
+    });
+  }
 }));
 
 // =============================================================================
