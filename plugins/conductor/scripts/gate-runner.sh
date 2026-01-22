@@ -212,7 +212,7 @@ Include: {checkpoint, timestamp, passed, summary}."
   fi
 
   log "Waiting for Claude to initialize..."
-  sleep 8
+  sleep "${CLAUDE_BOOT_TIME:-4}"  # 4s default, set to 8 on slower machines
 
   local session
   session="$(curl -s "$TABZ_API/api/agents" | jq -r --arg n "$term_name" '.data[] | select(.name == $n) | .id' 2>/dev/null || true)"

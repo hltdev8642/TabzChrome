@@ -133,8 +133,8 @@ for issue in ready_issues[:3]:
         }
     )
 
-    # 2. Wait for Claude boot
-    time.sleep(8)
+    # 2. Wait for Claude boot (4s on fast machines, 8s on laptops)
+    time.sleep(4)
 
     # 3. Send prompt
     prompt = f"bd show {issue_id}"

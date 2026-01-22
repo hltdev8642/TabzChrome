@@ -46,7 +46,7 @@ tabz_spawn_profile(
 )
 
 # 5. Wait for Claude boot
-time.sleep(8)
+time.sleep(4)  # 4s on fast machines, 8s on laptops
 
 # 6. Extract prepared.prompt from issue notes (or use default)
 issue = mcp__beads__show(issue_id=ISSUE_ID)
@@ -138,7 +138,7 @@ tabz_spawn_profile(
 
 ```python
 import time
-time.sleep(8)
+time.sleep(4)  # 4s on fast machines, 8s on laptops
 ```
 
 Claude needs ~8 seconds to fully initialize before receiving prompts.
@@ -222,7 +222,7 @@ git branch -d "feature/$ISSUE_ID"
 | Create worktree | `bd worktree create ".worktrees/ID" --branch "feature/ID"` |
 | Init deps | `init-worktree.sh` (or run in background) |
 | Spawn terminal | `tabz_spawn_profile(profileId, workingDir, name, env)` |
-| Wait for boot | `time.sleep(8)` |
+| Wait for boot | `time.sleep(4)  # 4s on fast machines, 8s on laptops` |
 | Send prompt | `tabz_send_keys(terminal, text)` |
 | Claim issue | `mcp__beads__update(issue_id, status="in_progress")` |
 | Check output | `tabz_capture_terminal(terminal, lines)` |
@@ -234,7 +234,7 @@ git branch -d "feature/$ISSUE_ID"
 |---------|-------|-----|
 | `BEADS_WORKING_DIR` | Main repo path | Beads MCP finds database |
 | `BD_SOCKET` | `/tmp/bd-worker-{ID}.sock` | Isolates beads daemon per worker for parallel execution |
-| Wait time | 8 seconds | Claude boot time |
+| Wait time | 4 seconds (8 on laptops) | Claude boot time |
 | `delay` | 600ms (default) | Prompt fully sent before Enter |
 
 ## Naming Convention
@@ -247,7 +247,7 @@ git branch -d "feature/$ISSUE_ID"
 
 - **Use `bd worktree create`** (not `git worktree add`) - creates beads redirect file
 - **Use `BD_SOCKET`** - each worker gets its own beads daemon socket for parallel MCP tool access
-- **Wait 8+ seconds** for Claude to boot before sending prompt
+- **Wait 4+ seconds** for Claude to boot before sending prompt (8 on slower machines)
 - **Workers have their own CLAUDE.md** - they'll read the issue and work autonomously
 - **Init deps can overlap** with Claude boot time for faster spawns
 - **Check for prepared.prompt** - `/prompt-writer:write-all` stores crafted prompts in issue notes
