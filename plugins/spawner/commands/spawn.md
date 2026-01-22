@@ -4,7 +4,8 @@ description: "Spawn a Claude worker for a ready issue"
 argument-hint: "ISSUE_ID"
 context:
   skills:
-    - spawner:terminals  # TabzChrome API patterns, worktree setup, prompt sending
+    - tabz:terminals      # tmux send-keys patterns for prompt sending
+    - spawner:terminals   # TabzChrome API patterns, worktree setup
 ---
 
 # Spawn Worker
@@ -153,8 +154,8 @@ SAFE_SEND_KEYS=$(find ~/plugins ~/.claude/plugins -name "safe-send-keys.sh" -pat
 **Fallback with tmux:**
 ```bash
 tmux send-keys -t "$SESSION" -l "$PROMPT"
-sleep 1
-tmux send-keys -t "$SESSION" C-m
+sleep 0.5
+tmux send-keys -t "$SESSION" Enter
 ```
 
 ## Step 6: Update Issue Status
