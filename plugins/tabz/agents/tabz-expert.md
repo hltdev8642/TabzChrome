@@ -12,7 +12,7 @@ tools:
   - Grep
   - WebFetch
   - WebSearch
-  - mcp:plugin_tabz_tabz/*
+  - mcp__tabz__*
 ---
 
 # Tabz Expert - Browser & Terminal Specialist
