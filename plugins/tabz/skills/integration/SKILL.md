@@ -1,6 +1,6 @@
 ---
 name: integration
-description: Integrate projects with TabzChrome terminals via HTML attributes, WebSocket, JS API, or Spawn API
+description: Integrate projects with TabzChrome terminals via Markdown links, HTML attributes, WebSocket, JS API, or Spawn API
 user-invocable: true
 ---
 
@@ -10,6 +10,7 @@ Help users integrate their projects with TabzChrome terminals.
 
 ## When to Use
 
+- Creating project dashboards with terminal buttons in markdown
 - Adding "Run in Terminal" buttons to web pages
 - Creating CLI tools that queue commands to TabzChrome
 - Building prompt libraries with fillable templates
@@ -19,7 +20,8 @@ Help users integrate their projects with TabzChrome terminals.
 
 | Method | Auth | Best For |
 |--------|------|----------|
-| HTML `data-terminal-command` | None | Static buttons on docs/tool pages |
+| Markdown `tabz:` links | None | Project dashboards, docs in file viewer |
+| HTML `data-terminal-command` | None | Static buttons on web pages |
 | WebSocket + websocat | File token | CLI/tmux workflows |
 | WebSocket + JS | API token | Prompt libraries, web apps |
 | POST /api/spawn | Token | Creating new terminal tabs |
@@ -34,6 +36,8 @@ questions:
     header: "Integration"
     multiSelect: true
     options:
+      - label: "Markdown Links"
+        description: "tabz: protocol for project dashboards in file viewer"
       - label: "HTML Buttons"
         description: "data-terminal-command for 'Run in Terminal' buttons"
       - label: "CLI/Scripts"
@@ -48,6 +52,7 @@ Then provide the relevant reference:
 
 | Selection | Reference |
 |-----------|-----------|
+| Markdown Links | `references/markdown-links.md` |
 | HTML Buttons | `references/html-integration.md` |
 | CLI/Scripts | `references/cli-websocket.md` |
 | Web App JS | `references/javascript-api.md` |
