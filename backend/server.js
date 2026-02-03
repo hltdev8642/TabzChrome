@@ -112,6 +112,7 @@ const unifiedSpawn = require('./modules/unified-spawn');
 const TUIToolsManager = require('./modules/tui-tools');
 const ptyHandler = require('./modules/pty-handler');
 const audioGenerator = require('./modules/audio-generator');
+const fileWatcher = require('./modules/file-watcher');
 // Removed terminal-recovery.js - was causing duplicate terminals and conflicts
 const apiRouter = require('./routes/api');
 const filesRouter = require('./routes/files');
@@ -1520,6 +1521,38 @@ wss.on('connection', (ws, req) => {
           broadcast({ type: 'QUEUE_COMMAND', command: data.command });
           break;
 
+        // ============================================
+        // FILE WATCHER - For markdown-themes and similar apps
+        // ============================================
+        case 'file-watch':
+          // Subscribe to file changes
+          if (data.path) {
+            log.info(`[FileWatcher] Client subscribing to: ${data.path}`);
+            await fileWatcher.subscribe(ws, data.path);
+          } else {
+            ws.send(JSON.stringify({
+              type: 'file-watch-error',
+              error: 'Missing path parameter'
+            }));
+          }
+          break;
+
+        case 'file-unwatch':
+          // Unsubscribe from file changes
+          if (data.path) {
+            log.debug(`[FileWatcher] Client unsubscribing from: ${data.path}`);
+            fileWatcher.unsubscribe(ws, data.path);
+          }
+          break;
+
+        case 'file-watcher-stats':
+          // Get file watcher statistics
+          ws.send(JSON.stringify({
+            type: 'file-watcher-stats',
+            data: fileWatcher.getStats()
+          }));
+          break;
+
       }
     } catch (error) {
       log.error('WebSocket message error:', error);
@@ -1574,6 +1607,9 @@ wss.on('connection', (ws, req) => {
     }
     // Clear terminal references to free memory
     connectionTerminals.clear();
+
+    // Unsubscribe from all file watchers
+    fileWatcher.unsubscribeAll(ws);
 
     // Remove from active connections and sidebar connections
     activeConnections.delete(ws);
@@ -1767,6 +1803,9 @@ const gracefulShutdown = async () => {
 
   // Clean up terminal registry listeners
   terminalRegistry.removeAllListeners();
+
+  // Clean up file watcher
+  fileWatcher.cleanup();
 
   // Clean up all terminals
   await terminalRegistry.cleanup();
