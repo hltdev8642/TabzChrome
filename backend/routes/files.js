@@ -555,6 +555,75 @@ router.get('/video', async (req, res) => {
   }
 });
 
+// Serve audio files as base64
+router.get('/audio', async (req, res) => {
+  try {
+    const filePath = req.query.path;
+
+    if (!filePath) {
+      return res.status(400).json({ error: 'File path is required' });
+    }
+
+    const resolvedPath = path.resolve(expandTilde(filePath));
+
+    // For local development, allow filesystem exploration (configurable)
+    const restrictToHome = process.env.RESTRICT_TO_HOME === 'true';
+
+    if (restrictToHome) {
+      const homeDir = process.env.HOME || process.env.USERPROFILE;
+      if (!resolvedPath.startsWith(homeDir)) {
+        return res.status(403).json({ error: 'Access denied: Path is outside home directory' });
+      }
+    }
+
+    // Check if file exists
+    try {
+      await fs.access(resolvedPath);
+    } catch {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    // Check file size (limit to 50MB for audio)
+    const stats = await fs.stat(resolvedPath);
+    if (stats.size > 50 * 1024 * 1024) {
+      return res.status(400).json({ error: 'Audio file too large (max 50MB)' });
+    }
+
+    // Validate audio file extension
+    const ext = path.extname(resolvedPath).toLowerCase().slice(1);
+    const mimeTypes = {
+      'mp3': 'audio/mpeg',
+      'wav': 'audio/wav',
+      'ogg': 'audio/ogg',
+      'm4a': 'audio/mp4',
+      'webm': 'audio/webm',
+      'aac': 'audio/aac',
+      'flac': 'audio/flac'
+    };
+
+    if (!mimeTypes[ext]) {
+      return res.status(400).json({ error: `Unsupported audio format: ${ext}. Supported: mp3, wav, ogg, m4a, webm, aac, flac` });
+    }
+
+    // Read the file and convert to base64
+    const fileBuffer = await fs.readFile(resolvedPath);
+    const mimeType = mimeTypes[ext];
+    const base64 = fileBuffer.toString('base64');
+    const dataUri = `data:${mimeType};base64,${base64}`;
+
+    res.json({
+      dataUri,
+      mimeType,
+      size: fileBuffer.length,
+      path: resolvedPath
+    });
+
+  } catch (error) {
+    log.error('Error serving audio:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get widget documentation for a terminal type
 router.get('/widget-docs/:widgetName', async (req, res) => {
   try {
