@@ -661,4 +661,117 @@ ${truncatedDiff}`;
   }
 });
 
+// ============================================================================
+// PATH-BASED ENDPOINTS (for external apps like markdown-themes)
+// These accept full paths instead of repo names
+// ============================================================================
+
+/**
+ * GET /api/git/graph - Get commit graph data for visualization
+ * Query params:
+ *   - path: Full path to repo or directory within repo (required)
+ *   - limit: Number of commits (default: 50)
+ *   - skip: Offset for pagination (default: 0)
+ */
+router.get('/graph', async (req, res) => {
+  try {
+    const repoPath = expandTilde(req.query.path);
+    if (!repoPath) {
+      return res.status(400).json({ success: false, error: 'Path is required' });
+    }
+
+    const limit = parseInt(req.query.limit, 10) || 50;
+    const skip = parseInt(req.query.skip, 10) || 0;
+
+    const result = await gitUtils.getGraphLog(repoPath, limit, skip);
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (err) {
+    log.error(' Error getting graph log:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * GET /api/git/diff - Get diff for a commit or between commits
+ * Query params:
+ *   - path: Full path to repo (required)
+ *   - base: Base commit hash (optional, for single commit use this only)
+ *   - head: Head commit hash (optional)
+ *   - file: Specific file to diff (optional)
+ */
+router.get('/diff', async (req, res) => {
+  try {
+    const repoPath = expandTilde(req.query.path);
+    if (!repoPath) {
+      return res.status(400).json({ success: false, error: 'Path is required' });
+    }
+
+    const base = req.query.base || null;
+    const head = req.query.head || null;
+    const file = req.query.file || null;
+
+    const diff = await gitUtils.getCommitDiff(repoPath, base, head, file);
+
+    res.json({
+      success: true,
+      data: { diff }
+    });
+  } catch (err) {
+    log.error(' Error getting diff:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * GET /api/git/commit/:hash - Get details for a specific commit
+ * Query params:
+ *   - path: Full path to repo (required)
+ */
+router.get('/commit/:hash', async (req, res) => {
+  try {
+    const repoPath = expandTilde(req.query.path);
+    if (!repoPath) {
+      return res.status(400).json({ success: false, error: 'Path is required' });
+    }
+
+    const commit = await gitUtils.getCommitDetails(repoPath, req.params.hash);
+
+    res.json({
+      success: true,
+      data: commit
+    });
+  } catch (err) {
+    log.error(' Error getting commit details:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * GET /api/git/branches - Get all branches for a repo
+ * Query params:
+ *   - path: Full path to repo (required)
+ */
+router.get('/branches', async (req, res) => {
+  try {
+    const repoPath = expandTilde(req.query.path);
+    if (!repoPath) {
+      return res.status(400).json({ success: false, error: 'Path is required' });
+    }
+
+    const branches = await gitUtils.getBranches(repoPath);
+
+    res.json({
+      success: true,
+      data: branches
+    });
+  } catch (err) {
+    log.error(' Error getting branches:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

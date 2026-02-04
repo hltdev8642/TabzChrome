@@ -743,10 +743,217 @@ async function getStashCount(repoPath) {
   }
 }
 
+/**
+ * Get git log formatted for graph visualization
+ * Includes parent hashes needed for drawing branch connections
+ * @param {string} repoPath - Full path to repository
+ * @param {number} limit - Maximum commits to return (default 50)
+ * @param {number} skip - Number of commits to skip for pagination (default 0)
+ * @returns {Promise<Object>} { commits, hasMore, repoRoot }
+ */
+async function getGraphLog(repoPath, limit = 50, skip = 0) {
+  try {
+    // Find the repo root first
+    const { stdout: repoRoot } = await execAsync('git rev-parse --show-toplevel', {
+      cwd: repoPath,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' }
+    });
+
+    const SEP = '<<<TABZ_SEP>>>';
+    const RECORD_SEP = '<<<TABZ_RECORD>>>';
+    // Format: hash|shortHash|subject|authorName|authorEmail|authorDateISO|parentHashes|refNames
+    const format = `%H${SEP}%h${SEP}%s${SEP}%an${SEP}%ae${SEP}%aI${SEP}%P${SEP}%D${RECORD_SEP}`;
+
+    // Request one extra to detect if there are more
+    const actualLimit = parseInt(limit, 10) + 1;
+    const actualSkip = parseInt(skip, 10);
+
+    const { stdout } = await execAsync(
+      `git log --all --topo-order --format='${format}' -n ${actualLimit} --skip=${actualSkip}`,
+      {
+        cwd: repoPath,
+        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+        maxBuffer: 5 * 1024 * 1024 // 5MB for large repos
+      }
+    );
+
+    if (!stdout.trim()) {
+      return { commits: [], hasMore: false, repoRoot: repoRoot.trim() };
+    }
+
+    const records = stdout.trim().split(RECORD_SEP).filter(r => r.trim());
+    const hasMore = records.length > limit;
+    const commits = records.slice(0, limit).map(record => {
+      const parts = record.split(SEP);
+      const [hash, shortHash, subject, author, email, date, parents, refs] = parts;
+      return {
+        hash: hash?.trim(),
+        shortHash: shortHash?.trim(),
+        message: subject?.trim(),
+        author: author?.trim(),
+        email: email?.trim(),
+        date: date?.trim(),
+        parents: parents?.trim() ? parents.trim().split(' ') : [],
+        refs: refs ? refs.split(', ').filter(r => r.trim()) : []
+      };
+    });
+
+    return { commits, hasMore, repoRoot: repoRoot.trim() };
+  } catch (err) {
+    if (err.message && err.message.includes('does not have any commits yet')) {
+      return { commits: [], hasMore: false, repoRoot: repoPath };
+    }
+    throw new Error(`Failed to get graph log: ${err.message}`);
+  }
+}
+
+/**
+ * Get diff between two commits or for a specific commit
+ * @param {string} repoPath - Full path to repository
+ * @param {string} base - Base commit hash (or empty for working tree)
+ * @param {string} head - Head commit hash (optional, defaults to HEAD)
+ * @param {string} file - Specific file to diff (optional)
+ * @returns {Promise<string>} Diff output
+ */
+async function getCommitDiff(repoPath, base, head = null, file = null) {
+  try {
+    let cmd;
+    if (!base && !head) {
+      // Working tree diff
+      cmd = 'git diff HEAD';
+    } else if (base && !head) {
+      // Single commit diff (show what that commit introduced)
+      cmd = `git show ${escapeShellArg(base)} --format=''`;
+    } else {
+      // Diff between two commits
+      cmd = `git diff ${escapeShellArg(base)}..${escapeShellArg(head)}`;
+    }
+
+    if (file) {
+      cmd += ` -- ${escapeShellArg(file)}`;
+    }
+
+    const { stdout } = await execAsync(cmd, {
+      cwd: repoPath,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+      maxBuffer: 10 * 1024 * 1024 // 10MB for large diffs
+    });
+
+    return stdout;
+  } catch (err) {
+    throw new Error(`Failed to get diff: ${err.message}`);
+  }
+}
+
+/**
+ * Get details for a specific commit including files changed
+ * @param {string} repoPath - Full path to repository
+ * @param {string} hash - Commit hash
+ * @returns {Promise<Object>} Commit details with files
+ */
+async function getCommitDetails(repoPath, hash) {
+  try {
+    const SEP = '<<<TABZ_SEP>>>';
+    const format = `%H${SEP}%h${SEP}%s${SEP}%b${SEP}%an${SEP}%ae${SEP}%aI${SEP}%P${SEP}%D`;
+
+    const { stdout: commitInfo } = await execAsync(
+      `git show ${escapeShellArg(hash)} --format='${format}' --name-status`,
+      {
+        cwd: repoPath,
+        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+        maxBuffer: 5 * 1024 * 1024
+      }
+    );
+
+    // Split into commit info and file list
+    const lines = commitInfo.trim().split('\n');
+    const infoLine = lines[0];
+    const parts = infoLine.split(SEP);
+    const [fullHash, shortHash, subject, body, author, email, date, parents, refs] = parts;
+
+    // Parse files (skip empty lines and the info line)
+    const files = lines.slice(1).filter(l => l.trim()).map(line => {
+      const match = line.match(/^([AMDRT])\t(.+)$/);
+      if (match) {
+        return { status: match[1], path: match[2] };
+      }
+      // Handle renames: R100\told\tnew
+      const renameMatch = line.match(/^R\d+\t(.+)\t(.+)$/);
+      if (renameMatch) {
+        return { status: 'R', oldPath: renameMatch[1], path: renameMatch[2] };
+      }
+      return null;
+    }).filter(Boolean);
+
+    return {
+      hash: fullHash?.trim(),
+      shortHash: shortHash?.trim(),
+      message: subject?.trim(),
+      body: body?.trim() || null,
+      author: author?.trim(),
+      email: email?.trim(),
+      date: date?.trim(),
+      parents: parents?.trim() ? parents.trim().split(' ') : [],
+      refs: refs ? refs.split(', ').filter(r => r.trim()) : [],
+      files
+    };
+  } catch (err) {
+    throw new Error(`Failed to get commit details: ${err.message}`);
+  }
+}
+
+/**
+ * Get all branches (local and remote)
+ * @param {string} repoPath - Full path to repository
+ * @returns {Promise<Object>} { local: [], remote: [], current: string }
+ */
+async function getBranches(repoPath) {
+  try {
+    const { stdout } = await execAsync(
+      'git branch -a --format="%(refname:short)|||%(objectname:short)|||%(upstream:short)|||%(HEAD)"',
+      {
+        cwd: repoPath,
+        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' }
+      }
+    );
+
+    const local = [];
+    const remote = [];
+    let current = null;
+
+    stdout.trim().split('\n').filter(l => l.trim()).forEach(line => {
+      const [name, hash, upstream, head] = line.split('|||');
+      const branch = {
+        name: name.trim(),
+        hash: hash.trim(),
+        upstream: upstream?.trim() || null
+      };
+
+      if (head.trim() === '*') {
+        current = name.trim();
+      }
+
+      if (name.startsWith('remotes/') || name.startsWith('origin/')) {
+        remote.push({ ...branch, name: name.replace(/^remotes\//, '') });
+      } else {
+        local.push(branch);
+      }
+    });
+
+    return { local, remote, current };
+  } catch (err) {
+    throw new Error(`Failed to get branches: ${err.message}`);
+  }
+}
+
 module.exports = {
   discoverRepos,
   getRepoStatus,
   getRepoLog,
+  getGraphLog,
+  getCommitDiff,
+  getCommitDetails,
+  getBranches,
   getGitHubUrl,
   getLastActivity,
   getLastCommit,
