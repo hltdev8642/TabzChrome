@@ -854,7 +854,8 @@ async function getCommitDiff(repoPath, base, head = null, file = null) {
 async function getCommitDetails(repoPath, hash) {
   try {
     const SEP = '<<<TABZ_SEP>>>';
-    const format = `%H${SEP}%h${SEP}%s${SEP}%b${SEP}%an${SEP}%ae${SEP}%aI${SEP}%P${SEP}%D`;
+    // Put %b (body) at the END since it can contain newlines
+    const format = `%H${SEP}%h${SEP}%s${SEP}%an${SEP}%ae${SEP}%aI${SEP}%P${SEP}%D${SEP}%b`;
 
     const { stdout: commitInfo } = await execAsync(
       `git show ${escapeShellArg(hash)} --format='${format}' --name-status`,
@@ -865,14 +866,21 @@ async function getCommitDetails(repoPath, hash) {
       }
     );
 
-    // Split into commit info and file list
-    const lines = commitInfo.trim().split('\n');
-    const infoLine = lines[0];
-    const parts = infoLine.split(SEP);
-    const [fullHash, shortHash, subject, body, author, email, date, parents, refs] = parts;
+    // Find where file list starts (lines matching file status pattern)
+    const lines = commitInfo.split('\n');
+    let fileStartIndex = lines.findIndex(line => /^[AMDRT]\d*\t/.test(line));
+    if (fileStartIndex === -1) fileStartIndex = lines.length;
 
-    // Parse files (skip empty lines and the info line)
-    const files = lines.slice(1).filter(l => l.trim()).map(line => {
+    // Everything before file list is the formatted commit info
+    const infoSection = lines.slice(0, fileStartIndex).join('\n');
+    const parts = infoSection.split(SEP);
+    const [fullHash, shortHash, subject, author, email, date, parents, refs, ...bodyParts] = parts;
+
+    // Body is everything after the 8th separator (may contain newlines)
+    const body = bodyParts.join(SEP).trim() || null;
+
+    // Parse files
+    const files = lines.slice(fileStartIndex).filter(l => l.trim()).map(line => {
       const match = line.match(/^([AMDRT])\t(.+)$/);
       if (match) {
         return { status: match[1], path: match[2] };
@@ -889,7 +897,7 @@ async function getCommitDetails(repoPath, hash) {
       hash: fullHash?.trim(),
       shortHash: shortHash?.trim(),
       message: subject?.trim(),
-      body: body?.trim() || null,
+      body,
       author: author?.trim(),
       email: email?.trim(),
       date: date?.trim(),
