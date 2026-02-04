@@ -1553,6 +1553,15 @@ wss.on('connection', (ws, req) => {
           }));
           break;
 
+        // ============================================
+        // PASTE_COMMAND - Forward to Chrome extension
+        // ============================================
+        case 'PASTE_COMMAND':
+          // Forward paste command to Chrome extension which pastes to active terminal
+          log.info('[Server] PASTE_COMMAND received:', data.command?.slice(0, 50));
+          broadcast({ type: 'PASTE_COMMAND', command: data.command });
+          break;
+
       }
     } catch (error) {
       log.error('WebSocket message error:', error);
