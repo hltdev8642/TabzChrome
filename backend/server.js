@@ -567,7 +567,7 @@ wss.on('connection', (ws, req) => {
     let data;
     try {
       data = JSON.parse(message);
-      
+
       switch (data.type) {
         case 'identify':
           // Client type identification - sidebar vs web page
@@ -1559,9 +1559,9 @@ wss.on('connection', (ws, req) => {
         case 'workspace-watch':
           // Subscribe to workspace-wide file changes (for "Follow AI Edits" feature)
           if (data.path) {
-            log.info(`[WorkspaceWatcher] Client subscribing to workspace: ${data.path}`);
             await fileWatcher.subscribeWorkspace(ws, data.path);
           } else {
+            log.warn(`[WorkspaceWatcher] Missing path parameter`);
             ws.send(JSON.stringify({
               type: 'workspace-watch-error',
               error: 'Missing path parameter'
