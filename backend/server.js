@@ -437,6 +437,51 @@ app.post('/api/notify', (req, res) => {
   res.json({ success: true, message: 'Notification broadcast' });
 });
 
+// Claude session info endpoint
+// GET /api/claude/session?pane=%3
+// Returns session ID and working directory from /tmp/claude-code-state/
+app.get('/api/claude/session', async (req, res) => {
+  const pane = req.query.pane;
+  if (!pane) {
+    return res.status(400).json({ error: 'Missing pane parameter (e.g., ?pane=%3)' });
+  }
+
+  // Sanitize pane ID for filename (e.g., %3 -> _3)
+  const sanitizedPane = pane.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const stateFile = `/tmp/claude-code-state/${sanitizedPane}.json`;
+
+  try {
+    const fs = require('fs').promises;
+    const data = await fs.readFile(stateFile, 'utf8');
+    const state = JSON.parse(data);
+
+    const sessionId = state.claude_session_id;
+    const workingDir = state.working_dir;
+
+    if (!sessionId || !workingDir) {
+      return res.json({ error: 'Session info not available yet', state });
+    }
+
+    // Construct conversation path
+    const encodedCwd = workingDir.replace(/\//g, '-');
+    const homedir = require('os').homedir();
+    const conversationPath = `${homedir}/.claude/projects/${encodedCwd}/${sessionId}.jsonl`;
+
+    res.json({
+      sessionId,
+      workingDir,
+      conversationPath,
+      pane: state.tmux_pane,
+      status: state.status
+    });
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      return res.status(404).json({ error: 'State file not found', pane: sanitizedPane });
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Handle different startup modes based on environment variables
 // FORCE_CLEANUP=true: Kill all PTY processes immediately (clean start)
 // CLEANUP_ON_START defaults to false to preserve terminals across restarts
